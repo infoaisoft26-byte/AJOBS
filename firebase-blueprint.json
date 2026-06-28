@@ -1,0 +1,422 @@
+{
+  "entities": {
+    "user": {
+      "title": "User",
+      "description": "System user account",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["candidate", "consultancy", "employer", "admin"] },
+        "name": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "candidate": {
+      "title": "Candidate",
+      "description": "Candidate profile data",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "resumeUrl": { "type": "string" },
+        "resumeFileName": { "type": "string" },
+        "resumeScore": { "type": "number" },
+        "skills": { "type": "array" },
+        "experience": { "type": "string" },
+        "aiInterviewScore": { "type": "number" },
+        "resumeText": { "type": "string" },
+        "summary": { "type": "string" },
+        "careerCoachChat": { "type": "array" }
+      },
+      "required": ["userId"]
+    },
+    "consultancy": {
+      "title": "Consultancy",
+      "description": "Consultancy agency profile",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "agencyName": { "type": "string" },
+        "subscriptionStatus": { "type": "string", "enum": ["active", "inactive"] },
+        "pricingPlan": { "type": "string" },
+        "clientsCount": { "type": "number" }
+      },
+      "required": ["userId", "agencyName"]
+    },
+    "employer": {
+      "title": "Employer",
+      "description": "Employer/Company profile",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "companyName": { "type": "string" },
+        "industry": { "type": "string" },
+        "size": { "type": "string" }
+      },
+      "required": ["userId", "companyName"]
+    },
+    "job": {
+      "title": "Job",
+      "description": "Job posting",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "employerId": { "type": "string" },
+        "companyName": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "location": { "type": "string" },
+        "type": { "type": "string" },
+        "salary": { "type": "string" },
+        "skillsRequired": { "type": "array" },
+        "status": { "type": "string", "enum": ["open", "closed"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["employerId", "title", "description", "status"]
+    },
+    "application": {
+      "title": "Application",
+      "description": "Job application",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "jobId": { "type": "string" },
+        "candidateId": { "type": "string" },
+        "candidateName": { "type": "string" },
+        "jobTitle": { "type": "string" },
+        "companyName": { "type": "string" },
+        "status": { "type": "string", "enum": ["applied", "interviewing", "offered", "rejected"] },
+        "appliedAt": { "type": "string" }
+      },
+      "required": ["jobId", "candidateId", "status"]
+    },
+    "interview": {
+      "title": "Interview",
+      "description": "AI interview session",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "candidateId": { "type": "string" },
+        "jobId": { "type": "string" },
+        "jobTitle": { "type": "string" },
+        "questions": { "type": "array" },
+        "answers": { "type": "array" },
+        "overallScore": { "type": "number" },
+        "feedback": { "type": "string" },
+        "status": { "type": "string", "enum": ["scheduled", "completed"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["candidateId", "jobId", "status"]
+    },
+    "payment": {
+      "title": "Payment",
+      "description": "Payment transactions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "status": { "type": "string" },
+        "razorpayOrderId": { "type": "string" },
+        "razorpayPaymentId": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "amount", "status"]
+    },
+    "subscription": {
+      "title": "Subscription",
+      "description": "User subscriptions",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "planName": { "type": "string" },
+        "status": { "type": "string" },
+        "expiresAt": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "planName", "status"]
+    },
+    "notification": {
+      "title": "Notification",
+      "description": "User in-app notification",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "title", "message", "read"]
+    },
+    "resume_analysis": {
+      "title": "Resume Analysis",
+      "description": "Parsed and analyzed resume fields",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "fullName": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "skills": { "type": "array" },
+        "experience": { "type": "array" },
+        "education": { "type": "array" },
+        "certifications": { "type": "array" },
+        "projects": { "type": "array" },
+        "languages": { "type": "array" },
+        "currentCompany": { "type": "string" },
+        "designation": { "type": "string" },
+        "preferredLocation": { "type": "string" },
+        "expectedSalary": { "type": "string" },
+        "salaryPredictionMin": { "type": "number" },
+        "salaryPredictionMax": { "type": "number" },
+        "analyzedAt": { "type": "string" }
+      },
+      "required": ["id", "userId"]
+    },
+    "resume_scores": {
+      "title": "Resume Scores",
+      "description": "ATS score breakdown of the resume",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "overallScore": { "type": "number" },
+        "atsCompatibilityScore": { "type": "number" },
+        "grammarScore": { "type": "number" },
+        "formattingScore": { "type": "number" },
+        "professionalSummaryScore": { "type": "number" },
+        "skillsMatchScore": { "type": "number" },
+        "experienceScore": { "type": "number" },
+        "educationScore": { "type": "number" },
+        "achievementsScore": { "type": "number" },
+        "keywordOptimizationScore": { "type": "number" },
+        "evaluatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "overallScore"]
+    },
+    "resume_versions": {
+      "title": "Resume Versions",
+      "description": "Upload history of resume files",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "version": { "type": "number" },
+        "fileName": { "type": "string" },
+        "fileUrl": { "type": "string" },
+        "uploadedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "version", "fileName"]
+    },
+    "resume_recommendations": {
+      "title": "Resume Recommendations",
+      "description": "AI-generated improvement insights and learning paths",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "missingTechnicalSkills": { "type": "array" },
+        "missingSoftSkills": { "type": "array" },
+        "missingCertifications": { "type": "array" },
+        "learningRecommendations": { "type": "array" },
+        "summaryImprovements": { "type": "string" },
+        "skillsImprovements": { "type": "string" },
+        "experienceImprovements": { "type": "string" },
+        "keywordsImprovements": { "type": "string" },
+        "formattingImprovements": { "type": "string" },
+        "atsImprovements": { "type": "string" },
+        "generatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId"]
+    },
+    "ai_session": {
+      "title": "AI Session",
+      "description": "An interactive AI session (mock interview or coach thread)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "type": { "type": "string" },
+        "category": { "type": "string" },
+        "level": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "type", "status"]
+    },
+    "ai_prompt": {
+      "title": "AI Prompt",
+      "description": "System prompt templates track record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "promptText": { "type": "string" },
+        "version": { "type": "number" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "title", "promptText"]
+    },
+    "ai_report": {
+      "title": "AI Report",
+      "description": "Detailed multi-score AI interview evaluation scorecard",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "sessionId": { "type": "string" },
+        "category": { "type": "string" },
+        "level": { "type": "string" },
+        "overallScore": { "type": "number" },
+        "technicalScore": { "type": "number" },
+        "communicationScore": { "type": "number" },
+        "confidenceScore": { "type": "number" },
+        "grammarScore": { "type": "number" },
+        "leadershipScore": { "type": "number" },
+        "behaviorScore": { "type": "number" },
+        "strengths": { "type": "array" },
+        "weaknesses": { "type": "array" },
+        "recommendations": { "type": "array" },
+        "generatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "overallScore", "sessionId"]
+    },
+    "job_match": {
+      "title": "Job Match",
+      "description": "Comparison engine output comparing candidate resumes against job description",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "jobId": { "type": "string" },
+        "matchPercentage": { "type": "number" },
+        "skillsMatchPercentage": { "type": "number" },
+        "experienceMatchPercentage": { "type": "number" },
+        "culturalMatchPercentage": { "type": "number" },
+        "strengths": { "type": "array" },
+        "gaps": { "type": "array" },
+        "recommendations": { "type": "array" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "jobId", "matchPercentage"]
+    },
+    "career_report": {
+      "title": "Career Report",
+      "description": "Curated professional coaching analysis output",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "responseText": { "type": "string" },
+        "careerSuggestions": { "type": "array" },
+        "skillsToLearn": { "type": "array" },
+        "certificationSuggestions": { "type": "array" },
+        "expectedSalaryRange": { "type": "string" },
+        "suitableIndustries": { "type": "array" },
+        "generatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "responseText"]
+    },
+    "learning_path": {
+      "title": "Learning Path",
+      "description": "Milestones and roadmap sequences",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "reportId": { "type": "string" },
+        "milestones": { "type": "array" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "milestones"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "user",
+      "description": "User profile collection"
+    },
+    "candidates/{candidateId}": {
+      "schema": "candidate",
+      "description": "Candidate profile collection"
+    },
+    "consultancies/{consultancyId}": {
+      "schema": "consultancy",
+      "description": "Consultancy profiles"
+    },
+    "employers/{employerId}": {
+      "schema": "employer",
+      "description": "Employer profiles"
+    },
+    "jobs/{jobId}": {
+      "schema": "job",
+      "description": "Job list"
+    },
+    "applications/{applicationId}": {
+      "schema": "application",
+      "description": "Job applications"
+    },
+    "interviews/{interviewId}": {
+      "schema": "interview",
+      "description": "AI Interviews list"
+    },
+    "payments/{paymentId}": {
+      "schema": "payment",
+      "description": "Payments log"
+    },
+    "subscriptions/{subscriptionId}": {
+      "schema": "subscription",
+      "description": "Active subscriptions"
+    },
+    "notifications/{notificationId}": {
+      "schema": "notification",
+      "description": "System and push notifications"
+    },
+    "resume_analysis/{analysisId}": {
+      "schema": "resume_analysis",
+      "description": "Parsed resume fields collection"
+    },
+    "resume_scores/{scoreId}": {
+      "schema": "resume_scores",
+      "description": "Resume score breakdown collection"
+    },
+    "resume_versions/{versionId}": {
+      "schema": "resume_versions",
+      "description": "Uploaded resume versions"
+    },
+    "resume_recommendations/{recommendationId}": {
+      "schema": "resume_recommendations",
+      "description": "AI-suggested improvements and learning recommendations"
+    },
+    "ai_sessions/{sessionId}": {
+      "schema": "ai_session",
+      "description": "Interactive AI sessions"
+    },
+    "ai_prompts/{promptId}": {
+      "schema": "ai_prompt",
+      "description": "System AI prompts templates library"
+    },
+    "ai_reports/{reportId}": {
+      "schema": "ai_report",
+      "description": "Candidate AI interview assessment reports"
+    },
+    "job_matches/{matchId}": {
+      "schema": "job_match",
+      "description": "Candidate and Job posting alignment matches"
+    },
+    "career_reports/{careerId}": {
+      "schema": "career_report",
+      "description": "AI career coaching analysis outcomes"
+    },
+    "learning_paths/{pathId}": {
+      "schema": "learning_path",
+      "description": "Structured roadmap milestones and courses"
+    }
+  }
+}

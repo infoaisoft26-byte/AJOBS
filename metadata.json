@@ -1,0 +1,11 @@
+{
+  "name": "AIJobs",
+  "description": "Premium AI-powered recruitment platform featuring an adaptive AI Interview Engine, AI Resume Analyzer, and attribute-based security access matrices.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,137 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Rules for Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId);
+    }
+
+    // Rules for Candidates collection
+    match /candidates/{candidateId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(candidateId);
+    }
+
+    // Rules for Consultancies collection
+    match /consultancies/{consultancyId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(consultancyId);
+    }
+
+    // Rules for Employers collection
+    match /employers/{employerId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(employerId);
+    }
+
+    // Rules for Jobs collection
+    match /jobs/{jobId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated(); // Employers/Consultancies can create jobs
+    }
+
+    // Rules for Applications collection
+    match /applications/{applicationId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Rules for Interviews collection
+    match /interviews/{interviewId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Rules for Payments collection
+    match /payments/{paymentId} {
+      allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
+      allow write: if isAuthenticated();
+    }
+
+    // Rules for Subscriptions collection
+    match /subscriptions/{subscriptionId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Rules for Notifications collection
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
+      allow write: if isAuthenticated();
+    }
+
+    // Rules for Resume Analysis collection
+    match /resume_analysis/{analysisId} {
+      allow read, write: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid || request.resource.data.userId == request.auth.uid);
+    }
+
+    // Rules for Resume Scores collection
+    match /resume_scores/{scoreId} {
+      allow read, write: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid || request.resource.data.userId == request.auth.uid);
+    }
+
+    // Rules for Resume Versions collection
+    match /resume_versions/{versionId} {
+      allow read, write: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid || request.resource.data.userId == request.auth.uid);
+    }
+
+    // Rules for Resume Recommendations collection
+    match /resume_recommendations/{recommendationId} {
+      allow read, write: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid || request.resource.data.userId == request.auth.uid);
+    }
+
+    // Helper to check if user is admin
+    function isSystemAdmin() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
+    }
+
+    // Rules for AI Sessions collection
+    match /ai_sessions/{sessionId} {
+      allow read, write: if isAuthenticated() && (isSystemAdmin() || resource == null || resource.data.userId == request.auth.uid || request.resource.data.userId == request.auth.uid);
+    }
+
+    // Rules for AI Prompts collection
+    match /ai_prompts/{promptId} {
+      allow read: if isAuthenticated();
+      allow write: if isSystemAdmin();
+    }
+
+    // Rules for AI Reports collection (Candidate, consultancy permission, employer application, admin access)
+    match /ai_reports/{reportId} {
+      allow read: if isAuthenticated() && (
+        isSystemAdmin() ||
+        resource.data.userId == request.auth.uid ||
+        (resource.data.sharedWithConsultancies != null && request.auth.uid in resource.data.sharedWithConsultancies) ||
+        (resource.data.sharedWithEmployers != null && request.auth.uid in resource.data.sharedWithEmployers) ||
+        resource.data.isPublic == true
+      );
+      allow write: if isAuthenticated() && (isSystemAdmin() || resource == null || resource.data.userId == request.auth.uid || request.resource.data.userId == request.auth.uid);
+    }
+
+    // Rules for Job Matches collection
+    match /job_matches/{matchId} {
+      allow read: if isAuthenticated() && (isSystemAdmin() || resource.data.userId == request.auth.uid || resource.data.employerId == request.auth.uid);
+      allow write: if isAuthenticated() && (isSystemAdmin() || resource == null || resource.data.userId == request.auth.uid || request.resource.data.userId == request.auth.uid);
+    }
+
+    // Rules for Career Reports collection
+    match /career_reports/{careerId} {
+      allow read, write: if isAuthenticated() && (isSystemAdmin() || resource == null || resource.data.userId == request.auth.uid || request.resource.data.userId == request.auth.uid);
+    }
+
+    // Rules for Learning Paths collection
+    match /learning_paths/{pathId} {
+      allow read, write: if isAuthenticated() && (isSystemAdmin() || resource == null || resource.data.userId == request.auth.uid || request.resource.data.userId == request.auth.uid);
+    }
+  }
+}
