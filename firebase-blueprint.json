@@ -147,10 +147,56 @@
         "userId": { "type": "string" },
         "title": { "type": "string" },
         "message": { "type": "string" },
+        "event": { "type": "string" },
         "read": { "type": "boolean" },
-        "createdAt": { "type": "string" }
+        "archived": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "link": { "type": "string" },
+        "type": { "type": "string" }
       },
       "required": ["userId", "title", "message", "read"]
+    },
+    "notification_preference": {
+      "title": "Notification Preference",
+      "description": "User notification channel preferences",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "preferences": { "type": "object" }
+      },
+      "required": ["userId", "preferences"]
+    },
+    "email_template": {
+      "title": "Email Template",
+      "description": "Custom transaction email templates",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "subject": { "type": "string" },
+        "body": { "type": "string" },
+        "category": { "type": "string" },
+        "variables": { "type": "array" }
+      },
+      "required": ["id", "name", "subject", "body"]
+    },
+    "message_log": {
+      "title": "Message Log",
+      "description": "Multi-channel dispatch traces",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "event": { "type": "string" },
+        "medium": { "type": "string" },
+        "recipient": { "type": "string" },
+        "subject": { "type": "string" },
+        "body": { "type": "string" },
+        "status": { "type": "string" },
+        "error": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "event", "medium", "recipient", "body", "status"]
     },
     "resume_analysis": {
       "title": "Resume Analysis",
@@ -417,6 +463,18 @@
     "learning_paths/{pathId}": {
       "schema": "learning_path",
       "description": "Structured roadmap milestones and courses"
+    },
+    "notification_preferences/{userId}": {
+      "schema": "notification_preference",
+      "description": "User notification preferences"
+    },
+    "email_templates/{templateId}": {
+      "schema": "email_template",
+      "description": "Custom transactions email template"
+    },
+    "message_logs/{logId}": {
+      "schema": "message_log",
+      "description": "History of dispatched alerts"
     }
   }
 }

@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { 
   Building2, TrendingUp, Briefcase, Brain, Users, 
-  Calendar, Award, BarChart2, ShieldAlert, ShieldCheck, RefreshCw, LogOut, CreditCard
+  Calendar, Award, BarChart2, ShieldAlert, ShieldCheck, RefreshCw, LogOut, CreditCard, Bell
 } from "lucide-react";
 import { db } from "../firebase";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import SubscriptionBillingHub from "./SubscriptionBillingHub";
+import { NotificationCenterView } from "./NotificationCenter";
 
 // Types
 import { 
@@ -220,7 +221,8 @@ export default function EmployerDashboard({ userId, userName }: EmployerDashboar
             { id: "interviews", label: "Interviews Suite", icon: Calendar },
             { id: "offers", label: "Acceptance & Offers", icon: Award },
             { id: "reports", label: "Metrics & Reports", icon: BarChart2 },
-            { id: "subscription", label: "Billing & Payment", icon: CreditCard }
+            { id: "subscription", label: "Billing & Payment", icon: CreditCard },
+            { id: "notifications", label: "Notification Hub", icon: Bell }
           ].map((item) => {
             const IconComp = item.icon;
             const isActive = activeTab === item.id;
@@ -332,6 +334,10 @@ export default function EmployerDashboard({ userId, userName }: EmployerDashboar
               userRole="employer"
               onRefresh={synchronizeVault}
             />
+          )}
+
+          {activeTab === "notifications" && (
+            <NotificationCenterView userId={userId} userRole="employer" userName={userName} />
           )}
         </div>
 

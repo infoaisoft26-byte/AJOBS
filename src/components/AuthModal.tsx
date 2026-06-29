@@ -17,6 +17,7 @@ import {
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { UserProfile } from "../types";
+import { initializeUserCollectionsAndDocs } from "../services/dbInitService";
 
 interface AuthModalProps {
   onClose: () => void;
@@ -231,48 +232,8 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
         // Set Auth Display Name
         await updateProfile(fbUser, { displayName });
 
-        // Save User document in Firestore
-        const userProfile: UserProfile = {
-          uid: fbUser.uid,
-          email: fbUser.email || email.trim(),
-          role,
-          name: displayName,
-          createdAt: new Date().toISOString(),
-        };
-
-        await setDoc(doc(db, "users", fbUser.uid), userProfile);
-
-        // Seed corresponding schemas dynamically
-        if (role === "candidate") {
-          await setDoc(doc(db, "candidates", fbUser.uid), {
-            userId: fbUser.uid,
-            resumeUrl: "",
-            resumeFileName: "",
-            resumeScore: 0,
-            skills: [],
-            experience: "",
-            aiInterviewScore: 0,
-            resumeText: "",
-            summary: "",
-            careerCoachChat: [],
-          });
-        } else if (role === "consultancy") {
-          await setDoc(doc(db, "consultancies", fbUser.uid), {
-            userId: fbUser.uid,
-            agencyName: displayName,
-            subscriptionStatus: "inactive",
-            pricingPlan: "Free",
-            clientsCount: 0,
-            revenue: 0,
-          });
-        } else if (role === "employer") {
-          await setDoc(doc(db, "employers", fbUser.uid), {
-            userId: fbUser.uid,
-            companyName: displayName,
-            industry: "",
-            size: "1-10",
-          });
-        }
+        // Auto-initialize all 18 database collections and documents
+        const userProfile = await initializeUserCollectionsAndDocs(fbUser, role, displayName);
 
         setSuccess("Account provisioned successfully!");
         onAuthSuccess(userProfile);
@@ -310,47 +271,8 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
     try {
       await updateProfile(tempFbUser, { displayName });
 
-      const userProfile: UserProfile = {
-        uid: tempFbUser.uid,
-        email: tempFbUser.email || tempFbUser.phoneNumber || `${role}_user@aijobs.com`,
-        role,
-        name: displayName,
-        createdAt: new Date().toISOString(),
-      };
-
-      await setDoc(doc(db, "users", tempFbUser.uid), userProfile);
-
-      // Seed correct corresponding detail collection
-      if (role === "candidate") {
-        await setDoc(doc(db, "candidates", tempFbUser.uid), {
-          userId: tempFbUser.uid,
-          resumeUrl: "",
-          resumeFileName: "",
-          resumeScore: 0,
-          skills: [],
-          experience: "",
-          aiInterviewScore: 0,
-          resumeText: "",
-          summary: "",
-          careerCoachChat: [],
-        });
-      } else if (role === "consultancy") {
-        await setDoc(doc(db, "consultancies", tempFbUser.uid), {
-          userId: tempFbUser.uid,
-          agencyName: displayName,
-          subscriptionStatus: "inactive",
-          pricingPlan: "Free",
-          clientsCount: 0,
-          revenue: 0,
-        });
-      } else if (role === "employer") {
-        await setDoc(doc(db, "employers", tempFbUser.uid), {
-          userId: tempFbUser.uid,
-          companyName: displayName,
-          industry: "",
-          size: "1-10",
-        });
-      }
+      // Auto-initialize all 18 database collections and documents
+      const userProfile = await initializeUserCollectionsAndDocs(tempFbUser, role, displayName);
 
       setSuccess("Profile settings saved! Welcome aboard.");
       onAuthSuccess(userProfile);
@@ -369,7 +291,6 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
     setError("");
     setSuccess("");
     try {
-      const mockUid = `demo_${selectedRole}_${Math.random().toString(36).substring(2, 7)}`;
       const mockNames = {
         candidate: "Aryan Sharma",
         consultancy: "Nexus Talent Partners",
@@ -377,83 +298,30 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
         admin: "Super System Admin",
       };
 
+      // Authenticate with Firebase Auth under the hood so all subsequent Firestore operations succeed with full permission
+      const demoEmail = `demo_${selectedRole}_${Math.random().toString(36).substring(2, 7)}@aijobs.demo`;
+      const demoPassword = "demoPassword123!";
+      const userCredential = await createUserWithEmailAndPassword(auth, demoEmail, demoPassword);
+      const fbUser = userCredential.user;
+      const mockUid = fbUser.uid;
+
+      // Update auth display name
+      try {
+        await updateProfile(fbUser, { displayName: mockNames[selectedRole] });
+      } catch (profErr) {
+        console.warn("Failed to update auth display name during demo login:", profErr);
+      }
+
       const userProfile: UserProfile = {
         uid: mockUid,
-        email: `${selectedRole}@aijobs.demo`,
+        email: demoEmail,
         role: selectedRole,
         name: mockNames[selectedRole],
         createdAt: new Date().toISOString(),
       };
 
-      // Store in firestore
-      await setDoc(doc(db, "users", mockUid), userProfile);
-
-      if (selectedRole === "candidate") {
-        await setDoc(doc(db, "candidates", mockUid), {
-          userId: mockUid,
-          resumeUrl: "https://demo.pdf",
-          resumeFileName: "Aryan_Sharma_Resume.pdf",
-          resumeScore: 78,
-          skills: ["React", "TypeScript", "Tailwind CSS", "Node.js", "Firebase", "Git"],
-          experience: "2+ Years Software Developer",
-          aiInterviewScore: 84,
-          resumeText: "Aryan Sharma\nWeb Engineer\nReact Developer with experience building responsive cloud web applications.",
-          summary: "Highly skilled React Developer focused on performance-driven frontend design, component reusability, and clean software architecture.",
-          careerCoachChat: [
-            { id: "1", sender: "ai", text: "Welcome to AIJobs Aryan! I am your AI Career Coach. How can I help you accelerate your technical job search today?", timestamp: new Date().toISOString() }
-          ],
-        });
-      } else if (selectedRole === "consultancy") {
-        await setDoc(doc(db, "consultancies", mockUid), {
-          userId: mockUid,
-          agencyName: mockNames[selectedRole],
-          subscriptionStatus: "active",
-          pricingPlan: "Starter",
-          clientsCount: 14,
-          revenue: 12500,
-        });
-      } else if (selectedRole === "employer") {
-        await setDoc(doc(db, "employers", mockUid), {
-          userId: mockUid,
-          companyName: mockNames[selectedRole],
-          industry: "Artificial Intelligence",
-          size: "501-1000",
-        });
-
-        // Seed some starter jobs
-        const starterJobs = [
-          {
-            id: `job_demo_${Math.random().toString(36).substring(2, 6)}`,
-            employerId: mockUid,
-            companyName: "Google AI Labs",
-            title: "Senior React Engineer",
-            description: "Join our core team building tomorrow's search interfaces. High autonomy, deep tech stack involving high scale vector workflows.",
-            location: "Bengaluru, India (Hybrid)",
-            type: "Full-time",
-            salary: "₹24,00,000 - ₹32,00,000 PA",
-            skillsRequired: ["React", "TypeScript", "Tailwind CSS", "State Management"],
-            status: "open",
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: `job_demo_${Math.random().toString(36).substring(2, 6)}`,
-            employerId: mockUid,
-            companyName: "Google AI Labs",
-            title: "Generative AI Developer",
-            description: "Build products integrated with Gemini SDKs. Focus on full-stack typescript integrations, streaming endpoints, and scalable cloud architectures.",
-            location: "Remote (India)",
-            type: "Contract",
-            salary: "₹18,0,000 - ₹26,0,000 PA",
-            skillsRequired: ["Node.js", "Gemini API", "Python", "TypeScript"],
-            status: "open",
-            createdAt: new Date().toISOString()
-          }
-        ];
-
-        for (const job of starterJobs) {
-          await setDoc(doc(db, "jobs", job.id), job);
-        }
-      }
+      // Auto-initialize all 18 database collections and documents for the demo user
+      await initializeUserCollectionsAndDocs(fbUser, selectedRole, mockNames[selectedRole]);
 
       setSuccess("Demo Login initialized!");
       onAuthSuccess(userProfile);

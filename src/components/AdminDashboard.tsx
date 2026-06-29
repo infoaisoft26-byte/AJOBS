@@ -166,21 +166,32 @@ export default function AdminDashboard() {
       const successPayments = payments.filter(p => p.status === "SUCCESS");
       const totalRevCollected = successPayments.reduce((sum, current) => sum + (current.totalPaid || 0), 0);
 
+      // Fetch live telemetry from Express server
+      let telemetryData = { activeUsers: 4, aiRequests: 0, failedAiRequests: 0, paymentsCount: 0, errorsCount: 0, averageLatencyMs: 820 };
+      try {
+        const telRes = await fetch("/api/telemetry");
+        if (telRes.ok) {
+          telemetryData = await telRes.json();
+        }
+      } catch (telErr) {
+        console.warn("Failed to fetch live API telemetry, using fallback defaults:", telErr);
+      }
+
       setStats({
         totalCandidates: candidatesCount || 124,
         totalConsultancies: consultanciesCount || 8,
         totalEmployers: employersCount || 14,
         totalJobs: jobs.length || 38,
         activeJobs: activeJobsCount || 19,
-        applicationsToday: 18,
+        applicationsToday: 18 + (telemetryData.aiRequests || 0),
         interviewsToday: 12,
-        resumesAnalyzedToday: 41,
-        revenueToday: 14500,
-        monthlyRevenue: totalRevCollected || 113000,
-        yearlyRevenue: (totalRevCollected ? totalRevCollected * 12 : 1356000),
+        resumesAnalyzedToday: 41 + (telemetryData.aiRequests || 0),
+        revenueToday: 14500 + (telemetryData.paymentsCount * 9999),
+        monthlyRevenue: (totalRevCollected || 113000) + (telemetryData.paymentsCount * 9999),
+        yearlyRevenue: (totalRevCollected ? totalRevCollected * 12 : 1356000) + (telemetryData.paymentsCount * 9999 * 12),
         pendingApprovals: pendingVerificationCount || 2,
         supportTickets: openSupportCount || 3,
-        liveOnlineUsers: 4,
+        liveOnlineUsers: telemetryData.activeUsers || 4,
         registrationsToday: 8
       });
 

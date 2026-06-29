@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { 
   Plus, Edit, Trash2, Copy, ToggleLeft, ToggleRight, Archive, CheckCircle, 
-  Search, X, Briefcase, PlusCircle, Building, Users, Clock, HelpCircle, Save
+  Search, X, Briefcase, PlusCircle, Building, Users, Clock, HelpCircle, Save,
+  Pause, Play
 } from "lucide-react";
 import { CompanyJob } from "./EmployerTypes";
 import { doc, setDoc, deleteDoc } from "firebase/firestore";
@@ -21,7 +22,7 @@ export default function JobManagement({
   onRefresh
 }: JobManagementProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"All" | "Published" | "Draft" | "Archived" | "Closed">("All");
+  const [filterStatus, setFilterStatus] = useState<"All" | "Published" | "Draft" | "Archived" | "Closed" | "Paused">("All");
 
   // Form toggles
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -39,7 +40,18 @@ export default function JobManagement({
   const [benefits, setBenefits] = useState("Premium Health, Stock ESOPs, Macbook Pro");
   const [interviewProcess, setInterviewProcess] = useState("Technical Screening, Architecture Round, HR culture fit");
   const [openPositions, setOpenPositions] = useState(1);
-  const [status, setStatus] = useState<"Published" | "Draft">("Published");
+  const [status, setStatus] = useState<"Published" | "Draft" | "Paused" | "Closed" | "Archived">("Published");
+
+  // Extended ATS fields states
+  const [consultancy, setConsultancy] = useState("");
+  const [industry, setIndustry] = useState("Software / IT");
+  const [category, setCategory] = useState("Software Engineering");
+  const [employmentType, setEmploymentType] = useState("Full-time");
+  const [workMode, setWorkMode] = useState("Hybrid");
+  const [languages, setLanguages] = useState("English");
+  const [responsibilities, setResponsibilities] = useState("");
+  const [requirements, setRequirements] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -57,6 +69,15 @@ export default function JobManagement({
     setInterviewProcess("Technical Screening, Architecture Round, HR culture fit");
     setOpenPositions(1);
     setStatus("Published");
+    setConsultancy("");
+    setIndustry("Software / IT");
+    setCategory("Software Engineering");
+    setEmploymentType("Full-time");
+    setWorkMode("Hybrid");
+    setLanguages("English");
+    setResponsibilities("");
+    setRequirements("");
+    setExpiryDate("");
     setIsFormOpen(true);
   };
 
@@ -73,7 +94,16 @@ export default function JobManagement({
     setBenefits(job.benefits);
     setInterviewProcess(job.interviewProcess.join(", "));
     setOpenPositions(job.openPositions);
-    setStatus(job.status === "Published" ? "Published" : "Draft");
+    setStatus(job.status);
+    setConsultancy(job.consultancy || "");
+    setIndustry(job.industry || "Software / IT");
+    setCategory(job.category || "Software Engineering");
+    setEmploymentType(job.employmentType || "Full-time");
+    setWorkMode(job.workMode || "Hybrid");
+    setLanguages(job.languages?.join(", ") || "English");
+    setResponsibilities(job.responsibilities || "");
+    setRequirements(job.requirements || "");
+    setExpiryDate(job.expiryDate || "");
     setIsFormOpen(true);
   };
 
@@ -86,6 +116,7 @@ export default function JobManagement({
       const jobId = editingJob ? editingJob.id : `cjob_${Math.random().toString(36).substr(2, 9)}`;
       const skillsArray = requiredSkills.split(",").map(s => s.trim()).filter(Boolean);
       const processArray = interviewProcess.split(",").map(p => p.trim()).filter(Boolean);
+      const languagesArray = languages.split(",").map(l => l.trim()).filter(Boolean);
 
       const jobObj: CompanyJob = {
         id: jobId,
@@ -101,15 +132,33 @@ export default function JobManagement({
         benefits,
         interviewProcess: processArray,
         openPositions: Number(openPositions) || 1,
-        status: editingJob ? editingJob.status : status,
+        status: status, // allows updating status directly from the select dropdown
         createdAt: editingJob ? editingJob.createdAt : new Date().toISOString(),
-        department
+        department,
+        consultancy,
+        industry,
+        category,
+        employmentType,
+        workMode,
+        languages: languagesArray,
+        responsibilities,
+        requirements,
+        expiryDate
       };
 
       // 1. Save to company_jobs
       await setDoc(doc(db, "company_jobs", jobId), jobObj);
 
       // 2. Sync to standard 'jobs' collection for candidate accessibility
+      let standardStatus: "open" | "paused" | "closed" = "open";
+      if (jobObj.status === "Published") {
+        standardStatus = "open";
+      } else if (jobObj.status === "Paused") {
+        standardStatus = "paused";
+      } else {
+        standardStatus = "closed";
+      }
+
       await setDoc(doc(db, "jobs", jobId), {
         id: jobId,
         employerId: userId,
@@ -117,16 +166,26 @@ export default function JobManagement({
         title: jobObj.title,
         description: jobObj.description,
         location: jobObj.location,
-        type: "Full-time",
+        type: jobObj.employmentType || "Full-time",
         salary: jobObj.salary,
         skillsRequired: jobObj.requiredSkills,
-        status: jobObj.status === "Published" ? "open" : "closed",
+        status: standardStatus,
         createdAt: jobObj.createdAt,
         department: jobObj.department,
         experience: jobObj.experience,
         education: jobObj.education,
         benefits: jobObj.benefits,
-        openings: jobObj.openPositions
+        openings: jobObj.openPositions,
+        // Sync new fields
+        consultancy: jobObj.consultancy || "",
+        industry: jobObj.industry || "",
+        category: jobObj.category || "",
+        employmentType: jobObj.employmentType || "Full-time",
+        workMode: jobObj.workMode || "Hybrid",
+        languages: jobObj.languages || [],
+        responsibilities: jobObj.responsibilities || "",
+        requirements: jobObj.requirements || "",
+        expiryDate: jobObj.expiryDate || ""
       });
 
       // Log activity
@@ -214,7 +273,7 @@ export default function JobManagement({
     }
   };
 
-  const handleToggleStatus = async (job: CompanyJob, newStatus: "Published" | "Closed" | "Archived" | "Draft") => {
+  const handleToggleStatus = async (job: CompanyJob, newStatus: "Published" | "Closed" | "Archived" | "Draft" | "Paused") => {
     try {
       await setDoc(doc(db, "company_jobs", job.id), {
         ...job,
@@ -222,8 +281,17 @@ export default function JobManagement({
       }, { merge: true });
 
       // Also sync standard boards status
+      let standardStatus: "open" | "paused" | "closed" = "open";
+      if (newStatus === "Published") {
+        standardStatus = "open";
+      } else if (newStatus === "Paused") {
+        standardStatus = "paused";
+      } else {
+        standardStatus = "closed";
+      }
+
       await setDoc(doc(db, "jobs", job.id), {
-        status: newStatus === "Published" ? "open" : "closed"
+        status: standardStatus
       }, { merge: true });
 
       alert(`Hiring status adjusted to: ${newStatus.toUpperCase()}`);
@@ -314,6 +382,7 @@ export default function JobManagement({
                   <span className={`text-[9px] font-mono font-black uppercase px-2 py-0.5 rounded ${
                     job.status === "Published" ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20" :
                     job.status === "Draft" ? "bg-amber-500/15 text-amber-400 border border-amber-500/20" :
+                    job.status === "Paused" ? "bg-yellow-500/15 text-yellow-400 border border-yellow-500/20" :
                     job.status === "Closed" ? "bg-red-500/15 text-red-400 border border-red-500/20" :
                     "bg-gray-500/15 text-gray-400 border border-gray-500/20"
                   }`}>
@@ -333,6 +402,22 @@ export default function JobManagement({
                   <div>
                     Positions: <span className="text-white font-bold">{job.openPositions} Open</span>
                   </div>
+                  <div>
+                    Mode: <span className="text-indigo-300 font-bold">{job.workMode || "Hybrid"}</span>
+                  </div>
+                  <div>
+                    Type: <span className="text-indigo-300 font-bold">{job.employmentType || "Full-time"}</span>
+                  </div>
+                  {job.consultancy && (
+                    <div className="col-span-2 truncate">
+                      Consultancy: <span className="text-purple-300 font-bold">{job.consultancy}</span>
+                    </div>
+                  )}
+                  {job.expiryDate && (
+                    <div className="col-span-2">
+                      Expiry: <span className="text-red-300 font-bold">{job.expiryDate}</span>
+                    </div>
+                  )}
                   <div className="col-span-2 text-ellipsis overflow-hidden whitespace-nowrap">
                     Skills: <span className="text-indigo-300 font-bold">{job.requiredSkills.slice(0, 4).join(", ")}</span>
                   </div>
@@ -367,12 +452,31 @@ export default function JobManagement({
                 )}
 
                 {job.status === "Published" && (
+                  <div className="flex-1 flex gap-1">
+                    <button
+                      onClick={() => handleToggleStatus(job, "Paused")}
+                      className="flex-1 py-1.5 bg-yellow-600/10 hover:bg-yellow-600 text-yellow-400 hover:text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1"
+                    >
+                      <Pause className="w-3 h-3" />
+                      <span>Pause</span>
+                    </button>
+                    <button
+                      onClick={() => handleToggleStatus(job, "Closed")}
+                      className="flex-1 py-1.5 bg-red-600/10 hover:bg-red-600 text-red-400 hover:text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1"
+                    >
+                      <ToggleLeft className="w-3 h-3" />
+                      <span>Close</span>
+                    </button>
+                  </div>
+                )}
+
+                {job.status === "Paused" && (
                   <button
-                    onClick={() => handleToggleStatus(job, "Closed")}
-                    className="flex-1 py-1.5 bg-red-600/10 hover:bg-red-600 text-red-400 hover:text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1"
+                    onClick={() => handleToggleStatus(job, "Published")}
+                    className="flex-1 py-1.5 bg-emerald-600/10 hover:bg-emerald-600 text-emerald-400 hover:text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1"
                   >
-                    <ToggleLeft className="w-3 h-3" />
-                    <span>Close</span>
+                    <Play className="w-3 h-3" />
+                    <span>Resume</span>
                   </button>
                 )}
 
@@ -507,6 +611,59 @@ export default function JobManagement({
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
+                    <label className="block text-gray-400">Work Mode *</label>
+                    <select
+                      value={workMode}
+                      onChange={e => setWorkMode(e.target.value)}
+                      className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-1.5 text-white focus:outline-none"
+                    >
+                      <option value="Hybrid">Hybrid</option>
+                      <option value="Remote">Remote</option>
+                      <option value="On-site">On-site</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-gray-400">Employment Type *</label>
+                    <select
+                      value={employmentType}
+                      onChange={e => setEmploymentType(e.target.value)}
+                      className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-1.5 text-white focus:outline-none"
+                    >
+                      <option value="Full-time">Full-time</option>
+                      <option value="Part-time">Part-time</option>
+                      <option value="Contract">Contract</option>
+                      <option value="Internship">Internship</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-gray-400">Industry Segment</label>
+                    <input
+                      type="text"
+                      value={industry}
+                      onChange={e => setIndustry(e.target.value)}
+                      placeholder="e.g. Fintech, Healthcare"
+                      className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-1.5 text-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-gray-400">Job Category</label>
+                    <input
+                      type="text"
+                      value={category}
+                      onChange={e => setCategory(e.target.value)}
+                      placeholder="e.g. Backend Dev, Product Design"
+                      className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-1.5 text-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
                     <label className="block text-gray-400">Required Headcount Openings *</label>
                     <input
                       type="number"
@@ -519,16 +676,41 @@ export default function JobManagement({
                   </div>
 
                   <div className="space-y-1">
-                    <label className="block text-gray-400">Direct Seed Status</label>
+                    <label className="block text-gray-400">Job Status</label>
                     <select
                       value={status}
-                      disabled={!!editingJob}
                       onChange={e => setStatus(e.target.value as any)}
-                      className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-1.5 text-white focus:outline-none disabled:opacity-50"
+                      className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-1.5 text-white focus:outline-none"
                     >
-                      <option value="Published">Publish Live Immediately</option>
-                      <option value="Draft">Save as Draft</option>
+                      <option value="Published">Published (Live)</option>
+                      <option value="Draft">Draft</option>
+                      <option value="Paused">Paused</option>
+                      <option value="Closed">Closed</option>
+                      <option value="Archived">Archived</option>
                     </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-gray-400">Assigned Recruiter / Consultancy</label>
+                    <input
+                      type="text"
+                      value={consultancy}
+                      onChange={e => setConsultancy(e.target.value)}
+                      placeholder="e.g. Apex Recruitment Partners"
+                      className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-1.5 text-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-gray-400">Application Expiry Date</label>
+                    <input
+                      type="date"
+                      value={expiryDate}
+                      onChange={e => setExpiryDate(e.target.value)}
+                      className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-1.5 text-white focus:outline-none"
+                    />
                   </div>
                 </div>
 
@@ -541,6 +723,17 @@ export default function JobManagement({
                     onChange={e => setRequiredSkills(e.target.value)}
                     placeholder="e.g. React, TypeScript, Tailwind, Figma"
                     className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-1.5 text-white font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-gray-400">Required Languages (Comma separated)</label>
+                  <input
+                    type="text"
+                    value={languages}
+                    onChange={e => setLanguages(e.target.value)}
+                    placeholder="e.g. English, Hindi, German"
+                    className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-1.5 text-white"
                   />
                 </div>
 
@@ -567,13 +760,33 @@ export default function JobManagement({
                 </div>
 
                 <div className="space-y-1">
+                  <label className="block text-gray-400">Key Roles & Responsibilities</label>
+                  <textarea
+                    value={responsibilities}
+                    onChange={e => setResponsibilities(e.target.value)}
+                    placeholder="Outline day-to-day responsibilities..."
+                    className="w-full h-16 bg-neutral-900 border border-white/10 rounded-lg p-2 text-white resize-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-gray-400">Position Requirements</label>
+                  <textarea
+                    value={requirements}
+                    onChange={e => setRequirements(e.target.value)}
+                    placeholder="List required experience, coding knowledge, certifications..."
+                    className="w-full h-16 bg-[#12121a] border border-white/10 rounded-lg p-2 text-white resize-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
                   <label className="block text-gray-400">Detailed Job Description & Tech Requirements *</label>
                   <textarea
                     required
                     value={description}
                     onChange={e => setDescription(e.target.value)}
                     placeholder="Outline day-to-day operations, direct reporting lines, architecture, and framework details..."
-                    className="w-full h-24 bg-neutral-900 border border-white/10 rounded-lg p-2 text-white resize-none"
+                    className="w-full h-20 bg-neutral-900 border border-white/10 rounded-lg p-2 text-white resize-none"
                   />
                 </div>
               </form>

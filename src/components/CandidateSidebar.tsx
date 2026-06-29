@@ -1,6 +1,6 @@
 import { 
   LayoutDashboard, User, GraduationCap, Briefcase, Award, 
-  FileText, Heart, Clock, Bell, Settings, Brain, Sparkles, X, Menu
+  FileText, Heart, Clock, Bell, Settings, Brain, Sparkles, X, Menu, Search
 } from "lucide-react";
 
 interface SidebarProps {
@@ -19,6 +19,7 @@ export default function CandidateSidebar({ activeTab, setActiveTab, isOpen, setI
     { id: "experience", label: "Work Experience", icon: Briefcase },
     { id: "skills", label: "Skills & AI suggestions", icon: Award },
     { id: "resume", label: "Resume & ATS Audit", icon: FileText },
+    { id: "explore-jobs", label: "Explore Jobs", icon: Search },
     { id: "saved-jobs", label: "Saved Jobs", icon: Heart },
     { id: "applied-jobs", label: "Applied Jobs", icon: Clock },
     { id: "notifications", label: "Notifications", icon: Bell, badge: unreadCount > 0 ? unreadCount : undefined },
@@ -28,7 +29,7 @@ export default function CandidateSidebar({ activeTab, setActiveTab, isOpen, setI
   const aiItems = [
     { id: "interview", label: "AI Interview Arena", icon: Brain, premium: true },
     { id: "ai-report", label: "AI Evaluation Report", icon: Award, premium: true },
-    { id: "coach", label: "AI Career Coach", icon: Sparkles, premium: true },
+    { id: "coach", label: "AI Career Center", icon: Sparkles, premium: true },
   ];
 
   return (

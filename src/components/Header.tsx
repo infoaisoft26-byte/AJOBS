@@ -1,5 +1,6 @@
 import { Sparkles, LogOut, Sun, Moon, Briefcase, LayoutDashboard } from "lucide-react";
 import { UserProfile } from "../types";
+import { NotificationBellAndDrawer } from "./NotificationCenter";
 
 interface HeaderProps {
   user: UserProfile | null;
@@ -81,6 +82,17 @@ export default function Header({
               <LayoutDashboard className="w-3.5 h-3.5" />
               <span>Dashboard</span>
             </button>
+          )}
+
+          {/* Notification Bell and Drawer */}
+          {user && (
+            <NotificationBellAndDrawer 
+              userId={user.uid} 
+              userRole={user.role} 
+              onSelectTab={(tab) => {
+                setActiveView(tab);
+              }}
+            />
           )}
 
           {/* Theme Toggle */}

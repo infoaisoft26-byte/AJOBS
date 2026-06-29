@@ -1,21 +1,122 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { auth, db } from "./firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { UserProfile } from "./types";
+import { initializeUserCollectionsAndDocs } from "./services/dbInitService";
 import Header from "./components/Header";
 import AuthModal from "./components/AuthModal";
 import LandingPage from "./components/LandingPage";
-import CandidateDashboard from "./components/CandidateDashboard";
-import ConsultancyDashboard from "./components/ConsultancyDashboard";
-import EmployerDashboard from "./components/EmployerDashboard";
-import AdminDashboard from "./components/AdminDashboard";
 
-export default function App() {
+// Lazy-loaded dashboard components for smaller initial bundle sizes
+const CandidateDashboard = lazy(() => import("./components/CandidateDashboard"));
+const ConsultancyDashboard = lazy(() => import("./components/ConsultancyDashboard"));
+const EmployerDashboard = lazy(() => import("./components/EmployerDashboard"));
+const AdminDashboard = lazy(() => import("./components/AdminDashboard"));
+const NotificationCenterViewLazy = lazy(() =>
+  import("./components/NotificationCenter").then((m) => ({ default: m.NotificationCenterView }))
+);
+
+// Production infrastructure components
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { DashboardSkeleton, GeneralLoading } from "./components/LoadingSkeleton";
+import { CookieConsent } from "./components/CookieConsent";
+import { ToastProvider, useToast } from "./components/GlobalToast";
+import { initGA, trackPageView, trackInteraction } from "./utils/analytics";
+import { validateEnvironment } from "./utils/envValidation";
+
+function MainAppContent() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [activeView, setActiveView] = useState<string>("home");
   const [authMode, setAuthMode] = useState<"signin" | "signup" | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [authLoading, setAuthLoading] = useState(true);
+  const { showToast } = useToast();
+
+  // On client startup: initialize telemetry, service worker, and env validation
+  useEffect(() => {
+    // Register PWA Service Worker
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("/sw.js")
+          .then((reg) => {
+            console.log("[PWA Service Worker] Connected to offline scope:", reg.scope);
+          })
+          .catch((err) => {
+            console.error("[PWA Service Worker] Failed to register:", err);
+          });
+      });
+    }
+
+    // Initialize Analytics
+    initGA();
+
+    // Client-side environment validations
+    const validation = validateEnvironment();
+    if (!validation.isValid) {
+      validation.errors.forEach((err) => console.error("[Production Env Error]:", err));
+    }
+    validation.warnings.forEach((warn) => console.warn("[Production Env Warning]:", warn));
+  }, []);
+
+  // SEO: Dynamic meta tags, Open Graph, and Structured Data (JSON-LD)
+  useEffect(() => {
+    const metaMap: Record<string, { title: string; desc: string }> = {
+      home: {
+        title: "AIJobs | Premium AI-Powered Recruitment Platform & Talent Matchmaker",
+        desc: "Connect instantly with top global recruiters using deep semantic matching, AI-driven evaluation models, and automated interview management pipelines."
+      },
+      dashboard: {
+        title: "Recruitment Workspace Dashboard | AIJobs",
+        desc: "Manage candidate evaluation stages, resumes, active matches, and live communications seamlessly on your private dashboard."
+      },
+      notifications: {
+        title: "Secure Communication Gateways | AIJobs",
+        desc: "Access instant updates from system endpoints and automated email notifications dispatch logs."
+      }
+    };
+
+    const currentMeta = metaMap[activeView] || metaMap.home;
+    document.title = currentMeta.title;
+
+    // Track dynamic page view
+    trackPageView(window.location.pathname + "#" + activeView, currentMeta.title);
+
+    // Update Meta Description
+    let metaDesc = document.querySelector('meta[name="description"]');
+    if (!metaDesc) {
+      metaDesc = document.createElement("meta");
+      metaDesc.setAttribute("name", "description");
+      document.head.appendChild(metaDesc);
+    }
+    metaDesc.setAttribute("content", currentMeta.desc);
+
+    // Inject/Update structured JSON-LD data dynamically
+    const schemaId = "aijobs-structured-schema";
+    let schemaScript = document.getElementById(schemaId);
+    if (!schemaScript) {
+      schemaScript = document.createElement("script");
+      schemaScript.setAttribute("id", schemaId);
+      schemaScript.setAttribute("type", "application/ld+json");
+      document.head.appendChild(schemaScript);
+    }
+    
+    schemaScript.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "AIJobs",
+      "alternateName": "AIJobs Recruitment",
+      "url": window.location.origin,
+      "description": currentMeta.desc,
+      "applicationCategory": "BusinessApplication, Recruitment",
+      "operatingSystem": "All",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "INR"
+      }
+    });
+  }, [activeView]);
 
   // Sync auth state
   useEffect(() => {
@@ -25,20 +126,22 @@ export default function App() {
         try {
           const userSnap = await getDoc(doc(db, "users", fbUser.uid));
           if (userSnap.exists()) {
-            setUser(userSnap.data() as UserProfile);
+            const profile = userSnap.data() as UserProfile;
+            setUser(profile);
+            trackInteraction("login_success", "auth", profile.role);
           } else {
-            // Fallback profile
-            const fallbackProfile: UserProfile = {
-              uid: fbUser.uid,
-              email: fbUser.email || "",
-              role: "candidate",
-              name: fbUser.displayName || "Aryan Sharma",
-              createdAt: new Date().toISOString()
-            };
-            setUser(fallbackProfile);
+            // Self-healing database boostrapper: Auto-initialize all 18 collections and fallback profile
+            const initializedProfile = await initializeUserCollectionsAndDocs(
+              fbUser,
+              "candidate",
+              fbUser.displayName || "Aryan Sharma"
+            );
+            setUser(initializedProfile);
+            trackInteraction("login_success_auto_initialized", "auth", "candidate");
           }
         } catch (err) {
           console.error("Error loading user snapshot:", err);
+          showToast("Failed to retrieve profile snapshot", "error");
         }
       } else {
         setUser(null);
@@ -47,7 +150,7 @@ export default function App() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [showToast]);
 
   // Theme support
   const toggleTheme = () => {
@@ -62,6 +165,7 @@ export default function App() {
       document.body.style.backgroundColor = "#030712";
       document.body.style.color = "#f9fafb";
     }
+    showToast(`Interface switched to ${nextTheme} mode`, "info", 1500);
   };
 
   const handleLogout = async () => {
@@ -69,14 +173,18 @@ export default function App() {
       await auth.signOut();
       setUser(null);
       setActiveView("home");
+      showToast("Workspace session terminated successfully", "success");
+      trackInteraction("logout", "auth");
     } catch (err) {
       console.error(err);
+      showToast("Failed to terminate workspace session", "error");
     }
   };
 
   const handleAuthSuccess = (profile: UserProfile) => {
     setUser(profile);
     setActiveView("dashboard");
+    showToast(`Authenticated as: ${profile.name}`, "success");
   };
 
   return (
@@ -100,49 +208,67 @@ export default function App() {
         activeView={activeView}
         setActiveView={(view) => {
           setActiveView(view);
-          // If returning home, keep it. If dashboard, make sure auth check
           if (view === "dashboard" && !user) {
             setAuthMode("signin");
             setActiveView("home");
+            showToast("Please authenticate to access recruitment dashboard", "warning");
           }
         }}
         theme={theme}
         toggleTheme={toggleTheme}
       />
 
-      {/* Main Panel Routing */}
+      {/* Main Panel Routing with Lazy Loading & Skeletons */}
       <main className="flex-1 w-full relative">
-        {authLoading ? (
-          <div className="flex items-center justify-center h-96">
-            <span className="text-sm text-gray-400 font-mono animate-pulse">Establishing Secure Workspace Connect...</span>
-          </div>
-        ) : activeView === "home" ? (
-          <LandingPage
-            onGetStarted={() => {
-              if (user) {
-                setActiveView("dashboard");
-              } else {
-                setAuthMode("signup");
-              }
-            }}
-            setActiveView={setActiveView}
-          />
-        ) : (
-          <div className="animate-in fade-in duration-300">
-            {user?.role === "candidate" && (
-              <CandidateDashboard userId={user.uid} userName={user.name} />
-            )}
-            {user?.role === "consultancy" && (
-              <ConsultancyDashboard userId={user.uid} userName={user.name} />
-            )}
-            {user?.role === "employer" && (
-              <EmployerDashboard userId={user.uid} userName={user.name} />
-            )}
-            {user?.role === "admin" && (
-              <AdminDashboard />
-            )}
-          </div>
-        )}
+        <ErrorBoundary>
+          {authLoading ? (
+            <div className="flex items-center justify-center h-96">
+              <span className="text-sm text-gray-400 font-mono animate-pulse">Establishing Secure Workspace Connect...</span>
+            </div>
+          ) : activeView === "home" ? (
+            <LandingPage
+              onGetStarted={() => {
+                if (user) {
+                  setActiveView("dashboard");
+                } else {
+                  setAuthMode("signup");
+                }
+              }}
+              setActiveView={setActiveView}
+            />
+          ) : activeView === "notifications" ? (
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in duration-300">
+              {user ? (
+                <Suspense fallback={<GeneralLoading />}>
+                  <NotificationCenterViewLazy 
+                    userId={user.uid} 
+                    userRole={user.role} 
+                    userName={user.name} 
+                  />
+                </Suspense>
+              ) : (
+                <div className="text-center text-gray-400 py-12 font-mono">Please log in to configure communication endpoints.</div>
+              )}
+            </div>
+          ) : (
+            <div className="animate-in fade-in duration-300">
+              <Suspense fallback={<DashboardSkeleton />}>
+                {user?.role === "candidate" && (
+                  <CandidateDashboard userId={user.uid} userName={user.name} />
+                )}
+                {user?.role === "consultancy" && (
+                  <ConsultancyDashboard userId={user.uid} userName={user.name} />
+                )}
+                {user?.role === "employer" && (
+                  <EmployerDashboard userId={user.uid} userName={user.name} />
+                )}
+                {user?.role === "admin" && (
+                  <AdminDashboard />
+                )}
+              </Suspense>
+            </div>
+          )}
+        </ErrorBoundary>
       </main>
 
       {/* Auth Overlay Modal */}
@@ -153,6 +279,17 @@ export default function App() {
           onAuthSuccess={handleAuthSuccess}
         />
       )}
+
+      {/* Cookie Consent Banner */}
+      <CookieConsent />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ToastProvider>
+      <MainAppContent />
+    </ToastProvider>
   );
 }

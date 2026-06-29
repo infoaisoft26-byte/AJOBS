@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { 
   LayoutDashboard, Building, Briefcase, Users, Sparkles, Layers, 
   Calendar, CheckCircle2, ShieldCheck, TrendingUp, DollarSign, 
-  Settings, LogOut, ShieldAlert, Sparkle, RefreshCw 
+  Settings, LogOut, ShieldAlert, Sparkle, RefreshCw, Bell
 } from "lucide-react";
 import { db } from "../firebase";
 import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { ConsultancyProfile } from "../types";
+import { NotificationCenterView } from "./NotificationCenter";
 
 // Import Shared Types
 import { 
@@ -176,6 +177,7 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
             { id: "team", label: "Recruitment Team", icon: ShieldCheck },
             { id: "reports", label: "Analytics Reports", icon: TrendingUp },
             { id: "subscription", label: "Billing & Payment", icon: DollarSign },
+            { id: "notifications", label: "Notification Hub", icon: Bell },
             { id: "registration", label: "Agency Registration", icon: Settings }
           ].map((tab) => {
             const IconComponent = tab.icon;
@@ -297,6 +299,12 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
             userRole="consultancy"
             onRefresh={fetchCrmData}
           />
+        )}
+
+        {activeTab === "notifications" && (
+          <div className="md:col-span-3 lg:col-span-3">
+            <NotificationCenterView userId={userId} userRole="consultancy" userName={userName} />
+          </div>
         )}
 
         {activeTab === "registration" && (

@@ -34,9 +34,18 @@ export interface CompanyJob {
   benefits: string;
   interviewProcess: string[];
   openPositions: number;
-  status: "Published" | "Draft" | "Archived" | "Closed";
+  status: "Published" | "Draft" | "Archived" | "Closed" | "Paused";
   createdAt: string;
   department: string;
+  consultancy?: string;
+  industry?: string;
+  category?: string;
+  employmentType?: string;
+  workMode?: string;
+  languages?: string[];
+  responsibilities?: string;
+  requirements?: string;
+  expiryDate?: string;
 }
 
 export interface CompanyApplication {

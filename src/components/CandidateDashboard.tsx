@@ -9,6 +9,7 @@ import { doc, getDoc, setDoc, collection, getDocs, updateDoc, arrayUnion } from 
 import { CandidateProfile, JobPosting, JobApplication, InterviewSession, ChatMessage, NotificationRecord } from "../types";
 
 // Import modular panels
+import { NotificationCenterView } from "./NotificationCenter";
 import CandidateSidebar from "./CandidateSidebar";
 import CandidateHeader from "./CandidateHeader";
 import CandidateDashboardOverview from "./CandidateDashboardOverview";
@@ -18,6 +19,7 @@ import CandidateJobsSection from "./CandidateJobsSection";
 import CandidateSettings from "./CandidateSettings";
 import CandidateInterviewSection from "./CandidateInterviewSection";
 import CandidateReportSection from "./CandidateReportSection";
+import CandidateCareerCenter from "./CandidateCareerCenter";
 
 interface CandidateDashboardProps {
   userId: string;
@@ -28,7 +30,7 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
   // Main Navigation state
   const [activeTab, setActiveTab] = useState<
     "overview" | "profile" | "education" | "experience" | "skills" | 
-    "resume" | "saved-jobs" | "applied-jobs" | "notifications" | "settings" | "interview" | "coach" | "ai-report"
+    "resume" | "explore-jobs" | "saved-jobs" | "applied-jobs" | "notifications" | "settings" | "interview" | "coach" | "ai-report"
   >("overview");
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -514,8 +516,8 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
             />
           )}
 
-          {/* TAB 7 & 8: JOBS SECTION (Saved, Applied, Active Jobs list) */}
-          {(activeTab === "saved-jobs" || activeTab === "applied-jobs") && (
+          {/* TAB 7, 8 & Explore: JOBS SECTION (Explore, Saved, Applied, Active Jobs list) */}
+          {(activeTab === "explore-jobs" || activeTab === "saved-jobs" || activeTab === "applied-jobs") && (
             <CandidateJobsSection 
               userId={userId}
               profile={profile}
@@ -535,47 +537,8 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
 
           {/* TAB 9: NOTIFICATIONS LOGS PAGE */}
           {activeTab === "notifications" && (
-            <div className="space-y-4 max-w-3xl mx-auto">
-              <div className="flex items-center justify-between border-b border-white/5 pb-3">
-                <div>
-                  <h3 className="font-display font-bold text-lg text-white">Workspace Notification Alerts</h3>
-                  <p className="text-xs text-gray-400">Archived security audit warnings and matching evaluations.</p>
-                </div>
-                {notifications.length > 0 && (
-                  <button 
-                    onClick={handleMarkAllRead}
-                    className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-xs font-bold text-gray-300 rounded-xl cursor-pointer"
-                  >
-                    Mark All as Read
-                  </button>
-                )}
-              </div>
-
-              <div className="space-y-3">
-                {notifications.map((n) => (
-                  <div key={n.id} className={`p-4 rounded-2xl border border-white/5 relative group flex items-start justify-between gap-4 ${n.read ? "opacity-60 bg-black/40" : "bg-white/5"}`}>
-                    <div className="space-y-1">
-                      <p className="font-bold text-gray-200 text-sm">{n.title}</p>
-                      <p className="text-gray-400 text-xs leading-normal pr-4">{n.message}</p>
-                      <p className="text-[10px] text-gray-500 font-mono">
-                        {new Date(n.createdAt).toLocaleDateString()} at {new Date(n.createdAt).toLocaleTimeString()}
-                      </p>
-                    </div>
-                    <button 
-                      onClick={() => handleClearNotification(n.id)}
-                      className="p-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-
-                {notifications.length === 0 && (
-                  <div className="p-12 text-center glass rounded-2xl text-xs text-gray-500 italic">
-                    No matching alert notices logged.
-                  </div>
-                )}
-              </div>
+            <div className="animate-in fade-in duration-300">
+              <NotificationCenterView userId={userId} userRole="candidate" userName={userName} />
             </div>
           )}
 
@@ -607,79 +570,13 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
 
           {/* TAB 12: AI CAREER COACH SESSION */}
           {activeTab === "coach" && (
-            <div className="glass p-5 rounded-2xl max-w-4xl mx-auto flex flex-col h-[580px] border border-white/10" id="coach-tab">
-              <div className="flex items-center space-x-3 border-b border-white/10 pb-4 shrink-0">
-                <div className="p-2 bg-indigo-500/20 border border-indigo-400/30 rounded-xl text-indigo-400">
-                  <Sparkles className="w-5 h-5 animate-pulse" />
-                </div>
-                <div>
-                  <h3 className="font-display font-bold text-base text-white">AI Career Coach Session</h3>
-                  <p className="text-[10px] text-gray-400">Interactive resume structuring, roadmap designs, and negotiation advice.</p>
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 my-4 scrollbar">
-                {coachHistory.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
-                  >
-                    <div className={`max-w-[85%] rounded-2xl p-4 text-xs leading-relaxed ${
-                      msg.sender === "user"
-                        ? "bg-indigo-600 text-white"
-                        : "bg-white/5 text-gray-300 border border-white/5"
-                    }`}>
-                      {msg.sender === "ai" ? (
-                        <div className="prose prose-invert text-xs space-y-2">
-                          {msg.text.split("\n\n").map((chunk, index) => {
-                            if (chunk.startsWith("###")) {
-                              return <h4 key={index} className="font-bold text-white border-b border-white/5 pb-1 mt-2">{chunk.replace("###", "")}</h4>;
-                            }
-                            if (chunk.startsWith("1.") || chunk.startsWith("-")) {
-                              return (
-                                <ul key={index} className="list-disc list-inside pl-1 space-y-1">
-                                  {chunk.split("\n").map((li, k) => (
-                                    <li key={k}>{li.replace(/^[-\d.]\s*/, "")}</li>
-                                  ))}
-                                </ul>
-                              );
-                            }
-                            return <p key={index}>{chunk}</p>;
-                          })}
-                        </div>
-                      ) : (
-                        msg.text
-                      )}
-                    </div>
-                  </div>
-                ))}
-                {coachLoading && (
-                  <div className="flex justify-start">
-                    <div className="bg-white/5 rounded-2xl p-4 text-xs text-gray-400 italic">
-                      Coach is formulating technical options...
-                    </div>
-                  </div>
-                )}
-                <div ref={coachEndRef} />
-              </div>
-
-              <form onSubmit={handleSendCoachMsg} className="flex gap-2 bg-[#090d16] p-2 rounded-xl border border-white/10 shrink-0">
-                <input
-                  type="text"
-                  value={coachInput}
-                  onChange={(e) => setCoachInput(e.target.value)}
-                  placeholder="e.g. 'What are key keywords for React 19?' or 'Give me resume templates advice'"
-                  className="flex-1 bg-transparent border-none text-xs text-white px-3 focus:outline-none placeholder-gray-500"
-                />
-                <button
-                  type="submit"
-                  disabled={coachLoading || !coachInput.trim()}
-                  className="p-2.5 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white rounded-lg transition-all shrink-0 cursor-pointer"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
-              </form>
-            </div>
+            <CandidateCareerCenter 
+              userId={userId}
+              userName={userName}
+              profile={profile}
+              triggerNotification={(title, message) => triggerNotification(title, message)}
+              onSelectTab={(tab) => setActiveTab(tab as any)}
+            />
           )}
 
         </main>

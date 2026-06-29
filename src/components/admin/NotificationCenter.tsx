@@ -5,6 +5,7 @@ import {
 import { SystemNotification } from "./AdminTypes";
 import { doc, setDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../../firebase";
+import { NotificationService } from "../../services/notificationService";
 
 interface NotificationCenterProps {
   notifications: SystemNotification[];
@@ -31,21 +32,14 @@ export default function NotificationCenter({
     setIsSubmitting(true);
 
     try {
-      const notifId = `notif_${Math.random().toString(36).substr(2, 9)}`;
-      
-      const payload: SystemNotification = {
-        id: notifId,
+      // Dispatch real system-wide broadcast via NotificationService to write to all target user notification pools
+      const deliveredCount = await NotificationService.broadcastNotification({
         title,
         message,
         targetRole,
-        type: notifType,
         sentBy: userName,
-        createdAt: new Date().toISOString(),
-        deliveredCount: targetRole === "all" ? 412 : 110 // Simulated user delivery metrics
-      };
-
-      // 1. Save to Firestore
-      await setDoc(doc(db, "notifications", notifId), payload);
+        type: notifType === "alert" ? "alert" : "info"
+      });
 
       // 2. Create Audit log
       const logId = "log_" + Math.random().toString(36).substr(2, 9);
@@ -63,7 +57,7 @@ export default function NotificationCenter({
         createdAt: new Date().toISOString()
       });
 
-      alert(`📡 Broadcast dispatched successfully!\n\nDelivery counts logged: ${payload.deliveredCount} recipients buffered.`);
+      alert(`📡 Real Broadcast dispatched successfully!\n\nDelivery completed: ${deliveredCount} active users loaded in real-time.`);
       setTitle("");
       setMessage("");
       onRefresh();
