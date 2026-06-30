@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { 
   Building2, TrendingUp, Briefcase, Brain, Users, 
-  Calendar, Award, BarChart2, ShieldAlert, ShieldCheck, RefreshCw, LogOut, CreditCard, Bell
+  Calendar, Award, BarChart2, ShieldAlert, ShieldCheck, RefreshCw, LogOut, CreditCard, Bell,
+  MessageSquare, FileText
 } from "lucide-react";
 import { db } from "../firebase";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import SubscriptionBillingHub from "./SubscriptionBillingHub";
 import { NotificationCenterView } from "./NotificationCenter";
+import LiveChatSection from "./LiveChatSection";
 
 // Types
 import { 
@@ -26,6 +28,7 @@ import ApplicationPipeline from "./employer/ApplicationPipeline";
 import InterviewManagement from "./employer/InterviewManagement";
 import OfferManagement from "./employer/OfferManagement";
 import ReportsAnalytics from "./employer/ReportsAnalytics";
+import EnterpriseDocumentEngine from "./employer/EnterpriseDocumentEngine";
 
 interface EmployerDashboardProps {
   userId: string;
@@ -35,7 +38,7 @@ interface EmployerDashboardProps {
 export default function EmployerDashboard({ userId, userName }: EmployerDashboardProps) {
   // Navigation active tab routing
   const [activeTab, setActiveTab] = useState<
-    "overview" | "registration" | "jobs" | "discovery" | "pipeline" | "interviews" | "offers" | "reports" | "subscription"
+    "overview" | "registration" | "jobs" | "discovery" | "pipeline" | "interviews" | "offers" | "reports" | "subscription" | "notifications" | "documents" | "chat"
   >("overview");
 
   // Corporate core data stores
@@ -220,6 +223,8 @@ export default function EmployerDashboard({ userId, userName }: EmployerDashboar
             { id: "pipeline", label: "Hiring Pipeline", icon: Users },
             { id: "interviews", label: "Interviews Suite", icon: Calendar },
             { id: "offers", label: "Acceptance & Offers", icon: Award },
+            { id: "documents", label: "Enterprise Documents", icon: FileText },
+            { id: "chat", label: "Secure Live Chat", icon: MessageSquare },
             { id: "reports", label: "Metrics & Reports", icon: BarChart2 },
             { id: "subscription", label: "Billing & Payment", icon: CreditCard },
             { id: "notifications", label: "Notification Hub", icon: Bell }
@@ -333,6 +338,18 @@ export default function EmployerDashboard({ userId, userName }: EmployerDashboar
               userName={userName}
               userRole="employer"
               onRefresh={synchronizeVault}
+            />
+          )}
+
+          {activeTab === "documents" && (
+            <EnterpriseDocumentEngine companyName={corpName} />
+          )}
+
+          {activeTab === "chat" && (
+            <LiveChatSection
+              currentUserId={userId}
+              currentUserRole="employer"
+              currentUserName={corpName}
             />
           )}
 

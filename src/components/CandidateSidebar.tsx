@@ -23,6 +23,7 @@ export default function CandidateSidebar({ activeTab, setActiveTab, isOpen, setI
     { id: "saved-jobs", label: "Saved Jobs", icon: Heart },
     { id: "applied-jobs", label: "Applied Jobs", icon: Clock },
     { id: "notifications", label: "Notifications", icon: Bell, badge: unreadCount > 0 ? unreadCount : undefined },
+    { id: "chat", label: "Secure Chat", icon: MessageSquare },
     { id: "settings", label: "Settings", icon: Settings },
   ];
 

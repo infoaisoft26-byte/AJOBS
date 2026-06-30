@@ -15,9 +15,9 @@ import {
   signInWithPhoneNumber,
   sendPasswordResetEmail
 } from "firebase/auth";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { UserProfile } from "../types";
-import { initializeUserCollectionsAndDocs } from "../services/dbInitService";
+import { initializeUserCollectionsAndDocs, getOrCreateUserProfile } from "../services/dbInitService";
 
 interface AuthModalProps {
   onClose: () => void;
@@ -25,10 +25,23 @@ interface AuthModalProps {
   initialMode?: "signin" | "signup";
 }
 
-type AuthMode = "signin" | "signup" | "phone-otp" | "forgot-password" | "complete-profile";
+type AuthMode = "signin" | "signup" | "forgot-password" | "complete-profile";
+
+const COUNTRY_CODES = [
+  { code: "+91", label: "🇮🇳 India (+91)" },
+  { code: "+1", label: "🇺🇸 USA/Canada (+1)" },
+  { code: "+44", label: "🇬🇧 UK (+44)" },
+  { code: "+61", label: "🇦🇺 Australia (+61)" },
+  { code: "+65", label: "🇸🇬 Singapore (+65)" },
+  { code: "+971", label: "🇦🇪 UAE (+971)" },
+  { code: "+49", label: "🇩🇪 Germany (+49)" },
+  { code: "+33", label: "🇫🇷 France (+33)" },
+  { code: "+81", label: "🇯🇵 Japan (+81)" }
+];
 
 export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signin" }: AuthModalProps) {
   const [mode, setMode] = useState<AuthMode>(initialMode === "signup" ? "signup" : "signin");
+  const [authMethod, setAuthMethod] = useState<"email" | "phone">("email");
   const [role, setRole] = useState<"candidate" | "consultancy" | "employer" | "admin">("candidate");
   
   // Inputs
@@ -37,10 +50,12 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
   const [companyName, setCompanyName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   
   // Phone OTP
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [countryCode, setCountryCode] = useState("+91");
+  const [rawPhoneNumber, setRawPhoneNumber] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [phoneStep, setPhoneStep] = useState<"phone" | "code">("phone");
   const [confirmationResult, setConfirmationResult] = useState<any>(null);
@@ -67,22 +82,56 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
     };
   }, []);
 
+  const validateEmailFormat = (emailStr: string) => {
+    return /\S+@\S+\.\S+/.test(emailStr);
+  };
+
+  const translateError = (err: any): string => {
+    console.error("Auth process error details:", err);
+    if (!err) return "An unknown error occurred during authentication.";
+    if (err.code) {
+      switch (err.code) {
+        case "auth/email-already-in-use":
+          return "Email already exists";
+        case "auth/invalid-email":
+          return "Invalid Email";
+        case "auth/weak-password":
+          return "Password must be at least 6 characters";
+        case "auth/operation-not-allowed":
+          return "Email/Password accounts are not enabled on Firebase console.";
+        case "auth/user-disabled":
+          return "This user account has been disabled.";
+        case "auth/user-not-found":
+          return "No user found with this email.";
+        case "auth/wrong-password":
+          return "Incorrect password. Please try again.";
+        case "auth/invalid-verification-code":
+          return "Invalid OTP";
+        case "auth/code-expired":
+          return "OTP Expired";
+        case "auth/invalid-phone-number":
+          return "Invalid Phone Number. Ensure your digits are correct.";
+        case "auth/quota-exceeded":
+          return "SMS quota exceeded. Please try again later.";
+        case "auth/too-many-requests":
+          return "Too Many Requests. Please wait and try again later.";
+        case "auth/internal-error":
+          return "Internal authentication error. Please verify your input fields or network connection.";
+        default:
+          return err.message || "An authentication error occurred.";
+      }
+    }
+    return err.message || "Failed to complete authentication process.";
+  };
+
   // Post-authentication logic (checks Firestore profile and roles)
   const handlePostAuth = async (fbUser: any) => {
     try {
-      const userSnap = await getDoc(doc(db, "users", fbUser.uid));
-      if (userSnap.exists()) {
-        const userProfile = userSnap.data() as UserProfile;
-        onAuthSuccess(userProfile);
-        onClose();
-      } else {
-        // User authenticated but profile does not exist (e.g., brand-new Google or Phone sign-in)
-        // Transition to complete-profile step inside the modal
-        setTempFbUser(fbUser);
-        setName(fbUser.displayName || "");
-        setEmail(fbUser.email || "");
-        setMode("complete-profile");
-      }
+      console.log("Loading user profile for authenticated user UID:", fbUser.uid);
+      const userProfile = await getOrCreateUserProfile(fbUser);
+      console.log("UserProfile loaded successfully:", userProfile);
+      onAuthSuccess(userProfile);
+      onClose();
     } catch (err: any) {
       console.error("Firestore loading error:", err);
       setError("Successfully signed in, but failed to load database profile.");
@@ -96,16 +145,14 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
     setLoading(true);
     try {
       const provider = new GoogleAuthProvider();
-      // Setup customized parameters
       provider.setCustomParameters({ prompt: "select_account" });
+      console.log("Initiating Google Login...");
       const result = await signInWithPopup(auth, provider);
+      console.log("Google Login Authenticated successfully!", result.user);
       setSuccess("Authenticated with Google successfully!");
       await handlePostAuth(result.user);
     } catch (err: any) {
-      console.error("Google sign-in error:", err);
-      if (err.code !== "auth/popup-closed-by-user") {
-        setError(err.message || "Google Sign-In failed.");
-      }
+      setError(translateError(err));
     } finally {
       setLoading(false);
     }
@@ -114,30 +161,57 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
   // Phone OTP - Send Code
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phoneNumber.trim()) {
-      setError("Please enter a valid phone number with country code.");
-      return;
-    }
     setError("");
     setSuccess("");
+
+    if (!rawPhoneNumber.trim()) {
+      setError("Please enter a valid phone number.");
+      return;
+    }
+
+    const fullPhone = countryCode + rawPhoneNumber.trim();
+    if (!/^\+[1-9]\d{1,14}$/.test(fullPhone)) {
+      setError("Valid Phone Number is required. Ensure digits are correct.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Clear previous verifier
+      if (mode === "signup") {
+        const displayName = role === "candidate" ? name : role === "consultancy" ? agencyName : role === "employer" ? companyName : name;
+        if (!displayName.trim()) {
+          throw new Error(`Please specify your ${role === "candidate" ? "Full Name" : role === "consultancy" ? "Agency Name" : role === "employer" ? "Company Name" : "Admin Name"}`);
+        }
+
+        // Duplicate Phone Check
+        console.log("Checking duplicate phone number in Firestore...");
+        const qPhone = query(collection(db, "users"), where("phone", "==", fullPhone));
+        const snapPhone = await getDocs(qPhone);
+        if (!snapPhone.empty) {
+          throw new Error("Phone already exists");
+        }
+      }
+
+      // Destroy old Recaptcha before creating new one
       if (recaptchaVerifierRef.current) {
         try {
           recaptchaVerifierRef.current.clear();
         } catch (e) {
-          console.error(e);
+          console.warn("reCAPTCHA clear failed:", e);
         }
         recaptchaVerifierRef.current = null;
       }
+      const container = document.getElementById("recaptcha-container");
+      if (container) {
+        container.innerHTML = "";
+      }
 
-      // Initialize invisible recaptcha verifier
+      console.log("Initializing invisible reCAPTCHA...");
       const verifier = new RecaptchaVerifier(auth, "recaptcha-container", {
         size: "invisible",
         callback: () => {
-          // reCAPTCHA solved
+          console.log("reCAPTCHA completed");
         },
         "expired-callback": () => {
           setError("reCAPTCHA verification expired. Please try sending OTP again.");
@@ -145,13 +219,14 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
       });
       recaptchaVerifierRef.current = verifier;
 
-      const confirmation = await signInWithPhoneNumber(auth, phoneNumber.trim(), verifier);
+      console.log("Dispatching phone authentication request to:", fullPhone);
+      const confirmation = await signInWithPhoneNumber(auth, fullPhone, verifier);
+      console.log("Verification OTP code sent!");
       setConfirmationResult(confirmation);
       setPhoneStep("code");
       setSuccess("SMS verification code sent successfully!");
     } catch (err: any) {
-      console.error("Phone send code error:", err);
-      setError(err.message || "Failed to send SMS code. Check your phone number format (e.g. +14155552671).");
+      setError(translateError(err));
       if (recaptchaVerifierRef.current) {
         try {
           recaptchaVerifierRef.current.clear();
@@ -168,21 +243,45 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
   // Phone OTP - Verify Code
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+    setSuccess("");
+
     if (!otpCode.trim() || otpCode.trim().length !== 6) {
       setError("Please enter the 6-digit verification code.");
       return;
     }
-    setError("");
-    setSuccess("");
+
+    if (!confirmationResult) {
+      setError("No active OTP confirmation session. Please enter your phone number and request code.");
+      return;
+    }
+
     setLoading(true);
 
     try {
+      console.log("Verifying confirmation code:", otpCode.trim());
       const result = await confirmationResult.confirm(otpCode.trim());
-      setSuccess("Phone number verified!");
-      await handlePostAuth(result.user);
+      const fbUser = result.user;
+      console.log("Phone number confirmed! Authenticated User:", fbUser);
+
+      if (mode === "signup") {
+        const displayName = role === "candidate" ? name : role === "consultancy" ? agencyName : role === "employer" ? companyName : name;
+        console.log("Updating Firebase user profile display name:", displayName);
+        await updateProfile(fbUser, { displayName });
+
+        console.log("Initializing all 18 database collections & user doc...");
+        const userProfile = await initializeUserCollectionsAndDocs(fbUser, role, displayName);
+        console.log("Registration successfully finalized. User Profile:", userProfile);
+        
+        setSuccess("Account registered successfully!");
+        onAuthSuccess(userProfile);
+        onClose();
+      } else {
+        setSuccess("Phone number verified successfully!");
+        await handlePostAuth(fbUser);
+      }
     } catch (err: any) {
-      console.error("OTP verification error:", err);
-      setError(err.message || "Invalid or expired verification code.");
+      setError(translateError(err));
     } finally {
       setLoading(false);
     }
@@ -200,11 +299,11 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
     setLoading(true);
 
     try {
+      console.log("Sending password reset email to:", email.trim());
       await sendPasswordResetEmail(auth, email.trim());
       setSuccess("A password reset link has been dispatched to your email address!");
     } catch (err: any) {
-      console.error("Password reset error:", err);
-      setError(err.message || "Failed to send reset link. Verify email is correct.");
+      setError(translateError(err));
     } finally {
       setLoading(false);
     }
@@ -215,45 +314,69 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
     e.preventDefault();
     setError("");
     setSuccess("");
+
+    if (!validateEmailFormat(email.trim())) {
+      setError("Invalid Email");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+
     setLoading(true);
 
     try {
+      const displayName = role === "candidate" ? name : role === "consultancy" ? agencyName : role === "employer" ? companyName : name;
       if (mode === "signup") {
-        // Form Validation
-        const displayName = role === "candidate" ? name : role === "consultancy" ? agencyName : role === "employer" ? companyName : name;
         if (!displayName.trim()) {
           throw new Error(`Please specify your ${role === "candidate" ? "Full Name" : role === "consultancy" ? "Agency Name" : role === "employer" ? "Company Name" : "Admin Name"}`);
         }
 
-        // Firebase Auth: Create User
+        if (password !== confirmPassword) {
+          throw new Error("Password mismatch: passwords do not match.");
+        }
+
+        // Duplicate Email Check
+        console.log("Checking duplicate email in Firestore...");
+        const qEmail = query(collection(db, "users"), where("email", "==", email.trim()));
+        const snapEmail = await getDocs(qEmail);
+        if (!snapEmail.empty) {
+          throw new Error("Email already exists");
+        }
+
+        console.log("Creating user...");
         const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+        console.log("User creation success:", userCredential);
         const fbUser = userCredential.user;
 
-        // Set Auth Display Name
+        console.log("Updating user profile display name:", displayName);
         await updateProfile(fbUser, { displayName });
 
-        // Auto-initialize all 18 database collections and documents
+        console.log("Initializing user Firestore collections & profile for role:", role);
         const userProfile = await initializeUserCollectionsAndDocs(fbUser, role, displayName);
 
+        console.log("Registration successfully finalized. User Profile:", userProfile);
         setSuccess("Account provisioned successfully!");
         onAuthSuccess(userProfile);
         onClose();
       } else {
-        // Email login
+        console.log("Signing in user...");
         const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+        console.log("Sign-in success:", userCredential);
         const fbUser = userCredential.user;
         setSuccess("Sign-In successful!");
         await handlePostAuth(fbUser);
       }
     } catch (err: any) {
-      console.error("Auth submit error:", err);
-      setError(err.message || "Failed to complete authentication process.");
+      setError(translateError(err));
     } finally {
       setLoading(false);
     }
   };
 
-  // Complete Profile (Social & Phone sign-in fallback)
+  // Complete Profile (Social fallback)
   const handleCompleteProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!tempFbUser) return;
@@ -269,17 +392,17 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
 
     setLoading(true);
     try {
+      console.log("Updating user profile display name:", displayName);
       await updateProfile(tempFbUser, { displayName });
 
-      // Auto-initialize all 18 database collections and documents
+      console.log("Initializing user collections and profile document...");
       const userProfile = await initializeUserCollectionsAndDocs(tempFbUser, role, displayName);
 
       setSuccess("Profile settings saved! Welcome aboard.");
       onAuthSuccess(userProfile);
       onClose();
     } catch (err: any) {
-      console.error("Complete profile save error:", err);
-      setError(err.message || "Failed to finalize profile.");
+      setError(translateError(err));
     } finally {
       setLoading(false);
     }
@@ -298,14 +421,13 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
         admin: "Super System Admin",
       };
 
-      // Authenticate with Firebase Auth under the hood so all subsequent Firestore operations succeed with full permission
       const demoEmail = `demo_${selectedRole}_${Math.random().toString(36).substring(2, 7)}@aijobs.demo`;
       const demoPassword = "demoPassword123!";
+      console.log("Creating rapid-access demo account:", demoEmail);
       const userCredential = await createUserWithEmailAndPassword(auth, demoEmail, demoPassword);
       const fbUser = userCredential.user;
       const mockUid = fbUser.uid;
 
-      // Update auth display name
       try {
         await updateProfile(fbUser, { displayName: mockNames[selectedRole] });
       } catch (profErr) {
@@ -318,17 +440,19 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
         role: selectedRole,
         name: mockNames[selectedRole],
         createdAt: new Date().toISOString(),
+        profileImage: `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(mockNames[selectedRole])}`,
+        lastLogin: new Date().toISOString(),
+        status: "active",
+        subscription: selectedRole === "consultancy" ? "Pro Agency" : "Enterprise Access"
       };
 
-      // Auto-initialize all 18 database collections and documents for the demo user
       await initializeUserCollectionsAndDocs(fbUser, selectedRole, mockNames[selectedRole]);
 
       setSuccess("Demo Login initialized!");
       onAuthSuccess(userProfile);
       onClose();
     } catch (err: any) {
-      console.error("Demo login error:", err);
-      setError("Failed to create mock login: " + err.message);
+      setError(translateError(err));
     } finally {
       setLoading(false);
     }
@@ -511,106 +635,20 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
                 </button>
               </div>
             </form>
-          ) : mode === "phone-otp" ? (
-            /* ===================================== */
-            /* PHONE OTP VIEW                        */
-            /* ===================================== */
-            <div className="space-y-4">
-              {phoneStep === "phone" ? (
-                <form onSubmit={handleSendOtp} className="space-y-4">
-                  <div className="text-xs text-gray-400 leading-relaxed">
-                    Access your account instantly via a one-time SMS verification code. Input your full mobile number starting with your country code (e.g. <span className="text-indigo-400">+1</span> or <span className="text-indigo-400">+91</span>).
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-gray-300 mb-1">Mobile Phone Number</label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
-                      <input
-                        type="tel"
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                        required
-                        className="w-full pl-9 pr-4 py-2.5 text-sm bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 text-white font-mono transition-all"
-                        placeholder="+919876543210"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setMode("signin")}
-                      className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center space-x-1 cursor-pointer"
-                    >
-                      <ArrowLeft className="w-3.5 h-3.5" />
-                      <span>Email Sign In</span>
-                    </button>
-
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="py-2 px-5 bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold rounded-xl transition-all disabled:opacity-50 flex items-center space-x-1.5 text-white shadow-md cursor-pointer"
-                    >
-                      <span>{loading ? "Authenticating..." : "Send SMS Code"}</span>
-                      <Send className="w-3 h-3" />
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <form onSubmit={handleVerifyOtp} className="space-y-4">
-                  <div className="p-3 bg-indigo-950/40 border border-indigo-900/30 rounded-xl flex items-start space-x-2 text-xs text-indigo-200">
-                    <Phone className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                    <p>SMS verification code successfully routed to <span className="font-bold text-white">{phoneNumber}</span>. Enter code below.</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-gray-300 mb-1">6-Digit Verification Code</label>
-                    <div className="relative">
-                      <Key className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
-                      <input
-                        type="text"
-                        maxLength={6}
-                        value={otpCode}
-                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                        required
-                        className="w-full pl-9 pr-4 py-2.5 text-center text-lg font-mono tracking-[0.5em] bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 text-white focus:ring-1 focus:ring-indigo-500"
-                        placeholder="000000"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setPhoneStep("phone")}
-                      className="text-xs text-gray-400 hover:text-white flex items-center space-x-1 cursor-pointer"
-                    >
-                      <ArrowLeft className="w-3.5 h-3.5" />
-                      <span>Change Number</span>
-                    </button>
-
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="py-2 px-5 bg-gradient-to-r from-emerald-500 to-indigo-600 hover:from-emerald-600 text-xs font-bold rounded-xl transition-all disabled:opacity-50 text-white shadow-md cursor-pointer"
-                    >
-                      <span>{loading ? "Verifying..." : "Confirm OTP & Sign In"}</span>
-                    </button>
-                  </div>
-                </form>
-              )}
-            </div>
           ) : (
             /* ===================================== */
-            /* EMAIL SIGN IN & SIGN UP VIEWS         */
+            /* EMAIL & MOBILE OTP UNIFIED VIEW       */
             /* ===================================== */
             <div className="space-y-4">
-              {/* Selector Tabs */}
+              {/* Toggle 1: Sign In vs Sign Up */}
               <div className="flex bg-white/5 rounded-xl p-1 border border-white/5">
                 <button
                   type="button"
-                  onClick={() => setMode("signin")}
+                  onClick={() => {
+                    setMode("signin");
+                    setError("");
+                    setSuccess("");
+                  }}
                   className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                     mode === "signin" ? "bg-white/10 text-white shadow-sm border border-white/5" : "text-gray-400 hover:text-white"
                   }`}
@@ -619,7 +657,11 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
                 </button>
                 <button
                   type="button"
-                  onClick={() => setMode("signup")}
+                  onClick={() => {
+                    setMode("signup");
+                    setError("");
+                    setSuccess("");
+                  }}
                   className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                     mode === "signup" ? "bg-white/10 text-white shadow-sm border border-white/5" : "text-gray-400 hover:text-white"
                   }`}
@@ -628,9 +670,40 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
                 </button>
               </div>
 
+              {/* Toggle 2: Email vs Phone OTP */}
+              <div className="flex bg-white/5 rounded-xl p-1 border border-white/5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMethod("email");
+                    setError("");
+                    setSuccess("");
+                  }}
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    authMethod === "email" ? "bg-white/10 text-white shadow-sm border border-white/5" : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  Email Credentials
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMethod("phone");
+                    setPhoneStep("phone");
+                    setError("");
+                    setSuccess("");
+                  }}
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    authMethod === "phone" ? "bg-white/10 text-white shadow-sm border border-white/5" : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  Mobile OTP SMS
+                </button>
+              </div>
+
               {/* Registration Role Selection Card Array */}
               {mode === "signup" && (
-                <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="space-y-2 animate-in fade-in duration-200">
                   <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider font-mono">
                     I Want To Register As:
                   </label>
@@ -638,7 +711,7 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
                     {[
                       { id: "candidate", title: "Candidate", icon: User, desc: "Search jobs & AI prep", color: "hover:border-indigo-500 hover:text-indigo-300" },
                       { id: "consultancy", title: "Consultancy", icon: Shield, desc: "Staffing & agency tools", color: "hover:border-purple-500 hover:text-purple-300" },
-                      { id: "employer", title: "Employer", icon: Briefcase, desc: "Corporate recruiter", color: "hover:border-pink-500 hover:text-pink-300" },
+                      { id: "employer", title: "Employer", icon: Briefcase, desc: "Recruiter dashboard", color: "hover:border-pink-500 hover:text-pink-300" },
                       { id: "admin", title: "Admin Portal", icon: ShieldCheck, desc: "Access DB controls", color: "hover:border-emerald-500 hover:text-emerald-300" }
                     ].map((item) => {
                       const Icon = item.icon;
@@ -650,13 +723,13 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
                           onClick={() => setRole(item.id as any)}
                           className={`p-3 rounded-xl flex flex-col items-left text-left border text-xs gap-1.5 transition-all duration-300 cursor-pointer ${
                             isSel
-                              ? "bg-indigo-600/20 text-indigo-300 border-indigo-500/80 shadow-md"
+                              ? "bg-indigo-600/20 text-indigo-300 border-indigo-500/80 shadow-md animate-none"
                               : "bg-white/5 text-gray-400 border-white/5 " + item.color
                           }`}
                         >
                           <div className="flex items-center justify-between w-full">
                             <Icon className={`w-4 h-4 ${isSel ? "text-indigo-400" : "text-gray-500"}`} />
-                            {isSel && <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full"></div>}
+                            {isSel && <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse"></div>}
                           </div>
                           <div>
                             <p className="font-bold text-white">{item.title}</p>
@@ -669,95 +742,235 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
                 </div>
               )}
 
-              {/* Standard Inputs */}
-              <form onSubmit={handleSubmit} className="space-y-3.5">
-                {mode === "signup" && (
-                  <div className="animate-in fade-in duration-200">
-                    <label className="block text-xs font-medium text-gray-300 mb-1">
-                      {role === "candidate" ? "Full Name" : role === "consultancy" ? "Consultancy Name" : role === "employer" ? "Company Name" : "Admin Display Name"}
-                    </label>
+              {/* AUTHENTICATION FORMS BODY */}
+              {authMethod === "email" ? (
+                /* ===================================== */
+                /* EMAIL LOGIN & REGISTRATION FORMS      */
+                /* ===================================== */
+                <form onSubmit={handleSubmit} className="space-y-3.5">
+                  {mode === "signup" && (
+                    <div className="animate-in fade-in duration-200">
+                      <label className="block text-xs font-medium text-gray-300 mb-1">
+                        {role === "candidate" ? "Full Name" : role === "consultancy" ? "Consultancy Name" : role === "employer" ? "Company Name" : "Admin Display Name"}
+                      </label>
+                      <div className="relative">
+                        {role === "candidate" && <User className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />}
+                        {role === "consultancy" && <Building2 className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />}
+                        {role === "employer" && <Briefcase className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />}
+                        {role === "admin" && <ShieldCheck className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />}
+                        <input
+                          type="text"
+                          value={role === "candidate" || role === "admin" ? name : role === "consultancy" ? agencyName : companyName}
+                          onChange={(e) => {
+                            if (role === "candidate" || role === "admin") setName(e.target.value);
+                            else if (role === "consultancy") setAgencyName(e.target.value);
+                            else setCompanyName(e.target.value);
+                          }}
+                          required
+                          className="w-full pl-9 pr-4 py-2.5 text-sm bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 text-white transition-all"
+                          placeholder={role === "candidate" ? "e.g. Aryan Sharma" : role === "consultancy" ? "e.g. Nexus Talent" : "e.g. Google Labs"}
+                          id="auth-name-input"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-300 mb-1">Email Address</label>
                     <div className="relative">
-                      {role === "candidate" && <User className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />}
-                      {role === "consultancy" && <Building2 className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />}
-                      {role === "employer" && <Briefcase className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />}
-                      {role === "admin" && <ShieldCheck className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />}
+                      <Mail className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
                       <input
-                        type="text"
-                        value={role === "candidate" || role === "admin" ? name : role === "consultancy" ? agencyName : companyName}
-                        onChange={(e) => {
-                          if (role === "candidate" || role === "admin") setName(e.target.value);
-                          else if (role === "consultancy") setAgencyName(e.target.value);
-                          else setCompanyName(e.target.value);
-                        }}
-                        className="w-full pl-9 pr-4 py-2 text-sm bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 text-white transition-all"
-                        placeholder={role === "candidate" ? "e.g. Aryan Sharma" : role === "consultancy" ? "e.g. Nexus Talent" : "e.g. Google Labs"}
-                        id="auth-name-input"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        className="w-full pl-9 pr-4 py-2.5 text-sm bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 text-white transition-all"
+                        placeholder="you@example.com"
+                        id="auth-email-input"
                       />
                     </div>
                   </div>
-                )}
 
-                <div>
-                  <label className="block text-xs font-medium text-gray-300 mb-1">Email Address</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      className="w-full pl-9 pr-4 py-2 text-sm bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 text-white transition-all"
-                      placeholder="you@example.com"
-                      id="auth-email-input"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-medium text-gray-300">Password</label>
-                    {mode === "signin" && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-medium text-gray-300">Password</label>
+                      {mode === "signin" && (
+                        <button
+                          type="button"
+                          onClick={() => setMode("forgot-password")}
+                          className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium cursor-pointer"
+                          id="auth-forgot-pwd"
+                        >
+                          Forgot Password?
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        className="w-full pl-9 pr-10 py-2.5 text-sm bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 text-white transition-all"
+                        placeholder="••••••••"
+                        id="auth-password-input"
+                      />
                       <button
                         type="button"
-                        onClick={() => setMode("forgot-password")}
-                        className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium cursor-pointer"
-                        id="auth-forgot-pwd"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-3 text-gray-500 hover:text-white transition-all cursor-pointer animate-none"
                       >
-                        Forgot Password?
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
-                    )}
+                    </div>
                   </div>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className="w-full pl-9 pr-10 py-2 text-sm bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 text-white transition-all"
-                      placeholder="••••••••"
-                      id="auth-password-input"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-2.5 text-gray-500 hover:text-white transition-all cursor-pointer"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full mt-3 py-2.5 px-4 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:to-pink-600 text-sm font-semibold rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center space-x-2 text-white cursor-pointer"
-                  id="auth-submit-btn"
-                >
-                  {mode === "signup" ? <UserPlus className="w-4 h-4" /> : <User className="w-4 h-4" />}
-                  <span>{loading ? "Authenticating..." : mode === "signup" ? "Create Secure Account" : "Access Workspace"}</span>
-                </button>
-              </form>
+                  {mode === "signup" && (
+                    <div className="animate-in fade-in duration-200">
+                      <label className="block text-xs font-medium text-gray-300 mb-1">Confirm Password</label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          required
+                          className="w-full pl-9 pr-4 py-2.5 text-sm bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 text-white transition-all"
+                          placeholder="••••••••"
+                          id="auth-confirm-password"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full mt-3 py-2.5 px-4 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:to-pink-600 text-sm font-semibold rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center space-x-2 text-white cursor-pointer"
+                    id="auth-submit-btn"
+                  >
+                    {mode === "signup" ? <UserPlus className="w-4 h-4" /> : <User className="w-4 h-4" />}
+                    <span>{loading ? "Processing..." : mode === "signup" ? "Register with Email" : "Access Workspace"}</span>
+                  </button>
+                </form>
+              ) : (
+                /* ===================================== */
+                /* MOBILE PHONE OTP LOGIN & REGISTER      */
+                /* ===================================== */
+                <div className="space-y-4">
+                  {phoneStep === "phone" ? (
+                    <form onSubmit={handleSendOtp} className="space-y-4">
+                      {mode === "signup" && (
+                        <div className="animate-in fade-in duration-200 space-y-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-300 mb-1">
+                              {role === "candidate" ? "Full Name" : role === "consultancy" ? "Consultancy Name" : role === "employer" ? "Company Name" : "Admin Display Name"}
+                            </label>
+                            <div className="relative">
+                              {role === "candidate" && <User className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />}
+                              {role === "consultancy" && <Building2 className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />}
+                              {role === "employer" && <Briefcase className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />}
+                              {role === "admin" && <ShieldCheck className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />}
+                              <input
+                                type="text"
+                                value={role === "candidate" || role === "admin" ? name : role === "consultancy" ? agencyName : companyName}
+                                onChange={(e) => {
+                                  if (role === "candidate" || role === "admin") setName(e.target.value);
+                                  else if (role === "consultancy") setAgencyName(e.target.value);
+                                  else setCompanyName(e.target.value);
+                                }}
+                                required
+                                className="w-full pl-9 pr-4 py-2.5 text-sm bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 text-white transition-all"
+                                placeholder={role === "candidate" ? "e.g. Aryan Sharma" : role === "consultancy" ? "e.g. Nexus Talent" : "e.g. Google Labs"}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-300 mb-1">Mobile Phone Number</label>
+                        <div className="flex">
+                          {/* Country Code Picker Select */}
+                          <select
+                            value={countryCode}
+                            onChange={(e) => setCountryCode(e.target.value)}
+                            className="bg-gray-900 border border-white/10 rounded-l-xl px-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 font-sans cursor-pointer max-w-[130px]"
+                          >
+                            {COUNTRY_CODES.map((item) => (
+                              <option key={item.code} value={item.code} className="bg-gray-950 text-white text-xs">
+                                {item.label}
+                              </option>
+                            ))}
+                          </select>
+
+                          {/* Phone input */}
+                          <input
+                            type="tel"
+                            value={rawPhoneNumber}
+                            onChange={(e) => setRawPhoneNumber(e.target.value.replace(/\D/g, ""))}
+                            required
+                            className="flex-1 pl-3 pr-4 py-2.5 text-sm bg-white/5 border-y border-r border-white/10 rounded-r-xl focus:outline-none focus:border-indigo-500 text-white font-mono transition-all"
+                            placeholder="9876543210"
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold rounded-xl transition-all disabled:opacity-50 flex items-center justify-center space-x-2 text-white cursor-pointer"
+                      >
+                        <Send className="w-4 h-4" />
+                        <span>{loading ? "Checking & sending SMS..." : "Send Verification OTP"}</span>
+                      </button>
+                    </form>
+                  ) : (
+                    <form onSubmit={handleVerifyOtp} className="space-y-4">
+                      <div className="p-3 bg-indigo-950/40 border border-indigo-900/30 rounded-xl flex items-start space-x-2 text-xs text-indigo-200">
+                        <Phone className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5 animate-pulse" />
+                        <p>SMS verification code routed to <span className="font-bold text-white">{countryCode} {rawPhoneNumber}</span>. Enter code below.</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-300 mb-1">6-Digit Verification Code</label>
+                        <div className="relative">
+                          <Key className="absolute left-3 top-3 w-4 h-4 text-gray-500" />
+                          <input
+                            type="text"
+                            maxLength={6}
+                            value={otpCode}
+                            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                            required
+                            className="w-full pl-9 pr-4 py-2.5 text-center text-lg font-mono tracking-[0.5em] bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 text-white focus:ring-1 focus:ring-indigo-500"
+                            placeholder="000000"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setPhoneStep("phone")}
+                          className="text-xs text-gray-400 hover:text-white flex items-center space-x-1 cursor-pointer"
+                        >
+                          <ArrowLeft className="w-3.5 h-3.5" />
+                          <span>Change Number</span>
+                        </button>
+
+                        <button
+                          type="submit"
+                          disabled={loading}
+                          className="py-2.5 px-6 bg-gradient-to-r from-emerald-500 to-indigo-600 hover:from-emerald-600 text-xs font-bold rounded-xl transition-all disabled:opacity-50 text-white shadow-md cursor-pointer"
+                        >
+                          <span>{loading ? "Verifying OTP..." : mode === "signup" ? "Verify OTP & Register" : "Verify OTP & Login"}</span>
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              )}
 
               {/* Alternative Auth Dividers */}
               <div className="relative flex items-center justify-center py-2">
@@ -767,31 +980,18 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
                 <div className="w-full h-[1px] bg-white/10"></div>
               </div>
 
-              {/* Social Buttons */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Social/Google Button */}
+              <div className="grid grid-cols-1 gap-3">
                 <button
                   onClick={handleGoogleLogin}
                   disabled={loading}
-                  className="py-2 px-3 border border-white/10 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 transition-all cursor-pointer text-white disabled:opacity-50"
+                  className="py-2.5 px-3 border border-white/10 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 transition-all cursor-pointer text-white disabled:opacity-50 w-full"
                   id="google-login-btn"
                 >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <svg className="w-4 h-4 text-red-400" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.866-3.577-7.866-8s3.536-8 7.866-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1c-6.075 0-11 4.925-11 11s4.925 11 11 11c6.34 0 10.564-4.437 10.564-10.715 0-.724-.078-1.282-.172-1.71h-10.392z" />
                   </svg>
-                  <span>Google</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setPhoneStep("phone");
-                    setMode("phone-otp");
-                  }}
-                  disabled={loading}
-                  className="py-2 px-3 border border-white/10 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 transition-all cursor-pointer text-white disabled:opacity-50"
-                  id="phone-login-btn"
-                >
-                  <Phone className="w-4 h-4 text-indigo-400" />
-                  <span>Phone OTP</span>
+                  <span>Continue with Google Sign-In</span>
                 </button>
               </div>
             </div>

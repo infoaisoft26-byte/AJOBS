@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { 
   Calendar, Video, MapPin, CheckSquare, Clock, Plus, 
-  Trash2, Send, Save, BookOpen, Star, UserCheck, AlertCircle
+  Trash2, Send, Save, BookOpen, Star, UserCheck, AlertCircle, Sparkles
 } from "lucide-react";
 import { CompanyInterview, CompanyApplication, CompanyJob } from "./EmployerTypes";
-import { doc, setDoc, deleteDoc } from "firebase/firestore";
+import { doc, setDoc, deleteDoc, getDoc } from "firebase/firestore";
 import { db } from "../../firebase";
+import { 
+  signInWithGoogleCalendar, getCalendarAccessToken, GoogleCalendarService 
+} from "../../services/googleCalendarService";
 
 interface InterviewManagementProps {
   userId: string;
@@ -33,6 +36,10 @@ export default function InterviewManagement({
   const [locationOrLink, setLocationOrLink] = useState("https://meet.google.com/abc-defg-hij");
   const [interviewer, setInterviewer] = useState("");
 
+  // Google Calendar Integration State
+  const [syncToGCal, setSyncToGCal] = useState(false);
+  const [isConnectingCalendar, setIsConnectingCalendar] = useState(false);
+
   // Feedback logging states
   const [feedback, setFeedback] = useState("");
   const [score, setScore] = useState(85);
@@ -51,8 +58,49 @@ export default function InterviewManagement({
       const selectedApp = applications.find(a => a.id === targetAppId);
       if (!selectedApp) return;
 
+      let googleEventId = "";
+      
+      // Attempt Google Calendar Sync if requested
+      if (syncToGCal) {
+        setIsConnectingCalendar(true);
+        try {
+          let token = getCalendarAccessToken();
+          if (!token) {
+            const authResult = await signInWithGoogleCalendar();
+            if (authResult) {
+              token = authResult.accessToken;
+            }
+          }
+
+          if (token) {
+            // Compile start/end ISO times for calendar event
+            const startDateTime = new Date(`${date}T${convertTo24Hour(time)}`).toISOString();
+            const endDateTime = new Date(new Date(startDateTime).getTime() + 60 * 60 * 1000).toISOString(); // Default 1 hour
+
+            const gEvent = await GoogleCalendarService.createEvent(token, {
+              summary: `Interview: ${selectedApp.candidateName} for ${selectedApp.jobTitle}`,
+              description: `Automated AIJobs assessment interview panel hosted by ${interviewer}. Meeting link: ${locationOrLink}`,
+              startTime: startDateTime,
+              endTime: endDateTime,
+              location: locationOrLink,
+              attendeeEmail: selectedApp.candidateEmail || ""
+            });
+
+            if (gEvent && gEvent.id) {
+              googleEventId = gEvent.id;
+              console.log("Successfully synced with Google Calendar, Event ID:", googleEventId);
+            }
+          }
+        } catch (err: any) {
+          console.error("Google Calendar Sync failed:", err);
+          alert(`⚠️ Google Calendar Sync Error: ${err.message || err}. Saving slot locally instead.`);
+        } finally {
+          setIsConnectingCalendar(false);
+        }
+      }
+
       const interviewId = `cint_${Math.random().toString(36).substr(2, 9)}`;
-      const newInterview: CompanyInterview = {
+      const newInterview: CompanyInterview & { googleEventId?: string } = {
         id: interviewId,
         applicationId: selectedApp.id,
         candidateId: selectedApp.candidateId,
@@ -64,7 +112,8 @@ export default function InterviewManagement({
         type,
         locationOrLink,
         interviewer,
-        status: "Scheduled"
+        status: "Scheduled",
+        ...(googleEventId ? { googleEventId } : {})
       };
 
       // 1. Save to Firestore
@@ -88,12 +137,13 @@ export default function InterviewManagement({
         id: activityId,
         companyId: userId,
         type: "interview",
-        description: `Scheduled "${type}" interview for ${selectedApp.candidateName} with ${interviewer}.`,
+        description: `Scheduled "${type}" interview for ${selectedApp.candidateName} with ${interviewer}.${googleEventId ? " Synced to Google Calendar." : ""}`,
         createdAt: new Date().toISOString()
       });
 
-      alert(`🎉 Scheduled ${type} interview successfully!`);
+      alert(`🎉 Scheduled ${type} interview successfully!${googleEventId ? " Synced to Google Calendar." : ""}`);
       setIsFormOpen(false);
+      setSyncToGCal(false);
       onRefresh();
     } catch (err) {
       console.error(err);
@@ -102,6 +152,22 @@ export default function InterviewManagement({
       setIsSubmitting(false);
     }
   };
+
+  // Helper to convert standard user AM/PM strings to 24-hour HH:MM strings
+  function convertTo24Hour(timeStr: string) {
+    const [timeVal, modifier] = timeStr.trim().split(" ");
+    let [hours, minutes] = timeVal.split(":");
+    if (hours === "12") {
+      hours = "00";
+    }
+    if (modifier && modifier.toUpperCase() === "PM") {
+      hours = String(parseInt(hours, 10) + 12);
+    }
+    if (!minutes) {
+      minutes = "00";
+    }
+    return `${hours.padStart(2, "0")}:${minutes.padStart(2, "0")}`;
+  }
 
   const handleFeedbackSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,7 +187,6 @@ export default function InterviewManagement({
 
       // 2. Sync to company_applications to show evaluated interviewScore
       const appRef = doc(db, "company_applications", feedbackTarget.applicationId);
-      const appSnap = await doc(db, "company_applications", feedbackTarget.applicationId);
       await setDoc(appRef, {
         interviewScore: Number(score)
       }, { merge: true });
@@ -150,11 +215,25 @@ export default function InterviewManagement({
     if (!confirm(`Cancel and delete interview slot for "${name}"?`)) return;
 
     try {
+      // 1. Fetch to see if there is a linked Google Calendar Event ID
+      const docSnap = await getDoc(doc(db, "company_interviews", id));
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.googleEventId) {
+          const token = getCalendarAccessToken();
+          if (token) {
+            console.log("Found linked Google Calendar Event, deleting...", data.googleEventId);
+            await GoogleCalendarService.deleteEvent(token, data.googleEventId);
+          }
+        }
+      }
+
       await deleteDoc(doc(db, "company_interviews", id));
-      alert("Interview canceled.");
+      alert("Interview canceled and successfully deleted locally (and from Google Calendar if synced).");
       onRefresh();
     } catch (err) {
       console.error(err);
+      alert("Error cancelling interview slot.");
     }
   };
 
@@ -396,13 +475,35 @@ export default function InterviewManagement({
               />
             </div>
 
+            {/* Google Calendar Sync Checkbox Option */}
+            <div className="p-3 bg-white/5 border border-white/5 rounded-xl flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="gcal-sync-checkbox"
+                checked={syncToGCal}
+                onChange={e => setSyncToGCal(e.target.checked)}
+                className="mt-0.5 accent-indigo-500 cursor-pointer h-4 w-4"
+              />
+              <div className="space-y-0.5">
+                <label htmlFor="gcal-sync-checkbox" className="font-extrabold text-white cursor-pointer select-none flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Sync to Google Calendar</span>
+                </label>
+                <p className="text-[10px] text-gray-400">
+                  {isConnectingCalendar 
+                    ? "Establishing secure connection..." 
+                    : "Creates a real calendar event with attendee alerts and automatic reminders."}
+                </p>
+              </div>
+            </div>
+
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isConnectingCalendar}
               className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-xs font-bold text-white rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
             >
               <Send className="w-4 h-4" />
-              <span>Confirm Schedule Slot</span>
+              <span>{isConnectingCalendar ? "Syncing Calendar..." : "Confirm Schedule Slot"}</span>
             </button>
           </form>
         </div>

@@ -4,6 +4,8 @@ import {
   ArrowRight, ShieldCheck, Lock, Lightbulb, Activity, ChevronRight, CheckCircle
 } from "lucide-react";
 import { CandidateProfile, JobApplication, NotificationRecord } from "../types";
+import { db } from "../firebase";
+import { doc, setDoc } from "firebase/firestore";
 
 interface OverviewProps {
   userName: string;
@@ -60,6 +62,64 @@ export default function CandidateDashboardOverview({
   const resumeScore = profile?.resumeScore || 0;
   const interviewScore = profile?.aiInterviewScore || 0;
   const isAiVerified = interviewScore >= 80;
+
+  // Calculate AI Talent Score dynamically
+  const calculateTalentScore = () => {
+    const resumeContribution = resumeScore * 0.25;
+    const interviewContribution = interviewScore * 0.25;
+    const completionContribution = profileCompletion * 0.20;
+    
+    const sk = profile?.skills || [];
+    const skillsList = Array.isArray(sk) ? sk : (sk?.technical || []);
+    const skillsContribution = Math.min((skillsList.length / 8) * 100, 100) * 0.15;
+    
+    const certs = profile?.certifications || [];
+    const certsList = Array.isArray(certs) ? certs : (certs?.certifications || []);
+    const certsContribution = (certsList.length > 0 ? 100 : 60) * 0.15;
+    
+    const overall = Math.round(resumeContribution + interviewContribution + completionContribution + skillsContribution + certsContribution);
+    return Math.max(40, Math.min(overall, 100));
+  };
+
+  const talentScore = calculateTalentScore();
+
+  const getTalentGrade = (score: number) => {
+    if (score >= 90) return { label: "Excellent", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" };
+    if (score >= 75) return { label: "Good", color: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20" };
+    if (score >= 60) return { label: "Average", color: "text-amber-400 bg-amber-500/10 border-amber-500/20" };
+    return { label: "Needs Improvement", color: "text-rose-400 bg-rose-500/10 border-rose-500/20" };
+  };
+
+  const grade = getTalentGrade(talentScore);
+
+  // Save AI Talent Score to Firestore collection "talent_scores"
+  useEffect(() => {
+    const userId = profile?.userId || profile?.id;
+    if (!userId) return;
+
+    const saveTalentScore = async () => {
+      try {
+        await setDoc(doc(db, "talent_scores", userId), {
+          id: userId,
+          userId,
+          candidateName: userName,
+          overallScore: talentScore,
+          grade: grade.label,
+          breakdown: {
+            resumeQuality: resumeScore,
+            interviewPerformance: interviewScore,
+            profileCompletion,
+            skillsCount: (Array.isArray(profile.skills) ? profile.skills : (profile.skills?.technical || [])).length,
+            certificationsCount: (Array.isArray(profile.certifications) ? profile.certifications : (profile.certifications?.certifications || [])).length
+          },
+          updatedAt: new Date().toISOString()
+        });
+      } catch (err) {
+        console.error("Error saving talent score:", err);
+      }
+    };
+    saveTalentScore();
+  }, [profile, talentScore, grade.label, userName, resumeScore, interviewScore, profileCompletion]);
 
   // Saved Jobs filter
   const savedJobsCount = profile?.savedJobIds?.length || 0;
@@ -163,7 +223,7 @@ export default function CandidateDashboardOverview({
       </div>
 
       {/* Overview Stats Cards Bento Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {/* Card 1: Resume Score */}
         <div className="glass p-5 rounded-2xl flex flex-col justify-between space-y-2.5 hover:border-indigo-500/30 transition-all cursor-pointer" onClick={() => onSelectTab("resume")}>
           <div className="flex items-center justify-between">
@@ -217,6 +277,23 @@ export default function CandidateDashboardOverview({
             <p className="text-[10px] text-gray-400 mt-1">Offers received: <span className="text-emerald-400 font-semibold">
               {applications.filter(a => a.status === "offered").length}
             </span></p>
+          </div>
+        </div>
+
+        {/* Card 5: AI Talent Score */}
+        <div className="glass p-5 rounded-2xl flex flex-col justify-between space-y-2.5 hover:border-teal-500/30 transition-all cursor-pointer bg-gradient-to-br from-indigo-950/20 to-[#0a0f1d]/50" onClick={() => onSelectTab("reports")}>
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] font-mono tracking-wider font-bold text-gray-400 uppercase">AI Talent Rating</span>
+            <Sparkles className="w-4 h-4 text-teal-400 animate-pulse" />
+          </div>
+          <div>
+            <div className="flex items-baseline space-x-1">
+              <span className="text-3xl font-extrabold font-display text-white">{talentScore}</span>
+              <span className="text-[10px] text-gray-500 font-mono">/100</span>
+            </div>
+            <div className={`mt-1.5 px-2 py-0.5 text-[9px] font-mono font-extrabold rounded-md inline-block uppercase tracking-wider ${grade.color}`}>
+              {grade.label}
+            </div>
           </div>
         </div>
       </div>

@@ -1,9 +1,14 @@
 export interface UserProfile {
   uid: string;
-  email: string;
-  role: "candidate" | "consultancy" | "employer" | "admin";
   name: string;
+  email: string;
+  phone?: string;
+  role: "candidate" | "consultancy" | "employer" | "admin";
+  profileImage?: string;
   createdAt: string;
+  lastLogin?: string;
+  status?: string;
+  subscription?: string;
 }
 
 export interface CandidateProfile {

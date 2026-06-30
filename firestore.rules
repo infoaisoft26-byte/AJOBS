@@ -65,6 +65,42 @@ service cloud.firestore {
       allow write: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid || request.resource.data.userId == request.auth.uid);
     }
 
+    // Notifications collection
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid || request.resource.data.userId == request.auth.uid);
+    }
+
+    // Message Logs collection
+    match /message_logs/{logId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid || request.resource.data.userId == request.auth.uid);
+    }
+
+    // Email Templates collection
+    match /email_templates/{templateId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Jobs collection
+    match /jobs/{jobId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Applications collection
+    match /applications/{applicationId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Interviews collection
+    match /interviews/{interviewId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
     // General fallback for all collections (ensures zero permission issues for authenticated sessions)
     match /{collectionName}/{docId} {
       allow read, write: if isAuthenticated();

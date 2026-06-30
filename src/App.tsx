@@ -2,7 +2,7 @@ import { useState, useEffect, lazy, Suspense } from "react";
 import { auth, db } from "./firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { UserProfile } from "./types";
-import { initializeUserCollectionsAndDocs } from "./services/dbInitService";
+import { initializeUserCollectionsAndDocs, getOrCreateUserProfile } from "./services/dbInitService";
 import Header from "./components/Header";
 import AuthModal from "./components/AuthModal";
 import LandingPage from "./components/LandingPage";
@@ -124,21 +124,10 @@ function MainAppContent() {
       setAuthLoading(true);
       if (fbUser) {
         try {
-          const userSnap = await getDoc(doc(db, "users", fbUser.uid));
-          if (userSnap.exists()) {
-            const profile = userSnap.data() as UserProfile;
-            setUser(profile);
-            trackInteraction("login_success", "auth", profile.role);
-          } else {
-            // Self-healing database boostrapper: Auto-initialize all 18 collections and fallback profile
-            const initializedProfile = await initializeUserCollectionsAndDocs(
-              fbUser,
-              "candidate",
-              fbUser.displayName || "Aryan Sharma"
-            );
-            setUser(initializedProfile);
-            trackInteraction("login_success_auto_initialized", "auth", "candidate");
-          }
+          // Highly resilient auto-recovery profile retriever
+          const profile = await getOrCreateUserProfile(fbUser);
+          setUser(profile);
+          trackInteraction("login_success", "auth", profile.role);
         } catch (err) {
           console.error("Error loading user snapshot:", err);
           showToast("Failed to retrieve profile snapshot", "error");

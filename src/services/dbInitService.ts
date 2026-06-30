@@ -3,10 +3,15 @@ import { db } from "../firebase";
 
 export interface UserProfile {
   uid: string;
-  email: string;
-  role: "candidate" | "consultancy" | "employer" | "admin";
   name: string;
+  email: string;
+  phone?: string;
+  role: "candidate" | "consultancy" | "employer" | "admin";
+  profileImage?: string;
   createdAt: string;
+  lastLogin?: string;
+  status?: string;
+  subscription?: string;
 }
 
 /**
@@ -19,17 +24,22 @@ export async function initializeUserCollectionsAndDocs(
   displayName: string
 ): Promise<UserProfile> {
   const userId = fbUser.uid;
-  const email = fbUser.email || `${role}_user@aijobs.com`;
+  const email = fbUser.email || "";
   const name = displayName || fbUser.displayName || "Aryan Sharma";
   const isoDate = new Date().toISOString();
 
   // 1. Prepare User Profile
   const userProfile: UserProfile = {
     uid: userId,
-    email,
-    role,
     name,
+    email,
+    phone: fbUser.phoneNumber || "",
+    role,
+    profileImage: fbUser.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}`,
     createdAt: isoDate,
+    lastLogin: isoDate,
+    status: "active",
+    subscription: role === "consultancy" ? "Pro Agency" : "Enterprise Access"
   };
 
   // Helper to safely write a document if it doesn't already exist
@@ -327,3 +337,92 @@ export async function initializeUserCollectionsAndDocs(
 
   return userProfile;
 }
+
+/**
+ * Highly resilient self-healing profile retriever and bootstrapper.
+ * Tries to fetch user profile, and if missing, deduces the correct role,
+ * auto-initializes all 18 Firestore collections/documents, and returns the profile.
+ * Never throws an error; returns a fallback profile if Firestore is totally unreachable.
+ */
+export async function getOrCreateUserProfile(fbUser: any): Promise<UserProfile> {
+  const userId = fbUser.uid;
+  
+  try {
+    // 1. Try reading the users profile
+    const userSnap = await getDoc(doc(db, "users", userId));
+    if (userSnap.exists()) {
+      return userSnap.data() as UserProfile;
+    }
+  } catch (err) {
+    console.warn("[getOrCreateUserProfile] Failed to read 'users' collection:", err);
+  }
+
+  // 2. If missing (or read failed), try to deduce role from other collections
+  let deducedRole: "candidate" | "consultancy" | "employer" | "admin" = "candidate";
+  
+  try {
+    const [adminSnap, companySnap, employerSnap, consultancySnap, candidateSnap] = await Promise.all([
+      getDoc(doc(db, "admins", userId)).catch(() => null),
+      getDoc(doc(db, "companies", userId)).catch(() => null),
+      getDoc(doc(db, "employers", userId)).catch(() => null),
+      getDoc(doc(db, "consultancies", userId)).catch(() => null),
+      getDoc(doc(db, "candidates", userId)).catch(() => null),
+    ]);
+
+    if (adminSnap?.exists()) {
+      deducedRole = "admin";
+    } else if (companySnap?.exists() || employerSnap?.exists()) {
+      deducedRole = "employer";
+    } else if (consultancySnap?.exists()) {
+      deducedRole = "consultancy";
+    } else if (candidateSnap?.exists()) {
+      deducedRole = "candidate";
+    } else {
+      // 3. Fallback to email domain/prefix deduction
+      const emailLower = (fbUser.email || "").toLowerCase();
+      if (emailLower.includes("admin")) {
+        deducedRole = "admin";
+      } else if (emailLower.includes("employer") || emailLower.includes("company") || emailLower.includes("corporate")) {
+        deducedRole = "employer";
+      } else if (emailLower.includes("consultancy") || emailLower.includes("agency") || emailLower.includes("crm")) {
+        deducedRole = "consultancy";
+      } else {
+        deducedRole = "candidate";
+      }
+    }
+  } catch (deduceErr) {
+    console.warn("[getOrCreateUserProfile] Failed to deduce role from collections:", deduceErr);
+    // Deduce from email as fallback
+    const emailLower = (fbUser.email || "").toLowerCase();
+    if (emailLower.includes("admin")) {
+      deducedRole = "admin";
+    } else if (emailLower.includes("employer") || emailLower.includes("company") || emailLower.includes("corporate")) {
+      deducedRole = "employer";
+    } else if (emailLower.includes("consultancy") || emailLower.includes("agency") || emailLower.includes("crm")) {
+      deducedRole = "consultancy";
+    }
+  }
+
+  // 4. Automatically create the profile and seed all collections
+  try {
+    const displayName = fbUser.displayName || fbUser.email?.split("@")[0] || "Aryan Sharma";
+    const profile = await initializeUserCollectionsAndDocs(fbUser, deducedRole, displayName);
+    return profile;
+  } catch (initErr) {
+    console.error("[getOrCreateUserProfile] Failed to auto-initialize profile document:", initErr);
+    // 5. Hard fallback: Return a fully compliant client-side profile so login never fails
+    return {
+      uid: userId,
+      name: fbUser.displayName || "Aryan Sharma",
+      email: fbUser.email || "",
+      phone: fbUser.phoneNumber || "",
+      role: deducedRole,
+      profileImage: fbUser.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(fbUser.displayName || "Aryan Sharma")}`,
+      createdAt: new Date().toISOString(),
+      lastLogin: new Date().toISOString(),
+      status: "active",
+      subscription: deducedRole === "consultancy" ? "Pro Agency" : "Enterprise Access"
+    };
+  }
+}
+

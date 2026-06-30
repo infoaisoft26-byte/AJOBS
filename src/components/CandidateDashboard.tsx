@@ -20,6 +20,7 @@ import CandidateSettings from "./CandidateSettings";
 import CandidateInterviewSection from "./CandidateInterviewSection";
 import CandidateReportSection from "./CandidateReportSection";
 import CandidateCareerCenter from "./CandidateCareerCenter";
+import LiveChatSection from "./LiveChatSection";
 
 interface CandidateDashboardProps {
   userId: string;
@@ -30,7 +31,7 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
   // Main Navigation state
   const [activeTab, setActiveTab] = useState<
     "overview" | "profile" | "education" | "experience" | "skills" | 
-    "resume" | "explore-jobs" | "saved-jobs" | "applied-jobs" | "notifications" | "settings" | "interview" | "coach" | "ai-report"
+    "resume" | "explore-jobs" | "saved-jobs" | "applied-jobs" | "notifications" | "settings" | "interview" | "coach" | "ai-report" | "chat"
   >("overview");
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -270,6 +271,21 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
       });
       const data = await response.json();
       setMatchResult(data);
+
+      // Save to job_recommendations collection in Firestore
+      const recDocId = `rec_${userId}_${job.id}`;
+      await setDoc(doc(db, "job_recommendations", recDocId), {
+        id: recDocId,
+        userId,
+        jobId: job.id,
+        jobTitle: job.title,
+        companyName: job.companyName,
+        matchPercentage: data.matchPercentage || 80,
+        compatibilitySummary: data.compatibilitySummary || "High alignment based on technical criteria.",
+        missingSkills: data.missingSkills || [],
+        interviewTip: data.interviewTip || "Focus on articulating past distributed system scale parameters.",
+        generatedAt: new Date().toISOString()
+      });
     } catch (err) {
       console.error(err);
     } finally {
@@ -576,6 +592,15 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
               profile={profile}
               triggerNotification={(title, message) => triggerNotification(title, message)}
               onSelectTab={(tab) => setActiveTab(tab as any)}
+            />
+          )}
+
+          {/* TAB 13: SECURE LIVE CHAT WORKSPACE */}
+          {activeTab === "chat" && (
+            <LiveChatSection 
+              currentUserId={userId}
+              currentUserRole="candidate"
+              currentUserName={userName}
             />
           )}
 

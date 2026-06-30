@@ -288,6 +288,37 @@ Certifications:
       await setDoc(doc(db, "resume_versions", verId), newVersionRecord);
       setVersions(prev => [newVersionRecord, ...prev]);
 
+      // 4b. Also save a structured copy to the "ai_reports" collection
+      const aiReportRecord = {
+        id: `rep_resume_${userId}`,
+        userId,
+        sessionId: verId,
+        category: "Resume Analysis",
+        level: data.parsed?.designation || "Candidate Profile",
+        overallScore: scoreRecord.overallScore,
+        technicalScore: scoreRecord.skillsMatchScore,
+        communicationScore: scoreRecord.grammarScore,
+        confidenceScore: scoreRecord.atsCompatibilityScore,
+        grammarScore: scoreRecord.grammarScore,
+        leadershipScore: scoreRecord.professionalSummaryScore,
+        behaviorScore: scoreRecord.experienceScore,
+        strengths: [
+          data.improvements?.summary || "Strong resume summary.",
+          data.improvements?.skills || "Highly relevant and modern skill mapping."
+        ],
+        weaknesses: [
+          data.improvements?.experience || "Incorporate more metric-driven accomplishments.",
+          data.improvements?.keywords || "Missing high-relevance ATS optimization keywords."
+        ],
+        recommendations: [
+          data.improvements?.ats || "Remove double column text boxes.",
+          data.improvements?.formatting || "Align spacing and margins to standard rules."
+        ],
+        learningRoadmap: data.missingSkills?.learningRecommendations || [],
+        generatedAt: timestamp
+      };
+      await setDoc(doc(db, "ai_reports", `rep_resume_${userId}`), aiReportRecord);
+
       // 5. Update parent profile states to show score in Dashboard
       const updatedProfile = {
         resumeText,

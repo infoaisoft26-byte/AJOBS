@@ -30,37 +30,65 @@ export function NotificationBellAndDrawer({ userId, userRole, onSelectTab }: Not
   useEffect(() => {
     if (!userId) return;
 
-    // Ensure email templates are seeded once (only for admin)
-    if (userRole === "admin") {
-      NotificationService.ensureEmailTemplates(true);
-    }
+    let unsubscribeSnapshot: (() => void) | null = null;
 
-    const q = query(
-      collection(db, "notifications"),
-      where("userId", "==", userId),
-      where("archived", "==", false),
-      orderBy("createdAt", "desc")
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const items: NotificationItem[] = [];
-      snapshot.forEach((doc) => {
-        items.push(doc.data() as NotificationItem);
-      });
-      
-      const newUnread = items.filter(n => !n.read).length;
-      if (newUnread > unreadCount) {
-        setRinging(true);
-        setTimeout(() => setRinging(false), 1200);
+    const unsubscribeAuth = auth.onAuthStateChanged((fbUser) => {
+      // Clean up any existing listener first
+      if (unsubscribeSnapshot) {
+        unsubscribeSnapshot();
+        unsubscribeSnapshot = null;
       }
-      
-      setNotifications(items);
-      setUnreadCount(newUnread);
-    }, (error) => {
-      console.error("Firestore sync error in drawer bell:", error);
+
+      // Check if user is authenticated and matches target userId
+      if (!fbUser || fbUser.uid !== userId) {
+        return;
+      }
+
+      // Ensure email templates are seeded once (only for admin)
+      if (userRole === "admin") {
+        NotificationService.ensureEmailTemplates(true);
+      }
+
+      const q = query(
+        collection(db, "notifications"),
+        where("userId", "==", userId)
+      );
+
+      unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+        const items: NotificationItem[] = [];
+        snapshot.forEach((doc) => {
+          const item = doc.data() as NotificationItem;
+          if (!item.archived) {
+            items.push(item);
+          }
+        });
+        
+        // Sort by createdAt desc
+        items.sort((a, b) => {
+          const t1 = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const t2 = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return t2 - t1;
+        });
+        
+        const newUnread = items.filter(n => !n.read).length;
+        if (newUnread > unreadCount) {
+          setRinging(true);
+          setTimeout(() => setRinging(false), 1200);
+        }
+        
+        setNotifications(items);
+        setUnreadCount(newUnread);
+      }, (error) => {
+        console.error("Firestore sync error in drawer bell:", error);
+      });
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeSnapshot) {
+        unsubscribeSnapshot();
+      }
+    };
   }, [userId, unreadCount]);
 
   const handleMarkRead = async (id: string) => {
@@ -296,12 +324,17 @@ export function NotificationCenterView({ userId, userRole, userName }: Notificat
       // 1. Fetch user notifications
       const notifQuery = query(
         collection(db, "notifications"),
-        where("userId", "==", userId),
-        orderBy("createdAt", "desc")
+        where("userId", "==", userId)
       );
       const notifsSnap = await getDocs(notifQuery);
       const notifs: NotificationItem[] = [];
       notifsSnap.forEach((doc) => notifs.push(doc.data() as NotificationItem));
+      // Sort on client side
+      notifs.sort((a, b) => {
+        const t1 = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const t2 = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return t2 - t1;
+      });
       setNotifications(notifs);
 
       // 2. Fetch User preferences
@@ -312,13 +345,19 @@ export function NotificationCenterView({ userId, userRole, userName }: Notificat
       const logsRef = collection(db, "message_logs");
       let logsQuery;
       if (userRole === "admin") {
-        logsQuery = query(logsRef, orderBy("createdAt", "desc"));
+        logsQuery = query(logsRef);
       } else {
-        logsQuery = query(logsRef, where("userId", "==", userId), orderBy("createdAt", "desc"));
+        logsQuery = query(logsRef, where("userId", "==", userId));
       }
       const logsSnap = await getDocs(logsQuery);
       const logs: MessageLog[] = [];
       logsSnap.forEach((doc) => logs.push(doc.data() as MessageLog));
+      // Sort on client side
+      logs.sort((a, b) => {
+        const t1 = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const t2 = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return t2 - t1;
+      });
       setMessageLogs(logs);
 
       // 4. Fetch email templates

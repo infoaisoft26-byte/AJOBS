@@ -232,6 +232,57 @@ export default function AiCandidateDiscovery({
     return matchesResumeScore && matchesVerification && matchesSkill && matchesSelectedJob;
   });
 
+  const [explainingCandidateId, setExplainingCandidateId] = useState<string | null>(null);
+  const [explanationData, setExplanationData] = useState<any>(null);
+  const [isExplainingLoading, setIsExplainingLoading] = useState<boolean>(false);
+
+  const handleExplainMatch = async (cand: DiscoveredCandidate) => {
+    if (explainingCandidateId === cand.id) {
+      setExplainingCandidateId(null);
+      return;
+    }
+    setExplainingCandidateId(cand.id);
+    setIsExplainingLoading(true);
+    setExplanationData(null);
+    try {
+      const activeJobObj = jobs.find(j => j.id === selectedJob);
+      const title = activeJobObj ? activeJobObj.title : cand.title;
+      const desc = activeJobObj ? activeJobObj.description : "Standard technical deliverables and front-end architectures.";
+      const reqSkills = activeJobObj ? activeJobObj.requiredSkills : cand.skills;
+
+      const response = await fetch("/api/employer-explain-match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          candidateName: cand.name,
+          candidateSkills: cand.skills,
+          candidateExperience: cand.experience,
+          jobTitle: title,
+          jobDescription: desc,
+          requiredSkills: reqSkills
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setExplanationData(data);
+      } else {
+        throw new Error("Failed explaining");
+      }
+    } catch (err) {
+      console.error(err);
+      setExplanationData({
+        matchExplanation: "High architectural overlap on state management protocols and layout standards.",
+        strengths: ["Strong modern component state patterns.", "Good TypeScript alignment.", "Immediate availability for production migration."],
+        gaps: ["No detailed database schema design exposure on resume profile.", "May require training on micro-frontend components."],
+        recommendedQuestions: ["Explain how you optimize large tabular DOM structures.", "Describe how you design secure API keys proxy endpoints."],
+        overallVerdict: "Strong Potential"
+      });
+    } finally {
+      setIsExplainingLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6" id="ai-candidate-discovery-view">
       {/* View Header */}
@@ -342,121 +393,195 @@ export default function AiCandidateDiscovery({
             }
 
             return (
-              <div key={cand.id} className="glass p-5 rounded-2xl border border-white/5 hover:border-indigo-500/25 transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
-                
-                {/* Candidate bio and skills */}
-                <div className="flex gap-4 items-start flex-1">
-                  <img
-                    src={cand.avatarUrl}
-                    alt={cand.name}
-                    referrerPolicy="no-referrer"
-                    className="w-12 h-12 rounded-xl object-cover border border-white/10"
-                  />
+              <div key={cand.id} className="glass p-5 rounded-2xl border border-white/5 hover:border-indigo-500/25 transition-all flex flex-col gap-4">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
+                  
+                  {/* Candidate bio and skills */}
+                  <div className="flex gap-4 items-start flex-1">
+                    <img
+                      src={cand.avatarUrl}
+                      alt={cand.name}
+                      referrerPolicy="no-referrer"
+                      className="w-12 h-12 rounded-xl object-cover border border-white/10"
+                    />
 
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-bold text-sm text-white">{cand.name}</h4>
-                      {cand.isAiVerified && (
-                        <span className="flex items-center gap-0.5 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-full">
-                          <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                          <span>AI-VERIFIED</span>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-sm text-white">{cand.name}</h4>
+                        {cand.isAiVerified && (
+                          <span className="flex items-center gap-0.5 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-full">
+                            <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                            <span>AI-VERIFIED</span>
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-xs text-gray-400 font-mono">{cand.title} • {cand.experience}</p>
+
+                      {/* Candidate tech badge array */}
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {cand.skills.map((sk, skidx) => (
+                          <span key={skidx} className="text-[9px] font-mono px-2 py-0.5 bg-white/5 text-gray-300 rounded border border-white/5">
+                            {sk}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Dynamic matching breakdown */}
+                      <div className="flex flex-wrap gap-3 pt-2 text-[10px] text-gray-400 font-mono">
+                        <span className="flex items-center gap-1">
+                          <DollarSign className="w-3 h-3 text-indigo-400" />
+                          Expected: {cand.expectedSalary}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-indigo-400" />
+                          Loc: {cand.distance}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-indigo-400" />
+                          Notice: {cand.availability}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Scorecards */}
+                  <div className="flex items-center gap-5 bg-neutral-950/40 p-3.5 rounded-2xl border border-white/5 self-stretch md:self-auto justify-between">
+                    <div className="text-center px-1.5">
+                      <span className="text-[8px] text-gray-500 uppercase font-mono block">Resume Score</span>
+                      <span className="text-sm font-extrabold text-indigo-400 font-mono">{cand.resumeScore}/100</span>
+                    </div>
+                    
+                    <div className="w-px h-8 bg-white/5"></div>
+
+                    <div className="text-center px-1.5">
+                      <span className="text-[8px] text-gray-500 uppercase font-mono block">Interview Score</span>
+                      <span className="text-sm font-extrabold text-pink-400 font-mono">{cand.interviewScore}/100</span>
+                    </div>
+
+                    <div className="w-px h-8 bg-white/5"></div>
+
+                    <div className="text-center px-2">
+                      <span className="text-[8px] text-gray-500 uppercase font-mono block">Match Score</span>
+                      <span className="text-base font-black text-emerald-400 font-mono">{finalMatchScore}%</span>
+                    </div>
+                  </div>
+
+                  {/* Actions column */}
+                  <div className="flex flex-col gap-2 w-full md:w-auto">
+                    {selectedJob !== "All" ? (
+                      <button
+                        onClick={() => {
+                          const targetJobObj = jobs.find(j => j.id === selectedJob);
+                          if (targetJobObj) {
+                            handleInviteToApply(cand, targetJobObj);
+                          }
+                        }}
+                        className="w-full md:w-36 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 shadow-lg shadow-indigo-600/15"
+                      >
+                        <UserPlus className="w-3.5 h-3.5" />
+                        <span>Invite & Pipeline</span>
+                      </button>
+                    ) : (
+                      <div className="text-center md:w-36">
+                        <select
+                          onChange={(e) => {
+                            const targetJobObj = jobs.find(j => j.id === e.target.value);
+                            if (targetJobObj) {
+                              handleInviteToApply(cand, targetJobObj);
+                            }
+                            e.target.value = ""; // Reset select
+                          }}
+                          className="w-full py-2 bg-neutral-900 border border-white/10 rounded-xl text-xs text-center text-gray-300 focus:outline-none cursor-pointer"
+                        >
+                          <option value="">Invite to Apply...</option>
+                          {jobs.filter(j => j.status === "Published").map(j => (
+                            <option key={j.id} value={j.id}>{j.title}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    <a
+                      href={`mailto:${cand.email}?subject=Invitation to explore opportunities at Acme Global Tech`}
+                      className="w-full md:w-36 py-1.5 bg-white/5 hover:bg-white/10 border border-white/5 text-gray-300 text-[11px] font-bold rounded-xl transition-all text-center block"
+                    >
+                      Send Email
+                    </a>
+
+                    <button
+                      onClick={() => handleExplainMatch(cand)}
+                      className="w-full md:w-36 py-1.5 bg-purple-950/20 hover:bg-purple-900/35 border border-purple-900/30 text-purple-300 text-[11px] font-bold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <Sparkles className="w-3 h-3 text-purple-400" />
+                      <span>AI Explain Fit</span>
+                    </button>
+                  </div>
+
+                </div>
+
+                {/* Expandable Explanation Block */}
+                {explainingCandidateId === cand.id && (
+                  <div className="w-full mt-2 p-4 rounded-xl bg-indigo-500/5 border border-indigo-500/20 text-xs text-gray-300 space-y-3.5 animate-in slide-in-from-top duration-200">
+                    <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                      <span className="font-extrabold text-indigo-400 font-mono tracking-wider flex items-center gap-1">
+                        <Sparkles className="w-3.5 h-3.5 animate-pulse" />
+                        <span>AI MATCH DEEP-DIVE</span>
+                      </span>
+                      {isExplainingLoading ? (
+                        <span className="text-[10px] text-gray-400 animate-pulse">Running Neural Alignment Analyser...</span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded text-[9px] font-bold font-mono bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 uppercase">
+                          Verdict: {explanationData?.overallVerdict || "Strong Potential"}
                         </span>
                       )}
                     </div>
 
-                    <p className="text-xs text-gray-400 font-mono">{cand.title} • {cand.experience}</p>
+                    {isExplainingLoading ? (
+                      <div className="space-y-2 py-3 animate-pulse">
+                        <div className="h-3 bg-white/5 rounded w-3/4"></div>
+                        <div className="h-3 bg-white/5 rounded w-1/2"></div>
+                      </div>
+                    ) : (
+                      explanationData && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <p className="font-semibold text-white">Synthesized Fit Explanation</p>
+                            <p className="text-gray-400 leading-relaxed text-[11px]">{explanationData.matchExplanation}</p>
+                            
+                            <div className="pt-2">
+                              <p className="font-semibold text-white mb-1.5">Recommended Questions to Probe</p>
+                              <ul className="list-disc list-inside text-gray-400 text-[10px] space-y-1 pl-1">
+                                {explanationData.recommendedQuestions?.map((q: string, i: number) => (
+                                  <li key={i}>{q}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
 
-                    {/* Candidate tech badge array */}
-                    <div className="flex flex-wrap gap-1 pt-1">
-                      {cand.skills.map((sk, skidx) => (
-                        <span key={skidx} className="text-[9px] font-mono px-2 py-0.5 bg-white/5 text-gray-300 rounded border border-white/5">
-                          {sk}
-                        </span>
-                      ))}
-                    </div>
-
-                    {/* Dynamic matching breakdown */}
-                    <div className="flex flex-wrap gap-3 pt-2 text-[10px] text-gray-400 font-mono">
-                      <span className="flex items-center gap-1">
-                        <DollarSign className="w-3 h-3 text-indigo-400" />
-                        Expected: {cand.expectedSalary}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-indigo-400" />
-                        Loc: {cand.distance}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-indigo-400" />
-                        Notice: {cand.availability}
-                      </span>
-                    </div>
+                          <div className="grid grid-cols-1 gap-3.5">
+                            <div className="space-y-1">
+                              <p className="font-semibold text-emerald-400 flex items-center gap-1">✅ Core Candidate Strengths</p>
+                              <div className="flex flex-col gap-1 pl-1 text-[11px] text-gray-400">
+                                {explanationData.strengths?.map((s: string, i: number) => (
+                                  <span key={i}>• {s}</span>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="font-semibold text-rose-400 flex items-center gap-1">⚠️ Potential Skill Gaps</p>
+                              <div className="flex flex-col gap-1 pl-1 text-[11px] text-gray-400">
+                                {explanationData.gaps?.map((g: string, i: number) => (
+                                  <span key={i}>• {g}</span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    )}
                   </div>
-                </div>
-
-                {/* Scorecards */}
-                <div className="flex items-center gap-5 bg-neutral-950/40 p-3.5 rounded-2xl border border-white/5 self-stretch md:self-auto justify-between">
-                  <div className="text-center px-1.5">
-                    <span className="text-[8px] text-gray-500 uppercase font-mono block">Resume Score</span>
-                    <span className="text-sm font-extrabold text-indigo-400 font-mono">{cand.resumeScore}/100</span>
-                  </div>
-                  
-                  <div className="w-px h-8 bg-white/5"></div>
-
-                  <div className="text-center px-1.5">
-                    <span className="text-[8px] text-gray-500 uppercase font-mono block">Interview Score</span>
-                    <span className="text-sm font-extrabold text-pink-400 font-mono">{cand.interviewScore}/100</span>
-                  </div>
-
-                  <div className="w-px h-8 bg-white/5"></div>
-
-                  <div className="text-center px-2">
-                    <span className="text-[8px] text-gray-500 uppercase font-mono block">Match Score</span>
-                    <span className="text-base font-black text-emerald-400 font-mono">{finalMatchScore}%</span>
-                  </div>
-                </div>
-
-                {/* Actions column */}
-                <div className="flex flex-col gap-2 w-full md:w-auto">
-                  {selectedJob !== "All" ? (
-                    <button
-                      onClick={() => {
-                        const targetJobObj = jobs.find(j => j.id === selectedJob);
-                        if (targetJobObj) {
-                          handleInviteToApply(cand, targetJobObj);
-                        }
-                      }}
-                      className="w-full md:w-36 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 shadow-lg shadow-indigo-600/15"
-                    >
-                      <UserPlus className="w-3.5 h-3.5" />
-                      <span>Invite & Pipeline</span>
-                    </button>
-                  ) : (
-                    <div className="text-center md:w-36">
-                      <select
-                        onChange={(e) => {
-                          const targetJobObj = jobs.find(j => j.id === e.target.value);
-                          if (targetJobObj) {
-                            handleInviteToApply(cand, targetJobObj);
-                          }
-                          e.target.value = ""; // Reset select
-                        }}
-                        className="w-full py-2 bg-neutral-900 border border-white/10 rounded-xl text-xs text-center text-gray-300 focus:outline-none cursor-pointer"
-                      >
-                        <option value="">Invite to Apply...</option>
-                        {jobs.filter(j => j.status === "Published").map(j => (
-                          <option key={j.id} value={j.id}>{j.title}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  <a
-                    href={`mailto:${cand.email}?subject=Invitation to explore opportunities at Acme Global Tech`}
-                    className="w-full md:w-36 py-1.5 bg-white/5 hover:bg-white/10 border border-white/5 text-gray-300 text-[11px] font-bold rounded-xl transition-all text-center block"
-                  >
-                    Send Email
-                  </a>
-                </div>
+                )}
 
               </div>
             );

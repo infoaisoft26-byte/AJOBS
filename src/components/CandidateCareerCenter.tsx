@@ -106,24 +106,32 @@ export default function CandidateCareerCenter({
       }
 
       // 2. Load success predictions
-      const qPred = query(collection(db, "success_predictions"), where("userId", "==", userId), orderBy("createdAt", "desc"));
+      const qPred = query(collection(db, "success_predictions"), where("userId", "==", userId));
       const snapPred = await getDocs(qPred);
-      setSavedPredictions(snapPred.docs.map(d => ({ id: d.id, ...d.data() })));
+      const predictions = snapPred.docs.map(d => ({ id: d.id, ...d.data() as any }));
+      predictions.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      setSavedPredictions(predictions);
 
       // 3. Load cover letters
-      const qCl = query(collection(db, "cover_letters"), where("userId", "==", userId), orderBy("createdAt", "desc"));
+      const qCl = query(collection(db, "cover_letters"), where("userId", "==", userId));
       const snapCl = await getDocs(qCl);
-      setSavedCoverLetters(snapCl.docs.map(d => ({ id: d.id, ...d.data() })));
+      const coverLetters = snapCl.docs.map(d => ({ id: d.id, ...d.data() as any }));
+      coverLetters.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      setSavedCoverLetters(coverLetters);
 
       // 4. Load resume templates
-      const qRes = query(collection(db, "resume_templates"), where("userId", "==", userId), orderBy("createdAt", "desc"));
+      const qRes = query(collection(db, "resume_templates"), where("userId", "==", userId));
       const snapRes = await getDocs(qRes);
-      setSavedResumes(snapRes.docs.map(d => ({ id: d.id, ...d.data() })));
+      const resumes = snapRes.docs.map(d => ({ id: d.id, ...d.data() as any }));
+      resumes.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      setSavedResumes(resumes);
 
       // 5. Load learning paths
-      const qLp = query(collection(db, "learning_paths"), where("userId", "==", userId), orderBy("createdAt", "desc"));
+      const qLp = query(collection(db, "learning_paths"), where("userId", "==", userId));
       const snapLp = await getDocs(qLp);
-      setSavedLearningPaths(snapLp.docs.map(d => ({ id: d.id, ...d.data() })));
+      const learningPaths = snapLp.docs.map(d => ({ id: d.id, ...d.data() as any }));
+      learningPaths.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      setSavedLearningPaths(learningPaths);
 
     } catch (err) {
       console.error("Firestore loading error:", err);
@@ -168,6 +176,22 @@ export default function CandidateCareerCenter({
         createdAt: new Date().toISOString()
       };
       await addDoc(collection(db, "career_goals"), newGoal);
+
+      // Save a matching copy to career_guidance collection
+      const guidanceId = `guidance_${Math.random().toString(36).substr(2, 9)}`;
+      await setDoc(doc(db, "career_guidance", guidanceId), {
+        id: guidanceId,
+        userId,
+        targetRole: coachTargetRole,
+        details: coachGoal,
+        expectedSalaryRange: data.expectedSalaryRange || "₹18,00,000 - ₹25,00,000",
+        learningPath: data.learningPath || [],
+        skillSuggestions: data.skillSuggestions || ["TypeScript Optimization", "React Concurrent Rendering", "Cloud Deployment Architecture"],
+        certificationRecommendations: data.certificationRecommendations || ["AWS Certified Developer Associate", "Google Cloud Associate Cloud Engineer"],
+        salaryTips: data.salaryTips || ["Check glassdoor percentiles, outline technical certifications, highlight mock interview verification badge."],
+        createdAt: new Date().toISOString()
+      });
+
       fetchFirestoreData();
       triggerNotification("Goal Configured", `Successfully designed career strategic plan for ${coachTargetRole}.`, "success");
     } catch (err) {

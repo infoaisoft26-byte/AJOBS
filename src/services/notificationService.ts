@@ -454,8 +454,7 @@ export const NotificationService = {
     try {
       const q = query(
         collection(db, "notifications"),
-        where("userId", "==", userId),
-        orderBy("createdAt", "desc")
+        where("userId", "==", userId)
       );
       const snap = await getDocs(q);
       const items: NotificationItem[] = [];
@@ -469,6 +468,12 @@ export const NotificationService = {
         if (match) {
           items.push(data as NotificationItem);
         }
+      });
+      // Sort on client side
+      items.sort((a, b) => {
+        const t1 = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const t2 = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return t2 - t1;
       });
       return items;
     } catch (err) {
