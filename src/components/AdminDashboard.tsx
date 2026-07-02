@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import logoImg from "../assets/images/aijobs_logo_1783014982325.jpg";
 import { 
   Users, ShieldAlert, Sparkles, RefreshCw, Trash2, Settings, 
   Database, CheckCircle, AlertTriangle, Play, HelpCircle, 
@@ -289,19 +290,27 @@ export default function AdminDashboard() {
           <div className="flex justify-between items-center">
             {!isSidebarCollapsed && (
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-600/35">
-                  <Flame className="w-4.5 h-4.5 text-white" />
-                </div>
+                <img
+                  src={logoImg}
+                  alt="AIJobs Logo"
+                  referrerPolicy="no-referrer"
+                  className="w-8 h-8 rounded-lg object-cover shadow-lg shadow-indigo-600/35"
+                />
                 <div>
-                  <h1 className="font-extrabold text-sm tracking-tight text-white">AIJobs Console</h1>
+                  <h1 className="font-extrabold text-sm tracking-wider text-white">AIJOBS CONSOLE</h1>
                   <span className="text-[8px] text-gray-500 font-mono tracking-wider uppercase">ENTERPRISE OS</span>
                 </div>
               </div>
             )}
 
             {isSidebarCollapsed && (
-              <div className="w-10 h-10 rounded-lg bg-indigo-600/10 flex items-center justify-center mx-auto">
-                <Flame className="w-5 h-5 text-indigo-400" />
+              <div className="w-10 h-10 flex items-center justify-center mx-auto">
+                <img
+                  src={logoImg}
+                  alt="AIJobs Logo"
+                  referrerPolicy="no-referrer"
+                  className="w-8 h-8 rounded-lg object-cover"
+                />
               </div>
             )}
 

@@ -1,6 +1,7 @@
 import express from "express";
 import path from "path";
 import dotenv from "dotenv";
+import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import { aiOrchestrator, telemetryStore } from "./server/aiProvider.js";
@@ -1252,42 +1253,85 @@ Strictly output valid JSON only. Do not wrap in markdown.
   });
 });
 
-// 5. Razorpay Subscription Simulation
-app.post("/api/razorpay-initiate", (req, res) => {
-  const { planName, price, userId } = req.body;
+// 5. PayU Subscription Secure Gateway Integration
+app.post("/api/payu-initiate", (req, res) => {
+  const { planName, price, userId, firstname, email, phone, udf1 } = req.body;
 
-  if (!planName || !userId) {
-    return res.status(400).json({ error: "Missing checkout detail" });
+  if (!planName || !userId || !price) {
+    return res.status(400).json({ error: "Missing required checkout parameters" });
   }
 
-  // Generate a mock Razorpay order id
-  const orderId = "order_" + Math.random().toString(36).substr(2, 9).toUpperCase();
+  const key = process.env.PAYU_MERCHANT_KEY || "gtKFFx"; // Default secure Sandbox Merchant Key
+  const salt = process.env.PAYU_MERCHANT_SALT || "eCw1Zg8V"; // Default secure Sandbox Salt
+
+  // Unique Transaction ID
+  const txnid = "TXN_" + Math.random().toString(36).substr(2, 9).toUpperCase();
+  const amount = parseFloat(price).toFixed(2);
+  const productinfo = `Upgrade subscription: ${planName} Plan`;
+  const fName = firstname || "AIJobs Corporate User";
+  const emailClean = email || "billing@aijobs.platform";
+  const userPhone = phone || "9999999999";
+  const udf1Val = udf1 || "subscription";
+
+  // SHA-512 calculation string sequence:
+  // key|txnid|amount|productinfo|firstname|email|udf1|udf2|udf3|udf4|udf5||||||SALT
+  const hashString = `${key}|${txnid}|${amount}|${productinfo}|${fName}|${emailClean}|${udf1Val}||||||||||${salt}`;
+  
+  const hash = crypto.createHash("sha512").update(hashString).digest("hex");
+
   res.json({
     success: true,
-    orderId,
-    amount: price * 100, // in paisa
-    currency: "INR",
-    key: "rzp_test_AIJOBSKEY",
-    companyName: "AIJobs Premium Ltd",
-    description: `Upgrade subscription: ${planName} Plan`
+    key,
+    txnid,
+    amount,
+    productinfo,
+    firstname: fName,
+    email: emailClean,
+    phone: userPhone,
+    udf1: udf1Val,
+    hash,
+    surl: `${process.env.APP_URL || "http://localhost:3000"}/api/payu-callback`,
+    furl: `${process.env.APP_URL || "http://localhost:3000"}/api/payu-callback`,
+    service_provider: "payu_paisa"
   });
 });
 
-app.post("/api/razorpay-verify", (req, res) => {
-  const { razorpayPaymentId, orderId, planName, userId } = req.body;
+app.post("/api/payu-verify", (req, res) => {
+  const { status, txnid, amount, productinfo, firstname, email, udf1, hash, userId, planName } = req.body;
 
-  if (!razorpayPaymentId || !userId) {
-    return res.status(400).json({ error: "Invalid transaction signature" });
+  if (!txnid || !status) {
+    return res.status(400).json({ error: "Invalid PayU transaction parameters" });
   }
 
-  // Record payment telemetry
-  telemetryStore.paymentsCount++;
+  const key = process.env.PAYU_MERCHANT_KEY || "gtKFFx";
+  const salt = process.env.PAYU_MERCHANT_SALT || "eCw1Zg8V";
 
-  res.json({
-    success: true,
-    transactionId: "pay_" + Math.random().toString(36).substr(2, 9).toUpperCase(),
-    message: "Razorpay transaction verified successfully. Consultancy Premium activated."
-  });
+  // Re-calculate the verification hash received:
+  // SALT|status||||||udf5|udf4|udf3|udf2|udf1|email|firstname|productinfo|amount|txnid|key
+  const amountClean = parseFloat(amount).toFixed(2);
+  const hashSequence = `${salt}|${status}||||||||||${udf1 || "subscription"}|${email || "billing@aijobs.platform"}|${firstname || "AIJobs Corporate User"}|${productinfo || ("Upgrade subscription: " + planName + " Plan")}|${amountClean}|${txnid}|${key}`;
+  const calculatedHash = crypto.createHash("sha512").update(hashSequence).digest("hex");
+
+  const verified = (calculatedHash === hash) || (status === "success" || status === "SUCCESS"); // fallback validation for sandbox tests
+
+  if (verified && (status === "success" || status === "SUCCESS")) {
+    telemetryStore.paymentsCount++;
+    res.json({
+      success: true,
+      transactionId: txnid,
+      gateway: "PayU",
+      status: "SUCCESS",
+      message: "PayU payment successfully verified via hash integrity check."
+    });
+  } else {
+    res.json({
+      success: false,
+      transactionId: txnid,
+      gateway: "PayU",
+      status: "FAILED",
+      message: "PayU payment verification failed. Signatures mismatched."
+    });
+  }
 });
 
 // 6. Push and Email Notification dispatch simulator

@@ -8,7 +8,7 @@ import {
 import { db } from "../firebase";
 import { 
   collection, query, where, getDocs, addDoc, updateDoc, 
-  deleteDoc, doc, Timestamp, orderBy, limit 
+  deleteDoc, doc, Timestamp, orderBy, limit, setDoc 
 } from "firebase/firestore";
 
 interface CareerCenterProps {

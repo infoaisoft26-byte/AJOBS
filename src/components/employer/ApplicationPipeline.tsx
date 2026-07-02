@@ -144,7 +144,9 @@ export default function ApplicationPipeline({
                         {app.candidateName}
                       </h4>
                       {app.resumeScore && app.resumeScore >= 80 && (
-                        <ShieldCheck className="w-4 h-4 text-emerald-400" title="Highly Recommended ATS match" />
+                        <span title="Highly Recommended ATS match">
+                          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                        </span>
                       )}
                     </div>
 

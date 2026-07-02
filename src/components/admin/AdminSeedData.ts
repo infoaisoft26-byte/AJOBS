@@ -373,7 +373,7 @@ export async function seedSuperAdminDataIfEmpty(userId: string, userName: string
           totalPaid: 29500,
           currency: "INR",
           status: "SUCCESS",
-          gateway: "Razorpay",
+          gateway: "PayU",
           invoiceNumber: "INV-2026-9112",
           createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
         },
@@ -407,7 +407,7 @@ export async function seedSuperAdminDataIfEmpty(userId: string, userName: string
           currency: "INR",
           status: "SUCCESS",
           couponCode: "FESTIVE10",
-          gateway: "Razorpay",
+          gateway: "PayU",
           invoiceNumber: "INV-2026-9114",
           createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
         },
@@ -423,7 +423,7 @@ export async function seedSuperAdminDataIfEmpty(userId: string, userName: string
           totalPaid: 17700,
           currency: "INR",
           status: "FAILED",
-          gateway: "Razorpay",
+          gateway: "PayU",
           invoiceNumber: "INV-2026-9115",
           createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString()
         }

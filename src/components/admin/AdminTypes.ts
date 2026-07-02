@@ -158,7 +158,7 @@ export interface PaymentTransaction {
   currency: string;
   status: "SUCCESS" | "FAILED" | "PENDING" | "REFUNDED";
   couponCode?: string;
-  gateway: "Razorpay" | "Stripe" | "System Manual";
+  gateway: "PayU" | "Stripe" | "System Manual";
   invoiceNumber: string;
   createdAt: string;
 }

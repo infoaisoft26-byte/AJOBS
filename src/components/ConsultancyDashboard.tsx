@@ -54,7 +54,7 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
   // Sidebar Selection Tab
   const [activeTab, setActiveTab] = useState<
     "dashboard" | "clients" | "jobs" | "candidates" | "matching" | 
-    "interviews" | "placements" | "team" | "reports" | "subscription" | "registration"
+    "interviews" | "placements" | "team" | "reports" | "subscription" | "registration" | "notifications"
   >("dashboard");
 
   // Fetch and Sync CRM Data

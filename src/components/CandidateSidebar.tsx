@@ -1,6 +1,7 @@
 import { 
   LayoutDashboard, User, GraduationCap, Briefcase, Award, 
-  FileText, Heart, Clock, Bell, Settings, Brain, Sparkles, X, Menu, Search
+  FileText, Heart, Clock, Bell, Settings, Brain, Sparkles, X, Menu, Search,
+  MessageSquare
 } from "lucide-react";
 
 interface SidebarProps {

@@ -35,9 +35,16 @@ export interface ConsultancyProfile {
   userId: string;
   agencyName: string;
   subscriptionStatus: "active" | "inactive";
-  pricingPlan: "Free" | "Starter" | "Enterprise";
+  pricingPlan: "Free" | "Starter" | "Professional" | "Enterprise";
   clientsCount: number;
   revenue: number;
+  ownerName?: string;
+  gstNumber?: string;
+  panNumber?: string;
+  companyEmail?: string;
+  mobileNumber?: string;
+  officeAddress?: string;
+  website?: string;
 }
 
 export interface EmployerProfile {
@@ -68,6 +75,8 @@ export interface JobPosting {
   benefits?: string;
   openings?: number;
   expiryDate?: string;
+  industry?: string;
+  workMode?: string;
 }
 
 export interface JobApplication {

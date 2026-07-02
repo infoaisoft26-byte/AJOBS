@@ -340,11 +340,15 @@ export async function initializeUserCollectionsAndDocs(
 
 /**
  * Highly resilient self-healing profile retriever and bootstrapper.
- * Tries to fetch user profile, and if missing, deduces the correct role,
- * auto-initializes all 18 Firestore collections/documents, and returns the profile.
+ * Tries to fetch user profile, and if missing, uses the preferredRole (if passed),
+ * or deduces the correct role from existing sub-collections, then auto-initializes
+ * all 18 Firestore collections/documents, and returns the profile.
  * Never throws an error; returns a fallback profile if Firestore is totally unreachable.
  */
-export async function getOrCreateUserProfile(fbUser: any): Promise<UserProfile> {
+export async function getOrCreateUserProfile(
+  fbUser: any,
+  preferredRole?: "candidate" | "consultancy" | "employer" | "admin"
+): Promise<UserProfile> {
   const userId = fbUser.uid;
   
   try {
@@ -358,27 +362,42 @@ export async function getOrCreateUserProfile(fbUser: any): Promise<UserProfile> 
   }
 
   // 2. If missing (or read failed), try to deduce role from other collections
-  let deducedRole: "candidate" | "consultancy" | "employer" | "admin" = "candidate";
+  let deducedRole: "candidate" | "consultancy" | "employer" | "admin" = preferredRole || "candidate";
   
-  try {
-    const [adminSnap, companySnap, employerSnap, consultancySnap, candidateSnap] = await Promise.all([
-      getDoc(doc(db, "admins", userId)).catch(() => null),
-      getDoc(doc(db, "companies", userId)).catch(() => null),
-      getDoc(doc(db, "employers", userId)).catch(() => null),
-      getDoc(doc(db, "consultancies", userId)).catch(() => null),
-      getDoc(doc(db, "candidates", userId)).catch(() => null),
-    ]);
+  if (!preferredRole) {
+    try {
+      const [adminSnap, companySnap, employerSnap, consultancySnap, candidateSnap] = await Promise.all([
+        getDoc(doc(db, "admins", userId)).catch(() => null),
+        getDoc(doc(db, "companies", userId)).catch(() => null),
+        getDoc(doc(db, "employers", userId)).catch(() => null),
+        getDoc(doc(db, "consultancies", userId)).catch(() => null),
+        getDoc(doc(db, "candidates", userId)).catch(() => null),
+      ]);
 
-    if (adminSnap?.exists()) {
-      deducedRole = "admin";
-    } else if (companySnap?.exists() || employerSnap?.exists()) {
-      deducedRole = "employer";
-    } else if (consultancySnap?.exists()) {
-      deducedRole = "consultancy";
-    } else if (candidateSnap?.exists()) {
-      deducedRole = "candidate";
-    } else {
-      // 3. Fallback to email domain/prefix deduction
+      if (adminSnap?.exists()) {
+        deducedRole = "admin";
+      } else if (companySnap?.exists() || employerSnap?.exists()) {
+        deducedRole = "employer";
+      } else if (consultancySnap?.exists()) {
+        deducedRole = "consultancy";
+      } else if (candidateSnap?.exists()) {
+        deducedRole = "candidate";
+      } else {
+        // 3. Fallback to email domain/prefix deduction
+        const emailLower = (fbUser.email || "").toLowerCase();
+        if (emailLower.includes("admin")) {
+          deducedRole = "admin";
+        } else if (emailLower.includes("employer") || emailLower.includes("company") || emailLower.includes("corporate")) {
+          deducedRole = "employer";
+        } else if (emailLower.includes("consultancy") || emailLower.includes("agency") || emailLower.includes("crm")) {
+          deducedRole = "consultancy";
+        } else {
+          deducedRole = "candidate";
+        }
+      }
+    } catch (deduceErr) {
+      console.warn("[getOrCreateUserProfile] Failed to deduce role from collections:", deduceErr);
+      // Deduce from email as fallback
       const emailLower = (fbUser.email || "").toLowerCase();
       if (emailLower.includes("admin")) {
         deducedRole = "admin";
@@ -386,20 +405,7 @@ export async function getOrCreateUserProfile(fbUser: any): Promise<UserProfile> 
         deducedRole = "employer";
       } else if (emailLower.includes("consultancy") || emailLower.includes("agency") || emailLower.includes("crm")) {
         deducedRole = "consultancy";
-      } else {
-        deducedRole = "candidate";
       }
-    }
-  } catch (deduceErr) {
-    console.warn("[getOrCreateUserProfile] Failed to deduce role from collections:", deduceErr);
-    // Deduce from email as fallback
-    const emailLower = (fbUser.email || "").toLowerCase();
-    if (emailLower.includes("admin")) {
-      deducedRole = "admin";
-    } else if (emailLower.includes("employer") || emailLower.includes("company") || emailLower.includes("corporate")) {
-      deducedRole = "employer";
-    } else if (emailLower.includes("consultancy") || emailLower.includes("agency") || emailLower.includes("crm")) {
-      deducedRole = "consultancy";
     }
   }
 

@@ -1,5 +1,6 @@
 import { Sparkles, LogOut, Sun, Moon, Briefcase, LayoutDashboard } from "lucide-react";
 import { UserProfile } from "../types";
+import logoImg from "../assets/images/aijobs_logo_1783014982325.jpg";
 import { NotificationBellAndDrawer } from "./NotificationCenter";
 
 interface HeaderProps {
@@ -47,11 +48,14 @@ export default function Header({
           className="flex items-center space-x-2.5 cursor-pointer group animate-in fade-in duration-300"
           id="header-logo"
         >
-          <div className="w-8 h-8 bg-gradient-to-tr from-indigo-500 to-pink-500 rounded-lg flex items-center justify-center font-bold text-white text-sm shadow-md shadow-indigo-500/25 transition-transform duration-300 group-hover:scale-105">
-            A
-          </div>
-          <span className="font-display font-extrabold text-xl tracking-tight text-white">
-            AI<span className="text-indigo-400">Jobs</span>
+          <img
+            src={logoImg}
+            alt="AIJobs Logo"
+            referrerPolicy="no-referrer"
+            className="w-8 h-8 rounded-lg object-cover shadow-md shadow-indigo-500/25 transition-transform duration-300 group-hover:scale-105"
+          />
+          <span className="font-display font-extrabold text-xl tracking-[0.05em] text-white">
+            AI<span className="text-blue-400">JOBS</span>
           </span>
         </div>
 

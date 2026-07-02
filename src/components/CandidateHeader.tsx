@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { 
   Search, Bell, MessageSquare, Sun, Moon, Menu, ShieldCheck, 
-  CheckCircle, LogOut, ExternalLink, X
+  CheckCircle, LogOut, ExternalLink, X, Settings
 } from "lucide-react";
 import { NotificationRecord } from "../types";
 

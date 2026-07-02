@@ -74,7 +74,7 @@ export default function LiveChatSection({
     // Find chats where current user is a participant
     const q = query(
       collection(db, "chats"),
-      where("participantIds", "arrayContains", currentUserId)
+      where("participantIds", "array-contains", currentUserId)
     );
 
     const unsubscribe = onSnapshot(q, async (snap) => {

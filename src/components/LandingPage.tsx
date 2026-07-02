@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import logoImg from "../assets/images/aijobs_logo_1783014982325.jpg";
 import { 
   Sparkles, ArrowRight, Upload, Play, CheckCircle2, 
   HelpCircle, Star, Send, Bot, MessageSquare, ChevronRight, 
@@ -7,6 +8,7 @@ import {
   Briefcase, Clock, Activity, PhoneCall, Video, X
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import LegalModal, { LegalDocType } from "./LegalModal";
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -16,6 +18,7 @@ interface LandingPageProps {
 export default function LandingPage({ onGetStarted, setActiveView }: LandingPageProps) {
   // Navigation & Interactive States
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const [activeLegalDoc, setActiveLegalDoc] = useState<LegalDocType | null>(null);
   const [demoOpen, setDemoOpen] = useState(false);
   const [pricingTab, setPricingTab] = useState<"candidate" | "consultancy" | "employer">("candidate");
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
@@ -949,7 +952,7 @@ export default function LandingPage({ onGetStarted, setActiveView }: LandingPage
                       </li>
                       <li className="flex items-center space-x-2.5">
                         <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                        <span>Razorpay test Order integration sandbox</span>
+                        <span>PayU test Order integration sandbox</span>
                       </li>
                       <li className="flex items-center space-x-2.5">
                         <Check className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -1104,8 +1107,8 @@ export default function LandingPage({ onGetStarted, setActiveView }: LandingPage
               a: "We leverage advanced Gemini models to conduct multi-vector audits checking technical keyword distributions, structural phrasing, and standard ATS layout alignment. Results align closely with premium corporate ATS filter settings."
             },
             {
-              q: "How does the Razorpay subscription sandbox operate?",
-              a: "For Consultancy agencies, the checkout triggers a high-fidelity Razorpay transaction simulation. Completing this simulation instantly flags active premium recruiting features inside your Firestore account for testing."
+              q: "How does the PayU subscription sandbox operate?",
+              a: "For Consultancy agencies, the checkout triggers a high-fidelity PayU transaction simulation. Completing this simulation instantly flags active premium recruiting features inside your Firestore account for testing."
             },
             {
               q: "Are the corporate job matching metrics reliable?",
@@ -1151,9 +1154,12 @@ export default function LandingPage({ onGetStarted, setActiveView }: LandingPage
           {/* Logo & Info column */}
           <div className="md:col-span-4 space-y-4 text-left">
             <div className="flex items-center space-x-2.5">
-              <div className="w-8 h-8 bg-gradient-to-tr from-blue-500 to-emerald-400 rounded-lg flex items-center justify-center font-bold text-black text-sm">
-                A
-              </div>
+              <img
+                src={logoImg}
+                alt="AIJobs Logo"
+                referrerPolicy="no-referrer"
+                className="w-8 h-8 rounded-lg object-cover shadow-md shadow-indigo-500/25"
+              />
               <span className="font-display font-bold text-xl tracking-tight text-white">
                 AI<span className="text-blue-400">Jobs</span>
               </span>
@@ -1177,25 +1183,25 @@ export default function LandingPage({ onGetStarted, setActiveView }: LandingPage
             </ul>
           </div>
 
-          {/* Links Column 2: Resources */}
+          {/* Links Column 2: Resources & Legal */}
           <div className="md:col-span-2 space-y-3 text-left">
-            <h5 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Resources</h5>
+            <h5 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Resources & Legal</h5>
             <ul className="space-y-2 text-xs text-gray-400">
-              <li><button onClick={onGetStarted} className="hover:text-blue-400 transition-colors cursor-pointer">ATS Blog</button></li>
-              <li><button onClick={onGetStarted} className="hover:text-blue-400 transition-colors cursor-pointer">Simulation Guide</button></li>
-              <li><button onClick={onGetStarted} className="hover:text-blue-400 transition-colors cursor-pointer">Pricing Matrix</button></li>
-              <li><button onClick={onGetStarted} className="hover:text-blue-400 transition-colors cursor-pointer">System Status</button></li>
+              <li><button onClick={() => setActiveLegalDoc("cookie")} className="hover:text-indigo-400 transition-colors cursor-pointer text-left">Cookie Policy</button></li>
+              <li><button onClick={() => setActiveLegalDoc("disclaimer")} className="hover:text-indigo-400 transition-colors cursor-pointer text-left">Disclaimer</button></li>
+              <li><button onClick={onGetStarted} className="hover:text-indigo-400 transition-colors cursor-pointer text-left">Pricing Matrix</button></li>
+              <li><button onClick={() => setAssistantOpen(true)} className="hover:text-indigo-400 transition-colors cursor-pointer text-left">Contact Helpdesk</button></li>
             </ul>
           </div>
 
           {/* Links Column 3: Legal & Support */}
           <div className="md:col-span-2 space-y-3 text-left">
-            <h5 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Support</h5>
+            <h5 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Legal Policies</h5>
             <ul className="space-y-2 text-xs text-gray-400">
-              <li><button onClick={onGetStarted} className="hover:text-blue-400 transition-colors cursor-pointer">Privacy Policy</button></li>
-              <li><button onClick={onGetStarted} className="hover:text-blue-400 transition-colors cursor-pointer">Terms of Service</button></li>
-              <li><button onClick={onGetStarted} className="hover:text-blue-400 transition-colors cursor-pointer">Security Audits</button></li>
-              <li><button onClick={() => setAssistantOpen(true)} className="hover:text-blue-400 transition-colors cursor-pointer">Contact Coach</button></li>
+              <li><button onClick={() => setActiveLegalDoc("privacy")} className="hover:text-indigo-400 transition-colors cursor-pointer text-left">Privacy Policy</button></li>
+              <li><button onClick={() => setActiveLegalDoc("terms")} className="hover:text-indigo-400 transition-colors cursor-pointer text-left">Terms & Conditions</button></li>
+              <li><button onClick={() => setActiveLegalDoc("refund")} className="hover:text-indigo-400 transition-colors cursor-pointer text-left">Refund Policy</button></li>
+              <li><button onClick={() => setActiveLegalDoc("cancellation")} className="hover:text-indigo-400 transition-colors cursor-pointer text-left">Cancellation Policy</button></li>
             </ul>
           </div>
 
@@ -1231,7 +1237,7 @@ export default function LandingPage({ onGetStarted, setActiveView }: LandingPage
 
         <div className="max-w-7xl mx-auto pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-[10px] text-gray-500 font-mono">
-            &copy; 2026 AIJobs Ltd. Built with precision for premium engineering teams. All rights reserved.
+            © 2024 The Flex Force Services. All Rights Reserved.
           </p>
           <div className="flex space-x-4 text-xs text-gray-400">
             <button onClick={onGetStarted} className="hover:text-blue-400 cursor-pointer">Twitter</button>
@@ -1415,6 +1421,11 @@ export default function LandingPage({ onGetStarted, setActiveView }: LandingPage
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Dynamic Legal Document Viewer */}
+      {activeLegalDoc && (
+        <LegalModal docType={activeLegalDoc} onClose={() => setActiveLegalDoc(null)} />
+      )}
     </div>
   );
 }

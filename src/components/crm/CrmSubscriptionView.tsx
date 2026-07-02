@@ -24,7 +24,7 @@ export default function CrmSubscriptionView({
     setSelectedPlan(plan);
     setIsUpgrading(true);
 
-    // Simulate Razorpay gateway loading
+    // Simulate PayU gateway loading
     setTimeout(async () => {
       try {
         await setDoc(doc(db, "consultancies", profile.userId), {
@@ -34,7 +34,7 @@ export default function CrmSubscriptionView({
           revenue: profile.revenue || 350000
         }, { merge: true });
 
-        alert(`💰 Razorpay payment sandbox SUCCESS! Upgraded account to ${plan.toUpperCase()} subscription!`);
+        alert(`💰 PayU payment sandbox SUCCESS! Upgraded account to ${plan.toUpperCase()} subscription!`);
         setIsUpgrading(false);
         onRefresh();
       } catch (err) {
@@ -115,7 +115,7 @@ export default function CrmSubscriptionView({
 
         <div className="flex items-center gap-1.5 font-mono text-xs text-gray-400">
           <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          <span>Complies with Razorpay Merchant standards</span>
+          <span>Complies with PayU Merchant standards</span>
         </div>
       </div>
 
@@ -126,7 +126,7 @@ export default function CrmSubscriptionView({
           <div className="absolute inset-0 bg-neutral-950/80 backdrop-blur-sm z-50 rounded-3xl flex flex-col items-center justify-center space-y-3">
             <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin" />
             <p className="text-xs text-indigo-400 font-mono font-bold uppercase tracking-wider animate-pulse">
-              Contacting Razorpay Sandbox Gateway...
+              Contacting PayU Sandbox Gateway...
             </p>
           </div>
         )}

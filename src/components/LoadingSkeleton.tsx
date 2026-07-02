@@ -1,4 +1,5 @@
 import { Search, Loader2 } from "lucide-react";
+import logoImg from "../assets/images/aijobs_logo_1783014982325.jpg";
 
 export function SkeletonPulse() {
   return <div className="animate-pulse bg-gray-800 rounded" />;
@@ -79,9 +80,23 @@ export function JobCardSkeleton() {
 
 export function GeneralLoading() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[400px] text-gray-400 font-mono gap-3">
-      <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-      <span className="text-sm tracking-wide animate-pulse">Synchronizing Interface Matrix...</span>
+    <div className="flex flex-col items-center justify-center min-h-[400px] text-gray-400 font-mono gap-4">
+      <div className="relative flex items-center justify-center">
+        {/* Glowing aura */}
+        <div className="absolute inset-0 w-16 h-16 rounded-xl bg-blue-500/10 blur-xl animate-pulse" />
+        
+        {/* Logo Image */}
+        <img
+          src={logoImg}
+          alt="Loading..."
+          referrerPolicy="no-referrer"
+          className="w-16 h-16 rounded-xl object-cover border border-white/10 shadow-[0_0_15px_rgba(59,130,246,0.25)] animate-pulse"
+        />
+        
+        {/* Little loader spinner overlay around it */}
+        <div className="absolute -inset-1.5 rounded-2xl border border-dashed border-blue-500/40 animate-[spin_10s_linear_infinite]" />
+      </div>
+      <span className="text-xs tracking-wider uppercase text-gray-500 font-bold animate-pulse">Synchronizing Interface Matrix...</span>
     </div>
   );
 }

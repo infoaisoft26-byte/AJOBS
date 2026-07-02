@@ -35,6 +35,10 @@ export default function SubscriptionBillingHub({
   // Navigation active sub-tab
   const [activeSubTab, setActiveSubTab] = useState<"plans" | "history" | "coupons" | "referral" | "profile">("plans");
   
+  // PayU Checkout Overlay States
+  const [payuModalData, setPayuModalData] = useState<any | null>(null);
+  const [selectedPayuTab, setSelectedPayuTab] = useState<string>("upi");
+  
   // Subscription parameters state
   const [currentPlan, setCurrentPlan] = useState<string>("Free");
   const [subscriptionStatus, setSubscriptionStatus] = useState<"active" | "inactive">("inactive");
@@ -440,7 +444,7 @@ export default function SubscriptionBillingHub({
   };
 
   // Secure checkout process
-  const handleInitiateRazorpayCheckout = async (plan: any) => {
+  const handleInitiatePayUCheckout = async (plan: any) => {
     if (plan.basePrice === 0) return;
     setIsUpgrading(true);
     setCheckoutError("");
@@ -449,239 +453,178 @@ export default function SubscriptionBillingHub({
     const priceDetails = calculatePricingForPlan(plan.basePrice);
 
     try {
-      // 1. Ping Express backend to initialize payment order
-      const res = await fetch("/api/razorpay-initiate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          planName: plan.name,
-          price: priceDetails.finalBillAmount,
-          userId
-        })
+      // 1. Ping Express backend to initialize secure PayU payload
+      const res = await fetch("/api/payu-initiate", {
+         method: "POST",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({
+           planName: plan.name,
+           price: priceDetails.finalBillAmount,
+           userId,
+           firstname: userName,
+           email: billingProfile.contactEmail || "finance@aijobs.platform",
+           phone: billingProfile.contactPhone || "9999999999",
+           udf1: "subscription"
+         })
       });
 
       if (!res.ok) {
-        throw new Error("Unable to establish communication with payment gateway.");
+        throw new Error("Unable to establish communication with PayU gateway.");
       }
 
       const orderData = await res.json();
       
-      // 2. Load Razorpay script dynamically & Open options modal
-      const options = {
-        key: orderData.key,
-        amount: orderData.amount,
-        currency: orderData.currency,
-        name: "AIJobs Premium recruitment",
-        description: orderData.description,
-        image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=80&q=80",
-        order_id: orderData.orderId,
-        handler: async (response: any) => {
-          // 3. Verify Payment on Backend Express proxy server
-          try {
-            const verifyRes = await fetch("/api/razorpay-verify", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                razorpayPaymentId: response.razorpay_payment_id || "pay_sandbox_1",
-                orderId: orderData.orderId,
-                planName: plan.name,
-                userId
-              })
-            });
-
-            const verifyResult = await verifyRes.json();
-            
-            if (verifyResult.success) {
-              // 4. Update state parameters in Firestore
-              const expiresDate = new Date();
-              if (billingCycle === "yearly") expiresDate.setFullYear(expiresDate.getFullYear() + 1);
-              else if (billingCycle === "quarterly") expiresDate.setMonth(expiresDate.getMonth() + 3);
-              else expiresDate.setMonth(expiresDate.getMonth() + 1);
-
-              const subData = {
-                userId,
-                planName: plan.name,
-                status: "active",
-                expiresAt: expiresDate.toISOString(),
-                createdAt: new Date().toISOString(),
-                cycle: billingCycle,
-                billingAddress: billingProfile.billingAddress,
-                gstNumber: billingProfile.gstNumber
-              };
-
-              // Save Subscription
-              await setDoc(doc(db, "subscriptions", userId), subData);
-
-              // Update the Profile's Plan
-              const colName = userRole === "consultancy" ? "consultancies" : "companies";
-              await setDoc(doc(db, colName, userId), {
-                pricingPlan: plan.name,
-                subscriptionStatus: "active"
-              }, { merge: true });
-
-              // Save transaction entry (invoice details)
-              const invoiceId = "INV-" + Math.floor(100000 + Math.random() * 900000);
-              const txnRecord = {
-                id: verifyResult.transactionId || "pay_verified_" + Math.random().toString(36).substr(2, 9).toUpperCase(),
-                userId,
-                userName,
-                userEmail: billingProfile.contactEmail,
-                planName: plan.name,
-                amount: priceDetails.netBasePrice,
-                gstAmount: priceDetails.gstAmount,
-                discountAmount: priceDetails.voucherDiscount + priceDetails.cycleDiscount,
-                totalPaid: priceDetails.finalBillAmount,
-                currency: "INR",
-                status: "SUCCESS",
-                couponCode: appliedCoupon?.code || "",
-                gateway: "Razorpay",
-                invoiceNumber: invoiceId,
-                createdAt: new Date().toISOString()
-              };
-
-              await setDoc(doc(db, "payments", txnRecord.id), txnRecord);
-
-              // Trigger dispatch push telemetry on Express
-              await fetch("/api/send-notification", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  title: "Plan Upgraded Successfully!",
-                  message: `Your corporate portal has been upgraded to ${plan.name} Plan (${billingCycle.toUpperCase()}).`,
-                  type: "PUSH",
-                  userId
-                })
-              });
-
-              // Also write to user notifications list in Firestore
-              const notifId = "notif_" + Math.random().toString(36).substr(2, 9);
-              await setDoc(doc(db, "notifications", notifId), {
-                id: notifId,
-                userId,
-                title: "💳 Payment Successful & Subscription Activated",
-                message: `Invoice ${invoiceId} has been generated. Your ${plan.name} capabilities are ready. Renewal date: ${expiresDate.toLocaleDateString()}.`,
-                read: false,
-                createdAt: new Date().toISOString()
-              });
-
-              // Sync details
-              setCurrentPlan(plan.name);
-              setSubscriptionStatus("active");
-              setExpiresAt(expiresDate.toISOString());
-              setSuccessTxnDetails(txnRecord);
-              fetchTransactionsList();
-              onRefresh();
-            } else {
-              setCheckoutError("Signature check verification failed on the server.");
-            }
-          } catch (verifyErr: any) {
-            console.error(verifyErr);
-            setCheckoutError(verifyErr.message || "Payment verification failed.");
-          } finally {
-            setIsUpgrading(false);
-          }
-        },
-        prefill: {
-          name: userName,
-          email: billingProfile.contactEmail,
-          contact: billingProfile.contactPhone
-        },
-        theme: {
-          color: "#4f46e5"
-        }
-      };
-
-      // Simulated sandbox handler wrapper if Razorpay script can't run inside sandboxed iframe
-      const rzpInstance = new (window as any).Razorpay(options);
-      rzpInstance.open();
+      // 2. Open interactive high-fidelity PayU Secure Sandbox overlay
+      setPayuModalData({
+        ...orderData,
+        plan,
+        priceDetails
+      });
+      setIsUpgrading(false);
 
     } catch (err: any) {
-      console.warn("Falling back to internal high-fidelity Razorpay sandbox simulation:", err.message);
-      
-      // Elegant sandbox fallback execution
-      setTimeout(async () => {
-        try {
-          const expiresDate = new Date();
-          if (billingCycle === "yearly") expiresDate.setFullYear(expiresDate.getFullYear() + 1);
-          else if (billingCycle === "quarterly") expiresDate.setMonth(expiresDate.getMonth() + 3);
-          else expiresDate.setMonth(expiresDate.getMonth() + 1);
+      console.warn("Unable to initiate online PayU checkout:", err.message);
+      setCheckoutError(err.message || "Failed to contact PayU checkout gateway.");
+      setIsUpgrading(false);
+    }
+  };
 
-          const subData = {
-            userId,
-            planName: plan.name,
-            status: "active",
-            expiresAt: expiresDate.toISOString(),
-            createdAt: new Date().toISOString(),
-            cycle: billingCycle,
-            billingAddress: billingProfile.billingAddress,
-            gstNumber: billingProfile.gstNumber
-          };
+  // Complete/Confirm the interactive PayU Checkout Flow
+  const handleCompletePayUPayment = async (status: "success" | "failed" | "canceled") => {
+    if (!payuModalData) return;
+    
+    setIsUpgrading(true);
+    setCheckoutError("");
 
-          // Update DB
-          await setDoc(doc(db, "subscriptions", userId), subData);
+    const { plan, priceDetails, key, txnid, amount, productinfo, firstname, email, udf1, hash } = payuModalData;
 
-          const colName = userRole === "consultancy" ? "consultancies" : "companies";
-          await setDoc(doc(db, colName, userId), {
-            pricingPlan: plan.name,
-            subscriptionStatus: "active"
-          }, { merge: true });
+    try {
+      if (status === "canceled") {
+        setCheckoutError("Payment process canceled by user.");
+        setPayuModalData(null);
+        setIsUpgrading(false);
+        return;
+      }
 
-          const invoiceId = "INV-" + Math.floor(100000 + Math.random() * 900000);
-          const txnRecord = {
-            id: "pay_verified_sb_" + Math.random().toString(36).substr(2, 9).toUpperCase(),
-            userId,
-            userName,
-            userEmail: billingProfile.contactEmail,
-            planName: plan.name,
-            amount: priceDetails.netBasePrice,
-            gstAmount: priceDetails.gstAmount,
-            discountAmount: priceDetails.voucherDiscount + priceDetails.cycleDiscount,
-            totalPaid: priceDetails.finalBillAmount,
-            currency: "INR",
-            status: "SUCCESS",
-            couponCode: appliedCoupon?.code || "",
-            gateway: "Razorpay" as const,
-            invoiceNumber: invoiceId,
-            createdAt: new Date().toISOString()
-          };
+      if (status === "failed") {
+        setCheckoutError("Transaction declined by issuing bank/issuer.");
+        setPayuModalData(null);
+        setIsUpgrading(false);
+        return;
+      }
 
-          await setDoc(doc(db, "payments", txnRecord.id), txnRecord);
+      // Verify transaction integrity with the server postback signature validation
+      const verifyRes = await fetch("/api/payu-verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "success",
+          txnid,
+          amount,
+          productinfo,
+          firstname,
+          email,
+          udf1,
+          hash,
+          userId,
+          planName: plan.name
+        })
+      });
 
-          // Server notification dispatch
-          await fetch("/api/send-notification", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              title: "Plan Upgraded Successfully!",
-              message: `Your corporate portal has been upgraded to ${plan.name} Plan (${billingCycle.toUpperCase()}).`,
-              type: "PUSH",
-              userId
-            })
-          });
+      if (!verifyRes.ok) {
+        throw new Error("PayU webhook checksum validation failed.");
+      }
 
-          // Write to user notifications list in Firestore
-          const notifId = "notif_" + Math.random().toString(36).substr(2, 9);
-          await setDoc(doc(db, "notifications", notifId), {
-            id: notifId,
-            userId,
-            title: "💳 Payment Successful & Subscription Activated",
-            message: `Invoice ${invoiceId} has been generated. Your ${plan.name} capabilities are ready. Renewal date: ${expiresDate.toLocaleDateString()}.`,
-            read: false,
-            createdAt: new Date().toISOString()
-          });
+      const verifyResult = await verifyRes.json();
 
-          setCurrentPlan(plan.name);
-          setSubscriptionStatus("active");
-          setExpiresAt(expiresDate.toISOString());
-          setSuccessTxnDetails(txnRecord);
-          fetchTransactionsList();
-          onRefresh();
-        } catch (simErr) {
-          console.error(simErr);
-        } finally {
-          setIsUpgrading(false);
-        }
-      }, 1500);
+      if (verifyResult.success) {
+        // Activate pricing and billing structures in Firestore
+        const expiresDate = new Date();
+        if (billingCycle === "yearly") expiresDate.setFullYear(expiresDate.getFullYear() + 1);
+        else if (billingCycle === "quarterly") expiresDate.setMonth(expiresDate.getMonth() + 3);
+        else expiresDate.setMonth(expiresDate.getMonth() + 1);
+
+        const subData = {
+          userId,
+          planName: plan.name,
+          status: "active",
+          expiresAt: expiresDate.toISOString(),
+          createdAt: new Date().toISOString(),
+          cycle: billingCycle,
+          billingAddress: billingProfile.billingAddress,
+          gstNumber: billingProfile.gstNumber
+        };
+
+        // Save Subscription
+        await setDoc(doc(db, "subscriptions", userId), subData);
+
+        // Update company/consultancy profiles
+        const colName = userRole === "consultancy" ? "consultancies" : "companies";
+        await setDoc(doc(db, colName, userId), {
+          pricingPlan: plan.name,
+          subscriptionStatus: "active"
+        }, { merge: true });
+
+        // Save payment ledger logs
+        const invoiceId = "INV-" + Math.floor(100000 + Math.random() * 900000);
+        const txnRecord = {
+          id: txnid || "pay_payu_" + Math.random().toString(36).substr(2, 9).toUpperCase(),
+          userId,
+          userName,
+          userEmail: billingProfile.contactEmail || email,
+          planName: plan.name,
+          amount: priceDetails.netBasePrice,
+          gstAmount: priceDetails.gstAmount,
+          discountAmount: priceDetails.voucherDiscount + priceDetails.cycleDiscount,
+          totalPaid: priceDetails.finalBillAmount,
+          currency: "INR",
+          status: "SUCCESS",
+          couponCode: appliedCoupon?.code || "",
+          gateway: "PayU",
+          invoiceNumber: invoiceId,
+          createdAt: new Date().toISOString()
+        };
+
+        await setDoc(doc(db, "payments", txnRecord.id), txnRecord);
+
+        // Dispatch notifications
+        await fetch("/api/send-notification", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: "Plan Upgraded Successfully!",
+            message: `Your corporate portal has been upgraded to ${plan.name} Plan (${billingCycle.toUpperCase()}).`,
+            type: "PUSH",
+            userId
+          })
+        });
+
+        const notifId = "notif_" + Math.random().toString(36).substr(2, 9);
+        await setDoc(doc(db, "notifications", notifId), {
+          id: notifId,
+          userId,
+          title: "💳 Payment Successful & Subscription Activated",
+          message: `Invoice ${invoiceId} has been generated. Your ${plan.name} capabilities are ready. Renewal date: ${expiresDate.toLocaleDateString()}.`,
+          read: false,
+          createdAt: new Date().toISOString()
+        });
+
+        // Sync local states
+        setCurrentPlan(plan.name);
+        setSubscriptionStatus("active");
+        setExpiresAt(expiresDate.toISOString());
+        setSuccessTxnDetails(txnRecord);
+        setPayuModalData(null);
+        fetchTransactionsList();
+        onRefresh();
+      } else {
+        setCheckoutError("Checksum matching failed. Check secure parameters.");
+      }
+    } catch (err: any) {
+      console.error("PayU checkout verification error:", err);
+      setCheckoutError(err.message || "Unable to parse and register PayU logs.");
+    } finally {
+      setIsUpgrading(false);
     }
   };
 
@@ -827,7 +770,7 @@ export default function SubscriptionBillingHub({
                   <div className="absolute inset-0 bg-neutral-950/80 backdrop-blur-sm z-50 rounded-3xl flex flex-col items-center justify-center space-y-3">
                     <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin" />
                     <p className="text-xs text-indigo-400 font-mono font-bold uppercase tracking-wider animate-pulse">
-                      Contacting Razorpay Secure Sandbox...
+                      Contacting PayU Secure Gateway...
                     </p>
                   </div>
                 )}
@@ -893,7 +836,7 @@ export default function SubscriptionBillingHub({
 
                       {/* Upgrade trigger button */}
                       <button
-                        onClick={() => handleInitiateRazorpayCheckout(pl)}
+                        onClick={() => handleInitiatePayUCheckout(pl)}
                         disabled={isCurrent}
                         className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                           isCurrent 
@@ -1378,6 +1321,272 @@ export default function SubscriptionBillingHub({
             </div>
           )}
         </motion.div>
+      </AnimatePresence>
+
+      {/* PayU Secure Sandbox Interactive Checkout Overlay */}
+      <AnimatePresence>
+        {payuModalData && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-neutral-950/90 backdrop-blur-md z-[9999] flex items-center justify-center p-4 overflow-y-auto"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-neutral-900 border border-white/10 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row text-xs text-gray-300"
+            >
+              {/* Left Column: Transaction Details Summary */}
+              <div className="w-full md:w-5/12 bg-neutral-950 p-6 flex flex-col justify-between border-b md:border-b-0 md:border-r border-white/5 space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-indigo-400 font-mono font-bold text-xs">
+                    <span className="bg-indigo-600 text-white font-black px-2 py-1 rounded">PayU</span>
+                    <span>SECURE CHECKOUT</span>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <div className="text-[10px] text-gray-400 uppercase tracking-wider font-mono">Plan Upgrade</div>
+                    <div className="text-base font-extrabold text-white">{payuModalData.plan.name} Tier</div>
+                    <div className="text-[10px] text-gray-500 font-mono uppercase">Cycle: {billingCycle}</div>
+                  </div>
+
+                  <div className="border-t border-white/5 pt-4 space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Net Plan Price</span>
+                      <span className="font-mono text-white">₹{payuModalData.priceDetails.netBasePrice.toLocaleString()}</span>
+                    </div>
+                    {payuModalData.priceDetails.voucherDiscount + payuModalData.priceDetails.cycleDiscount > 0 && (
+                      <div className="flex justify-between text-emerald-400">
+                        <span>Voucher & Cycle Disc</span>
+                        <span className="font-mono">-₹{(payuModalData.priceDetails.voucherDiscount + payuModalData.priceDetails.cycleDiscount).toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Integrated GST (18%)</span>
+                      <span className="font-mono text-white">₹{payuModalData.priceDetails.gstAmount.toLocaleString()}</span>
+                    </div>
+                    <div className="border-t border-white/5 pt-2 flex justify-between items-baseline">
+                      <span className="font-extrabold text-white text-sm">TOTAL AMOUNT</span>
+                      <span className="font-mono font-black text-indigo-400 text-lg">₹{parseFloat(payuModalData.amount).toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-4 border-t border-white/5">
+                  <div className="space-y-1 text-[9px] font-mono text-gray-500">
+                    <div>Txn ID: {payuModalData.txnid}</div>
+                    <div>Key: {payuModalData.key.substring(0, 10)}...</div>
+                    <div>Hash: {payuModalData.hash.substring(0, 15)}...</div>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-1.5 rounded-lg border border-emerald-500/20">
+                    <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                    <span>256-bit Secure PCI-DSS Transaction</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Payment Instruments Selector */}
+              <div className="w-full md:w-7/12 p-6 flex flex-col justify-between space-y-6">
+                <div className="space-y-4">
+                  <h4 className="text-white font-extrabold text-sm uppercase tracking-wide">Select Payment Mode</h4>
+
+                  {/* Payment Instrument Tabs */}
+                  <div className="grid grid-cols-5 gap-1 bg-white/5 p-1 rounded-xl border border-white/5">
+                    {[
+                      { id: "upi", label: "UPI" },
+                      { id: "card", label: "Card" },
+                      { id: "netbanking", label: "Net" },
+                      { id: "wallet", label: "Wallet" },
+                      { id: "emi", label: "EMI" }
+                    ].map((tab) => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setSelectedPayuTab(tab.id)}
+                        className={`py-1.5 rounded-lg text-[9px] font-bold cursor-pointer transition-all ${
+                          selectedPayuTab === tab.id 
+                            ? "bg-indigo-600 text-white" 
+                            : "text-gray-400 hover:text-white"
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Selected Tab Form Panel */}
+                  <div className="min-h-[160px] bg-white/5 p-4 rounded-2xl border border-white/5 flex flex-col justify-center">
+                    
+                    {/* UPI Panel */}
+                    {selectedPayuTab === "upi" && (
+                      <div className="space-y-3">
+                        <p className="text-[10px] text-gray-400">Pay securely via any Virtual Private Address (VPA) / UPI ID:</p>
+                        <input 
+                          type="text" 
+                          placeholder="e.g. mobile@okaxis, account@upi"
+                          defaultValue={`${userId.substring(0, 8)}@payu`}
+                          className="w-full bg-neutral-950 border border-white/10 rounded-xl px-3 py-2 text-white font-mono placeholder-gray-500 focus:border-indigo-500 outline-none"
+                        />
+                        <div className="flex gap-2 justify-center pt-2">
+                          {["Google Pay", "PhonePe", "Paytm", "BHIM"].map(brand => (
+                            <span key={brand} className="px-2 py-1 bg-white/5 border border-white/5 rounded text-[8px] font-mono font-bold uppercase text-gray-400">
+                              {brand}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Card Panel */}
+                    {selectedPayuTab === "card" && (
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-gray-400 uppercase">Cardholder Full Name</label>
+                          <input 
+                            type="text" 
+                            defaultValue={userName}
+                            className="w-full bg-neutral-950 border border-white/10 rounded-xl px-3 py-1.5 text-white outline-none" 
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-gray-400 uppercase">Card Number</label>
+                          <div className="relative">
+                            <input 
+                              type="text" 
+                              placeholder="4111 2222 3333 4444"
+                              maxLength={19}
+                              defaultValue="4111 2222 3333 4444"
+                              className="w-full bg-neutral-950 border border-white/10 rounded-xl pl-9 pr-3 py-1.5 text-white font-mono outline-none" 
+                            />
+                            <CreditCard className="w-4 h-4 text-gray-500 absolute left-3 top-2" />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-gray-400 uppercase">Expiry (MM/YY)</label>
+                            <input 
+                              type="text" 
+                              placeholder="12/29" 
+                              maxLength={5}
+                              defaultValue="12/29"
+                              className="w-full bg-neutral-950 border border-white/10 rounded-xl px-3 py-1.5 text-white font-mono text-center outline-none" 
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-gray-400 uppercase">CVV / CVC Code</label>
+                            <input 
+                              type="password" 
+                              placeholder="***" 
+                              maxLength={3}
+                              defaultValue="999"
+                              className="w-full bg-neutral-950 border border-white/10 rounded-xl px-3 py-1.5 text-white font-mono text-center outline-none" 
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Net Banking */}
+                    {selectedPayuTab === "netbanking" && (
+                      <div className="space-y-3">
+                        <p className="text-[10px] text-gray-400">Select your retail/corporate banking institution:</p>
+                        <select className="w-full bg-neutral-950 border border-white/10 rounded-xl p-2.5 text-white focus:border-indigo-500 outline-none">
+                          <option>State Bank of India (SBI)</option>
+                          <option>HDFC Bank Ltd</option>
+                          <option>ICICI Corporate Banking</option>
+                          <option>Axis Retail Banking</option>
+                          <option>Kotak Mahindra Bank</option>
+                          <option>Punjab National Bank</option>
+                        </select>
+                        <p className="text-[8px] text-gray-500">You will be redirected to the secure bank portal to authorize this payment mandate.</p>
+                      </div>
+                    )}
+
+                    {/* Wallets */}
+                    {selectedPayuTab === "wallet" && (
+                      <div className="space-y-3">
+                        <p className="text-[10px] text-gray-400">Authenticate through linked wallet services:</p>
+                        <div className="grid grid-cols-2 gap-2 text-left">
+                          {["Paytm Premium", "PhonePe Wallet", "Amazon Pay", "MobiKwik Secure"].map((wName) => (
+                            <button 
+                              key={wName}
+                              type="button"
+                              className="p-2.5 bg-neutral-950 hover:bg-neutral-900 border border-white/10 rounded-xl flex items-center gap-2 cursor-pointer transition-all"
+                            >
+                              <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0" />
+                              <span className="text-[10px] text-white">{wName}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* EMI */}
+                    {selectedPayuTab === "emi" && (
+                      <div className="space-y-3">
+                        <p className="text-[10px] text-gray-400">Easy Monthly Installments (Credit/Debit Card EMI):</p>
+                        <div className="space-y-2">
+                          <select className="w-full bg-neutral-950 border border-white/10 rounded-xl p-2 text-white outline-none">
+                            <option>HDFC Credit Card EMI</option>
+                            <option>ICICI Bank Card EMI</option>
+                            <option>SBI Card Installments</option>
+                          </select>
+                          <div className="grid grid-cols-3 gap-1.5 text-[8px] font-mono text-center">
+                            <div className="p-1 bg-white/5 border border-white/5 rounded">
+                              <div className="font-bold text-white">3 Months</div>
+                              <div className="text-gray-500">@ 12% p.a.</div>
+                            </div>
+                            <div className="p-1 bg-white/5 border border-white/5 rounded">
+                              <div className="font-bold text-white">6 Months</div>
+                              <div className="text-gray-500">@ 13% p.a.</div>
+                            </div>
+                            <div className="p-1 bg-white/5 border border-white/5 rounded">
+                              <div className="font-bold text-white">12 Months</div>
+                              <div className="text-gray-500">@ 15% p.a.</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
+                </div>
+
+                {/* Secure Gateway Controls */}
+                <div className="space-y-2.5">
+                  <button
+                    type="button"
+                    onClick={() => handleCompletePayUPayment("success")}
+                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer text-xs uppercase tracking-wider"
+                  >
+                    <span>Complete Secure Payment (PayU)</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+
+                  <div className="grid grid-cols-2 gap-3 text-[10px]">
+                    <button
+                      type="button"
+                      onClick={() => handleCompletePayUPayment("failed")}
+                      className="py-2.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 font-bold rounded-xl transition-all cursor-pointer"
+                    >
+                      Simulate Fail
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCompletePayUPayment("canceled")}
+                      className="py-2.5 bg-neutral-950 hover:bg-neutral-800 border border-white/10 text-gray-400 font-bold rounded-xl transition-all cursor-pointer"
+                    >
+                      Cancel Checkout
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
     </div>

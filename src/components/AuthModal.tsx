@@ -1,19 +1,23 @@
 import { useState, useEffect, useRef } from "react";
+import logoImg from "../assets/images/aijobs_logo_1783014982325.jpg";
 import { 
   X, User, Shield, Briefcase, Mail, Lock, UserPlus, Sparkles, 
   Building2, Phone, Key, ArrowLeft, Send, CheckCircle2, AlertCircle,
   HelpCircle, Eye, EyeOff, ShieldCheck
 } from "lucide-react";
-import { auth, db } from "../firebase";
+import { auth, db, isFirebaseConfigured, firebaseConfigError } from "../firebase";
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   updateProfile,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   RecaptchaVerifier,
   signInWithPhoneNumber,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  signInAnonymously
 } from "firebase/auth";
 import { doc, setDoc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { UserProfile } from "../types";
@@ -25,7 +29,7 @@ interface AuthModalProps {
   initialMode?: "signin" | "signup";
 }
 
-type AuthMode = "signin" | "signup" | "forgot-password" | "complete-profile";
+type AuthMode = "signin" | "signup" | "forgot-password" | "complete-profile" | "phone-otp";
 
 const COUNTRY_CODES = [
   { code: "+91", label: "🇮🇳 India (+91)" },
@@ -82,29 +86,72 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
     };
   }, []);
 
+  // Listen for Redirect results on mount
+  useEffect(() => {
+    const checkRedirectResult = async () => {
+      try {
+        console.log("Checking for Google Auth redirect result...");
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+          console.log("Google redirect sign-in succeeded! User:", result.user);
+          setSuccess("Authenticated with Google (via Redirect) successfully!");
+          await handlePostAuth(result.user);
+        }
+      } catch (err: any) {
+        console.error("Error retrieving Google redirect sign-in result:", err);
+        setError(translateError(err));
+      }
+    };
+
+    if (isFirebaseConfigured) {
+      checkRedirectResult();
+    }
+  }, []);
+
   const validateEmailFormat = (emailStr: string) => {
     return /\S+@\S+\.\S+/.test(emailStr);
+  };
+
+  const validatePasswordStrength = (pwd: string): { isValid: boolean; message: string } => {
+    if (pwd.length < 6) {
+      return { isValid: false, message: "Password must be at least 6 characters long." };
+    }
+    if (!/[A-Za-z]/.test(pwd)) {
+      return { isValid: false, message: "Password must contain at least one letter." };
+    }
+    if (!/\d/.test(pwd)) {
+      return { isValid: false, message: "Password must contain at least one number." };
+    }
+    return { isValid: true, message: "" };
   };
 
   const translateError = (err: any): string => {
     console.error("Auth process error details:", err);
     if (!err) return "An unknown error occurred during authentication.";
+
+    if (err.message && !err.code) {
+      if (err.message.includes("Email already exists")) return "Email already exists";
+      if (err.message.includes("Phone already exists")) return "Phone already exists";
+      if (err.message.includes("passwords do not match")) return "Passwords do not match";
+      if (err.message.includes("Please specify your")) return err.message;
+    }
+
     if (err.code) {
       switch (err.code) {
         case "auth/email-already-in-use":
           return "Email already exists";
         case "auth/invalid-email":
-          return "Invalid Email";
+          return "Invalid Email format";
         case "auth/weak-password":
-          return "Password must be at least 6 characters";
+          return "Password must be at least 6 characters long with at least one letter and one number.";
         case "auth/operation-not-allowed":
           return "Email/Password accounts are not enabled on Firebase console.";
         case "auth/user-disabled":
           return "This user account has been disabled.";
         case "auth/user-not-found":
-          return "No user found with this email.";
         case "auth/wrong-password":
-          return "Incorrect password. Please try again.";
+        case "auth/invalid-credential":
+          return "Wrong Password";
         case "auth/invalid-verification-code":
           return "Invalid OTP";
         case "auth/code-expired":
@@ -115,6 +162,8 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
           return "SMS quota exceeded. Please try again later.";
         case "auth/too-many-requests":
           return "Too Many Requests. Please wait and try again later.";
+        case "auth/network-request-failed":
+          return "Network Error. Please check your internet connection.";
         case "auth/internal-error":
           return "Internal authentication error. Please verify your input fields or network connection.";
         default:
@@ -127,8 +176,8 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
   // Post-authentication logic (checks Firestore profile and roles)
   const handlePostAuth = async (fbUser: any) => {
     try {
-      console.log("Loading user profile for authenticated user UID:", fbUser.uid);
-      const userProfile = await getOrCreateUserProfile(fbUser);
+      console.log("Loading user profile for authenticated user UID:", fbUser.uid, "with role preference:", role);
+      const userProfile = await getOrCreateUserProfile(fbUser, role);
       console.log("UserProfile loaded successfully:", userProfile);
       onAuthSuccess(userProfile);
       onClose();
@@ -146,11 +195,55 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
-      console.log("Initiating Google Login...");
-      const result = await signInWithPopup(auth, provider);
-      console.log("Google Login Authenticated successfully!", result.user);
-      setSuccess("Authenticated with Google successfully!");
-      await handlePostAuth(result.user);
+      console.log("Initiating Google Popup Sign-In...");
+      
+      try {
+        const result = await signInWithPopup(auth, provider);
+        console.log("Google Popup Login Authenticated successfully!", result.user);
+        setSuccess("Authenticated with Google successfully!");
+        await handlePostAuth(result.user);
+      } catch (popupErr: any) {
+        console.warn("Google popup login failed/blocked, falling back to Redirect:", popupErr);
+        
+        // Check for common popup blocked / iframe issues
+        if (
+          popupErr.code === "auth/popup-blocked" ||
+          popupErr.code === "auth/iframe-auth-html-error" ||
+          popupErr.message?.includes("iframe") ||
+          popupErr.message?.includes("popup")
+        ) {
+          console.log("Triggering Google Redirect Sign-In as resilient fallback...");
+          await signInWithRedirect(auth, provider);
+        } else {
+          throw popupErr;
+        }
+      }
+    } catch (err: any) {
+      setError(translateError(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Anonymous Guest Login
+  const handleGuestLogin = async () => {
+    setError("");
+    setSuccess("");
+    setLoading(true);
+    try {
+      console.log("Initiating Anonymous Guest Login...");
+      const result = await signInAnonymously(auth);
+      console.log("Anonymous Guest Authenticated successfully!", result.user);
+      setSuccess("Authenticated as Guest successfully!");
+      
+      const fbUser = result.user;
+      try {
+        await updateProfile(fbUser, { displayName: "Guest Candidate" });
+      } catch (profErr) {
+        console.warn("Failed to update profile display name for anonymous user:", profErr);
+      }
+      
+      await handlePostAuth(fbUser);
     } catch (err: any) {
       setError(translateError(err));
     } finally {
@@ -320,9 +413,17 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
-      return;
+    if (mode === "signup") {
+      const passwordCheck = validatePasswordStrength(password);
+      if (!passwordCheck.isValid) {
+        setError(passwordCheck.message);
+        return;
+      }
+    } else {
+      if (password.length < 6) {
+        setError("Password must be at least 6 characters");
+        return;
+      }
     }
 
     setLoading(true);
@@ -476,7 +577,12 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
         {/* Header */}
         <div className="relative z-10 p-5 border-b border-white/10 flex items-center justify-between bg-black/40">
           <div className="flex items-center space-x-2">
-            <Sparkles className="w-5 h-5 text-indigo-400 animate-pulse" />
+            <img
+              src={logoImg}
+              alt="AIJobs"
+              referrerPolicy="no-referrer"
+              className="w-5 h-5 rounded object-cover shadow-sm shadow-indigo-500/25"
+            />
             <span className="font-display font-extrabold text-lg tracking-tight">
               {mode === "signin" && "Welcome back to AIJobs"}
               {mode === "signup" && "Create your Workspace"}
@@ -497,6 +603,17 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
         {/* Content Container */}
         <div className="relative z-10 overflow-y-auto p-6 space-y-5 flex-1">
           {/* Notifications */}
+          {!isFirebaseConfigured && (
+            <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-xs text-yellow-300 flex items-start space-x-2.5 animate-in slide-in-from-top-2">
+              <AlertCircle className="w-4.5 h-4.5 mt-0.5 shrink-0 text-yellow-400" />
+              <div className="space-y-1">
+                <span className="font-bold text-yellow-200 block">Firebase Configuration Warning</span>
+                <p className="text-gray-300 leading-relaxed text-[11px]">
+                  {firebaseConfigError || "Firebase configuration is incomplete. Standard authentication may fail. Use Quick Demo portals to test the live workspace securely."}
+                </p>
+              </div>
+            </div>
+          )}
           {error && (
             <div className="p-3 bg-red-500/15 border border-red-500/30 rounded-xl text-xs text-red-300 flex items-start space-x-2 animate-in slide-in-from-top-2">
               <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-red-400" />
@@ -682,8 +799,9 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
                   className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                     authMethod === "email" ? "bg-white/10 text-white shadow-sm border border-white/5" : "text-gray-400 hover:text-white"
                   }`}
+                  id="tab-email-auth"
                 >
-                  Email Credentials
+                  {mode === "signin" ? "Email Login" : "Register using Email"}
                 </button>
                 <button
                   type="button"
@@ -696,8 +814,9 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
                   className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                     authMethod === "phone" ? "bg-white/10 text-white shadow-sm border border-white/5" : "text-gray-400 hover:text-white"
                   }`}
+                  id="tab-phone-auth"
                 >
-                  Mobile OTP SMS
+                  {mode === "signin" ? "Mobile OTP Login" : "Register using Mobile"}
                 </button>
               </div>
 
@@ -975,23 +1094,33 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
               {/* Alternative Auth Dividers */}
               <div className="relative flex items-center justify-center py-2">
                 <span className="absolute px-3 bg-[#050508] text-[10px] text-gray-500 uppercase tracking-widest font-mono">
-                  Or Social Access
+                  Or Alternative Access
                 </span>
                 <div className="w-full h-[1px] bg-white/10"></div>
               </div>
 
-              {/* Social/Google Button */}
-              <div className="grid grid-cols-1 gap-3">
+              {/* Social/Google & Guest Buttons */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
                   onClick={handleGoogleLogin}
                   disabled={loading}
                   className="py-2.5 px-3 border border-white/10 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 transition-all cursor-pointer text-white disabled:opacity-50 w-full"
                   id="google-login-btn"
                 >
-                  <svg className="w-4 h-4 text-red-400" viewBox="0 0 24 24" fill="currentColor">
+                  <svg className="w-4 h-4 text-red-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.866-3.577-7.866-8s3.536-8 7.866-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1c-6.075 0-11 4.925-11 11s4.925 11 11 11c6.34 0 10.564-4.437 10.564-10.715 0-.724-.078-1.282-.172-1.71h-10.392z" />
                   </svg>
-                  <span>Continue with Google Sign-In</span>
+                  <span>Google Sign-In</span>
+                </button>
+
+                <button
+                  onClick={handleGuestLogin}
+                  disabled={loading}
+                  className="py-2.5 px-3 border border-white/10 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 transition-all cursor-pointer text-white disabled:opacity-50 w-full"
+                  id="guest-login-btn"
+                >
+                  <User className="w-4 h-4 text-indigo-400 shrink-0" />
+                  <span>Anonymous Guest</span>
                 </button>
               </div>
             </div>

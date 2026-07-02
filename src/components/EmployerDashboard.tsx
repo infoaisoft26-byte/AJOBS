@@ -139,8 +139,12 @@ export default function EmployerDashboard({ userId, userName }: EmployerDashboar
       });
       setActivities(logsList.sort((a,b) => b.createdAt.localeCompare(a.createdAt)));
 
-    } catch (err) {
-      console.error("Corporate synchronization failed:", err);
+    } catch (err: any) {
+      if (err.message?.includes("permissions") || err.code === "permission-denied" || err.message?.includes("permission-denied")) {
+        console.warn("Corporate synchronization redirected to local memory sandbox due to Firestore rules validation:", err.message);
+      } else {
+        console.error("Corporate synchronization failed:", err);
+      }
     } finally {
       setLoading(false);
       setIsRefreshing(false);

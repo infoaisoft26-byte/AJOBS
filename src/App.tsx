@@ -1,11 +1,13 @@
 import { useState, useEffect, lazy, Suspense } from "react";
-import { auth, db } from "./firebase";
+import { auth, db, isFirebaseConfigured } from "./firebase";
+import { AlertTriangle } from "lucide-react";
 import { doc, getDoc } from "firebase/firestore";
 import { UserProfile } from "./types";
 import { initializeUserCollectionsAndDocs, getOrCreateUserProfile } from "./services/dbInitService";
 import Header from "./components/Header";
 import AuthModal from "./components/AuthModal";
 import LandingPage from "./components/LandingPage";
+import SplashScreen from "./components/SplashScreen";
 
 // Lazy-loaded dashboard components for smaller initial bundle sizes
 const CandidateDashboard = lazy(() => import("./components/CandidateDashboard"));
@@ -30,6 +32,7 @@ function MainAppContent() {
   const [authMode, setAuthMode] = useState<"signin" | "signup" | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [authLoading, setAuthLoading] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
   const { showToast } = useToast();
 
   // On client startup: initialize telemetry, service worker, and env validation
@@ -207,6 +210,13 @@ function MainAppContent() {
         toggleTheme={toggleTheme}
       />
 
+      {!isFirebaseConfigured && (
+        <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-2 text-center text-xs text-yellow-300 flex items-center justify-center gap-2 z-20">
+          <AlertTriangle className="w-4 h-4 text-yellow-400" />
+          <span>Firebase connection is inactive (empty or placeholder keys). Please update configuration under settings. Standard authentication is run in sandbox demo mode.</span>
+        </div>
+      )}
+
       {/* Main Panel Routing with Lazy Loading & Skeletons */}
       <main className="flex-1 w-full relative">
         <ErrorBoundary>
@@ -271,6 +281,11 @@ function MainAppContent() {
 
       {/* Cookie Consent Banner */}
       <CookieConsent />
+
+      {/* Premium SplashScreen Overlay */}
+      {showSplash && (
+        <SplashScreen onComplete={() => setShowSplash(false)} />
+      )}
     </div>
   );
 }
