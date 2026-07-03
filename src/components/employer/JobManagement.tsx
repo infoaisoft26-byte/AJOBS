@@ -6,7 +6,8 @@ import {
 } from "lucide-react";
 import { CompanyJob } from "./EmployerTypes";
 import { doc, setDoc, deleteDoc } from "firebase/firestore";
-import { db } from "../../firebase";
+import { db, auth } from "../../firebase";
+import { useToast } from "../GlobalToast";
 
 interface JobManagementProps {
   userId: string;
@@ -21,6 +22,7 @@ export default function JobManagement({
   jobs,
   onRefresh
 }: JobManagementProps) {
+  const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<"All" | "Published" | "Draft" | "Archived" | "Closed" | "Paused">("All");
 
@@ -109,8 +111,22 @@ export default function JobManagement({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim()) {
+      showToast("Job title cannot be empty.", "warning");
+      return;
+    }
+
+    // Verify authentication state before writing
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      const errMsg = "Authentication error: Active user session required to post or update a job vacancy.";
+      console.error(errMsg);
+      showToast(errMsg, "error");
+      return;
+    }
+
     setIsSubmitting(true);
+    console.log("[JobManagement] Submitting job vacancy details...", { userId, title });
 
     try {
       const jobId = editingJob ? editingJob.id : `cjob_${Math.random().toString(36).substr(2, 9)}`;
@@ -198,12 +214,18 @@ export default function JobManagement({
         createdAt: new Date().toISOString()
       });
 
-      alert(`Job "${title}" saved successfully!`);
+      showToast(`🎉 Job vacancy "${title}" saved successfully!`, "success");
       setIsFormOpen(false);
       onRefresh();
-    } catch (err) {
-      console.error(err);
-      alert("Error saving vacancy.");
+    } catch (err: any) {
+      const fbErrorCode = err?.code || "unknown-firestore-error";
+      const fbErrorMessage = err?.message || String(err);
+      console.error("[JobManagement] Error creating/updating job vacancy:", {
+        code: fbErrorCode,
+        message: fbErrorMessage,
+        fullError: err
+      });
+      showToast(`Error saving job vacancy (${fbErrorCode}): ${fbErrorMessage}`, "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -212,7 +234,17 @@ export default function JobManagement({
   const handleDelete = async (jobId: string, jobTitle: string) => {
     if (!confirm(`Are you absolutely sure you want to delete the job vacancy for: "${jobTitle}"? This is irreversible.`)) return;
 
+    // Verify authentication state before writing
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      const errMsg = "Authentication error: Active user session required to delete a job.";
+      console.error(errMsg);
+      showToast(errMsg, "error");
+      return;
+    }
+
     try {
+      console.log("[JobManagement] Initiating job deletion...", { jobId, jobTitle });
       await deleteDoc(doc(db, "company_jobs", jobId));
       await deleteDoc(doc(db, "jobs", jobId));
 
@@ -226,15 +258,32 @@ export default function JobManagement({
         createdAt: new Date().toISOString()
       });
 
-      alert("Job deleted successfully.");
+      showToast(`Vacancy "${jobTitle}" has been permanently deleted.`, "success");
       onRefresh();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      const fbErrorCode = err?.code || "unknown-firestore-error";
+      const fbErrorMessage = err?.message || String(err);
+      console.error("[JobManagement] Error deleting job vacancy:", {
+        code: fbErrorCode,
+        message: fbErrorMessage,
+        fullError: err
+      });
+      showToast(`Error deleting job vacancy (${fbErrorCode}): ${fbErrorMessage}`, "error");
     }
   };
 
   const handleDuplicate = async (job: CompanyJob) => {
+    // Verify authentication state before writing
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      const errMsg = "Authentication error: Active user session required to duplicate a job.";
+      console.error(errMsg);
+      showToast(errMsg, "error");
+      return;
+    }
+
     try {
+      console.log("[JobManagement] Initiating job duplication...", { sourceJobId: job.id });
       const jobId = `cjob_${Math.random().toString(36).substr(2, 9)}`;
       const duplicatedJob: CompanyJob = {
         ...job,
@@ -266,15 +315,32 @@ export default function JobManagement({
         openings: duplicatedJob.openPositions
       });
 
-      alert(`Duplicated vacancy to draft: "${duplicatedJob.title}"!`);
+      showToast(`🎉 Duplicated vacancy as draft: "${duplicatedJob.title}"!`, "success");
       onRefresh();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      const fbErrorCode = err?.code || "unknown-firestore-error";
+      const fbErrorMessage = err?.message || String(err);
+      console.error("[JobManagement] Error duplicating job vacancy:", {
+        code: fbErrorCode,
+        message: fbErrorMessage,
+        fullError: err
+      });
+      showToast(`Error duplicating job vacancy (${fbErrorCode}): ${fbErrorMessage}`, "error");
     }
   };
 
   const handleToggleStatus = async (job: CompanyJob, newStatus: "Published" | "Closed" | "Archived" | "Draft" | "Paused") => {
+    // Verify authentication state before writing
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      const errMsg = "Authentication error: Active user session required to toggle hiring status.";
+      console.error(errMsg);
+      showToast(errMsg, "error");
+      return;
+    }
+
     try {
+      console.log("[JobManagement] Initiating status toggle...", { jobId: job.id, newStatus });
       await setDoc(doc(db, "company_jobs", job.id), {
         ...job,
         status: newStatus
@@ -294,10 +360,17 @@ export default function JobManagement({
         status: standardStatus
       }, { merge: true });
 
-      alert(`Hiring status adjusted to: ${newStatus.toUpperCase()}`);
+      showToast(`Hiring status adjusted to: ${newStatus.toUpperCase()}`, "success");
       onRefresh();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      const fbErrorCode = err?.code || "unknown-firestore-error";
+      const fbErrorMessage = err?.message || String(err);
+      console.error("[JobManagement] Error toggling job status:", {
+        code: fbErrorCode,
+        message: fbErrorMessage,
+        fullError: err
+      });
+      showToast(`Error toggling job status (${fbErrorCode}): ${fbErrorMessage}`, "error");
     }
   };
 

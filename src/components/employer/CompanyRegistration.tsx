@@ -4,8 +4,9 @@ import {
   Linkedin, Users, Save, ShieldCheck, FileCheck, CheckCircle
 } from "lucide-react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "../../firebase";
+import { db, auth } from "../../firebase";
 import { CompanyProfile } from "./EmployerTypes";
+import { useToast } from "../GlobalToast";
 
 interface CompanyRegistrationProps {
   userId: string;
@@ -20,6 +21,7 @@ export default function CompanyRegistration({
   companyProfile,
   onRefresh
 }: CompanyRegistrationProps) {
+  const { showToast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
 
   // Form states
@@ -77,8 +79,29 @@ export default function CompanyRegistration({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!companyName.trim()) return;
+    if (!companyName.trim()) {
+      showToast("Company name cannot be blank.", "warning");
+      return;
+    }
+    
+    // Ensure user session is active and valid before continuing
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      const errMsg = "Authentication error: No active user session detected.";
+      console.error(errMsg, { userId });
+      showToast(errMsg + " Please log in and try again.", "error");
+      return;
+    }
+    
+    if (currentUser.uid !== userId) {
+      const errMsg = `Authorization validation mismatch. Current active user UID: ${currentUser.uid}, but trying to update company profile ID: ${userId}`;
+      console.error(errMsg);
+      showToast("Verification failed: You are not authorized to save details for this company profile.", "error");
+      return;
+    }
+
     setIsSaving(true);
+    console.log("[CompanyRegistration] Initiating profile registration write...", { userId, companyName });
 
     try {
       const locationsArray = locations.split(",").map(loc => loc.trim()).filter(Boolean);
@@ -102,7 +125,8 @@ export default function CompanyRegistration({
         linkedinUrl,
         companySize,
         isVerified: true, // Auto verify in sandbox
-        createdAt: companyProfile?.createdAt || new Date().toISOString()
+        createdAt: companyProfile?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
 
       // Save to 'companies' collection
@@ -113,14 +137,22 @@ export default function CompanyRegistration({
         userId,
         companyName,
         industry,
-        size: companySize
+        size: companySize,
+        updatedAt: new Date().toISOString()
       });
 
-      alert("🎉 Company corporate credentials verified & synchronized in database!");
+      console.log("[CompanyRegistration] Corporate profile write successful!");
+      showToast("🎉 Company corporate credentials verified & synchronized in database!", "success");
       onRefresh();
-    } catch (err) {
-      console.error(err);
-      alert("Error saving registration details. See logs.");
+    } catch (err: any) {
+      const fbErrorCode = err?.code || "unknown-firestore-error";
+      const fbErrorMessage = err?.message || String(err);
+      console.error("[CompanyRegistration] Firestore write error:", {
+        code: fbErrorCode,
+        message: fbErrorMessage,
+        fullError: err
+      });
+      showToast(`Error saving company credentials (${fbErrorCode}): ${fbErrorMessage}`, "error");
     } finally {
       setIsSaving(false);
     }
