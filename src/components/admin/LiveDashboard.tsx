@@ -2,8 +2,11 @@ import { useState, useEffect } from "react";
 import { 
   Users, Building, Briefcase, FileText, Calendar, Award, 
   TrendingUp, IndianRupee, Clock, ShieldAlert, Sparkles, RefreshCw,
-  Layers, ArrowUpRight, ShieldCheck, HelpCircle, CheckCircle, Flame
+  Layers, ArrowUpRight, ShieldCheck, HelpCircle, CheckCircle, Flame,
+  BellRing, UserCheck, AlertCircle, Trash2, ArrowRight
 } from "lucide-react";
+import { collection, getDocs, query, limit, orderBy, where } from "firebase/firestore";
+import { db } from "../../firebase";
 import { LiveStats, SystemAuditLog } from "./AdminTypes";
 
 interface LiveDashboardProps {
@@ -11,13 +14,19 @@ interface LiveDashboardProps {
   recentLogs: SystemAuditLog[];
   onRefresh: () => void;
   onNavigateToTab: (tab: string) => void;
+  adminLevel?: string;
+  adminStatus?: string;
+  userId?: string;
 }
 
 export default function LiveDashboard({
   stats,
   recentLogs,
   onRefresh,
-  onNavigateToTab
+  onNavigateToTab,
+  adminLevel,
+  adminStatus,
+  userId
 }: LiveDashboardProps) {
   const [hoveredMetric, setHoveredMetric] = useState<string | null>(null);
   const [activeChartPoint, setActiveChartPoint] = useState<number | null>(null);
@@ -25,14 +34,117 @@ export default function LiveDashboard({
   const [insights, setInsights] = useState<any>(null);
   const [isInsightsLoading, setIsInsightsLoading] = useState<boolean>(false);
 
+  // Core administrative sub-panel databases
+  const [panelTab, setPanelTab] = useState<"applications" | "leads" | "recruiters" | "approvals" | "jobs" | "notifications">("applications");
+  const [panelData, setPanelData] = useState<{
+    applications: any[];
+    leads: any[];
+    recruiters: any[];
+    approvals: any[];
+    jobs: any[];
+    notifications: any[];
+  }>({
+    applications: [],
+    leads: [],
+    recruiters: [],
+    approvals: [],
+    jobs: [],
+    notifications: []
+  });
+  const [isPanelLoading, setIsPanelLoading] = useState(false);
+
+  const fetchPanelData = async () => {
+    setIsPanelLoading(true);
+    try {
+      // 1. Fetch Latest Applications
+      const appsSnap = await getDocs(query(collection(db, "applications"), orderBy("createdAt", "desc"), limit(5)));
+      const apps: any[] = [];
+      appsSnap.forEach(d => {
+        apps.push({ id: d.id, ...d.data() });
+      });
+
+      // 2. Fetch Leads
+      const leadsSnap = await getDocs(query(collection(db, "leads"), orderBy("createdAt", "desc"), limit(5)));
+      const leadsList: any[] = [];
+      leadsSnap.forEach(d => {
+        leadsList.push({ id: d.id, ...d.data() });
+      });
+
+      // 3. Fetch Recruiters
+      const usersSnap = await getDocs(query(collection(db, "users"), where("role", "==", "employer"), limit(5)));
+      const recruitersList: any[] = [];
+      usersSnap.forEach(d => {
+        recruitersList.push({ id: d.id, ...d.data() });
+      });
+
+      // 4. Fetch Approvals
+      const approvalsSnap = await getDocs(collection(db, "approvals"), limit(5));
+      const approvalsList: any[] = [];
+      approvalsSnap.forEach(d => {
+        approvalsList.push({ id: d.id, ...d.data() });
+      });
+
+      // 5. Fetch Pending Jobs
+      const jobsSnap = await getDocs(query(collection(db, "jobs"), where("status", "==", "Pending Approval"), limit(5)));
+      const pendingJobs: any[] = [];
+      jobsSnap.forEach(d => {
+        pendingJobs.push({ id: d.id, ...d.data() });
+      });
+
+      // 6. Fetch Notifications
+      const notifsSnap = await getDocs(query(collection(db, "notifications"), limit(5)));
+      const notificationsList: any[] = [];
+      notifsSnap.forEach(d => {
+        notificationsList.push({ id: d.id, ...d.data() });
+      });
+
+      setPanelData({
+        applications: apps,
+        leads: leadsList,
+        recruiters: recruitersList,
+        approvals: approvalsList,
+        jobs: pendingJobs,
+        notifications: notificationsList
+      });
+    } catch (err) {
+      console.error("Error fetching administrative panel ledgers:", err);
+    } finally {
+      setIsPanelLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPanelData();
+  }, [stats]);
+
   const fetchAiInsights = async () => {
     setIsInsightsLoading(true);
     try {
       const response = await fetch("/api/admin-platform-insights", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "x-user-id": userId || "anonymous",
+          "x-user-role": "admin",
+          "x-user-admin-level": adminLevel || "Auditor",
+          "x-user-admin-status": adminStatus || "active"
+        },
         body: JSON.stringify({ stats })
       });
+
+      if (response.status === 403) {
+        const errData = await response.json();
+        setInsights({
+          talentSupplyInsight: "❌ ABAC BLOCKED: Realtime advisory streams are encrypted for non-Super Admins.",
+          conversionForecast: `Policy Reason: ${errData.reason || "Access restricted by ABAC configuration."}`,
+          revenueAdvice: "To view premium intelligence indices, please navigate to the 'ABAC Security Guard' tab and set Level: 'Super Admin' & Status: 'active'.",
+          marketTrend: "Standard and Auditor accounts lack high-confidentiality pipeline clearance.",
+          healthVerdict: "SECURE BLOCKED"
+        });
+        setIsInsightsLoading(false);
+        return;
+      }
+
       if (response.ok) {
         const data = await response.json();
         setInsights(data);
@@ -534,6 +646,265 @@ export default function LiveDashboard({
           </div>
         </div>
 
+      </div>
+
+      {/* Operational Ledgers Panel (Latest Applications, Leads, Recruiters, Pending Approvals, Pending Jobs, Notifications) */}
+      <div className="glass p-6 rounded-3xl border border-white/5 space-y-6" id="admin-operational-ledgers">
+        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
+          <div>
+            <h4 className="text-xs font-bold text-white uppercase font-mono tracking-wider flex items-center gap-1.5">
+              <Layers className="w-4 h-4 text-indigo-400" />
+              <span>Enterprise Operational Ledgers</span>
+            </h4>
+            <p className="text-[10px] text-gray-400 mt-0.5">Real-time sync of candidates, client applications, recruiters, and pending verifications.</p>
+          </div>
+
+          {/* Sub-tabs buttons */}
+          <div className="flex flex-wrap gap-1 bg-white/5 p-1 rounded-xl border border-white/5 text-[10px] font-mono">
+            {[
+              { id: "applications", label: "Latest Applications" },
+              { id: "leads", label: "Hot Leads" },
+              { id: "recruiters", label: "Registered Recruiters" },
+              { id: "approvals", label: "Pending Approvals" },
+              { id: "jobs", label: "Pending Jobs" },
+              { id: "notifications", label: "System Notifications" }
+            ].map(t => (
+              <button
+                key={t.id}
+                onClick={() => setPanelTab(t.id as any)}
+                className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                  panelTab === t.id ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-white"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Dynamic List Render based on selected panelTab */}
+        <div className="bg-neutral-950/20 border border-white/5 rounded-2xl p-4 min-h-[220px] flex flex-col justify-between">
+          {isPanelLoading ? (
+            <div className="flex flex-col items-center justify-center py-16 space-y-2">
+              <span className="text-[10px] text-indigo-400 animate-pulse font-mono uppercase tracking-widest">Querying operational tables...</span>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              {panelTab === "applications" && (
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-white/5 text-gray-500 font-mono">
+                      <th className="pb-2">Candidate</th>
+                      <th className="pb-2">Position Applied</th>
+                      <th className="pb-2">Company</th>
+                      <th className="pb-2">Status</th>
+                      <th className="pb-2 text-right">Applied At</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5 text-gray-300">
+                    {panelData.applications.length > 0 ? (
+                      panelData.applications.map(app => (
+                        <tr key={app.id} className="hover:bg-white/5">
+                          <td className="py-2.5 font-bold text-white">{app.candidateName || "Candidate user"}</td>
+                          <td className="py-2.5 text-indigo-300">{app.jobTitle}</td>
+                          <td className="py-2.5">{app.companyName}</td>
+                          <td className="py-2.5">
+                            <span className="px-2 py-0.5 rounded text-[8px] font-mono font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+                              {app.status || "Applied"}
+                            </span>
+                          </td>
+                          <td className="py-2.5 text-right font-mono text-gray-500">
+                            {app.createdAt ? new Date(app.createdAt).toLocaleDateString() : "Today"}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="text-center py-12 text-xs text-gray-500 italic">No job applications recorded yet.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
+
+              {panelTab === "leads" && (
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-white/5 text-gray-500 font-mono">
+                      <th className="pb-2">Lead Name</th>
+                      <th className="pb-2">Target Position</th>
+                      <th className="pb-2">Email Clearance</th>
+                      <th className="pb-2">Phone Identifier</th>
+                      <th className="pb-2 text-right">Captured At</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5 text-gray-300">
+                    {panelData.leads.length > 0 ? (
+                      panelData.leads.map(lead => (
+                        <tr key={lead.id} className="hover:bg-white/5">
+                          <td className="py-2.5 font-bold text-white">{lead.candidateName}</td>
+                          <td className="py-2.5 text-pink-300">{lead.jobTitle}</td>
+                          <td className="py-2.5 font-mono text-gray-400">{lead.candidateEmail}</td>
+                          <td className="py-2.5 font-mono text-gray-400">{lead.candidatePhone || "N/A"}</td>
+                          <td className="py-2.5 text-right font-mono text-gray-500">
+                            {lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : "Just Now"}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="text-center py-12 text-xs text-gray-500 italic">No hot leads active currently.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
+
+              {panelTab === "recruiters" && (
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-white/5 text-gray-500 font-mono">
+                      <th className="pb-2">Hiring Manager</th>
+                      <th className="pb-2">Email Domain</th>
+                      <th className="pb-2">Corporation</th>
+                      <th className="pb-2">Phone Contact</th>
+                      <th className="pb-2 text-right">SLA Target</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5 text-gray-300">
+                    {panelData.recruiters.length > 0 ? (
+                      panelData.recruiters.map(rec => (
+                        <tr key={rec.id} className="hover:bg-white/5">
+                          <td className="py-2.5 font-bold text-white">{rec.name || "Enterprise Recruiter"}</td>
+                          <td className="py-2.5 font-mono text-gray-400">{rec.email}</td>
+                          <td className="py-2.5 text-purple-300">{rec.companyName || "AI Sourced Inc."}</td>
+                          <td className="py-2.5 font-mono text-gray-400">{rec.phone || "N/A"}</td>
+                          <td className="py-2.5 text-right text-emerald-400 font-bold uppercase font-mono">
+                            Active SLA
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="text-center py-12 text-xs text-gray-500 italic">No registered enterprise recruiters found.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
+
+              {panelTab === "approvals" && (
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-white/5 text-gray-500 font-mono">
+                      <th className="pb-2">Sourcing Type</th>
+                      <th className="pb-2">Authorization Details</th>
+                      <th className="pb-2">Sourcing Requestor</th>
+                      <th className="pb-2">Status</th>
+                      <th className="pb-2 text-right">Moderation Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5 text-gray-300">
+                    {panelData.approvals.length > 0 ? (
+                      panelData.approvals.map(appr => (
+                        <tr key={appr.id} className="hover:bg-white/5">
+                          <td className="py-2.5 font-mono text-indigo-400 uppercase font-black">{appr.type || "CORPORATE"}</td>
+                          <td className="py-2.5 text-white font-bold">{appr.title || appr.description}</td>
+                          <td className="py-2.5 text-gray-400">{appr.requestedBy || "Consultancy Desk"}</td>
+                          <td className="py-2.5">
+                            <span className="px-2 py-0.5 rounded text-[8px] font-mono font-bold uppercase bg-amber-500/10 text-amber-400 border border-amber-500/25">
+                              {appr.status}
+                            </span>
+                          </td>
+                          <td className="py-2.5 text-right">
+                            <button onClick={() => onNavigateToTab("approvals")} className="text-[10px] text-indigo-400 hover:text-white font-bold inline-flex items-center gap-1 cursor-pointer">
+                              <span>Verify</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="text-center py-12 text-xs text-gray-500 italic">No pending client approvals registered.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
+
+              {panelTab === "jobs" && (
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-white/5 text-gray-500 font-mono">
+                      <th className="pb-2">Pending Vacancy Title</th>
+                      <th className="pb-2">Company</th>
+                      <th className="pb-2">Workplace</th>
+                      <th className="pb-2">Compensation Offer</th>
+                      <th className="pb-2 text-right">Moderation Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5 text-gray-300">
+                    {panelData.jobs.length > 0 ? (
+                      panelData.jobs.map(job => (
+                        <tr key={job.id} className="hover:bg-white/5">
+                          <td className="py-2.5 font-bold text-white">{job.title}</td>
+                          <td className="py-2.5 text-amber-400">{job.companyName}</td>
+                          <td className="py-2.5 text-gray-400">{job.location}</td>
+                          <td className="py-2.5 font-mono text-indigo-400">{job.salary}</td>
+                          <td className="py-2.5 text-right">
+                            <button onClick={() => onNavigateToTab("jobs")} className="text-[10px] text-indigo-400 hover:text-white font-bold inline-flex items-center gap-1 cursor-pointer">
+                              <span>Moderate</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="text-center py-12 text-xs text-gray-500 italic">No jobs awaiting review. All postings are Live!</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
+
+              {panelTab === "notifications" && (
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-white/5 text-gray-500 font-mono">
+                      <th className="pb-2">System Title</th>
+                      <th className="pb-2">Broadcast Message</th>
+                      <th className="pb-2">Category</th>
+                      <th className="pb-2 text-right">Action Path</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5 text-gray-300">
+                    {panelData.notifications.length > 0 ? (
+                      panelData.notifications.map(notif => (
+                        <tr key={notif.id} className="hover:bg-white/5">
+                          <td className="py-2.5 font-bold text-white">{notif.title}</td>
+                          <td className="py-2.5 text-gray-400">{notif.message}</td>
+                          <td className="py-2.5 font-mono text-purple-400">{notif.category || "BROADCAST"}</td>
+                          <td className="py-2.5 text-right">
+                            <button onClick={() => onNavigateToTab("notifications")} className="text-[10px] text-indigo-400 hover:text-white font-bold inline-flex items-center gap-1 cursor-pointer">
+                              <span>View Broadcasts</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={4} className="text-center py-12 text-xs text-gray-500 italic">No active system notifications or announcements.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Grid: Platform activity heatmap & live log feed */}

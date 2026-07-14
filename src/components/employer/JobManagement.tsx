@@ -8,6 +8,7 @@ import { CompanyJob } from "./EmployerTypes";
 import { doc, setDoc, deleteDoc } from "firebase/firestore";
 import { db, auth } from "../../firebase";
 import { useToast } from "../GlobalToast";
+import PostJobForm from "../PostJobForm";
 
 interface JobManagementProps {
   userId: string;
@@ -24,7 +25,7 @@ export default function JobManagement({
 }: JobManagementProps) {
   const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"All" | "Published" | "Draft" | "Archived" | "Closed" | "Paused">("All");
+  const [filterStatus, setFilterStatus] = useState<"All" | "Draft" | "Pending Approval" | "Approved" | "Live" | "Closed" | "Rejected">("All");
 
   // Form toggles
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -42,7 +43,7 @@ export default function JobManagement({
   const [benefits, setBenefits] = useState("Premium Health, Stock ESOPs, Macbook Pro");
   const [interviewProcess, setInterviewProcess] = useState("Technical Screening, Architecture Round, HR culture fit");
   const [openPositions, setOpenPositions] = useState(1);
-  const [status, setStatus] = useState<"Published" | "Draft" | "Paused" | "Closed" | "Archived">("Published");
+  const [status, setStatus] = useState<"Draft" | "Pending Approval" | "Approved" | "Live" | "Closed" | "Rejected">("Draft");
 
   // Extended ATS fields states
   const [consultancy, setConsultancy] = useState("");
@@ -70,7 +71,7 @@ export default function JobManagement({
     setBenefits("Premium Health, Stock ESOPs, Macbook Pro");
     setInterviewProcess("Technical Screening, Architecture Round, HR culture fit");
     setOpenPositions(1);
-    setStatus("Published");
+    setStatus("Draft");
     setConsultancy("");
     setIndustry("Software / IT");
     setCategory("Software Engineering");
@@ -166,15 +167,6 @@ export default function JobManagement({
       await setDoc(doc(db, "company_jobs", jobId), jobObj);
 
       // 2. Sync to standard 'jobs' collection for candidate accessibility
-      let standardStatus: "open" | "paused" | "closed" = "open";
-      if (jobObj.status === "Published") {
-        standardStatus = "open";
-      } else if (jobObj.status === "Paused") {
-        standardStatus = "paused";
-      } else {
-        standardStatus = "closed";
-      }
-
       await setDoc(doc(db, "jobs", jobId), {
         id: jobId,
         employerId: userId,
@@ -185,7 +177,7 @@ export default function JobManagement({
         type: jobObj.employmentType || "Full-time",
         salary: jobObj.salary,
         skillsRequired: jobObj.requiredSkills,
-        status: standardStatus,
+        status: jobObj.status,
         createdAt: jobObj.createdAt,
         department: jobObj.department,
         experience: jobObj.experience,
@@ -329,7 +321,7 @@ export default function JobManagement({
     }
   };
 
-  const handleToggleStatus = async (job: CompanyJob, newStatus: "Published" | "Closed" | "Archived" | "Draft" | "Paused") => {
+  const handleToggleStatus = async (job: CompanyJob, newStatus: "Draft" | "Pending Approval" | "Approved" | "Live" | "Closed" | "Rejected") => {
     // Verify authentication state before writing
     const currentUser = auth.currentUser;
     if (!currentUser) {
@@ -346,18 +338,8 @@ export default function JobManagement({
         status: newStatus
       }, { merge: true });
 
-      // Also sync standard boards status
-      let standardStatus: "open" | "paused" | "closed" = "open";
-      if (newStatus === "Published") {
-        standardStatus = "open";
-      } else if (newStatus === "Paused") {
-        standardStatus = "paused";
-      } else {
-        standardStatus = "closed";
-      }
-
       await setDoc(doc(db, "jobs", job.id), {
-        status: standardStatus
+        status: newStatus
       }, { merge: true });
 
       showToast(`Hiring status adjusted to: ${newStatus.toUpperCase()}`, "success");
@@ -420,12 +402,12 @@ export default function JobManagement({
           />
         </div>
 
-        <div className="flex gap-1 bg-white/5 p-1 rounded-xl border border-white/5">
-          {(["All", "Published", "Draft", "Closed", "Archived"] as const).map(st => (
+        <div className="flex flex-wrap gap-1 bg-white/5 p-1 rounded-xl border border-white/5">
+          {(["All", "Draft", "Pending Approval", "Approved", "Live", "Closed", "Rejected"] as const).map(st => (
             <button
               key={st}
               onClick={() => setFilterStatus(st)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
                 filterStatus === st 
                   ? "bg-indigo-600 text-white" 
                   : "text-gray-400 hover:text-white hover:bg-white/5"
@@ -453,9 +435,10 @@ export default function JobManagement({
                   </div>
 
                   <span className={`text-[9px] font-mono font-black uppercase px-2 py-0.5 rounded ${
-                    job.status === "Published" ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20" :
-                    job.status === "Draft" ? "bg-amber-500/15 text-amber-400 border border-amber-500/20" :
-                    job.status === "Paused" ? "bg-yellow-500/15 text-yellow-400 border border-yellow-500/20" :
+                    job.status === "Live" ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20" :
+                    job.status === "Pending Approval" ? "bg-amber-500/15 text-amber-400 border border-amber-500/20" :
+                    job.status === "Draft" ? "bg-blue-500/15 text-blue-400 border border-blue-500/20" :
+                    job.status === "Approved" ? "bg-purple-500/15 text-purple-400 border border-purple-500/20" :
                     job.status === "Closed" ? "bg-red-500/15 text-red-400 border border-red-500/20" :
                     "bg-gray-500/15 text-gray-400 border border-gray-500/20"
                   }`}>
@@ -514,52 +497,53 @@ export default function JobManagement({
                   <Copy className="w-3.5 h-3.5" />
                 </button>
 
-                {job.status !== "Published" && (
+                {job.status === "Draft" && (
                   <button
-                    onClick={() => handleToggleStatus(job, "Published")}
-                    className="flex-1 py-1.5 bg-emerald-600/10 hover:bg-emerald-600 text-emerald-400 hover:text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1"
+                    onClick={() => handleToggleStatus(job, "Pending Approval")}
+                    className="flex-1 py-1.5 bg-amber-600/10 hover:bg-amber-600 text-amber-400 hover:text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1"
                   >
                     <CheckCircle className="w-3 h-3" />
-                    <span>Publish</span>
+                    <span>Submit for Approval</span>
                   </button>
                 )}
 
-                {job.status === "Published" && (
-                  <div className="flex-1 flex gap-1">
-                    <button
-                      onClick={() => handleToggleStatus(job, "Paused")}
-                      className="flex-1 py-1.5 bg-yellow-600/10 hover:bg-yellow-600 text-yellow-400 hover:text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1"
-                    >
-                      <Pause className="w-3 h-3" />
-                      <span>Pause</span>
-                    </button>
-                    <button
-                      onClick={() => handleToggleStatus(job, "Closed")}
-                      className="flex-1 py-1.5 bg-red-600/10 hover:bg-red-600 text-red-400 hover:text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1"
-                    >
-                      <ToggleLeft className="w-3 h-3" />
-                      <span>Close</span>
-                    </button>
-                  </div>
+                {job.status === "Pending Approval" && (
+                  <button
+                    disabled
+                    className="flex-1 py-1.5 bg-white/5 text-gray-500 text-[10px] font-bold rounded-lg cursor-not-allowed flex items-center justify-center gap-1 border border-white/5"
+                  >
+                    <Clock className="w-3 h-3 text-amber-500 animate-pulse" />
+                    <span>Awaiting Admin Review</span>
+                  </button>
                 )}
 
-                {job.status === "Paused" && (
+                {job.status === "Approved" && (
                   <button
-                    onClick={() => handleToggleStatus(job, "Published")}
+                    onClick={() => handleToggleStatus(job, "Live")}
                     className="flex-1 py-1.5 bg-emerald-600/10 hover:bg-emerald-600 text-emerald-400 hover:text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1"
                   >
                     <Play className="w-3 h-3" />
-                    <span>Resume</span>
+                    <span>Go Live</span>
                   </button>
                 )}
 
-                {job.status !== "Archived" && (
+                {job.status === "Live" && (
                   <button
-                    onClick={() => handleToggleStatus(job, "Archived")}
-                    className="p-1.5 bg-white/5 hover:bg-gray-600 hover:text-white text-gray-400 rounded-lg transition-all cursor-pointer"
-                    title="Archive Vacancy"
+                    onClick={() => handleToggleStatus(job, "Closed")}
+                    className="flex-1 py-1.5 bg-red-600/10 hover:bg-red-600 text-red-400 hover:text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1"
                   >
-                    <Archive className="w-3.5 h-3.5" />
+                    <Pause className="w-3 h-3" />
+                    <span>Close Position</span>
+                  </button>
+                )}
+
+                {(job.status === "Closed" || job.status === "Rejected") && (
+                  <button
+                    onClick={() => handleToggleStatus(job, "Pending Approval")}
+                    className="flex-1 py-1.5 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Re-open Vacancy</span>
                   </button>
                 )}
 
@@ -582,14 +566,31 @@ export default function JobManagement({
       </div>
 
       {/* Interactive Create/Edit Dialog Drawer Overlay */}
-      {isFormOpen && (
+      {isFormOpen && !editingJob && (
+        <div className="fixed inset-0 bg-neutral-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-300">
+          <div className="w-full max-w-4xl max-h-[95vh] overflow-y-auto rounded-3xl">
+            <PostJobForm
+              userId={userId}
+              userRole="recruiter"
+              userName={companyName}
+              onJobPosted={(jobId) => {
+                setIsFormOpen(false);
+                onRefresh();
+              }}
+              onCancel={() => setIsFormOpen(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {isFormOpen && editingJob && (
         <div className="fixed inset-0 bg-neutral-950/80 backdrop-blur-sm z-50 flex justify-end animate-in fade-in duration-300">
           <div className="w-full max-w-lg bg-[#0a0a0f] border-l border-white/10 p-6 h-full overflow-y-auto space-y-6 flex flex-col justify-between">
             <div className="space-y-5">
               <div className="flex justify-between items-center border-b border-white/5 pb-3">
                 <h4 className="font-bold text-base text-white flex items-center gap-2">
                   <PlusCircle className="w-4 h-4 text-indigo-400" />
-                  <span>{editingJob ? "Edit Job Vacancy Profile" : "Create New Premium Vacancy"}</span>
+                  <span>Edit Job Vacancy Profile</span>
                 </h4>
                 <button
                   onClick={() => setIsFormOpen(false)}
@@ -755,11 +756,12 @@ export default function JobManagement({
                       onChange={e => setStatus(e.target.value as any)}
                       className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-1.5 text-white focus:outline-none"
                     >
-                      <option value="Published">Published (Live)</option>
                       <option value="Draft">Draft</option>
-                      <option value="Paused">Paused</option>
+                      <option value="Pending Approval">Pending Approval</option>
+                      <option value="Approved">Approved</option>
+                      <option value="Live">Live</option>
                       <option value="Closed">Closed</option>
-                      <option value="Archived">Archived</option>
+                      <option value="Rejected">Rejected</option>
                     </select>
                   </div>
                 </div>

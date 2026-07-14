@@ -141,6 +141,19 @@ export default function InterviewManagement({
         createdAt: new Date().toISOString()
       });
 
+      // 3. Trigger a 'Candidate Notification' for the interview in notifications collection
+      const notifId = "notif_" + Math.random().toString(36).substr(2, 9);
+      await setDoc(doc(db, "notifications", notifId), {
+        id: notifId,
+        userId: selectedApp.candidateId,
+        title: "Interview Scheduled 📅",
+        message: `Your interview for "${selectedApp.jobTitle}" has been scheduled. Type: ${type} on ${date} at ${time}.`,
+        event: "AI_INTERVIEW_SCHEDULED",
+        read: false,
+        type: "info",
+        createdAt: new Date().toISOString()
+      });
+
       alert(`🎉 Scheduled ${type} interview successfully!${googleEventId ? " Synced to Google Calendar." : ""}`);
       setIsFormOpen(false);
       setSyncToGCal(false);

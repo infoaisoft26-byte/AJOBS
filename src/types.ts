@@ -64,7 +64,7 @@ export interface JobPosting {
   type: string;
   salary: string;
   skillsRequired: string[];
-  status: "open" | "closed";
+  status: "Draft" | "Pending Approval" | "Approved" | "Live" | "Closed" | "Rejected";
   createdAt: string;
   
   // Step 1 - Job Management Module fields
@@ -77,6 +77,9 @@ export interface JobPosting {
   expiryDate?: string;
   industry?: string;
   workMode?: string;
+  responsibilities?: string;
+  createdBy?: string;
+  isFeatured?: boolean;
 }
 
 export interface JobApplication {
@@ -86,9 +89,26 @@ export interface JobApplication {
   candidateName: string;
   jobTitle: string;
   companyName: string;
-  status: "applied" | "interviewing" | "offered" | "rejected";
+  status: "Applied" | "Screening" | "Shortlisted" | "Interview Scheduled" | "Interview Completed" | "Selected" | "Offer Released" | "Joined" | "Rejected" | "Withdrawn";
   appliedAt: string;
   resumeScore?: number;
+}
+
+export interface Lead {
+  id: string;
+  candidateId: string;
+  candidateName: string;
+  email: string;
+  phone: string;
+  resume: string;
+  jobId: string;
+  jobTitle: string;
+  company: string;
+  recruiter: string;
+  consultancy: string;
+  currentStatus: "Applied" | "Screening" | "Shortlisted" | "Interview Scheduled" | "Interview Completed" | "Selected" | "Offer Released" | "Joined" | "Rejected" | "Withdrawn";
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface InterviewSession {

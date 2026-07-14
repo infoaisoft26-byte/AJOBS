@@ -34,7 +34,7 @@ export interface CompanyJob {
   benefits: string;
   interviewProcess: string[];
   openPositions: number;
-  status: "Published" | "Draft" | "Archived" | "Closed" | "Paused";
+  status: "Draft" | "Pending Approval" | "Approved" | "Live" | "Closed" | "Rejected";
   createdAt: string;
   department: string;
   consultancy?: string;

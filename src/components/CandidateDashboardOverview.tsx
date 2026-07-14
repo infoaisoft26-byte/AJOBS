@@ -109,8 +109,8 @@ export default function CandidateDashboardOverview({
             resumeQuality: resumeScore,
             interviewPerformance: interviewScore,
             profileCompletion,
-            skillsCount: (Array.isArray(profile.skills) ? profile.skills : (profile.skills?.technical || [])).length,
-            certificationsCount: (Array.isArray(profile.certifications) ? profile.certifications : (profile.certifications?.certifications || [])).length
+            skillsCount: profile ? (Array.isArray(profile.skills) ? profile.skills : (profile.skills?.technical || [])).length : 0,
+            certificationsCount: profile ? (Array.isArray(profile.certifications) ? profile.certifications : (profile.certifications?.certifications || [])).length : 0
           },
           updatedAt: new Date().toISOString()
         });

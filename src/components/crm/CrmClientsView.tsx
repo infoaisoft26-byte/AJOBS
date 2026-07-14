@@ -11,12 +11,16 @@ interface CrmClientsViewProps {
   clients: ClientModel[];
   onRefresh: () => void;
   userRole: "Admin" | "Manager" | "Recruiter" | "Viewer";
+  profile?: any;
+  userId?: string;
 }
 
 export default function CrmClientsView({
   clients,
   onRefresh,
-  userRole
+  userRole,
+  profile,
+  userId
 }: CrmClientsViewProps) {
   const [selectedClient, setSelectedClient] = useState<ClientModel | null>(null);
   const [isAdding, setIsAdding] = useState(false);
@@ -38,6 +42,17 @@ export default function CrmClientsView({
       alert("Role Permission Restriction: Viewers cannot create clients.");
       return;
     }
+
+    // ABAC Client Limit Policy Check
+    const plan = profile?.pricingPlan || "Free";
+    const currentClients = clients.length;
+    const limit = plan === "Free" ? 3 : plan === "Starter" ? 10 : Infinity;
+
+    if (currentClients >= limit) {
+      alert(`⚠️ ABAC Policy Restricton: Your agency's pricing plan (${plan}) restricts you to a maximum of ${limit} active client records in your database (Current total: ${currentClients}). Please upgrade your pricing plan tier using the ABAC Security Guard or the Billing section!`);
+      return;
+    }
+
     setCompanyName("");
     setIndustry("");
     setEmail("");
@@ -69,6 +84,18 @@ export default function CrmClientsView({
   const handleSaveClient = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isReadOnly) return;
+
+    // Double check ABAC Client limits before committing to Firestore
+    if (!isEditing) {
+      const plan = profile?.pricingPlan || "Free";
+      const currentClients = clients.length;
+      const limit = plan === "Free" ? 3 : plan === "Starter" ? 10 : Infinity;
+
+      if (currentClients >= limit) {
+        alert(`⚠️ ABAC Policy Restriction: Save blocked. Your ${plan} Plan limit of ${limit} clients is reached.`);
+        return;
+      }
+    }
 
     try {
       const clientId = isEditing && selectedClient 

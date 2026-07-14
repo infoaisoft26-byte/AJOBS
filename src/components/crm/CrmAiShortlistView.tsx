@@ -10,13 +10,17 @@ interface CrmAiShortlistViewProps {
   candidates: ConsultancyCandidateModel[];
   onSelectCandidate: (cand: ConsultancyCandidateModel) => void;
   onNavigateToTab: (tab: "candidates" | "pipeline" | "matching" | "interviews") => void;
+  profile?: any;
+  userId?: string;
 }
 
 export default function CrmAiShortlistView({
   jobs,
   candidates,
   onSelectCandidate,
-  onNavigateToTab
+  onNavigateToTab,
+  profile,
+  userId
 }: CrmAiShortlistViewProps) {
   const [selectedJob, setSelectedJob] = useState<ConsultancyJobModel | null>(jobs[0] || null);
   const [searchMode, setSearchMode] = useState<"job" | "natural">("job");
@@ -38,7 +42,13 @@ export default function CrmAiShortlistView({
     try {
       const response = await fetch("/api/consultancy-natural-search", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "x-user-id": userId || "anonymous",
+          "x-user-role": "consultancy",
+          "x-user-pricing-plan": profile?.pricingPlan || "Free",
+          "x-user-clients-count": String(profile?.clientsCount || 0)
+        },
         body: JSON.stringify({
           query: naturalQuery,
           candidates: candidates.map(c => ({
@@ -50,6 +60,13 @@ export default function CrmAiShortlistView({
           }))
         })
       });
+
+      if (response.status === 403) {
+        const errData = await response.json();
+        alert(`🔒 ABAC Access Denied: ${errData.reason || "Subscription limit restriction."}\n\nPlease visit the "ABAC Security Guard" tab to adjust your pricing plan!`);
+        setIsNaturalSearching(false);
+        return;
+      }
 
       if (response.ok) {
         const data = await response.json();

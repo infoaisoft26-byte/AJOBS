@@ -191,7 +191,12 @@ export default function CompanyDashboardOverview({
         <div className="lg:col-span-2 glass p-5 rounded-2xl border border-white/5 space-y-4">
           <div className="flex justify-between items-center border-b border-white/5 pb-2">
             <h4 className="text-xs font-bold text-white uppercase font-mono tracking-wider">Hiring Pipeline Analytics</h4>
-            <span className="text-[9px] text-gray-400 font-mono">Real-time candidate tracking</span>
+            <button
+              onClick={() => onNavigateToTab("performance")}
+              className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1 transition-all cursor-pointer"
+            >
+              <span>View Recharts Performance &rarr;</span>
+            </button>
           </div>
 
           <div className="space-y-4 pt-2">

@@ -6,8 +6,8 @@ import {
   Terminal, CreditCard, Globe, Bell, Briefcase, Brain, Flame,
   ShieldCheck, Lock, Layers, LogOut, ChevronLeft, ChevronRight, UserX
 } from "lucide-react";
-import { db } from "../firebase";
-import { collection, getDocs, doc, setDoc } from "firebase/firestore";
+import { db, auth } from "../firebase";
+import { collection, getDocs, doc, setDoc, getDoc } from "firebase/firestore";
 
 // Sub-components
 import { LiveStats, SystemAuditLog, SupportTicket, ApprovalRequest, CMSContent, EmailTemplate, AdminSystemSettings, PaymentTransaction } from "./admin/AdminTypes";
@@ -23,8 +23,13 @@ import SupportSystem from "./admin/SupportSystem";
 import NotificationCenter from "./admin/NotificationCenter";
 import SystemSettings from "./admin/SystemSettings";
 import AuditLogs from "./admin/AuditLogs";
+import AbacControlInspector from "./AbacControlInspector";
+import LeadManagement from "./LeadManagement";
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ userId, userName }: { userId?: string; userName?: string }) {
+  const currentUserId = userId || auth.currentUser?.uid || "system_admin_01";
+  const currentUserName = userName || "Super Admin Desk";
+
   // Navigation tabs state
   const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -43,6 +48,7 @@ export default function AdminDashboard() {
   const [paymentsList, setPaymentsList] = useState<PaymentTransaction[]>([]);
   const [auditLogsList, setAuditLogsList] = useState<SystemAuditLog[]>([]);
   const [globalConfig, setGlobalConfig] = useState<AdminSystemSettings | null>(null);
+  const [adminProfile, setAdminProfile] = useState<{ level: string; status: string }>({ level: "Super Admin", status: "active" });
 
   // Stats
   const [stats, setStats] = useState<LiveStats>({
@@ -64,11 +70,13 @@ export default function AdminDashboard() {
   });
 
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
   const fetchWorkspaceData = async () => {
     setLoading(true);
+    setError(null);
     try {
       // 1. Fetch Users
       const usersSnap = await getDocs(collection(db, "users"));
@@ -196,16 +204,52 @@ export default function AdminDashboard() {
         registrationsToday: 8
       });
 
-    } catch (err) {
+    } catch (err: any) {
       console.error("Workspace telemetry sync issue:", err);
+      setError(err?.message || "Failed to sync administrative workspace data");
     } finally {
       setLoading(false);
     }
   };
 
+  const syncAdminRoleFromFirestore = async () => {
+    try {
+      const adminSnap = await getDoc(doc(db, "admins", currentUserId));
+      if (adminSnap.exists()) {
+        const data = adminSnap.data();
+        const level = data.level || "Standard Admin";
+        const status = data.status || "active";
+        setAdminProfile({ level, status });
+        
+        if (status === "inactive") {
+          setActiveRole("Read Only");
+        } else if (level === "Super Admin") {
+          setActiveRole("Super Admin");
+        } else if (level === "Auditor") {
+          setActiveRole("Read Only");
+        } else {
+          setActiveRole("Moderator");
+        }
+      } else {
+        const defaultAdmin = {
+          uid: currentUserId,
+          name: currentUserName,
+          level: "Super Admin",
+          status: "active"
+        };
+        await setDoc(doc(db, "admins", currentUserId), defaultAdmin);
+        setAdminProfile({ level: "Super Admin", status: "active" });
+        setActiveRole("Super Admin");
+      }
+    } catch (err) {
+      console.error("Error reading admin attributes:", err);
+    }
+  };
+
   useEffect(() => {
     fetchWorkspaceData();
-  }, []);
+    syncAdminRoleFromFirestore();
+  }, [currentUserId]);
 
   const handleSeedMockDatabase = async () => {
     setSeeding(true);
@@ -251,6 +295,7 @@ export default function AdminDashboard() {
   const navigationItems = [
     { id: "dashboard", label: "Live Dashboard", icon: Layers, authorizedRoles: ["Super Admin", "Support Desk", "Finance Officer", "Moderator", "Read Only"] },
     { id: "users", label: "User Management", icon: Users, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
+    { id: "leads", label: "Lead Sourcing Desk", icon: Users, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "approvals", label: "Approval Center", icon: ShieldCheck, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "jobs", label: "Job Postings", icon: Briefcase, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "ai", label: "AI Control Center", icon: Brain, authorizedRoles: ["Super Admin", "Read Only"] },
@@ -258,6 +303,7 @@ export default function AdminDashboard() {
     { id: "cms", label: "Content (CMS)", icon: Globe, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "support", label: "Support Desk", icon: HelpCircle, authorizedRoles: ["Super Admin", "Support Desk", "Read Only"] },
     { id: "notifications", label: "Broadcasts", icon: Bell, authorizedRoles: ["Super Admin", "Read Only"] },
+    { id: "abac", label: "ABAC Security Guard", icon: ShieldAlert, authorizedRoles: ["Super Admin", "Support Desk", "Finance Officer", "Moderator", "Read Only"] },
     { id: "settings", label: "System Settings", icon: Settings, authorizedRoles: ["Super Admin", "Read Only"] },
     { id: "audit", label: "Audit Trails", icon: Terminal, authorizedRoles: ["Super Admin", "Finance Officer", "Read Only"] }
   ];
@@ -427,7 +473,21 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {loading ? (
+          {error ? (
+            <div className="p-8 max-w-lg mx-auto text-center space-y-4 glass rounded-2xl border border-red-500/20 my-12 bg-red-950/10 text-white" id="admin-dashboard-error">
+              <ShieldAlert className="w-12 h-12 text-red-400 mx-auto animate-bounce" />
+              <h3 className="font-bold text-white text-lg">Administrative Sync Error</h3>
+              <p className="text-xs text-gray-400">{error}</p>
+              <div className="flex justify-center space-x-4 pt-4">
+                <button 
+                  onClick={() => fetchWorkspaceData()}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white rounded-xl transition-all cursor-pointer"
+                >
+                  Retry Admin Sync
+                </button>
+              </div>
+            </div>
+          ) : loading ? (
             <div className="flex flex-col items-center justify-center py-44 space-y-3">
               <span className="text-xs text-indigo-400 font-mono animate-pulse tracking-widest uppercase">Fetching Platform Telemetry...</span>
               <p className="text-[10px] text-gray-500">Connecting securely to Firestore collection pools.</p>
@@ -440,6 +500,9 @@ export default function AdminDashboard() {
                   recentLogs={auditLogsList.slice(0, 5)}
                   onRefresh={fetchWorkspaceData}
                   onNavigateToTab={(tab) => setActiveTab(tab)}
+                  adminLevel={adminProfile.level}
+                  adminStatus={adminProfile.status}
+                  userId={currentUserId}
                 />
               )}
 
@@ -447,6 +510,14 @@ export default function AdminDashboard() {
                 <UserManagement
                   users={userList}
                   onRefresh={fetchWorkspaceData}
+                />
+              )}
+
+              {activeView === "leads" && (
+                <LeadManagement
+                  userId={currentUserId}
+                  userRole="admin"
+                  userName={currentUserName}
                 />
               )}
 
@@ -508,6 +579,16 @@ export default function AdminDashboard() {
                   onRefresh={fetchWorkspaceData}
                   userName="Super Admin Desk"
                 />
+              )}
+
+              {activeView === "abac" && (
+                <div className="animate-in fade-in duration-300">
+                  <AbacControlInspector 
+                    userId={currentUserId} 
+                    userRole="admin" 
+                    onAttributeUpdated={syncAdminRoleFromFirestore} 
+                  />
+                </div>
               )}
 
               {activeView === "audit" && (

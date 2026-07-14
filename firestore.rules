@@ -1,11 +1,141 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Highly resilient permission rules to eliminate all "Missing or insufficient permissions" errors.
-    // Allows full read and write access across all collections for authenticated and unauthenticated sessions
-    // during development, sandbox testing, and production fallback.
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Users Profile Collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId);
+    }
+    
+    // Candidates collection
+    match /candidates/{candidateId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(candidateId);
+    }
+    
+    // Consultancies collection
+    match /consultancies/{consultancyId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(consultancyId);
+    }
+    
+    // Employers collection
+    match /employers/{employerId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(employerId);
+    }
+    
+    // Companies collection
+    match /companies/{companyId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(companyId);
+    }
+    
+    // Jobs postings - visible to all authenticated users, editable by employers/admins
+    match /jobs/{jobId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated(); // Avoid cross-write barriers during automation
+    }
+    match /company_jobs/{jobId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    // Applications
+    match /applications/{applicationId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /company_applications/{applicationId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Resumes and Resume Versions
+    match /resumes/{resumeId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(resumeId);
+    }
+    match /resume_versions/{versionId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /resume_analysis/{analysisId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /resume_scores/{scoreId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /resume_recommendations/{recommendationId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Interviews and scheduled sessions
+    match /interviews/{interviewId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /company_interviews/{interviewId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /interviews_scheduled/{interviewId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /interview_sessions/{sessionId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /interview_reports/{reportId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Notifications and logs
+    match /notifications/{notificationId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /notification_preferences/{userId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /activity_logs/{logId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /company_activity_logs/{logId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /login_logs/{logId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Support and settings
+    match /support_tickets/{ticketId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /support/{ticketId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /settings/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    match /system_settings/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    // Admin list
+    match /admins/{adminId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(adminId);
+    }
+    
+    // Fallback catch-all for newly provisioned collections
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if isAuthenticated();
     }
   }
 }

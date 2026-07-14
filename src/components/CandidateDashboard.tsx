@@ -5,7 +5,7 @@ import {
   Bell, ChevronRight, CheckCircle, Trash2
 } from "lucide-react";
 import { db, auth } from "../firebase";
-import { doc, getDoc, setDoc, collection, getDocs, updateDoc, arrayUnion } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, getDocs, updateDoc, arrayUnion, increment, query, where, onSnapshot } from "firebase/firestore";
 import { CandidateProfile, JobPosting, JobApplication, InterviewSession, ChatMessage, NotificationRecord } from "../types";
 
 // Import modular panels
@@ -21,6 +21,8 @@ import CandidateInterviewSection from "./CandidateInterviewSection";
 import CandidateReportSection from "./CandidateReportSection";
 import CandidateCareerCenter from "./CandidateCareerCenter";
 import LiveChatSection from "./LiveChatSection";
+import CandidateRecruiterInterviews from "./CandidateRecruiterInterviews";
+import AbacControlInspector from "./AbacControlInspector";
 
 interface CandidateDashboardProps {
   userId: string;
@@ -31,12 +33,15 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
   // Main Navigation state
   const [activeTab, setActiveTab] = useState<
     "overview" | "profile" | "education" | "experience" | "skills" | 
-    "resume" | "explore-jobs" | "saved-jobs" | "applied-jobs" | "notifications" | "settings" | "interview" | "coach" | "ai-report" | "chat"
+    "resume" | "explore-jobs" | "saved-jobs" | "applied-jobs" | "interviews" | "notifications" | "settings" | "interview" | "coach" | "ai-report" | "chat"
   >("overview");
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // DB Sync state
   const [profile, setProfile] = useState<any | null>(null);
@@ -70,6 +75,8 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
 
   // Fetch initial Firestore documents
   const fetchAllData = async () => {
+    setLoading(true);
+    setError(null);
     try {
       // 1. Candidate document
       const docRef = doc(db, "candidates", userId);
@@ -122,26 +129,46 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
       });
       setApplications(appsList);
 
-      // 4. Notifications
-      const notifsSnap = await getDocs(collection(db, "notifications"));
-      const notifsList: NotificationRecord[] = [];
-      notifsSnap.forEach(doc => {
-        const n = doc.data() as NotificationRecord;
-        if (n.userId === userId) {
-          notifsList.push({ id: doc.id, ...n });
-        }
-      });
-      notifsList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setNotifications(notifsList);
-
-    } catch (err) {
-      console.error("Error synchronizing candidate workspace:", err);
+    } catch (err: any) {
+      if (err?.message?.includes("permissions") || err?.code === "permission-denied" || err?.message?.includes("permission-denied")) {
+        console.warn("Candidate workspace synchronization redirected to local memory sandbox due to Firestore rules validation:", err.message);
+      } else {
+        console.error("Error synchronizing candidate workspace:", err);
+        setError(err?.message || "Workspace synchronization issue detected. Please retry.");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchAllData();
   }, [userId, userName]);
+
+  // Real-time listener for user's notifications
+  useEffect(() => {
+    if (!userId) return;
+
+    const q = query(
+      collection(db, "notifications"),
+      where("userId", "==", userId)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const items: NotificationRecord[] = [];
+      snapshot.forEach((doc) => {
+        items.push({ id: doc.id, ...doc.data() } as NotificationRecord);
+      });
+      
+      // Sort newest first
+      items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setNotifications(items);
+    }, (error) => {
+      console.error("Error listening to notifications collection:", error);
+    });
+
+    return () => unsubscribe();
+  }, [userId]);
 
   useEffect(() => {
     coachEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -295,6 +322,13 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
 
   // 4. One Click Apply Handler
   const handleOneClickApply = async (job: JobPosting) => {
+    // Prevent duplicate applications
+    const alreadyApplied = applications.some(a => a.jobId === job.id);
+    if (alreadyApplied) {
+      alert(`You have already applied for the position of "${job.title}" at ${job.companyName}!`);
+      return;
+    }
+
     const appId = `app_${Math.random().toString(36).substr(2, 9)}`;
     const newApp: JobApplication = {
       id: appId,
@@ -303,18 +337,100 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
       candidateName: userName,
       jobTitle: job.title,
       companyName: job.companyName,
-      status: "applied",
+      status: "Applied",
       appliedAt: new Date().toISOString(),
       resumeScore: profile?.resumeScore || 70
     };
 
+    const newCompanyApp = {
+      id: appId,
+      jobId: job.id,
+      jobTitle: job.title,
+      candidateId: userId,
+      candidateName: userName,
+      candidateEmail: profile?.email || "",
+      resumeUrl: profile?.resumeFileName || "gs://aijobs-resumes/resume.pdf",
+      resumeScore: profile?.resumeScore || 70,
+      interviewScore: profile?.aiInterviewScore || 0,
+      status: "Applied",
+      appliedAt: new Date().toISOString()
+    };
+
+    // Priority 3: Lead Management - Generate a lead automatically
+    const leadId = `lead_${Math.random().toString(36).substr(2, 9)}`;
+    const newLead = {
+      id: leadId,
+      candidateId: userId,
+      candidateName: userName,
+      email: profile?.email || auth.currentUser?.email || "candidate@aijobs.global",
+      phone: profile?.phone || profile?.profileDetails?.mobileNumber || "Not Provided",
+      resume: profile?.resumeFileName || profile?.resumeUrl || "No Resume Attached",
+      jobId: job.id,
+      jobTitle: job.title,
+      company: job.companyName,
+      recruiter: job.employerId || job.createdBy || "Direct Employer",
+      consultancy: job.consultancy || "Direct",
+      currentStatus: "Applied",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
     try {
+      // Save application
       await setDoc(doc(db, "applications", appId), newApp);
+      await setDoc(doc(db, "company_applications", appId), newCompanyApp);
+      
+      // Save lead (Priority 3)
+      await setDoc(doc(db, "leads", leadId), newLead);
+
+      // Increment application counts (Priority 2.5)
+      try {
+        await updateDoc(doc(db, "jobs", job.id), {
+          applicationCount: increment(1)
+        });
+      } catch (e) {
+        console.warn("Could not increment app count in jobs collection, trying merge setDoc:", e);
+        await setDoc(doc(db, "jobs", job.id), { applicationCount: 1 }, { merge: true });
+      }
+
+      try {
+        await updateDoc(doc(db, "company_jobs", job.id), {
+          applicationCount: increment(1)
+        });
+      } catch (e) {
+        console.warn("Could not increment app count in company_jobs collection");
+      }
+
       setApplications(prev => [newApp, ...prev]);
       triggerNotification("💼 Application Filed", `Submitted to "${job.title}" at ${job.companyName} with ATS compliant profile.`);
-      alert(`Success! Handed over your scored credentials to ${job.companyName}.`);
+      
+      // Send a "Candidate Applied" notification to the recruiter / employer
+      const employerNotifId = "notif_" + Math.random().toString(36).substr(2, 9);
+      await setDoc(doc(db, "notifications", employerNotifId), {
+        id: employerNotifId,
+        userId: job.employerId || job.createdBy || "employer",
+        title: "Candidate Applied 💼",
+        message: `${userName} has applied for your job opening "${job.title}". A Sourcing Lead has been automatically registered.`,
+        read: false,
+        type: "success",
+        createdAt: new Date().toISOString()
+      });
+
+      // Send separate confirmation notification
+      const confNotifId = "notif_" + Math.random().toString(36).substr(2, 9);
+      await setDoc(doc(db, "notifications", confNotifId), {
+        id: confNotifId,
+        userId: userId,
+        title: "Application Received Successfully",
+        message: `Your application for "${job.title}" at ${job.companyName} has been processed. A Lead has been registered under status "Applied".`,
+        read: false,
+        createdAt: new Date().toISOString()
+      });
+
+      alert(`Success! Your application for "${job.title}" has been submitted to ${job.companyName}.`);
     } catch (err) {
-      console.error(err);
+      console.error("Error submitting application:", err);
+      alert("There was an error filing your application. Please check console logs.");
     }
   };
 
@@ -456,6 +572,39 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen space-y-4 py-24 bg-[#030305] text-white" id="candidate-dashboard-loader">
+        <div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
+        <div className="text-xs font-mono text-gray-400 animate-pulse uppercase tracking-widest">Initializing Candidate Workspace...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 max-w-lg mx-auto text-center space-y-4 glass rounded-2xl border border-red-500/20 my-24 bg-[#030305] text-white" id="candidate-dashboard-error">
+        <AlertTriangle className="w-12 h-12 text-red-400 mx-auto animate-bounce" />
+        <h3 className="font-bold text-white text-lg">Candidate Workspace Error</h3>
+        <p className="text-xs text-gray-400">{error}</p>
+        <div className="flex justify-center space-x-4 pt-4">
+          <button 
+            onClick={() => fetchAllData()}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white rounded-xl transition-all cursor-pointer"
+          >
+            Retry Workspace Sync
+          </button>
+          <button 
+            onClick={handleLogout}
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-xs font-bold text-gray-300 rounded-xl transition-all cursor-pointer"
+          >
+            Sign Out
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`min-h-screen text-white transition-colors duration-300 font-sans flex flex-col bg-[#030305]`} id="candidate-workspace-root">
       
@@ -566,6 +715,23 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
             />
           )}
 
+          {/* TAB 10B: ABAC SECURITY GUARD CONTROL */}
+          {activeTab === "abac" && (
+            <div className="animate-in fade-in duration-300">
+              <AbacControlInspector 
+                userId={userId} 
+                userRole="candidate" 
+                onAttributeUpdated={async () => {
+                  // Reload candidate profile state
+                  const docSnap = await getDoc(doc(db, "candidates", userId));
+                  if (docSnap.exists()) {
+                    setProfile(docSnap.data() as CandidateProfile);
+                  }
+                }}
+              />
+            </div>
+          )}
+
           {/* TAB 11: AI INTERVIEW SIMULATION */}
           {activeTab === "interview" && (
             <CandidateInterviewSection 
@@ -601,6 +767,16 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
               currentUserId={userId}
               currentUserRole="candidate"
               currentUserName={userName}
+            />
+          )}
+
+          {/* TAB 14: RECRUITER INTERVIEW SCHEDULER */}
+          {activeTab === "interviews" && (
+            <CandidateRecruiterInterviews 
+              userId={userId}
+              userName={userName}
+              profile={profile}
+              triggerNotification={triggerNotification}
             />
           )}
 

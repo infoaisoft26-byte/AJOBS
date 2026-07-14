@@ -2,13 +2,15 @@ import { useState, useEffect } from "react";
 import { 
   Building2, TrendingUp, Briefcase, Brain, Users, 
   Calendar, Award, BarChart2, ShieldAlert, ShieldCheck, RefreshCw, LogOut, CreditCard, Bell,
-  MessageSquare, FileText
+  MessageSquare, FileText, Search
 } from "lucide-react";
 import { db } from "../firebase";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import SubscriptionBillingHub from "./SubscriptionBillingHub";
 import { NotificationCenterView } from "./NotificationCenter";
 import LiveChatSection from "./LiveChatSection";
+import TalentSearch from "./employer/TalentSearch";
+import LeadManagement from "./LeadManagement";
 
 // Types
 import { 
@@ -28,6 +30,7 @@ import ApplicationPipeline from "./employer/ApplicationPipeline";
 import InterviewManagement from "./employer/InterviewManagement";
 import OfferManagement from "./employer/OfferManagement";
 import ReportsAnalytics from "./employer/ReportsAnalytics";
+import HiringPerformance from "./employer/HiringPerformance";
 import EnterpriseDocumentEngine from "./employer/EnterpriseDocumentEngine";
 
 interface EmployerDashboardProps {
@@ -38,7 +41,7 @@ interface EmployerDashboardProps {
 export default function EmployerDashboard({ userId, userName }: EmployerDashboardProps) {
   // Navigation active tab routing
   const [activeTab, setActiveTab] = useState<
-    "overview" | "registration" | "jobs" | "discovery" | "pipeline" | "interviews" | "offers" | "reports" | "subscription" | "notifications" | "documents" | "chat"
+    "overview" | "registration" | "jobs" | "discovery" | "pipeline" | "leads" | "interviews" | "offers" | "reports" | "subscription" | "notifications" | "documents" | "chat" | "talent-search" | "performance"
   >("overview");
 
   // Corporate core data stores
@@ -50,11 +53,14 @@ export default function EmployerDashboard({ userId, userName }: EmployerDashboar
   const [activities, setActivities] = useState<CompanyActivityLog[]>([]);
 
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Sync / loading function
   const synchronizeVault = async (showRefreshIndicator = false) => {
     if (showRefreshIndicator) setIsRefreshing(true);
+    setLoading(true);
+    setError(null);
     try {
       // 1. Seed demo data if first-time corporate logon
       await seedEmployerDataIfEmpty(userId, userName);
@@ -144,6 +150,7 @@ export default function EmployerDashboard({ userId, userName }: EmployerDashboar
         console.warn("Corporate synchronization redirected to local memory sandbox due to Firestore rules validation:", err.message);
       } else {
         console.error("Corporate synchronization failed:", err);
+        setError(err?.message || "Corporate synchronization failed. Please retry.");
       }
     } finally {
       setLoading(false);
@@ -157,11 +164,29 @@ export default function EmployerDashboard({ userId, userName }: EmployerDashboar
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-[500px] space-y-3">
+      <div className="flex flex-col items-center justify-center h-[500px] space-y-3" id="employer-dashboard-loader">
         <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin" />
         <span className="text-xs text-gray-400 font-mono animate-pulse">
           Opening Enterprise Corporate Gateway Vault...
         </span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 max-w-lg mx-auto text-center space-y-4 glass rounded-2xl border border-red-500/20 my-24 bg-[#030305] text-white" id="employer-dashboard-error">
+        <AlertTriangle className="w-12 h-12 text-red-400 mx-auto animate-bounce" />
+        <h3 className="font-bold text-white text-lg">Corporate Vault Error</h3>
+        <p className="text-xs text-gray-400">{error}</p>
+        <div className="flex justify-center space-x-4 pt-4">
+          <button 
+            onClick={() => synchronizeVault()}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white rounded-xl transition-all cursor-pointer"
+          >
+            Retry Vault Sync
+          </button>
+        </div>
       </div>
     );
   }
@@ -224,12 +249,15 @@ export default function EmployerDashboard({ userId, userName }: EmployerDashboar
             { id: "registration", label: "Company Registry", icon: Building2 },
             { id: "jobs", label: "Job Vacancies", icon: Briefcase },
             { id: "discovery", label: "AI Candidate Discovery", icon: Brain },
+            { id: "talent-search", label: "Talent Search (Sourcing)", icon: Search },
             { id: "pipeline", label: "Hiring Pipeline", icon: Users },
+            { id: "leads", label: "Lead Management", icon: Users },
             { id: "interviews", label: "Interviews Suite", icon: Calendar },
             { id: "offers", label: "Acceptance & Offers", icon: Award },
             { id: "documents", label: "Enterprise Documents", icon: FileText },
             { id: "chat", label: "Secure Live Chat", icon: MessageSquare },
             { id: "reports", label: "Metrics & Reports", icon: BarChart2 },
+            { id: "performance", label: "Hiring Performance", icon: TrendingUp },
             { id: "subscription", label: "Billing & Payment", icon: CreditCard },
             { id: "notifications", label: "Notification Hub", icon: Bell }
           ].map((item) => {
@@ -292,6 +320,10 @@ export default function EmployerDashboard({ userId, userName }: EmployerDashboar
             />
           )}
 
+          {activeTab === "talent-search" && (
+            <TalentSearch />
+          )}
+
           {activeTab === "pipeline" && (
             <ApplicationPipeline
               userId={userId}
@@ -304,6 +336,14 @@ export default function EmployerDashboard({ userId, userName }: EmployerDashboar
               onOpenReleaseOffer={(app) => {
                 setActiveTab("offers");
               }}
+            />
+          )}
+
+          {activeTab === "leads" && (
+            <LeadManagement
+              userId={userId}
+              userRole="recruiter"
+              userName={userName}
             />
           )}
 
@@ -329,6 +369,15 @@ export default function EmployerDashboard({ userId, userName }: EmployerDashboar
 
           {activeTab === "reports" && (
             <ReportsAnalytics
+              jobs={jobs}
+              applications={applications}
+              interviews={interviews}
+              offers={offers}
+            />
+          )}
+
+          {activeTab === "performance" && (
+            <HiringPerformance
               jobs={jobs}
               applications={applications}
               interviews={interviews}

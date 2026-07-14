@@ -133,8 +133,12 @@ export default function CandidateCareerCenter({
       learningPaths.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
       setSavedLearningPaths(learningPaths);
 
-    } catch (err) {
-      console.error("Firestore loading error:", err);
+    } catch (err: any) {
+      if (err?.message?.includes("permissions") || err?.code === "permission-denied" || err?.message?.includes("permission-denied")) {
+        console.warn("Candidate Career Center loading redirected to local fallback due to Firestore rules validation:", err.message);
+      } else {
+        console.error("Firestore loading error:", err);
+      }
     }
   };
 

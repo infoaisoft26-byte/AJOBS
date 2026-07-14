@@ -1,10 +1,12 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import dotenv from "dotenv";
 import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import { aiOrchestrator, telemetryStore } from "./server/aiProvider.js";
+import { evaluateAbacPolicy, SubjectAttributes, ResourceAttributes } from "./src/services/abacService.js";
 
 dotenv.config();
 
@@ -30,7 +32,7 @@ app.use((req, res, next) => {
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader(
     "Content-Security-Policy",
-    "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https:;"
+    "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://apis.google.com https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://*.firebaseapp.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://www.gstatic.com; font-src 'self' data: https: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https:; frame-src 'self' https:;"
   );
   next();
 });
@@ -203,10 +205,56 @@ if (geminiKey && geminiKey !== "MY_GEMINI_API_KEY") {
   console.warn("GEMINI_API_KEY environment variable is not configured. Falling back to high-fidelity mock AI processing.");
 }
 
+// -------------------- ABAC MIDDLEWARE FOR SECURE API ENFORCEMENT --------------------
+const abacGuard = (resourceType: string, action: "read" | "write" | "apply" | "execute" | "delete" | "export") => {
+  return (req: any, res: any, next: any) => {
+    const userId = req.headers["x-user-id"] || req.body.userId || "anonymous";
+    const role = req.headers["x-user-role"] || req.body.userRole || "candidate";
+    const name = req.headers["x-user-name"] || req.body.userName || "User";
+    const email = req.headers["x-user-email"] || req.body.userEmail || "";
+    
+    // Parse attributes passed from the client handshakes or local lookups
+    const subject: SubjectAttributes = {
+      userId,
+      role: role as any,
+      name,
+      email,
+      resumeScore: Number(req.headers["x-user-resume-score"] || req.body.resumeScore || 0),
+      aiInterviewScore: Number(req.headers["x-user-ai-interview-score"] || req.body.aiInterviewScore || 0),
+      subscription: req.headers["x-user-subscription"] || req.body.subscription || "Free Tier",
+      pricingPlan: (req.headers["x-user-pricing-plan"] || req.body.pricingPlan || "Free") as any,
+      clientsCount: Number(req.headers["x-user-clients-count"] || req.body.clientsCount || 0),
+      adminLevel: (req.headers["x-user-admin-level"] || req.body.adminLevel || "Auditor") as any,
+      adminStatus: (req.headers["x-user-admin-status"] || req.body.adminStatus || "active") as any,
+    };
+
+    const resource: ResourceAttributes = {
+      id: req.path,
+      type: resourceType as any,
+      salary: Number(req.body.salary || 0),
+      isAiVerifiedOnly: req.body.isAiVerifiedOnly === true || req.body.isAiVerifiedOnly === "true",
+      experienceRequired: Number(req.body.experienceRequired || 0)
+    };
+
+    const result = evaluateAbacPolicy(subject, resource, action);
+    if (!result.granted) {
+      console.warn(`[ABAC API DENIAL] Request to ${req.path} denied. Subject: ${role} (${userId}), Reason: ${result.reason}`);
+      return res.status(403).json({
+        success: false,
+        error: "ABAC_ACCESS_DENIED",
+        reason: result.reason,
+        requiredUpgrade: result.requiredUpgrade
+      });
+    }
+
+    next();
+  };
+};
+
 // ==================== API ENDPOINTS ====================
 
 // 1. AI Resume Analyzer Endpoint
-app.post("/api/analyze-resume", async (req, res) => {
+app.post("/api/analyze-resume", abacGuard("api_endpoint", "execute"), async (req, res) => {
   const { resumeText, candidateName } = req.body;
 
   if (!resumeText) {
@@ -535,7 +583,7 @@ Strict JSON output only. No markdown wrappers.
 });
 
 // 2c. AI Consultancy Natural Language Search Endpoint
-app.post("/api/consultancy-natural-search", async (req, res) => {
+app.post("/api/consultancy-natural-search", abacGuard("api_endpoint", "execute"), async (req, res) => {
   const { query: searchQuery, candidates } = req.body;
 
   const prompt = `
@@ -583,7 +631,7 @@ Strict JSON output only. No markdown wrappers.
 });
 
 // 2d. AI Admin Platform Insights Endpoint
-app.post("/api/admin-platform-insights", async (req, res) => {
+app.post("/api/admin-platform-insights", abacGuard("api_endpoint", "execute"), async (req, res) => {
   const { stats } = req.body;
 
   const prompt = `
@@ -1358,6 +1406,81 @@ app.get("/api/telemetry", (req, res) => {
     averageLatencyMs: telemetryStore.performanceMetrics.averageLatencyMs || 820
   });
 });
+
+// -------------------- SCHEDULER: Auto-close expired jobs --------------------
+async function startExpiredJobsScheduler() {
+  try {
+    const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+    if (!fs.existsSync(configPath)) {
+      console.warn("[Scheduler] firebase-applet-config.json not found, skipping scheduler initialization.");
+      return;
+    }
+    
+    const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+    if (!config.apiKey || !config.projectId) {
+      console.warn("[Scheduler] Missing apiKey or projectId in config, skipping scheduler.");
+      return;
+    }
+
+    // Dynamically import Firebase Client SDK on the server side
+    const { initializeApp, getApps, getApp } = await import("firebase/app");
+    const { getFirestore, collection, getDocs, doc, updateDoc } = await import("firebase/firestore");
+
+    const firebaseConfig = {
+      apiKey: config.apiKey,
+      authDomain: config.authDomain,
+      projectId: config.projectId,
+      storageBucket: config.storageBucket,
+      messagingSenderId: config.messagingSenderId,
+      appId: config.appId
+    };
+
+    const firebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+    const db = getFirestore(firebaseApp, config.firestoreDatabaseId);
+
+    const runCheck = async () => {
+      const todayStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+      console.log(`[Scheduler] Scanning for expired jobs. Current Date: ${todayStr}`);
+      try {
+        const jobsColRef = collection(db, "jobs");
+        const querySnapshot = await getDocs(jobsColRef);
+        
+        let updateCount = 0;
+        for (const docSnapshot of querySnapshot.docs) {
+          const data = docSnapshot.data();
+          if (data.status !== "Closed" && data.applyDeadline) {
+            // String comparison of dates (e.g., "2026-07-13" < "2026-07-14")
+            if (data.applyDeadline < todayStr) {
+              const docRef = doc(db, "jobs", docSnapshot.id);
+              await updateDoc(docRef, { status: "Closed" });
+              updateCount++;
+              console.log(`[Scheduler] Automatically closed expired job listing: "${data.title}" (ID: ${docSnapshot.id}, Deadline: ${data.applyDeadline})`);
+            }
+          }
+        }
+        if (updateCount > 0) {
+          console.log(`[Scheduler] Scan complete. Successfully updated ${updateCount} expired job(s) to 'Closed'.`);
+        } else {
+          console.log("[Scheduler] Scan complete. No expired job listings detected.");
+        }
+      } catch (err: any) {
+        console.error("[Scheduler] Error executing scan:", err?.message || err);
+      }
+    };
+
+    // Run immediately on boot
+    runCheck();
+
+    // Run every 5 minutes (300000 ms)
+    setInterval(runCheck, 300000);
+
+  } catch (error: any) {
+    console.error("[Scheduler] Failed to initialize expired jobs background scheduler:", error?.message || error);
+  }
+}
+
+// Boot the scheduler background task
+startExpiredJobsScheduler();
 
 // ==================== DEV / PROD HOSTING ====================
 

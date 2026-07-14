@@ -8,6 +8,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { db } from "../firebase";
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs, query, where, addDoc, Timestamp } from "firebase/firestore";
+import D3PerformanceCharts from "./D3PerformanceCharts";
 
 interface CandidateInterviewSectionProps {
   profile: any;
@@ -310,6 +311,105 @@ export default function CandidateInterviewSection({
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const screenVideoRef = useRef<HTMLVideoElement | null>(null);
 
+  // Webcam Video Recorder State & Refs
+  const videoRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const videoTimerRef = useRef<any>(null);
+  const [isRecordingVideo, setIsRecordingVideo] = useState(false);
+  const [videoRecordSeconds, setVideoRecordSeconds] = useState(0);
+  const [recordedVideos, setRecordedVideos] = useState<Record<string, string>>({});
+  const recordedVideosRef = useRef<Record<string, string>>({});
+
+  const startVideoRecording = async () => {
+    recordedChunksRef.current = [];
+    setVideoRecordSeconds(0);
+    
+    try {
+      let stream: MediaStream;
+      if (videoRef.current && videoRef.current.srcObject) {
+        stream = videoRef.current.srcObject as MediaStream;
+      } else {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(console.error);
+        }
+      }
+
+      // Check for audio tracks
+      const hasAudio = stream.getAudioTracks().length > 0;
+      if (!hasAudio) {
+        try {
+          const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          audioStream.getAudioTracks().forEach(track => stream.addTrack(track));
+        } catch (audioErr) {
+          console.warn("Could not retrieve audio track, recording video-only", audioErr);
+        }
+      }
+
+      const options = { mimeType: 'video/webm;codecs=vp9,opus' };
+      let mediaRecorder: MediaRecorder;
+      try {
+        mediaRecorder = new MediaRecorder(stream, options);
+      } catch (e) {
+        try {
+          mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8,opus' });
+        } catch (e2) {
+          try {
+            mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+          } catch (e3) {
+            mediaRecorder = new MediaRecorder(stream);
+          }
+        }
+      }
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+        const videoURL = URL.createObjectURL(blob);
+        const currentQId = currentQuestions[currentIndex]?.id || `q_${currentIndex}`;
+        recordedVideosRef.current[currentQId] = videoURL;
+        setRecordedVideos(prev => ({
+          ...prev,
+          [currentQId]: videoURL
+        }));
+        
+        if (!userAnswerText.trim()) {
+          setUserAnswerText("Webcam video response recorded successfully.");
+        }
+      };
+
+      videoRecorderRef.current = mediaRecorder;
+      mediaRecorder.start(1000);
+      setIsRecordingVideo(true);
+
+      clearInterval(videoTimerRef.current);
+      videoTimerRef.current = setInterval(() => {
+        setVideoRecordSeconds(prev => prev + 1);
+      }, 1000);
+
+    } catch (err) {
+      console.error("Failed to start video recording:", err);
+    }
+  };
+
+  const stopVideoRecording = () => {
+    if (videoRecorderRef.current && isRecordingVideo) {
+      try {
+        videoRecorderRef.current.stop();
+      } catch (err) {
+        console.error("Error stopping MediaRecorder:", err);
+      }
+      setIsRecordingVideo(false);
+      clearInterval(videoTimerRef.current);
+    }
+  };
+
   // Speak/Mic Simulation (Step 5 - Voice Answer) with Real Web Speech API
   const toggleVoiceRecording = () => {
     if (isRecording) {
@@ -418,6 +518,19 @@ export default function CandidateInterviewSection({
 
   // 5. Progress & Save Questions (Step 6, 7)
   const handleSaveAndNext = (isAutoTimeout = false) => {
+    // If video recording is active, stop it first to ensure last chunks are written
+    if (isRecordingVideo) {
+      stopVideoRecording();
+      // Allow 350ms for the asynchronous MediaRecorder stop callback to run and create the object URL
+      setTimeout(() => {
+        proceedSaveAndNext(isAutoTimeout);
+      }, 350);
+    } else {
+      proceedSaveAndNext(isAutoTimeout);
+    }
+  };
+
+  const proceedSaveAndNext = (isAutoTimeout = false) => {
     const currentQ = currentQuestions[currentIndex];
     const candidateAnswer = currentQ.type === "MCQ" 
       ? (selectedMcqOption || "No option selected") 
@@ -432,6 +545,7 @@ export default function CandidateInterviewSection({
       type: currentQ.type,
       candidateAnswer,
       timeTaken: timeSpent,
+      videoUrl: recordedVideosRef.current[currentQ.id] || "",
       // Evaluation placeholders (Step 7)
       confidencePlaceholder: currentQ.type === "Role Play" ? "Extremely confident, strong voice pitch" : "Confident",
       communicationPlaceholder: "Clear articulation, logical sentence flow",
@@ -1321,6 +1435,66 @@ export default function CandidateInterviewSection({
                       </div>
 
                     </div>
+
+                    {/* Webcam Video Response Recorder Module */}
+                    <div className="flex flex-col gap-4 p-4 bg-white/5 border border-white/5 rounded-2xl">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="space-y-0.5">
+                          <p className="font-bold text-[11px] text-purple-400 flex items-center gap-1.5">
+                            <Camera className="w-4 h-4 text-purple-400" />
+                            <span>Webcam Response Recorder</span>
+                          </p>
+                          <p className="text-[9px] text-gray-500">Practice your posture, eye contact, and visual articulation by recording your live response.</p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {isRecordingVideo && (
+                            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg border border-red-500/20 font-mono text-[10px] animate-pulse">
+                              <span className="w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
+                              <span>REC... {videoRecordSeconds}s</span>
+                            </div>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={isRecordingVideo ? stopVideoRecording : startVideoRecording}
+                            className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 ${
+                              isRecordingVideo 
+                                ? "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/10" 
+                                : "bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/25 text-purple-400 hover:text-purple-300"
+                            }`}
+                          >
+                            {isRecordingVideo ? (
+                              <>
+                                <Square className="w-3.5 h-3.5" />
+                                <span>Stop Recording</span>
+                              </>
+                            ) : (
+                              <>
+                                <Camera className="w-3.5 h-3.5" />
+                                <span>{recordedVideos[currentQuestions[currentIndex]?.id || `q_${currentIndex}`] ? "Re-record Video" : "Record Video Response"}</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Video Player Preview of the recorded response */}
+                      {recordedVideos[currentQuestions[currentIndex]?.id || `q_${currentIndex}`] && !isRecordingVideo && (
+                        <div className="p-3 bg-black/45 rounded-xl border border-purple-500/20 space-y-2">
+                          <p className="text-[10px] font-mono text-purple-300 font-bold flex items-center gap-1">
+                            <Play className="w-3 h-3 fill-purple-300" />
+                            <span>Review your recorded video:</span>
+                          </p>
+                          <video 
+                            src={recordedVideos[currentQuestions[currentIndex]?.id || `q_${currentIndex}`]} 
+                            controls 
+                            className="w-full max-h-48 rounded-lg border border-white/5 bg-black"
+                          />
+                        </div>
+                      )}
+                    </div>
+
                   </div>
                 )}
 
@@ -1614,6 +1788,22 @@ export default function CandidateInterviewSection({
                       </div>
                     </div>
 
+                    {/* D3 Performance Visualizations */}
+                    <div className="glass p-6 rounded-3xl border border-white/10 bg-gradient-to-br from-[#0c0816]/30 to-black/50 space-y-4">
+                      <h4 className="font-display font-extrabold text-xs text-white flex items-center space-x-2">
+                        <BarChart3 className="w-4 h-4 text-purple-400" />
+                        <span>Interactive Performance Analytics (D3.js)</span>
+                      </h4>
+                      <D3PerformanceCharts 
+                        technicalScore={selectedReport.technicalScore}
+                        communicationScore={selectedReport.communicationScore}
+                        confidenceScore={selectedReport.confidenceScore}
+                        problemSolvingScore={selectedReport.problemSolvingScore}
+                        behaviorScore={selectedReport.behaviorScore}
+                        answers={selectedReport.answers || []}
+                      />
+                    </div>
+
                     {/* Breakdown grids (Step 8) */}
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                       
@@ -1709,6 +1899,21 @@ export default function CandidateInterviewSection({
                               {ans.candidateAnswer}
                             </p>
                           </div>
+
+                          {/* Recorded Webcam response playback if available */}
+                          {ans.videoUrl && (
+                            <div className="space-y-1.5 p-3 bg-purple-950/10 border border-purple-900/30 rounded-xl">
+                              <p className="text-[10px] font-mono text-purple-400 flex items-center gap-1 font-bold">
+                                <Camera className="w-3.5 h-3.5 text-purple-400" />
+                                <span>Recorded Video Response Playback</span>
+                              </p>
+                              <video 
+                                src={ans.videoUrl} 
+                                controls 
+                                className="w-full max-w-md max-h-48 rounded-lg border border-white/10 bg-black shadow-inner"
+                              />
+                            </div>
+                          )}
 
                           {/* Evaluation metrics placeholders stored inside Firestore (Step 7) */}
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2 font-mono text-[9px] text-gray-400">

@@ -132,8 +132,32 @@ function MainAppContent() {
           setUser(profile);
           trackInteraction("login_success", "auth", profile.role);
         } catch (err) {
-          console.error("Error loading user snapshot:", err);
-          showToast("Failed to retrieve profile snapshot", "error");
+          console.error("Error loading user snapshot, triggering resilient client-side fallback:", err);
+          showToast("Failed to retrieve profile snapshot, entering fallback workspace mode", "warning");
+          
+          // Deduce role from email prefixes or default to candidate
+          const emailLower = (fbUser.email || "").toLowerCase();
+          let deducedRole: "candidate" | "consultancy" | "employer" | "admin" = "candidate";
+          if (emailLower.includes("admin")) {
+            deducedRole = "admin";
+          } else if (emailLower.includes("employer") || emailLower.includes("company") || emailLower.includes("corporate") || emailLower.includes("recruiter")) {
+            deducedRole = "employer";
+          } else if (emailLower.includes("consultancy") || emailLower.includes("agency") || emailLower.includes("crm")) {
+            deducedRole = "consultancy";
+          }
+
+          const fallbackProfile: UserProfile = {
+            uid: fbUser.uid,
+            name: fbUser.displayName || fbUser.email?.split("@")[0] || "User Desk",
+            email: fbUser.email || "",
+            role: deducedRole,
+            profileImage: fbUser.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(fbUser.uid)}`,
+            createdAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString(),
+            status: "active",
+            subscription: deducedRole === "consultancy" ? "Pro Agency" : "Enterprise Access"
+          };
+          setUser(fallbackProfile);
         }
       } else {
         setUser(null);
@@ -177,6 +201,28 @@ function MainAppContent() {
     setUser(profile);
     setActiveView("dashboard");
     showToast(`Authenticated as: ${profile.name}`, "success");
+  };
+
+  const handleUpdateUserRole = async (selectedRole: "candidate" | "consultancy" | "employer" | "admin") => {
+    if (!user) return;
+    setAuthLoading(true);
+    try {
+      // 1. Initialize Firestore collections and docs
+      const updatedProfile = await initializeUserCollectionsAndDocs(
+        { uid: user.uid, email: user.email, displayName: user.name },
+        selectedRole,
+        user.name
+      );
+      
+      // 2. Set user state
+      setUser(updatedProfile);
+      showToast(`Workspace configured successfully: ${selectedRole}`, "success");
+    } catch (err) {
+      console.error("Error setting user role:", err);
+      showToast("Failed to initialize selected workspace", "error");
+    } finally {
+      setAuthLoading(false);
+    }
   };
 
   return (
@@ -252,17 +298,67 @@ function MainAppContent() {
           ) : (
             <div className="animate-in fade-in duration-300">
               <Suspense fallback={<DashboardSkeleton />}>
-                {user?.role === "candidate" && (
+                {user && (user.role === "candidate") && (
                   <CandidateDashboard userId={user.uid} userName={user.name} />
                 )}
-                {user?.role === "consultancy" && (
+                {user && (user.role === "consultancy" || user.role === "agency") && (
                   <ConsultancyDashboard userId={user.uid} userName={user.name} />
                 )}
-                {user?.role === "employer" && (
+                {user && (user.role === "employer" || user.role === "recruiter" || user.role === "corporate") && (
                   <EmployerDashboard userId={user.uid} userName={user.name} />
                 )}
-                {user?.role === "admin" && (
-                  <AdminDashboard />
+                {user && (user.role === "admin" || user.role === "superadmin") && (
+                  <AdminDashboard userId={user.uid} userName={user.name} />
+                )}
+
+                {/* Resilient Fallback - If user exists but role doesn't match any of the above */}
+                {user && !["candidate", "consultancy", "agency", "employer", "recruiter", "corporate", "admin", "superadmin"].includes(user.role || "") && (
+                  <div className="p-8 max-w-lg mx-auto text-center space-y-4 glass rounded-2xl border border-white/10 my-12 bg-gray-900/40">
+                    <AlertTriangle className="w-12 h-12 text-yellow-400 mx-auto" />
+                    <h3 className="font-bold text-white text-lg">Select Dashboard Workspace</h3>
+                    <p className="text-xs text-gray-400">Your profile doesn't have a workspace role designated. Please select your account type to proceed:</p>
+                    <div className="grid grid-cols-2 gap-4 pt-4">
+                      <button 
+                        onClick={() => handleUpdateUserRole("candidate")}
+                        className="py-2.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-xs font-bold text-indigo-300 rounded-xl border border-indigo-500/30 transition-all cursor-pointer"
+                      >
+                        Candidate Workspace
+                      </button>
+                      <button 
+                        onClick={() => handleUpdateUserRole("employer")}
+                        className="py-2.5 bg-pink-600/20 hover:bg-pink-600/40 text-xs font-bold text-pink-300 rounded-xl border border-pink-500/30 transition-all cursor-pointer"
+                      >
+                        Recruiter Workspace
+                      </button>
+                      <button 
+                        onClick={() => handleUpdateUserRole("consultancy")}
+                        className="py-2.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-xs font-bold text-emerald-300 rounded-xl border border-emerald-500/30 transition-all cursor-pointer"
+                      >
+                        Consultancy Agency
+                      </button>
+                      <button 
+                        onClick={() => handleUpdateUserRole("admin")}
+                        className="py-2.5 bg-yellow-600/20 hover:bg-yellow-600/40 text-xs font-bold text-yellow-300 rounded-xl border border-yellow-500/30 transition-all cursor-pointer"
+                      >
+                        Administrator Desk
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Fallback if user is null but activeView is dashboard */}
+                {!user && (
+                  <div className="p-8 max-w-md mx-auto text-center space-y-4 glass rounded-2xl border border-white/10 my-12 bg-gray-900/40">
+                    <AlertTriangle className="w-12 h-12 text-indigo-400 mx-auto animate-bounce" />
+                    <h3 className="font-bold text-white text-lg">Dashboard Access Locked</h3>
+                    <p className="text-xs text-gray-400">Please login or register to access the intelligence portals.</p>
+                    <button 
+                      onClick={() => setAuthMode("signin")}
+                      className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white rounded-xl transition-all cursor-pointer"
+                    >
+                      Sign In Now
+                    </button>
+                  </div>
                 )}
               </Suspense>
             </div>

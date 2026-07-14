@@ -72,17 +72,27 @@ export default function JobManagement({
 
   const handleApproveJob = async (job: JobPosting, approve: boolean) => {
     setIsSubmitting(true);
-    const nextStatus = approve ? "open" : "rejected";
+    const nextStatus = approve ? "Live" : "Rejected";
     try {
+      // 1. Sync jobs
       await setDoc(doc(db, "jobs", job.id), {
         status: nextStatus
       }, { merge: true });
 
+      // 2. Sync company_jobs
+      try {
+        await setDoc(doc(db, "company_jobs", job.id), {
+          status: nextStatus
+        }, { merge: true });
+      } catch (ce) {
+        console.warn("Could not sync company_jobs status for job:", job.id, ce);
+      }
+
       const logId = "log_" + Math.random().toString(36).substr(2, 9);
       await setDoc(doc(db, "audit_logs", logId), {
         id: logId,
-        userId: job.employerId,
-        userName: job.companyName,
+        userId: job.employerId || "admin",
+        userName: job.companyName || "AIJobs System",
         userEmail: "recruitment@aijobs.global",
         role: "Super Admin",
         action: approve ? "APPROVAL" : "REJECTION",
@@ -97,6 +107,7 @@ export default function JobManagement({
       onRefresh();
     } catch (err) {
       console.error(err);
+      alert("Error approving/rejecting job posting.");
     } finally {
       setIsSubmitting(false);
     }
@@ -290,12 +301,16 @@ export default function JobManagement({
                             </div>
                           </td>
                           <td className="py-3">
-                            <span className={`px-2 py-0.5 rounded font-mono text-[9px] font-bold uppercase ${
-                              j.status === "open" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25" :
-                              j.status === "closed" ? "bg-neutral-500/10 text-neutral-400 border border-neutral-500/25" :
-                              "bg-amber-500/10 text-amber-400 border border-amber-500/25 animate-pulse"
+                            <span className={`px-2 py-0.5 rounded font-mono text-[9px] font-bold uppercase border ${
+                              j.status === "Live" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25" :
+                              j.status === "Pending Approval" ? "bg-amber-500/10 text-amber-400 border-amber-500/25 animate-pulse" :
+                              j.status === "Draft" ? "bg-blue-500/10 text-blue-400 border-blue-500/25" :
+                              j.status === "Approved" ? "bg-purple-500/10 text-purple-400 border-purple-500/25" :
+                              j.status === "Closed" ? "bg-neutral-500/10 text-neutral-400 border-neutral-500/25" :
+                              j.status === "Rejected" ? "bg-red-500/10 text-red-400 border-red-500/25" :
+                              "bg-gray-500/10 text-gray-400 border-gray-500/25"
                             }`}>
-                              {j.status || "pending"}
+                              {j.status || "Draft"}
                             </span>
                           </td>
                           <td className="py-3 text-right space-x-1 whitespace-nowrap">
@@ -311,14 +326,23 @@ export default function JobManagement({
                               <Star className={`w-3.5 h-3.5 ${isFeat ? "fill-amber-400 text-amber-400" : ""}`} />
                             </button>
 
-                            {j.status !== "open" && (
-                              <button
-                                onClick={() => handleApproveJob(j, true)}
-                                className="p-1 bg-emerald-500/10 hover:bg-emerald-500 border border-emerald-500/20 text-emerald-400 hover:text-white rounded transition-all cursor-pointer inline-flex items-center"
-                                title="Approve Job Posting"
-                              >
-                                <CheckCircle className="w-3.5 h-3.5" />
-                              </button>
+                            {j.status === "Pending Approval" && (
+                              <>
+                                <button
+                                  onClick={() => handleApproveJob(j, true)}
+                                  className="p-1 bg-emerald-500/10 hover:bg-emerald-500 border border-emerald-500/20 text-emerald-400 hover:text-white rounded transition-all cursor-pointer inline-flex items-center"
+                                  title="Approve Job"
+                                >
+                                  <CheckCircle className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleApproveJob(j, false)}
+                                  className="p-1 bg-red-500/10 hover:bg-red-500 border border-red-500/20 text-red-400 hover:text-white rounded transition-all cursor-pointer inline-flex items-center"
+                                  title="Reject Job"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </>
                             )}
 
                             <button

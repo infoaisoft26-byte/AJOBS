@@ -1,12 +1,14 @@
 import { useState } from "react";
+import { motion } from "motion/react";
 import { 
   Heart, Briefcase, Brain, Star, CheckCircle2, Search, ArrowRight, 
   Trash2, ShieldCheck, HelpCircle, Clock, Calendar, Check, X, Award, ChevronRight,
-  SlidersHorizontal, Sparkles, Filter, CheckCircle
+  SlidersHorizontal, Sparkles, Filter, CheckCircle, Lock, AlertTriangle
 } from "lucide-react";
 import { JobPosting, JobApplication } from "../types";
 import { deleteDoc, doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import { db } from "../firebase";
+import { evaluateAbacPolicy, mapUserToAbacSubject } from "../services/abacService";
 
 interface JobsSectionProps {
   userId: string;
@@ -75,6 +77,9 @@ export default function CandidateJobsSection({
     if (activeTab === "saved-jobs") {
       list = list.filter(j => savedJobIds.includes(j.id));
     }
+
+    // Only Live jobs are visible to candidates
+    list = list.filter(j => j.status === "Live");
 
     // Standard Query Search (title, company, description, skills)
     if (searchQuery.trim()) {
@@ -320,13 +325,45 @@ export default function CandidateJobsSection({
             {filteredList.map((job) => {
               const applied = applications.some(a => a.jobId === job.id);
               const isSaved = savedJobIds.includes(job.id);
+              
+              // ABAC Evaluation for Job Application
+              const getSalaryAmount = (salText: string): number => {
+                const cleaned = salText.replace(/,/g, "");
+                const match = cleaned.match(/(\d+)/g);
+                if (!match) return 0;
+                const numbers = match.map(n => parseInt(n, 10));
+                const max = Math.max(...numbers);
+                if (max < 100) return max * 100000;
+                return max;
+              };
+
+              const jobSalary = getSalaryAmount(job.salary || "");
+              const expMatch = (job.experience || "").match(/(\d+)/);
+              const expRequired = expMatch ? parseInt(expMatch[1], 10) : 0;
+              const isAiOnly = job.id.charCodeAt(0) % 2 === 0 || (job.skillsRequired && job.skillsRequired.length > 2);
+
+              const abacSubject = mapUserToAbacSubject(userId, profile, profile);
+              const abacResource = {
+                id: job.id,
+                type: "job" as const,
+                salary: jobSalary,
+                experienceRequired: expRequired,
+                isAiVerifiedOnly: isAiOnly
+              };
+
+              const abacCheck = evaluateAbacPolicy(abacSubject, abacResource, "apply");
+
               return (
-                <div key={job.id} className="glass p-5 rounded-2xl border border-white/5 hover:border-indigo-500/25 transition-all flex flex-col justify-between space-y-4">
+                <div key={job.id} className={`glass p-5 rounded-2xl border transition-all flex flex-col justify-between space-y-4 ${
+                  !abacCheck.granted 
+                    ? "border-red-500/10 bg-red-950/[0.02]" 
+                    : "border-white/5 hover:border-indigo-500/25"
+                }`}>
                   <div className="space-y-1.5">
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-1.5">
                         <span className="text-[10px] font-mono text-indigo-400 font-extrabold uppercase">{job.companyName}</span>
-                        {(job.id.charCodeAt(0) % 2 === 0) && (
+                        {isAiOnly && (
                           <span className="bg-indigo-500/15 text-indigo-300 text-[8px] font-mono px-1.5 py-0.5 rounded flex items-center gap-0.5 border border-indigo-500/10">
                             <CheckCircle className="w-2.5 h-2.5 text-indigo-400" />
                             <span>AI Verified</span>
@@ -345,12 +382,17 @@ export default function CandidateJobsSection({
                         <Heart className="w-3.5 h-3.5 fill-current" />
                       </button>
                     </div>
-                    <h4 className="font-bold text-sm text-white">{job.title}</h4>
+                    <h4 className="font-bold text-sm text-white flex items-center gap-2">
+                      {!abacCheck.granted && <Lock className="w-3.5 h-3.5 text-red-400 shrink-0" />}
+                      <span>{job.title}</span>
+                    </h4>
                     <p className="text-[11px] text-gray-400 line-clamp-2 leading-relaxed">{job.description}</p>
                     
                     <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-mono text-gray-400 pt-1">
                       <span>📍 {job.location || "Bengaluru"}</span>
-                      <span>💰 {job.salary || "Competitive"}</span>
+                      <span className={!abacCheck.granted && jobSalary >= 2500000 ? "text-red-400 font-bold" : ""}>
+                        💰 {job.salary || "Competitive"}
+                      </span>
                       <span>🎓 {job.education || "Any Education"}</span>
                     </div>
 
@@ -359,6 +401,17 @@ export default function CandidateJobsSection({
                         <span key={k} className="text-[9px] font-mono px-2 py-0.5 bg-white/5 text-gray-300 rounded border border-white/5">{sk}</span>
                       ))}
                     </div>
+
+                    {/* ABAC Restriction Warning Banner */}
+                    {!abacCheck.granted && (
+                      <div className="mt-3 p-2.5 bg-red-950/25 border border-red-500/15 rounded-xl text-[10px] text-red-300 flex items-start gap-2 animate-in fade-in slide-in-from-top-1">
+                        <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
+                        <div className="space-y-0.5">
+                          <p className="font-bold uppercase tracking-wider font-mono text-[9px] text-red-400">ABAC Policy Restricted</p>
+                          <p className="leading-relaxed text-gray-300">{abacCheck.reason}</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2 pt-2 border-t border-white/5 text-xs">
@@ -369,15 +422,17 @@ export default function CandidateJobsSection({
                       AI Match
                     </button>
                     <button
-                      onClick={() => onOneClickApply(job)}
-                      disabled={applied}
+                      onClick={() => abacCheck.granted && onOneClickApply(job)}
+                      disabled={applied || !abacCheck.granted}
                       className={`flex-1 py-1.5 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
                         applied 
                           ? "bg-green-500/25 text-green-400 border border-green-500/30 cursor-not-allowed" 
-                          : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/10"
+                          : !abacCheck.granted
+                            ? "bg-red-950/20 text-red-500/40 border border-red-500/10 cursor-not-allowed"
+                            : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/10"
                       }`}
                     >
-                      {applied ? "Applied" : "1-Click Apply"}
+                      {applied ? "Applied" : !abacCheck.granted ? "Access Restricted" : "1-Click Apply"}
                     </button>
                   </div>
                 </div>
@@ -530,62 +585,56 @@ export default function CandidateJobsSection({
 
                 {/* Timeline graph */}
                 <div className="space-y-4 relative pl-4 border-l border-white/5">
-                  
-                  {/* Step 1: Applied */}
-                  <div className="relative">
-                    <div className={`absolute -left-[21px] top-0.5 w-2.5 h-2.5 rounded-full border ${
-                      getStatusIndex(selectedApp.status) >= 0 ? "bg-indigo-400 border-indigo-400" : "bg-black border-white/10"
-                    }`}></div>
-                    <div className="space-y-0.5">
-                      <p className="text-[11px] font-bold text-gray-200">Application Received</p>
-                      <p className="text-[9px] text-gray-500">Resume profile logged successfully into ATS filters.</p>
-                    </div>
-                  </div>
-
-                  {/* Step 2: Under Review */}
-                  <div className="relative">
-                    <div className={`absolute -left-[21px] top-0.5 w-2.5 h-2.5 rounded-full border ${
-                      getStatusIndex(selectedApp.status) >= 1 ? "bg-indigo-400 border-indigo-400" : "bg-black border-white/10"
-                    }`}></div>
-                    <div className="space-y-0.5">
-                      <p className="text-[11px] font-bold text-gray-200">Portfolio Under Review</p>
-                      <p className="text-[9px] text-gray-500">Agency partners reviewing skill stacks and timeline matching.</p>
-                    </div>
-                  </div>
-
-                  {/* Step 3: Interviewing */}
-                  <div className="relative">
-                    <div className={`absolute -left-[21px] top-0.5 w-2.5 h-2.5 rounded-full border ${
-                      getStatusIndex(selectedApp.status) >= 2 ? "bg-purple-400 border-purple-400 animate-pulse" : "bg-black border-white/10"
-                    }`}></div>
-                    <div className="space-y-0.5">
-                      <p className="text-[11px] font-bold text-gray-200">Interview Scheduled</p>
-                      <p className="text-[9px] text-gray-500">Direct technical evaluations or simulator challenge initialized.</p>
-                    </div>
-                  </div>
-
-                  {/* Step 4: Selected / Decided */}
-                  <div className="relative">
-                    <div className={`absolute -left-[21px] top-0.5 w-2.5 h-2.5 rounded-full border ${
-                      getStatusIndex(selectedApp.status) >= 3 ? "bg-emerald-400 border-emerald-400" : "bg-black border-white/10"
-                    }`}></div>
-                    <div className="space-y-0.5">
-                      <p className="text-[11px] font-bold text-gray-200">Evaluation Selected</p>
-                      <p className="text-[9px] text-gray-500">Completed cycles verified with positive feedback markers.</p>
-                    </div>
-                  </div>
-
-                  {/* Step 5: Offer Received */}
-                  <div className="relative">
-                    <div className={`absolute -left-[21px] top-0.5 w-2.5 h-2.5 rounded-full border ${
-                      selectedApp.status === "offered" ? "bg-emerald-500 border-emerald-500 scale-110" : "bg-black border-white/10"
-                    }`}></div>
-                    <div className="space-y-0.5">
-                      <p className="text-[11px] font-bold text-gray-200">Offer Handover</p>
-                      <p className="text-[9px] text-gray-500">Official offer letter dispatched. Check your inbox.</p>
-                    </div>
-                  </div>
-
+                  {[
+                    {
+                      label: "Application Received",
+                      desc: "Resume profile logged successfully into ATS filters.",
+                      active: getStatusIndex(selectedApp.status) >= 0,
+                      color: "border-indigo-400 bg-indigo-400"
+                    },
+                    {
+                      label: "Portfolio Under Review",
+                      desc: "Agency partners reviewing skill stacks and timeline matching.",
+                      active: getStatusIndex(selectedApp.status) >= 1,
+                      color: "border-indigo-400 bg-indigo-400"
+                    },
+                    {
+                      label: "Interview Scheduled",
+                      desc: "Direct technical evaluations or simulator challenge initialized.",
+                      active: getStatusIndex(selectedApp.status) >= 2,
+                      color: "border-purple-400 bg-purple-400 animate-pulse"
+                    },
+                    {
+                      label: "Evaluation Selected",
+                      desc: "Completed cycles verified with positive feedback markers.",
+                      active: getStatusIndex(selectedApp.status) >= 3,
+                      color: "border-emerald-400 bg-emerald-400"
+                    },
+                    {
+                      label: "Offer Handover",
+                      desc: "Official offer letter dispatched. Check your inbox.",
+                      active: selectedApp.status === "offered",
+                      color: "border-emerald-500 bg-emerald-500 scale-110"
+                    }
+                  ].map((step, idx) => (
+                    <motion.div 
+                      key={idx} 
+                      className="relative"
+                      initial={{ opacity: 0, x: -12 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3, delay: idx * 0.08 }}
+                    >
+                      <div className={`absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full border transition-all duration-300 ${
+                        step.active ? step.color : "bg-black border-white/10"
+                      }`}></div>
+                      <div className="space-y-0.5 pl-2">
+                        <p className={`text-[11px] font-bold transition-colors duration-300 ${step.active ? "text-white" : "text-gray-400"}`}>
+                          {step.label}
+                        </p>
+                        <p className="text-[9px] text-gray-500 leading-normal">{step.desc}</p>
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
 
                 {/* Withdraw application button */}

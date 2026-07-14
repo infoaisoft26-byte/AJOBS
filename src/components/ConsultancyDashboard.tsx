@@ -2,12 +2,15 @@ import { useState, useEffect } from "react";
 import { 
   LayoutDashboard, Building, Briefcase, Users, Sparkles, Layers, 
   Calendar, CheckCircle2, ShieldCheck, TrendingUp, DollarSign, 
-  Settings, LogOut, ShieldAlert, Sparkle, RefreshCw, Bell
+  Settings, LogOut, ShieldAlert, Sparkle, RefreshCw, Bell, Plus
 } from "lucide-react";
 import { db } from "../firebase";
 import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { ConsultancyProfile } from "../types";
 import { NotificationCenterView } from "./NotificationCenter";
+import AbacControlInspector from "./AbacControlInspector";
+import LeadManagement from "./LeadManagement";
+import PostJobForm from "./PostJobForm";
 
 // Import Shared Types
 import { 
@@ -39,6 +42,7 @@ interface ConsultancyDashboardProps {
 export default function ConsultancyDashboard({ userId, userName }: ConsultancyDashboardProps) {
   const [profile, setProfile] = useState<ConsultancyProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // CRM Collection States
   const [clients, setClients] = useState<ClientModel[]>([]);
@@ -53,12 +57,16 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
 
   // Sidebar Selection Tab
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "clients" | "jobs" | "candidates" | "matching" | 
-    "interviews" | "placements" | "team" | "reports" | "subscription" | "registration" | "notifications"
+    "dashboard" | "clients" | "jobs" | "candidates" | "leads" | "matching" | 
+    "interviews" | "placements" | "team" | "reports" | "subscription" | "registration" | "notifications" | "abac"
   >("dashboard");
+
+  const [showMainPostForm, setShowMainPostForm] = useState(false);
 
   // Fetch and Sync CRM Data
   const fetchCrmData = async () => {
+    setLoading(true);
+    setError(null);
     try {
       // 1. Fetch/Initialize profile
       const profRef = doc(db, "consultancies", userId);
@@ -118,8 +126,9 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
       intSnap.forEach(d => iList.push({ id: d.id, ...d.data() } as InterviewModel));
       setInterviews(iList);
 
-    } catch (err) {
+    } catch (err: any) {
       console.error("CRM State Fetch Error:", err);
+      setError(err?.message || "CRM State Fetch Error");
     } finally {
       setLoading(false);
     }
@@ -131,11 +140,29 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4" id="consultancy-dashboard-loader">
         <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin" />
         <p className="text-xs font-mono text-gray-400 uppercase tracking-widest animate-pulse">
           Synchronizing CRM Systems...
         </p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 max-w-lg mx-auto text-center space-y-4 glass rounded-2xl border border-red-500/20 my-24 bg-[#030305] text-white" id="consultancy-dashboard-error">
+        <ShieldAlert className="w-12 h-12 text-red-400 mx-auto animate-bounce" />
+        <h3 className="font-bold text-white text-lg">CRM Sync Error</h3>
+        <p className="text-xs text-gray-400">{error}</p>
+        <div className="flex justify-center space-x-4 pt-4">
+          <button 
+            onClick={() => fetchCrmData()}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white rounded-xl transition-all cursor-pointer"
+          >
+            Retry CRM Sync
+          </button>
+        </div>
       </div>
     );
   }
@@ -171,6 +198,7 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
             { id: "clients", label: "Clients Directory", icon: Building },
             { id: "jobs", label: "Job Vacancies", icon: Briefcase },
             { id: "candidates", label: "Candidates CRM", icon: Users },
+            { id: "leads", label: "Lead Management", icon: Users },
             { id: "matching", label: "AI Match Rankings", icon: Sparkles },
             { id: "interviews", label: "Interviews Scheduler", icon: Calendar },
             { id: "placements", label: "Placement Pipeline", icon: CheckCircle2 },
@@ -178,6 +206,7 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
             { id: "reports", label: "Analytics Reports", icon: TrendingUp },
             { id: "subscription", label: "Billing & Payment", icon: DollarSign },
             { id: "notifications", label: "Notification Hub", icon: Bell },
+            { id: "abac", label: "ABAC Security Guard", icon: ShieldAlert },
             { id: "registration", label: "Agency Registration", icon: Settings }
           ].map((tab) => {
             const IconComponent = tab.icon;
@@ -199,119 +228,167 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
             );
           })}
         </nav>
+        <div className="pt-3 border-t border-white/5">
+          <button
+            onClick={() => {
+              setShowMainPostForm(true);
+            }}
+            className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-600/15"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Post Global Job Draft</span>
+          </button>
+        </div>
       </div>
 
       {/* RIGHT COLUMN: Active Module Visual Stage */}
       <div className="md:col-span-3 space-y-6">
-        {/* Module Render Routing Router */}
-        {activeTab === "dashboard" && (
-          <CrmDashboardView
-            profile={profile}
-            clients={clients}
-            jobs={jobs}
-            candidates={candidates}
-            placements={placements}
-            interviews={interviews}
-          />
-        )}
-
-        {activeTab === "clients" && (
-          <CrmClientsView
-            clients={clients}
-            onRefresh={fetchCrmData}
-            userRole={currentUserRole}
-          />
-        )}
-
-        {activeTab === "jobs" && (
-          <CrmJobsView
-            jobs={jobs}
-            clients={clients}
-            onRefresh={fetchCrmData}
-            userRole={currentUserRole}
-          />
-        )}
-
-        {activeTab === "candidates" && (
-          <CrmCandidatesView
-            candidates={candidates}
-            onRefresh={fetchCrmData}
-            userRole={currentUserRole}
-          />
-        )}
-
-        {activeTab === "matching" && (
-          <CrmAiShortlistView
-            jobs={jobs}
-            candidates={candidates}
-            onSelectCandidate={(cand) => {
-              // Quick mock trigger
-              const c = candidates.find(x => x.id === cand.id);
-              if (c) alert(`Selected Matched Profile: ${cand.name}`);
-            }}
-            onNavigateToTab={(tb) => {
-              if (tb === "candidates") setActiveTab("candidates");
-              if (tb === "interviews") setActiveTab("interviews");
-            }}
-          />
-        )}
-
-        {activeTab === "interviews" && (
-          <CrmInterviewsView
-            interviews={interviews}
-            jobs={jobs}
-            candidates={candidates}
-            onRefresh={fetchCrmData}
-            userRole={currentUserRole}
-          />
-        )}
-
-        {activeTab === "placements" && (
-          <CrmPlacementsView
-            placements={placements}
-            clients={clients}
-            onRefresh={fetchCrmData}
-            userRole={currentUserRole}
-          />
-        )}
-
-        {activeTab === "team" && (
-          <CrmTeamView
-            team={team}
-            onRefresh={fetchCrmData}
-            currentUserRole={currentUserRole}
-            onChangeUserRole={(newRl) => setCurrentUserRole(newRl)}
-          />
-        )}
-
-        {activeTab === "reports" && (
-          <CrmReportsView
-            placements={placements}
-            clients={clients}
-            jobs={jobs}
-          />
-        )}
-
-        {activeTab === "subscription" && (
-          <SubscriptionBillingHub
+        {showMainPostForm ? (
+          <PostJobForm
             userId={userId}
-            userName={userName}
             userRole="consultancy"
-            onRefresh={fetchCrmData}
+            userName={userName || profile?.agencyName || "Agency Partner"}
+            onJobPosted={(jobId) => {
+              setShowMainPostForm(false);
+              fetchCrmData();
+            }}
+            onCancel={() => setShowMainPostForm(false)}
           />
-        )}
+        ) : (
+          <>
+            {/* Module Render Routing Router */}
+            {activeTab === "dashboard" && (
+              <CrmDashboardView
+                profile={profile}
+                clients={clients}
+                jobs={jobs}
+                candidates={candidates}
+                placements={placements}
+                interviews={interviews}
+              />
+            )}
 
-        {activeTab === "notifications" && (
-          <div className="md:col-span-3 lg:col-span-3">
-            <NotificationCenterView userId={userId} userRole="consultancy" userName={userName} />
-          </div>
-        )}
+            {activeTab === "clients" && (
+              <CrmClientsView
+                clients={clients}
+                onRefresh={fetchCrmData}
+                userRole={currentUserRole}
+                profile={profile}
+                userId={userId}
+              />
+            )}
 
-        {activeTab === "registration" && (
-          <CrmOnboardingView
-            profile={profile}
-            onRefresh={fetchCrmData}
-          />
+            {activeTab === "jobs" && (
+              <CrmJobsView
+                jobs={jobs}
+                clients={clients}
+                onRefresh={fetchCrmData}
+                userRole={currentUserRole}
+              />
+            )}
+
+            {activeTab === "candidates" && (
+              <CrmCandidatesView
+                candidates={candidates}
+                onRefresh={fetchCrmData}
+                userRole={currentUserRole}
+              />
+            )}
+
+            {activeTab === "leads" && (
+              <LeadManagement
+                userId={userId}
+                userRole="consultancy"
+                userName={userName}
+              />
+            )}
+
+            {activeTab === "matching" && (
+              <CrmAiShortlistView
+                jobs={jobs}
+                candidates={candidates}
+                profile={profile}
+                userId={userId}
+                onSelectCandidate={(cand) => {
+                  // Quick mock trigger
+                  const c = candidates.find(x => x.id === cand.id);
+                  if (c) alert(`Selected Matched Profile: ${cand.name}`);
+                }}
+                onNavigateToTab={(tb) => {
+                  if (tb === "candidates") setActiveTab("candidates");
+                  if (tb === "interviews") setActiveTab("interviews");
+                }}
+              />
+            )}
+
+            {activeTab === "interviews" && (
+              <CrmInterviewsView
+                interviews={interviews}
+                jobs={jobs}
+                candidates={candidates}
+                onRefresh={fetchCrmData}
+                userRole={currentUserRole}
+              />
+            )}
+
+            {activeTab === "placements" && (
+              <CrmPlacementsView
+                placements={placements}
+                clients={clients}
+                onRefresh={fetchCrmData}
+                userRole={currentUserRole}
+              />
+            )}
+
+            {activeTab === "team" && (
+              <CrmTeamView
+                team={team}
+                onRefresh={fetchCrmData}
+                currentUserRole={currentUserRole}
+                onChangeUserRole={(newRl) => setCurrentUserRole(newRl)}
+              />
+            )}
+
+            {activeTab === "reports" && (
+              <CrmReportsView
+                placements={placements}
+                clients={clients}
+                jobs={jobs}
+              />
+            )}
+
+            {activeTab === "subscription" && (
+              <SubscriptionBillingHub
+                userId={userId}
+                userName={userName}
+                userRole="consultancy"
+                onRefresh={fetchCrmData}
+              />
+            )}
+
+            {activeTab === "notifications" && (
+              <div className="md:col-span-3 lg:col-span-3">
+                <NotificationCenterView userId={userId} userRole="consultancy" userName={userName} />
+              </div>
+            )}
+
+            {activeTab === "abac" && (
+              <div className="animate-in fade-in duration-300">
+                <AbacControlInspector 
+                  userId={userId} 
+                  userRole="consultancy" 
+                  onAttributeUpdated={fetchCrmData} 
+                />
+              </div>
+            )}
+
+            {activeTab === "registration" && (
+              <CrmOnboardingView
+                profile={profile}
+                onRefresh={fetchCrmData}
+              />
+            )}
+          </>
         )}
       </div>
     </div>
