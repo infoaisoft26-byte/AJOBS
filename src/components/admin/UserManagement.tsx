@@ -194,8 +194,10 @@ export default function UserManagement({
             <option value="all">All Roles</option>
             <option value="candidate">Candidates</option>
             <option value="employer">Employers</option>
+            <option value="recruiter">Recruiters</option>
             <option value="consultancy">Consultancies</option>
-            <option value="admin">Administrators</option>
+            <option value="admin">Admins</option>
+            <option value="superadmin">Super Admins</option>
           </select>
         </div>
 
@@ -244,10 +246,12 @@ export default function UserManagement({
                 label: "Clearance Role",
                 sortable: true,
                 render: (val: any, u: UserProfile) => (
-                  <span className={`px-2 py-0.5 rounded font-mono text-[10px] font-bold ${
+                  <span className={`px-2 py-0.5 rounded font-mono text-[10px] font-bold uppercase ${
                     u.role === "candidate" ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" :
                     u.role === "employer" ? "bg-pink-500/10 text-pink-400 border border-pink-500/20" :
+                    u.role === "recruiter" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
                     u.role === "consultancy" ? "bg-purple-500/10 text-purple-400 border border-purple-500/20" :
+                    u.role === "superadmin" ? "bg-red-500/10 text-red-400 border border-red-500/20 animate-pulse" :
                     "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                   }`}>
                     {u.role}

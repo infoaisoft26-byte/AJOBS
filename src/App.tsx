@@ -74,6 +74,67 @@ function PageTransitionParticles({ triggerKey }: { triggerKey: string }) {
   );
 }
 
+interface ProtectedRouteProps {
+  user: UserProfile | null;
+  allowedRoles: string[];
+  fallbackView: string;
+  setActiveView: (view: string) => void;
+  setAuthMode: (mode: "signin" | "signup" | null) => void;
+  children: React.ReactNode;
+}
+
+function ProtectedRoute({ 
+  user, 
+  allowedRoles, 
+  fallbackView, 
+  setActiveView, 
+  setAuthMode, 
+  children 
+}: ProtectedRouteProps) {
+  useEffect(() => {
+    if (!user) {
+      setAuthMode("signin");
+      setActiveView(fallbackView);
+    } else if (user && !allowedRoles.includes(user.role || "")) {
+      setActiveView(fallbackView);
+    }
+  }, [user, allowedRoles, fallbackView, setActiveView, setAuthMode]);
+
+  if (!user) {
+    return (
+      <div className="p-8 max-w-md mx-auto text-center space-y-4 glass rounded-2xl border border-white/10 my-12 bg-gray-900/40">
+        <AlertTriangle className="w-12 h-12 text-indigo-400 mx-auto animate-bounce" />
+        <h3 className="font-bold text-white text-lg">Dashboard Access Locked</h3>
+        <p className="text-xs text-gray-400">Please login or register to access the intelligence portals.</p>
+        <button 
+          onClick={() => setAuthMode("signin")}
+          className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white rounded-xl transition-all cursor-pointer"
+        >
+          Sign In Now
+        </button>
+      </div>
+    );
+  }
+
+  if (user && !allowedRoles.includes(user.role || "")) {
+    return (
+      <div className="p-8 max-w-md mx-auto text-center space-y-4 glass rounded-2xl border border-white/10 my-12 bg-gray-900/40">
+        <AlertTriangle className="w-12 h-12 text-red-400 mx-auto" />
+        <h3 className="font-bold text-white text-lg">Access Denied</h3>
+        <p className="text-xs text-gray-400">Your current role profile ("{user.role}") does not possess authorized clearance to access this department workspace.</p>
+        <button 
+          onClick={() => setActiveView("home")}
+          className="w-full py-2.5 bg-red-600 hover:bg-red-500 text-xs font-bold text-white rounded-xl transition-all cursor-pointer"
+        >
+          Return to Hub
+        </button>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+
 function MainAppContent() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [activeView, setActiveView] = useState<string>("home");
@@ -352,16 +413,48 @@ function MainAppContent() {
                   <div>
                     <Suspense fallback={<DashboardSkeleton />}>
                       {user && (user.role === "candidate") && (
-                        <CandidateDashboard userId={user.uid} userName={user.name} />
+                        <ProtectedRoute 
+                          user={user} 
+                          allowedRoles={["candidate"]} 
+                          fallbackView="home" 
+                          setActiveView={setActiveView} 
+                          setAuthMode={setAuthMode}
+                        >
+                          <CandidateDashboard userId={user.uid} userName={user.name} />
+                        </ProtectedRoute>
                       )}
                       {user && (user.role === "consultancy" || user.role === "agency") && (
-                        <ConsultancyDashboard userId={user.uid} userName={user.name} />
+                        <ProtectedRoute 
+                          user={user} 
+                          allowedRoles={["consultancy", "agency"]} 
+                          fallbackView="home" 
+                          setActiveView={setActiveView} 
+                          setAuthMode={setAuthMode}
+                        >
+                          <ConsultancyDashboard userId={user.uid} userName={user.name} />
+                        </ProtectedRoute>
                       )}
                       {user && (user.role === "employer" || user.role === "recruiter" || user.role === "corporate") && (
-                        <EmployerDashboard userId={user.uid} userName={user.name} />
+                        <ProtectedRoute 
+                          user={user} 
+                          allowedRoles={["employer", "recruiter", "corporate"]} 
+                          fallbackView="home" 
+                          setActiveView={setActiveView} 
+                          setAuthMode={setAuthMode}
+                        >
+                          <EmployerDashboard userId={user.uid} userName={user.name} userRole={user.role} />
+                        </ProtectedRoute>
                       )}
                       {user && (user.role === "admin" || user.role === "superadmin") && (
-                        <AdminDashboard userId={user.uid} userName={user.name} />
+                        <ProtectedRoute 
+                          user={user} 
+                          allowedRoles={["admin", "superadmin"]} 
+                          fallbackView="home" 
+                          setActiveView={setActiveView} 
+                          setAuthMode={setAuthMode}
+                        >
+                          <AdminDashboard userId={user.uid} userName={user.name} />
+                        </ProtectedRoute>
                       )}
 
                       {/* Resilient Fallback - If user exists but role doesn't match any of the above */}

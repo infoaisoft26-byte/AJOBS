@@ -6,7 +6,7 @@ export interface UserProfile {
   name: string;
   email: string;
   phone?: string;
-  role: "candidate" | "consultancy" | "employer" | "admin";
+  role: "candidate" | "consultancy" | "employer" | "recruiter" | "admin" | "superadmin";
   profileImage?: string;
   createdAt: string;
   lastLogin?: string;
@@ -20,7 +20,7 @@ export interface UserProfile {
  */
 export async function initializeUserCollectionsAndDocs(
   fbUser: any,
-  role: "candidate" | "consultancy" | "employer" | "admin",
+  role: "candidate" | "consultancy" | "employer" | "recruiter" | "admin" | "superadmin",
   displayName: string
 ): Promise<UserProfile> {
   const userId = fbUser.uid;
@@ -60,19 +60,19 @@ export async function initializeUserCollectionsAndDocs(
   await safeSetDoc("users", userId, userProfile);
 
   // --- Collection 2: admins ---
-  if (role === "admin") {
+  if (role === "admin" || role === "superadmin") {
     await safeSetDoc("admins", userId, {
       userId,
       name,
       email,
-      level: "Super Admin",
+      level: role === "superadmin" ? "Super Admin" : "System Admin",
       status: "active",
       createdAt: isoDate,
     });
   }
 
   // --- Collection 3: companies (and legacy employers) ---
-  if (role === "employer") {
+  if (role === "employer" || role === "recruiter") {
     const companyPayload = {
       companyId: userId,
       companyName: name,

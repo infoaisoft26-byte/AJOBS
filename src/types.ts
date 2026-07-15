@@ -3,7 +3,7 @@ export interface UserProfile {
   name: string;
   email: string;
   phone?: string;
-  role: "candidate" | "consultancy" | "employer" | "admin";
+  role: "candidate" | "consultancy" | "employer" | "recruiter" | "admin" | "superadmin";
   profileImage?: string;
   createdAt: string;
   lastLogin?: string;

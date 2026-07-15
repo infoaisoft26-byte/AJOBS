@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   FileText, Download, Printer, Award, FileCheck, Bookmark, Briefcase, Calendar, 
   User, DollarSign, PenTool, CheckSquare, Sparkles 
@@ -9,7 +9,7 @@ interface EnterpriseDocumentEngineProps {
   companyName: string;
 }
 
-type LetterType = "Offer Letter" | "Appointment Letter" | "Experience Letter" | "Joining Letter";
+type LetterType = "Offer Letter" | "Appointment Letter" | "Experience Letter" | "Joining Letter" | "Job Description" | "Email Template";
 
 export default function EnterpriseDocumentEngine({ companyName }: EnterpriseDocumentEngineProps) {
   const [letterType, setLetterType] = useState<LetterType>("Offer Letter");
@@ -27,6 +27,45 @@ export default function EnterpriseDocumentEngine({ companyName }: EnterpriseDocu
   // Experience letter specific parameters
   const [relievingDate, setRelievingDate] = useState(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]);
   const [conductRating, setConductRating] = useState("Exceptional");
+
+  // AI automation parameters
+  const [aiGeneratedText, setAiGeneratedText] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [extraInstructions, setExtraInstructions] = useState("");
+
+  useEffect(() => {
+    setAiGeneratedText(null);
+  }, [letterType]);
+
+  const handleAiGenerate = async () => {
+    setAiLoading(true);
+    try {
+      const res = await fetch("/api/ai-document-generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: letterType,
+          candidateName,
+          position: jobTitle,
+          companyName,
+          salary: ctcPackage,
+          signatoryName,
+          signatoryTitle,
+          extraInstructions: extraInstructions || "Make it highly professional and custom tailored."
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAiGeneratedText(data.content);
+      } else {
+        console.error("AI Generation failed");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   // Dynamically generate the official text content based on parameters
   const generateDocumentText = () => {
@@ -145,6 +184,50 @@ __________________________
 Candidate Signature,
 ${candidateName}
 Designation: ${jobTitle}`;
+
+      case "Job Description":
+        return `JOB TITLE: ${jobTitle.toUpperCase()}
+COMPANY: ${companyName.toUpperCase()}
+LOCATION: Bangalore, India (Hybrid)
+TYPE: Full-time Employment
+
+ABOUT US:
+We are a premier, high-growth technology enterprise scaling our core developer workspace solutions. We foster an inclusive, innovation-first engineering culture.
+
+CORE RESPONSIBILITIES:
+- Design, build, and optimize critical state engines, React frontends, and backend microservices.
+- Lead security audits, performance hardening, and bundle size reduction workflows.
+- Partner with product leads to deliver polished user interfaces.
+
+REQUIREMENTS:
+- 3+ years experience with modern TypeScript, React, and server-side state integrations.
+- Excellent system orchestration foundations.
+- Strong communication and collaboration skills.
+
+COMPENSATION & BENEFIT ROADMAPS:
+- Gross Annual CTC: ${ctcPackage}
+- Standard comprehensive health coverage for you and your family.`;
+
+      case "Email Template":
+        return `Subject: Interview Confirmation Cycle - ${jobTitle} at ${companyName}
+
+Dear ${candidateName},
+
+Thank you for your interest in joining ${companyName}. We have reviewed your resume matches and tech assessment telemetry.
+
+We are delighted to confirm that you have been shortlisted for our panel review and system simulation rounds.
+
+PROPOSED DETAILS:
+- Position: ${jobTitle}
+- CTC Range: ${ctcPackage}
+- Interview Date: ${formattedDate}
+
+Please reply to confirm your availability.
+
+Best regards,
+${signatoryName}
+${signatoryTitle}
+${companyName}`;
     }
   };
 
@@ -182,7 +265,9 @@ Designation: ${jobTitle}`;
                 { type: "Offer Letter", label: "Offer Letter", icon: FileText },
                 { type: "Appointment Letter", label: "Appointment Letter", icon: FileCheck },
                 { type: "Experience Letter", label: "Experience Letter", icon: Bookmark },
-                { type: "Joining Letter", label: "Joining Letter", icon: Briefcase }
+                { type: "Joining Letter", label: "Joining Letter", icon: Briefcase },
+                { type: "Job Description", label: "Job Description", icon: Award },
+                { type: "Email Template", label: "Email Template", icon: Sparkles }
               ].map((item) => (
                 <button
                   key={item.type}
@@ -238,7 +323,7 @@ Designation: ${jobTitle}`;
                   />
                 </div>
 
-                {letterType === "Offer Letter" || letterType === "Appointment Letter" ? (
+                {letterType === "Offer Letter" || letterType === "Appointment Letter" || letterType === "Job Description" || letterType === "Email Template" ? (
                   <div className="space-y-1">
                     <label className="text-gray-400 block font-mono">Gross CTC Package</label>
                     <input
@@ -321,6 +406,45 @@ Designation: ${jobTitle}`;
                 </div>
               </div>
 
+              {/* Gemini AI Powered Generator Block */}
+              <div className="border-t border-white/5 pt-3.5 space-y-3">
+                <div className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-400 font-mono uppercase tracking-wider">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+                  <span>Gemini AI Auto-Composer</span>
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="text-gray-400 block font-mono">AI Drafting Prompt / Rules</label>
+                  <textarea
+                    value={extraInstructions}
+                    onChange={e => setExtraInstructions(e.target.value)}
+                    rows={3}
+                    placeholder="e.g. Write an exciting offer letter emphasizing our team's AI-first milestones and immediate impact goals..."
+                    className="w-full bg-neutral-900 border border-white/10 rounded-lg p-2 text-white focus:outline-none focus:border-indigo-500 text-[10px]"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAiGenerate}
+                  disabled={aiLoading}
+                  className="w-full py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold rounded-xl transition-all hover:shadow-lg hover:shadow-indigo-500/25 flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-white" />
+                  <span>{aiLoading ? "Generating AI Draft..." : `Generate AI ${letterType}`}</span>
+                </button>
+
+                {aiGeneratedText && (
+                  <button
+                    type="button"
+                    onClick={() => setAiGeneratedText(null)}
+                    className="w-full py-1 text-[10px] text-gray-500 hover:text-white transition-all cursor-pointer text-center block font-mono"
+                  >
+                    ← Reset to Standard template
+                  </button>
+                )}
+              </div>
+
             </div>
           </div>
         </div>
@@ -368,8 +492,8 @@ Designation: ${jobTitle}`;
               )}
 
               {/* Main Content text stream */}
-              <div className="text-neutral-800 tracking-wide font-medium">
-                {generateDocumentText()}
+              <div className="text-neutral-800 tracking-wide font-medium whitespace-pre-line">
+                {aiGeneratedText || generateDocumentText()}
               </div>
 
               {/* Official Seal and Sign block */}

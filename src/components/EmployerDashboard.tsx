@@ -36,9 +36,10 @@ import EnterpriseDocumentEngine from "./employer/EnterpriseDocumentEngine";
 interface EmployerDashboardProps {
   userId: string;
   userName: string;
+  userRole?: string;
 }
 
-export default function EmployerDashboard({ userId, userName }: EmployerDashboardProps) {
+export default function EmployerDashboard({ userId, userName, userRole }: EmployerDashboardProps) {
   // Navigation active tab routing
   const [activeTab, setActiveTab] = useState<
     "overview" | "registration" | "jobs" | "discovery" | "pipeline" | "leads" | "interviews" | "offers" | "reports" | "subscription" | "notifications" | "documents" | "chat" | "talent-search" | "performance"
@@ -214,12 +215,12 @@ export default function EmployerDashboard({ userId, userName }: EmployerDashboar
               {companyProfile?.isVerified && (
                 <span className="flex items-center gap-0.5 text-[9px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/15 px-2 py-0.5 rounded-full uppercase font-mono">
                   <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Verified Corp</span>
+                  <span>{userRole === "recruiter" ? "Verified Recruiter" : "Verified Corp"}</span>
                 </span>
               )}
             </div>
             <p className="text-xs text-gray-400">
-              Enterprise Recruitment CRM • Sourcing portal under GSTIN {companyProfile?.gstNumber || "Unregistered"}
+              {userRole === "recruiter" ? "Recruiter Console Workspace" : "Enterprise Recruitment CRM"} • Sourcing portal under GSTIN {companyProfile?.gstNumber || "Unregistered"}
             </p>
           </div>
         </div>

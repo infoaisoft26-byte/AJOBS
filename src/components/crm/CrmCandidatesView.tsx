@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { 
   Users, Search, Filter, Plus, Trash2, Edit, Save, X, 
-  Tag, FileText, CheckCircle, Mail, AlertTriangle, MessageSquare
+  Tag, FileText, CheckCircle, Mail, AlertTriangle, MessageSquare, Download, FileDown
 } from "lucide-react";
 import { doc, setDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { ConsultancyCandidateModel } from "./CrmTypes";
+import * as XLSX from "xlsx";
 
 interface CrmCandidatesViewProps {
   candidates: ConsultancyCandidateModel[];
@@ -21,6 +22,78 @@ export default function CrmCandidatesView({
   const [selectedCand, setSelectedCand] = useState<ConsultancyCandidateModel | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+
+  const downloadCrmCandidateExcel = (cand: ConsultancyCandidateModel) => {
+    const dataRow = [{
+      "Candidate Name": cand.name,
+      "Email Address": cand.email,
+      "Phone": cand.phone,
+      "Experience": cand.experience,
+      "Location": cand.location,
+      "Expected Salary (LPA)": cand.expectedSalary,
+      "Status": cand.status,
+      "Skills": cand.skills.join(", "),
+      "Tags": cand.tags.join(", "),
+      "Notes": cand.notes
+    }];
+    const worksheet = XLSX.utils.json_to_sheet(dataRow);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Candidate Info");
+    XLSX.writeFile(workbook, `${cand.name.replace(/\s+/g, "_")}_Profile.xlsx`);
+  };
+
+  const downloadCrmCandidateCSV = (cand: ConsultancyCandidateModel) => {
+    const headers = ["Name", "Email", "Phone", "Experience", "Location", "Expected Salary", "Status", "Skills", "Tags"];
+    const row = [cand.name, cand.email, cand.phone, cand.experience, cand.location, cand.expectedSalary, cand.status, cand.skills.join("|"), cand.tags.join("|")];
+    const csvContent = [headers.join(","), row.map(v => `"${v}"`).join(",")].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `${cand.name.replace(/\s+/g, "_")}_Profile.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const downloadCrmCandidatePDF = (cand: ConsultancyCandidateModel) => {
+    const htmlContent = `
+      <html>
+        <head>
+          <title>Agency Candidate Dossier - ${cand.name}</title>
+          <style>
+            body { font-family: sans-serif; padding: 40px; color: #333; }
+            .header { border-bottom: 2px solid #6366f1; padding-bottom: 15px; margin-bottom: 25px; }
+            h1 { color: #1e1b4b; font-size: 24px; margin: 0; }
+            .section-title { font-size: 14px; font-weight: bold; color: #4338ca; margin-top: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; }
+            .value { margin-top: 5px; font-size: 13px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>${cand.name}</h1>
+            <p>Agency Registered Candidate Profile • Generated on ${new Date().toLocaleDateString()}</p>
+          </div>
+          <div class="section-title">Contact & Coordinates</div>
+          <div class="value">Email: ${cand.email} | Phone: ${cand.phone}</div>
+          <div class="value">Location: ${cand.location}</div>
+
+          <div class="section-title">Recruitment Performance Matrices</div>
+          <div class="value">Experience: ${cand.experience}</div>
+          <div class="value">Expected CTC: ${cand.expectedSalary} LPA</div>
+          <div class="value">Skills Stack: ${cand.skills.join(", ")}</div>
+
+          <div class="section-title">Internal Evaluations</div>
+          <div class="value">Status: <strong>${cand.status.toUpperCase()}</strong></div>
+          <p style="font-size: 13px; font-style: italic;">Notes: ${cand.notes || "No candidate notes recorded."}</p>
+          <script>window.print();</script>
+        </body>
+      </html>
+    `;
+    const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+  };
 
   // Search/Filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -562,6 +635,34 @@ export default function CrmCandidatesView({
                   <p className="p-3 bg-neutral-950/40 rounded-xl border border-white/5 text-gray-300 leading-relaxed italic text-[11px]">
                     {selectedCand.notes || "No candidate evaluation notes added yet."}
                   </p>
+                </div>
+
+                {/* Premium Dossier Download Actions */}
+                <div className="space-y-2 border-t border-white/5 pt-3">
+                  <span className="text-gray-400 font-medium flex items-center gap-1.5">
+                    <Download className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Dossier Export (Own Data Only)</span>
+                  </span>
+                  <div className="grid grid-cols-3 gap-1.5 font-mono">
+                    <button
+                      onClick={() => downloadCrmCandidateExcel(selectedCand)}
+                      className="py-1.5 px-2 bg-emerald-500/10 hover:bg-emerald-500 hover:text-white border border-emerald-500/20 text-emerald-400 text-[10px] rounded-lg flex items-center justify-center gap-1 transition-all cursor-pointer"
+                    >
+                      <span>Excel</span>
+                    </button>
+                    <button
+                      onClick={() => downloadCrmCandidateCSV(selectedCand)}
+                      className="py-1.5 px-2 bg-blue-500/10 hover:bg-blue-500 hover:text-white border border-blue-500/20 text-blue-400 text-[10px] rounded-lg flex items-center justify-center gap-1 transition-all cursor-pointer"
+                    >
+                      <span>CSV</span>
+                    </button>
+                    <button
+                      onClick={() => downloadCrmCandidatePDF(selectedCand)}
+                      className="py-1.5 px-2 bg-indigo-500/10 hover:bg-indigo-500 hover:text-white border border-indigo-500/20 text-indigo-400 text-[10px] rounded-lg flex items-center justify-center gap-1 transition-all cursor-pointer"
+                    >
+                      <span>PDF</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

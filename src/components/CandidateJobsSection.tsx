@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { 
   Heart, Briefcase, Brain, Star, CheckCircle2, Search, ArrowRight, 
@@ -9,6 +9,7 @@ import { JobPosting, JobApplication } from "../types";
 import { deleteDoc, doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import { db } from "../firebase";
 import { evaluateAbacPolicy, mapUserToAbacSubject } from "../services/abacService";
+import { injectJobPostingSchema } from "../utils/schemaGenerator";
 
 interface JobsSectionProps {
   userId: string;
@@ -55,6 +56,13 @@ export default function CandidateJobsSection({
   const [showAiRecommendedOnly, setShowAiRecommendedOnly] = useState(false);
 
   const savedJobIds = profile?.savedJobIds || [];
+
+  // Dynamic SEO Structured Data (Schema.org JSON-LD) injection
+  useEffect(() => {
+    if (selectedJobForMatch) {
+      injectJobPostingSchema(selectedJobForMatch);
+    }
+  }, [selectedJobForMatch]);
 
   // Withdraw an application
   const handleWithdrawApplication = async (appId: string, jobTitle: string) => {

@@ -49,7 +49,7 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
   const { showToast } = useToast();
   const [mode, setMode] = useState<AuthMode>(initialMode === "signup" ? "signup" : "signin");
   const [authMethod, setAuthMethod] = useState<"email" | "phone">("email");
-  const [role, setRole] = useState<"candidate" | "consultancy" | "employer" | "admin">("candidate");
+  const [role, setRole] = useState<"candidate" | "consultancy" | "employer" | "recruiter" | "admin" | "superadmin">("candidate");
   
   // Inputs
   const [name, setName] = useState("");
@@ -116,14 +116,20 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
   };
 
   const validatePasswordStrength = (pwd: string): { isValid: boolean; message: string } => {
-    if (pwd.length < 6) {
-      return { isValid: false, message: "Password must be at least 6 characters long." };
+    if (pwd.length < 8) {
+      return { isValid: false, message: "Password must be at least 8 characters long." };
     }
-    if (!/[A-Za-z]/.test(pwd)) {
-      return { isValid: false, message: "Password must contain at least one letter." };
+    if (!/[A-Z]/.test(pwd)) {
+      return { isValid: false, message: "Password must contain at least one uppercase letter." };
+    }
+    if (!/[a-z]/.test(pwd)) {
+      return { isValid: false, message: "Password must contain at least one lowercase letter." };
     }
     if (!/\d/.test(pwd)) {
       return { isValid: false, message: "Password must contain at least one number." };
+    }
+    if (!/[@$!%*?&#^()_\-+=\[\]{}|\\\/.]/.test(pwd)) {
+      return { isValid: false, message: "Password must contain at least one special character (e.g., @$!%*?&)." };
     }
     return { isValid: true, message: "" };
   };
@@ -519,10 +525,10 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
     setLoading(true);
 
     try {
-      const displayName = role === "candidate" ? name : role === "consultancy" ? agencyName : role === "employer" ? companyName : name;
+      const displayName = role === "candidate" ? name : role === "consultancy" ? agencyName : (role === "employer" || role === "recruiter") ? companyName : name;
       if (mode === "signup") {
         if (!displayName.trim()) {
-          throw new Error(`Please specify your ${role === "candidate" ? "Full Name" : role === "consultancy" ? "Agency Name" : role === "employer" ? "Company Name" : "Admin Name"}`);
+          throw new Error(`Please specify your ${role === "candidate" ? "Full Name" : role === "consultancy" ? "Agency Name" : (role === "employer" || role === "recruiter") ? "Company Name" : "Admin Name"}`);
         }
 
         if (password !== confirmPassword) {
@@ -577,7 +583,7 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
       if (err.code === "auth/internal-error" || err.message?.includes("internal-error") || isAppCheckError) {
         console.warn("Firebase Auth error or App Check block detected, falling back to secure client-side sandbox mode:", err);
         const fallbackUid = "local_" + Math.random().toString(36).substr(2, 9);
-        const displayName = role === "candidate" ? name : role === "consultancy" ? agencyName : role === "employer" ? companyName : name;
+        const displayName = role === "candidate" ? name : role === "consultancy" ? agencyName : (role === "employer" || role === "recruiter") ? companyName : name;
         const fallbackProfile: UserProfile = {
           uid: fallbackUid,
           name: displayName || "Aryan Sharma",
@@ -608,9 +614,9 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
     setError("");
     setSuccess("");
 
-    const displayName = role === "candidate" ? name : role === "consultancy" ? agencyName : role === "employer" ? companyName : name;
+    const displayName = role === "candidate" ? name : role === "consultancy" ? agencyName : (role === "employer" || role === "recruiter") ? companyName : name;
     if (!displayName.trim()) {
-      setError(`Please enter your ${role === "candidate" ? "Name" : role === "consultancy" ? "Agency Name" : role === "employer" ? "Company Name" : "Admin Name"}`);
+      setError(`Please enter your ${role === "candidate" ? "Name" : role === "consultancy" ? "Agency Name" : (role === "employer" || role === "recruiter") ? "Company Name" : "Admin Name"}`);
       return;
     }
 
@@ -994,8 +1000,10 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
                     {[
                       { id: "candidate", title: "Candidate", icon: User, desc: "Search jobs & AI prep", color: "hover:border-indigo-500 hover:text-indigo-300" },
                       { id: "consultancy", title: "Consultancy", icon: Shield, desc: "Staffing & agency tools", color: "hover:border-purple-500 hover:text-purple-300" },
-                      { id: "employer", title: "Employer", icon: Briefcase, desc: "Recruiter dashboard", color: "hover:border-pink-500 hover:text-pink-300" },
-                      { id: "admin", title: "Admin Portal", icon: ShieldCheck, desc: "Access DB controls", color: "hover:border-emerald-500 hover:text-emerald-300" }
+                      { id: "employer", title: "Employer", icon: Briefcase, desc: "Corporate dashboard", color: "hover:border-pink-500 hover:text-pink-300" },
+                      { id: "recruiter", title: "Recruiter", icon: Sparkles, desc: "Post & manage jobs", color: "hover:border-amber-500 hover:text-amber-300" },
+                      { id: "admin", title: "Admin Portal", icon: ShieldCheck, desc: "Access DB controls", color: "hover:border-emerald-500 hover:text-emerald-300" },
+                      { id: "superadmin", title: "Super Admin", icon: ShieldAlert, desc: "All console systems", color: "hover:border-red-500 hover:text-red-300" }
                     ].map((item) => {
                       const Icon = item.icon;
                       const isSel = role === item.id;
@@ -1034,18 +1042,18 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
                   {mode === "signup" && (
                     <div className="animate-in fade-in duration-200">
                       <label className="block text-xs font-medium text-gray-300 mb-1">
-                        {role === "candidate" ? "Full Name" : role === "consultancy" ? "Consultancy Name" : role === "employer" ? "Company Name" : "Admin Display Name"}
+                        {role === "candidate" ? "Full Name" : role === "consultancy" ? "Consultancy Name" : (role === "employer" || role === "recruiter") ? "Company / Agency Name" : "Admin Display Name"}
                       </label>
                       <div className="relative">
                         {role === "candidate" && <User className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />}
                         {role === "consultancy" && <Building2 className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />}
-                        {role === "employer" && <Briefcase className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />}
-                        {role === "admin" && <ShieldCheck className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />}
+                        {(role === "employer" || role === "recruiter") && <Briefcase className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />}
+                        {(role === "admin" || role === "superadmin") && <ShieldCheck className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />}
                         <input
                           type="text"
-                          value={role === "candidate" || role === "admin" ? name : role === "consultancy" ? agencyName : companyName}
+                          value={(role === "candidate" || role === "admin" || role === "superadmin") ? name : role === "consultancy" ? agencyName : companyName}
                           onChange={(e) => {
-                            if (role === "candidate" || role === "admin") setName(e.target.value);
+                            if (role === "candidate" || role === "admin" || role === "superadmin") setName(e.target.value);
                             else if (role === "consultancy") setAgencyName(e.target.value);
                             else setCompanyName(e.target.value);
                           }}

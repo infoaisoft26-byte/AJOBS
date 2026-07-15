@@ -15,6 +15,60 @@ const PORT = 3000;
 
 app.use(express.json());
 
+// -------------------- RATE LIMITER & CSRF MITIGATION --------------------
+const rateLimitsStore = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 120; // 120 requests per minute
+
+const apiRateLimiter = (req: any, res: any, next: any) => {
+  const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown_ip";
+  const now = Date.now();
+  
+  const limitInfo = rateLimitsStore.get(ip);
+  if (!limitInfo || now > limitInfo.resetTime) {
+    rateLimitsStore.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    next();
+  } else {
+    limitInfo.count++;
+    if (limitInfo.count > RATE_LIMIT_MAX_REQUESTS) {
+      console.warn(`[RATE_LIMIT_BLOCKED] IP ${ip} exceeded API throttle limits.`);
+      return res.status(429).json({
+        success: false,
+        error: "TOO_MANY_REQUESTS",
+        message: "Too many requests. Please wait and try again."
+      });
+    }
+    next();
+  }
+};
+
+const csrfMitigator = (req: any, res: any, next: any) => {
+  // Safe HTTP methods don't modify state, no CSRF risk
+  if (["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+    return next();
+  }
+
+  // Cross-site requests are blocked from adding custom headers (CORS preflight triggers first)
+  // Therefore, validating custom headers is a highly recommended and lightweight CSRF prevention pattern for APIs
+  const userAgent = req.headers["user-agent"] || "";
+  const secFetchSite = req.headers["sec-fetch-site"];
+
+  // If Sec-Fetch-Site is present, check if it's cross-site
+  if (secFetchSite === "cross-site") {
+    console.warn(`[CSRF_ATTEMPT] Cross-site request blocked on ${req.method} ${req.url}`);
+    return res.status(403).json({
+      success: false,
+      error: "CSRF_BLOCKED",
+      message: "Cross-origin request rejected for security reasons."
+    });
+  }
+
+  next();
+};
+
+app.use("/api/", apiRateLimiter);
+app.use("/api/", csrfMitigator);
+
 // Track unique active users and errors
 app.use((req, res, next) => {
   const userId = req.headers["x-user-id"] || req.query.userId || req.body.userId || "anonymous";
@@ -1234,6 +1288,62 @@ Strictly output valid JSON only. Do not wrap in markdown.
     letterContent: `Dear Hiring Team at ${companyName || "Innovations Ltd"},\n\nI am writing to express my enthusiastic interest in the ${position || "Software Engineer"} opening at ${companyName || "Innovations Ltd"}. With a strong background in developing scalable software solutions and high-fidelity modular user interfaces, I am confident that my technical skills and proactive problem-solving mindset make me an exceptional fit for your engineering team.\n\nIn my previous roles, I have spearheaded modern web architectures and optimized transactional database pipelines. This experience aligns perfectly with your goals to construct robust services. I take immense pride in crafting clean, readable code and translating complex specifications into elegant user experiences.\n\nThank you for your time and consideration. I look forward to discussing how my experiences and background align with the strategic goals at ${companyName || "Innovations Ltd"}.\n\nSincerely,\nAIJobs Career Intelligence Candidate`,
     strengthsHighlighted: ["Hands-on scalable front-end and web engineering setup", "Dynamic state synchronizations and high-performance layouts"],
     recruiterSuggestions: ["Customize the first paragraph with a specific product or project owned by the company.", "Mention key metrics such as percentage performance gains or developer productivity boosts."]
+  });
+});
+
+// 4f-2. AI Document Generator Endpoint (Offer Letters, JDs, Email Templates)
+app.post("/api/ai-document-generate", async (req, res) => {
+  const { type, candidateName, position, companyName, salary, signatoryName, signatoryTitle, extraInstructions } = req.body;
+
+  const prompt = `
+You are an expert HR, legal, and recruitment AI operations specialist.
+Draft a high-quality, professional corporate document of type: "${type || "Offer Letter"}".
+
+Target Details:
+- Candidate Name: ${candidateName || "Aryan Sharma"}
+- Position: ${position || "Senior Software Engineer"}
+- Company: ${companyName || "AIJobs Tech Labs"}
+- Salary/Compensation: ${salary || "₹18,50,000 PA"}
+- Signatory: ${signatoryName || "Ananya Rao"} (${signatoryTitle || "Head of Talent"})
+- Extra Details: ${extraInstructions || "Make it highly professional, inspiring, and concise."}
+
+Please output a strictly valid JSON object with:
+{
+  "title": "Title of the document",
+  "content": "Fully formatted content with realistic spacing, including standard professional headers, body, terms, and closing signature block.",
+  "keyHighlights": ["Highlight 1", "Highlight 2"]
+}
+
+Strictly output valid JSON only. Do not wrap in markdown.
+`;
+
+  try {
+    const text = await aiOrchestrator.generateContentWithRetry(prompt);
+    const cleanedJson = text
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
+
+    const parsedData = JSON.parse(cleanedJson);
+    return res.json(parsedData);
+  } catch (err) {
+    console.error("AI Document Generation failed, cascading to fallback:", err);
+  }
+
+  // Resilient Fallback based on type
+  let fallbackContent = "";
+  if (type === "Job Description") {
+    fallbackContent = `JOB DESCRIPTION: ${position} at ${companyName}\n\nOVERVIEW:\nWe are searching for a highly skilled and motivated ${position} to join our engineering division. You will build high-availability web services, refine API pipelines, and work with collaborative UI features.\n\nRESPONSIBILITIES:\n- Collaborate on architecture, clean layouts, and durable database hooks.\n- Participate in continuous code optimization, security Auditing, and performance monitoring.\n\nREQUIREMENTS:\n- Proficient in TypeScript, React, and server backend integrations.\n- Strong systems engineering foundations.\n\nCOMPENSATION:\n- CTC: ${salary}`;
+  } else if (type === "Email Template") {
+    fallbackContent = `Subject: Welcome to the Selection Cycle - ${position} at ${companyName}\n\nDear ${candidateName},\n\nThank you for exploring opportunities with ${companyName}. We were highly impressed by your resume matching score and overall profile.\n\nWe would love to schedule a panel review and system simulation round next week. Let us know your availability.\n\nBest regards,\n${signatoryName}\n${signatoryTitle}\n${companyName}`;
+  } else {
+    fallbackContent = `OFFER OF EMPLOYMENT\nDate: ${new Date().toLocaleDateString()}\n\nDear ${candidateName},\n\nWe are pleased to offer you employment at ${companyName} as a "${position}".\n\nYour compensation will be structured at ${salary}.\n\nFor ${companyName},\n\n${signatoryName}\n${signatoryTitle}`;
+  }
+
+  res.json({
+    title: `${type} for ${candidateName || position}`,
+    content: fallbackContent,
+    keyHighlights: ["Automated corporate grade structure", "Compliance and terms integrated"]
   });
 });
 

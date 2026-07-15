@@ -1,10 +1,13 @@
 {
-  "name": "AIJobs",
+  "name": "AIJobs Recruitment Platform",
   "short_name": "AIJobs",
+  "description": "Enterprise-grade AI-powered recruitment platform with deep semantic resume matching, automated scheduling, and performance analytics.",
   "start_url": "/",
-  "display": "standalone",
+  "display": "fullscreen",
+  "orientation": "portrait",
   "background_color": "#030712",
-  "theme_color": "#3b82f6",
+  "theme_color": "#6366f1",
+  "categories": ["business", "productivity", "utilities"],
   "icons": [
     {
       "src": "/logo.png",
@@ -21,6 +24,22 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "View Active Jobs",
+      "short_name": "Jobs",
+      "description": "Explore curated high-growth engineering jobs",
+      "url": "/#home",
+      "icons": [{ "src": "/logo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "My Workspace",
+      "short_name": "Workspace",
+      "description": "Access active tracking tools and pipeline reports",
+      "url": "/#dashboard",
+      "icons": [{ "src": "/logo.png", "sizes": "192x192" }]
     }
   ]
 }

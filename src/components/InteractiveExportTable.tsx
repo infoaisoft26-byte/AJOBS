@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from "react";
 import { 
-  ArrowUpDown, ArrowUp, ArrowDown, Download, EyeOff, Check, RefreshCw, Layers
+  ArrowUpDown, ArrowUp, ArrowDown, Download, EyeOff, Check, RefreshCw, Layers, ExternalLink, FileSpreadsheet
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import { connectGoogleSheets, exportToGoogleSheets } from "../services/googleSheetsService";
 
 interface ColumnDefinition<T> {
   key: keyof T | string;
@@ -39,6 +40,55 @@ export default function InteractiveExportTable<T extends Record<string, any>>({
   });
 
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
+
+  // Google Sheets Export States
+  const [isExportingToSheets, setIsExportingToSheets] = useState(false);
+  const [generatedSheetUrl, setGeneratedSheetUrl] = useState<string | null>(null);
+  const [sheetError, setSheetError] = useState<string | null>(null);
+
+  const handleExportGoogleSheets = async () => {
+    if (data.length === 0) {
+      alert("No data available to export.");
+      return;
+    }
+
+    setIsExportingToSheets(true);
+    setSheetError(null);
+    setGeneratedSheetUrl(null);
+
+    try {
+      // 1. Request access token
+      await connectGoogleSheets();
+
+      // 2. Prepare headers and rows for visible columns only
+      const activeColumnsList = columns.filter(col => visibleKeys[col.key as string]);
+      const headers = activeColumnsList.map(col => col.label);
+
+      const rows = data.map(item => {
+        return activeColumnsList.map(col => {
+          let val = item[col.key as string];
+          if (typeof val === "object" && val !== null) {
+            val = JSON.stringify(val);
+          }
+          return val ?? "";
+        });
+      });
+
+      // 3. Export to sheets
+      const result = await exportToGoogleSheets(
+        title || "AIJobs Export Report",
+        headers,
+        rows
+      );
+
+      setGeneratedSheetUrl(result.spreadsheetUrl);
+    } catch (err: any) {
+      console.error("Google Sheets export error:", err);
+      setSheetError(err?.message || "Failed to export data to Google Sheets.");
+    } finally {
+      setIsExportingToSheets(false);
+    }
+  };
 
   // 2. Sorting State
   const [sortKey, setSortKey] = useState<string | null>(null);
@@ -232,8 +282,56 @@ export default function InteractiveExportTable<T extends Record<string, any>>({
             <Layers className="w-3.5 h-3.5" />
             <span>CSV</span>
           </button>
+
+          {/* Export Google Sheets */}
+          <button
+            onClick={handleExportGoogleSheets}
+            disabled={isExportingToSheets}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono font-bold bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 rounded-lg text-green-300 hover:text-green-200 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isExportingToSheets ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="w-3.5 h-3.5 text-green-400" />
+            )}
+            <span>Google Sheets</span>
+          </button>
         </div>
       </div>
+
+      {/* Google Sheets Status Banner */}
+      {(isExportingToSheets || generatedSheetUrl || sheetError) && (
+        <div className="flex items-center justify-between p-3.5 rounded-2xl border text-[11px] font-mono transition-all animate-in fade-in slide-in-from-top-2 duration-200 bg-[#0f0f18]/60 border-white/5 backdrop-blur-md">
+          <div className="flex items-center gap-2">
+            {isExportingToSheets && (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-green-400" />
+                <span className="text-gray-300">Compiling dataset and writing to Google Sheets...</span>
+              </>
+            )}
+            {generatedSheetUrl && (
+              <>
+                <Check className="w-3.5 h-3.5 text-green-400" />
+                <span className="text-gray-300">Successfully exported! Your data is live in your Google Drive.</span>
+              </>
+            )}
+            {sheetError && (
+              <span className="text-red-400">Error: {sheetError}</span>
+            )}
+          </div>
+          {generatedSheetUrl && (
+            <a
+              href={generatedSheetUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 rounded-lg text-green-300 font-bold transition-all"
+            >
+              <span>Open Spreadsheet</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          )}
+        </div>
+      )}
 
       {/* Main Table Interface with dynamic column visibility and responsive layouts */}
       <div className="border border-white/5 rounded-2xl overflow-hidden bg-zinc-950/20">
