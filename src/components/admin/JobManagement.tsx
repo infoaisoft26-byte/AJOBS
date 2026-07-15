@@ -6,6 +6,7 @@ import {
 import { JobPosting } from "../../types";
 import { doc, setDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../../firebase";
+import InteractiveExportTable from "../InteractiveExportTable";
 
 interface JobManagementProps {
   jobs: JobPosting[];
@@ -252,120 +253,138 @@ export default function JobManagement({
           </div>
 
           {/* Table list */}
-          <div className="glass p-5 rounded-2xl border border-white/5 space-y-4">
-            <h4 className="text-xs font-bold text-white uppercase font-mono tracking-wider">Active Vacancy Ledger</h4>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-white/5 text-gray-400 font-mono">
-                    <th className="pb-3">Position Details</th>
-                    <th className="pb-3">Company</th>
-                    <th className="pb-3">Compensation Package</th>
-                    <th className="pb-3">Tags & Features</th>
-                    <th className="pb-3">Status</th>
-                    <th className="pb-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5 text-gray-300">
-                  {filteredJobs.length > 0 ? (
-                    filteredJobs.map((j) => {
-                      const isFeat = (j as any).isFeatured || false;
-                      const isPending = j.status !== "open" && j.status !== "closed";
-                      return (
-                        <tr key={j.id} className="hover:bg-white/5">
-                          <td className="py-3">
-                            <div className="font-bold text-white flex items-center gap-1.5">
-                              <span>{j.title}</span>
-                              {isFeat && (
-                                <span className="flex items-center gap-0.5 text-[8px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 px-1.5 py-0.5 rounded uppercase font-mono">
-                                  <Star className="w-2.5 h-2.5 text-amber-400 fill-amber-400" />
-                                  <span>Featured</span>
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-[10px] text-gray-400 font-mono mt-0.5 flex items-center gap-1">
-                              <MapPin className="w-3 h-3 text-indigo-400" />
-                              <span>{j.location}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 font-semibold text-white">{j.companyName}</td>
-                          <td className="py-3 font-mono text-indigo-400">{j.salary}</td>
-                          <td className="py-3">
-                            <div className="flex flex-wrap gap-1">
-                              {j.skillsRequired?.slice(0, 3).map((sk) => (
-                                <span key={sk} className="text-[8px] font-mono bg-white/5 px-1.5 py-0.5 rounded text-gray-300">
-                                  {sk}
-                                </span>
-                              ))}
-                            </div>
-                          </td>
-                          <td className="py-3">
-                            <span className={`px-2 py-0.5 rounded font-mono text-[9px] font-bold uppercase border ${
-                              j.status === "Live" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25" :
-                              j.status === "Pending Approval" ? "bg-amber-500/10 text-amber-400 border-amber-500/25 animate-pulse" :
-                              j.status === "Draft" ? "bg-blue-500/10 text-blue-400 border-blue-500/25" :
-                              j.status === "Approved" ? "bg-purple-500/10 text-purple-400 border-purple-500/25" :
-                              j.status === "Closed" ? "bg-neutral-500/10 text-neutral-400 border-neutral-500/25" :
-                              j.status === "Rejected" ? "bg-red-500/10 text-red-400 border-red-500/25" :
-                              "bg-gray-500/10 text-gray-400 border-gray-500/25"
-                            }`}>
-                              {j.status || "Draft"}
+          <div className="space-y-4">
+            <InteractiveExportTable
+              id="active-vacancy-ledger-export-table"
+              title="Active Vacancy Ledger"
+              exportFileName="system_jobs_report"
+              data={filteredJobs}
+              columns={[
+                {
+                  key: "title",
+                  label: "Position Details",
+                  sortable: true,
+                  render: (val: any, j: JobPosting) => {
+                    const isFeat = (j as any).isFeatured || false;
+                    return (
+                      <div className="py-1">
+                        <div className="font-bold text-white flex items-center gap-1.5 flex-wrap">
+                          <span>{j.title}</span>
+                          {isFeat && (
+                            <span className="flex items-center gap-0.5 text-[8px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 px-1.5 py-0.5 rounded uppercase font-mono">
+                              <Star className="w-2.5 h-2.5 text-amber-400 fill-amber-400" />
+                              <span>Featured</span>
                             </span>
-                          </td>
-                          <td className="py-3 text-right space-x-1 whitespace-nowrap">
-                            <button
-                              onClick={() => handleToggleFeature(j)}
-                              className={`p-1 rounded transition-all cursor-pointer inline-flex items-center border ${
-                                isFeat 
-                                  ? "bg-amber-500/10 border-amber-500/20 text-amber-400" 
-                                  : "bg-white/5 border-white/5 text-gray-400 hover:text-white"
-                              }`}
-                              title={isFeat ? "Demote from Featured" : "Promote to Featured"}
-                            >
-                              <Star className={`w-3.5 h-3.5 ${isFeat ? "fill-amber-400 text-amber-400" : ""}`} />
-                            </button>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-gray-400 font-mono mt-0.5 flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-indigo-400" />
+                          <span>{j.location}</span>
+                        </div>
+                      </div>
+                    );
+                  }
+                },
+                {
+                  key: "companyName",
+                  label: "Company",
+                  sortable: true,
+                  render: (val: any, j: JobPosting) => (
+                    <span className="font-semibold text-white">{j.companyName}</span>
+                  )
+                },
+                {
+                  key: "salary",
+                  label: "Compensation Package",
+                  sortable: true,
+                  render: (val: any, j: JobPosting) => (
+                    <span className="font-mono text-indigo-400">{j.salary}</span>
+                  )
+                },
+                {
+                  key: "skillsRequired",
+                  label: "Tags & Requirements",
+                  sortable: false,
+                  render: (val: any, j: JobPosting) => (
+                    <div className="flex flex-wrap gap-1">
+                      {j.skillsRequired?.slice(0, 3).map((sk) => (
+                        <span key={sk} className="text-[8px] font-mono bg-white/5 px-1.5 py-0.5 rounded text-gray-300">
+                          {sk}
+                        </span>
+                      ))}
+                    </div>
+                  )
+                },
+                {
+                  key: "status",
+                  label: "Status",
+                  sortable: true,
+                  render: (val: any, j: JobPosting) => (
+                    <span className={`px-2 py-0.5 rounded font-mono text-[9px] font-bold uppercase border ${
+                      j.status === "Live" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25" :
+                      j.status === "Pending Approval" ? "bg-amber-500/10 text-amber-400 border-amber-500/25 animate-pulse" :
+                      j.status === "Draft" ? "bg-blue-500/10 text-blue-400 border-blue-500/25" :
+                      j.status === "Approved" ? "bg-purple-500/10 text-purple-400 border-purple-500/25" :
+                      j.status === "Closed" ? "bg-neutral-500/10 text-neutral-400 border-neutral-500/25" :
+                      j.status === "Rejected" ? "bg-red-500/10 text-red-400 border-red-500/25" :
+                      "bg-gray-500/10 text-gray-400 border-gray-500/25"
+                    }`}>
+                      {j.status || "Draft"}
+                    </span>
+                  )
+                },
+                {
+                  key: "actions",
+                  label: "Actions",
+                  sortable: false,
+                  render: (val: any, j: JobPosting) => {
+                    const isFeat = (j as any).isFeatured || false;
+                    return (
+                      <div className="flex justify-end gap-1.5 whitespace-nowrap">
+                        <button
+                          onClick={() => handleToggleFeature(j)}
+                          className={`p-1.5 rounded-lg transition-all cursor-pointer inline-flex items-center border ${
+                            isFeat 
+                              ? "bg-amber-500/10 border-amber-500/20 text-amber-400" 
+                              : "bg-white/5 border-white/5 text-gray-400 hover:text-white"
+                          }`}
+                          title={isFeat ? "Demote from Featured" : "Promote to Featured"}
+                        >
+                          <Star className={`w-3.5 h-3.5 ${isFeat ? "fill-amber-400 text-amber-400" : ""}`} />
+                        </button>
 
-                            {j.status === "Pending Approval" && (
-                              <>
-                                <button
-                                  onClick={() => handleApproveJob(j, true)}
-                                  className="p-1 bg-emerald-500/10 hover:bg-emerald-500 border border-emerald-500/20 text-emerald-400 hover:text-white rounded transition-all cursor-pointer inline-flex items-center"
-                                  title="Approve Job"
-                                >
-                                  <CheckCircle className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleApproveJob(j, false)}
-                                  className="p-1 bg-red-500/10 hover:bg-red-500 border border-red-500/20 text-red-400 hover:text-white rounded transition-all cursor-pointer inline-flex items-center"
-                                  title="Reject Job"
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
-                              </>
-                            )}
-
+                        {j.status === "Pending Approval" && (
+                          <>
                             <button
-                              onClick={() => handleDeleteJob(j)}
-                              className="p-1 bg-red-500/10 hover:bg-red-500 border border-red-500/20 text-red-400 hover:text-white rounded transition-all cursor-pointer inline-flex items-center"
-                              title="Delete Job posting"
+                              onClick={() => handleApproveJob(j, true)}
+                              className="p-1.5 bg-emerald-500/10 hover:bg-emerald-500 border border-emerald-500/20 text-emerald-400 hover:text-white rounded-lg transition-all cursor-pointer inline-flex items-center"
+                              title="Approve Job"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <CheckCircle className="w-3.5 h-3.5" />
                             </button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  ) : (
-                    <tr>
-                      <td colSpan={6} className="text-center py-12 text-xs text-gray-500 italic">
-                        No jobs currently registered in database.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                            <button
+                              onClick={() => handleApproveJob(j, false)}
+                              className="p-1.5 bg-red-500/10 hover:bg-red-500 border border-red-500/20 text-red-400 hover:text-white rounded-lg transition-all cursor-pointer inline-flex items-center"
+                              title="Reject Job"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
+
+                        <button
+                          onClick={() => handleDeleteJob(j)}
+                          className="p-1.5 bg-red-500/10 hover:bg-red-500 border border-red-500/20 text-red-400 hover:text-white rounded-lg transition-all cursor-pointer inline-flex items-center"
+                          title="Delete Job posting"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  }
+                }
+              ]}
+            />
           </div>
         </div>
       ) : (

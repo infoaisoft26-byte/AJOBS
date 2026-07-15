@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import LegalModal, { LegalDocType } from "./LegalModal";
+import HolographicCard from "./HolographicCard";
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -439,7 +440,7 @@ export default function LandingPage({ onGetStarted, setActiveView }: LandingPage
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Card 1 */}
-          <div className="glass rounded-3xl p-6 hover:border-blue-500/30 transition-all duration-300 group flex flex-col justify-between">
+          <HolographicCard glowColor="rgba(59, 130, 246, 0.25)" className="p-6 flex flex-col justify-between h-full group">
             <div className="space-y-4">
               <div className="p-3 bg-blue-500/10 rounded-2xl w-fit border border-blue-500/20 text-blue-400 group-hover:scale-110 transition-transform">
                 <Search className="w-6 h-6" />
@@ -452,10 +453,10 @@ export default function LandingPage({ onGetStarted, setActiveView }: LandingPage
             <div className="mt-8 pt-4 border-t border-white/5 flex items-center text-[11px] font-semibold text-blue-400">
               <span>SCAN SPEED: 3.2s</span>
             </div>
-          </div>
+          </HolographicCard>
 
           {/* Card 2 */}
-          <div className="glass rounded-3xl p-6 hover:border-emerald-500/30 transition-all duration-300 group flex flex-col justify-between">
+          <HolographicCard glowColor="rgba(16, 185, 129, 0.25)" className="p-6 flex flex-col justify-between h-full group">
             <div className="space-y-4">
               <div className="p-3 bg-emerald-500/10 rounded-2xl w-fit border border-emerald-500/20 text-emerald-400 group-hover:scale-110 transition-transform">
                 <Play className="w-6 h-6" />
@@ -468,10 +469,10 @@ export default function LandingPage({ onGetStarted, setActiveView }: LandingPage
             <div className="mt-8 pt-4 border-t border-white/5 flex items-center text-[11px] font-semibold text-emerald-400">
               <span>REAL-TIME ASSESSMENT</span>
             </div>
-          </div>
+          </HolographicCard>
 
           {/* Card 3 */}
-          <div className="glass rounded-3xl p-6 hover:border-purple-500/30 transition-all duration-300 group flex flex-col justify-between">
+          <HolographicCard glowColor="rgba(168, 85, 247, 0.25)" className="p-6 flex flex-col justify-between h-full group">
             <div className="space-y-4">
               <div className="p-3 bg-purple-500/10 rounded-2xl w-fit border border-purple-500/20 text-purple-400 group-hover:scale-110 transition-transform">
                 <Compass className="w-6 h-6" />
@@ -484,10 +485,10 @@ export default function LandingPage({ onGetStarted, setActiveView }: LandingPage
             <div className="mt-8 pt-4 border-t border-white/5 flex items-center text-[11px] font-semibold text-purple-400">
               <span>COMPATIBILITY THRESHOLD: 90%+</span>
             </div>
-          </div>
+          </HolographicCard>
 
           {/* Card 4 */}
-          <div className="glass rounded-3xl p-6 hover:border-amber-500/30 transition-all duration-300 group flex flex-col justify-between">
+          <HolographicCard glowColor="rgba(245, 158, 11, 0.25)" className="p-6 flex flex-col justify-between h-full group">
             <div className="space-y-4">
               <div className="p-3 bg-amber-500/10 rounded-2xl w-fit border border-amber-500/20 text-amber-400 group-hover:scale-110 transition-transform">
                 <Bot className="w-6 h-6" />
@@ -500,10 +501,10 @@ export default function LandingPage({ onGetStarted, setActiveView }: LandingPage
             <div className="mt-8 pt-4 border-t border-white/5 flex items-center text-[11px] font-semibold text-amber-400">
               <span>UNLIMITED DIALOGUE</span>
             </div>
-          </div>
+          </HolographicCard>
 
           {/* Card 5 */}
-          <div className="glass rounded-3xl p-6 hover:border-pink-500/30 transition-all duration-300 group flex flex-col justify-between">
+          <HolographicCard glowColor="rgba(236, 72, 153, 0.25)" className="p-6 flex flex-col justify-between h-full group">
             <div className="space-y-4">
               <div className="p-3 bg-pink-500/10 rounded-2xl w-fit border border-pink-500/20 text-pink-400 group-hover:scale-110 transition-transform">
                 <FileText className="w-6 h-6" />
@@ -516,10 +517,10 @@ export default function LandingPage({ onGetStarted, setActiveView }: LandingPage
             <div className="mt-8 pt-4 border-t border-white/5 flex items-center text-[11px] font-semibold text-pink-400">
               <span>EXPORT TO PDF/DOCX</span>
             </div>
-          </div>
+          </HolographicCard>
 
           {/* Card 6 */}
-          <div className="glass rounded-3xl p-6 hover:border-blue-500/30 transition-all duration-300 group flex flex-col justify-between">
+          <HolographicCard glowColor="rgba(59, 130, 246, 0.25)" className="p-6 flex flex-col justify-between h-full group">
             <div className="space-y-4">
               <div className="p-3 bg-blue-500/10 rounded-2xl w-fit border border-blue-500/20 text-blue-400 group-hover:scale-110 transition-transform">
                 <Award className="w-6 h-6" />
@@ -532,10 +533,10 @@ export default function LandingPage({ onGetStarted, setActiveView }: LandingPage
             <div className="mt-8 pt-4 border-t border-white/5 flex items-center text-[11px] font-semibold text-blue-400">
               <span>TAILORED TONES</span>
             </div>
-          </div>
+          </HolographicCard>
 
           {/* Card 7 */}
-          <div className="glass rounded-3xl p-6 hover:border-emerald-500/30 transition-all duration-300 group flex flex-col justify-between">
+          <HolographicCard glowColor="rgba(16, 185, 129, 0.25)" className="p-6 flex flex-col justify-between h-full group">
             <div className="space-y-4">
               <div className="p-3 bg-emerald-500/10 rounded-2xl w-fit border border-emerald-500/20 text-emerald-400 group-hover:scale-110 transition-transform">
                 <Zap className="w-6 h-6" />
@@ -548,10 +549,10 @@ export default function LandingPage({ onGetStarted, setActiveView }: LandingPage
             <div className="mt-8 pt-4 border-t border-white/5 flex items-center text-[11px] font-semibold text-emerald-400">
               <span>95% MATCH WITH OFFERS</span>
             </div>
-          </div>
+          </HolographicCard>
 
           {/* Card 8 */}
-          <div className="glass rounded-3xl p-6 hover:border-purple-500/30 transition-all duration-300 group flex flex-col justify-between">
+          <HolographicCard glowColor="rgba(168, 85, 247, 0.25)" className="p-6 flex flex-col justify-between h-full group">
             <div className="space-y-4">
               <div className="p-3 bg-purple-500/10 rounded-2xl w-fit border border-purple-500/20 text-purple-400 group-hover:scale-110 transition-transform">
                 <Compass className="w-6 h-6" />
@@ -564,7 +565,7 @@ export default function LandingPage({ onGetStarted, setActiveView }: LandingPage
             <div className="mt-8 pt-4 border-t border-white/5 flex items-center text-[11px] font-semibold text-purple-400">
               <span>GROWTH-ORIENTED ROADMAPS</span>
             </div>
-          </div>
+          </HolographicCard>
         </div>
       </section>
 

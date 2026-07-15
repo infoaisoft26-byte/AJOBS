@@ -4,6 +4,8 @@ import {
   Send, Award, Bell, Clock, RefreshCw, BarChart2, Star
 } from "lucide-react";
 import { CompanyJob, CompanyApplication, CompanyInterview, CompanyOffer, CompanyActivityLog } from "./EmployerTypes";
+import HolographicCard from "../HolographicCard";
+import DashboardAnalyticsCharts from "../DashboardAnalyticsCharts";
 
 interface CompanyDashboardOverviewProps {
   jobs: CompanyJob[];
@@ -84,9 +86,10 @@ export default function CompanyDashboardOverview({
 
       {/* Stats Cards grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div 
+        <HolographicCard 
+          glowColor="rgba(99, 102, 241, 0.25)"
           onClick={() => onNavigateToTab("jobs")}
-          className="glass p-4 rounded-2xl border border-white/5 space-y-2 hover:border-indigo-500/25 transition-all cursor-pointer group"
+          className="p-4 space-y-2 cursor-pointer group"
         >
           <div className="flex justify-between items-center text-[10px] uppercase font-mono tracking-wider text-gray-400">
             <span>Active Jobs</span>
@@ -94,11 +97,12 @@ export default function CompanyDashboardOverview({
           </div>
           <div className="text-2xl font-black text-white">{activeJobs}</div>
           <p className="text-[9px] text-gray-500">Live vacancies accepting resumes</p>
-        </div>
+        </HolographicCard>
 
-        <div 
+        <HolographicCard 
+          glowColor="rgba(168, 85, 247, 0.25)"
           onClick={() => onNavigateToTab("pipeline")}
-          className="glass p-4 rounded-2xl border border-white/5 space-y-2 hover:border-purple-500/25 transition-all cursor-pointer group"
+          className="p-4 space-y-2 cursor-pointer group"
         >
           <div className="flex justify-between items-center text-[10px] uppercase font-mono tracking-wider text-gray-400">
             <span>Applications</span>
@@ -106,11 +110,12 @@ export default function CompanyDashboardOverview({
           </div>
           <div className="text-2xl font-black text-white">{totalApplications}</div>
           <p className="text-[9px] text-gray-500">Total applications registered</p>
-        </div>
+        </HolographicCard>
 
-        <div 
+        <HolographicCard 
+          glowColor="rgba(236, 72, 153, 0.25)"
           onClick={() => onNavigateToTab("discovery")}
-          className="glass p-4 rounded-2xl border border-white/5 space-y-2 hover:border-pink-500/25 transition-all cursor-pointer group"
+          className="p-4 space-y-2 cursor-pointer group"
         >
           <div className="flex justify-between items-center text-[10px] uppercase font-mono tracking-wider text-gray-400">
             <span>AI Top Matches</span>
@@ -118,11 +123,12 @@ export default function CompanyDashboardOverview({
           </div>
           <div className="text-2xl font-black text-white">{aiMatchCount}</div>
           <p className="text-[9px] text-gray-500">ATS Match percentage &ge; 80%</p>
-        </div>
+        </HolographicCard>
 
-        <div 
+        <HolographicCard 
+          glowColor="rgba(16, 185, 129, 0.25)"
           onClick={() => onNavigateToTab("interviews")}
-          className="glass p-4 rounded-2xl border border-white/5 space-y-2 hover:border-emerald-500/25 transition-all cursor-pointer group"
+          className="p-4 space-y-2 cursor-pointer group"
         >
           <div className="flex justify-between items-center text-[10px] uppercase font-mono tracking-wider text-gray-400">
             <span>Interviews Today</span>
@@ -130,13 +136,14 @@ export default function CompanyDashboardOverview({
           </div>
           <div className="text-2xl font-black text-white">{interviewsToday}</div>
           <p className="text-[9px] text-gray-500">Scheduled interviews for today</p>
-        </div>
+        </HolographicCard>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div 
+        <HolographicCard 
+          glowColor="rgba(59, 130, 246, 0.25)"
           onClick={() => onNavigateToTab("pipeline")}
-          className="glass p-4 rounded-2xl border border-white/5 space-y-2 hover:border-blue-500/25 transition-all cursor-pointer group"
+          className="p-4 space-y-2 cursor-pointer group"
         >
           <div className="flex justify-between items-center text-[10px] uppercase font-mono tracking-wider text-gray-400">
             <span>Shortlisted</span>
@@ -144,11 +151,12 @@ export default function CompanyDashboardOverview({
           </div>
           <div className="text-2xl font-black text-white">{shortlistedCount}</div>
           <p className="text-[9px] text-gray-500">Hiring managers shortlisted</p>
-        </div>
+        </HolographicCard>
 
-        <div 
+        <HolographicCard 
+          glowColor="rgba(16, 185, 129, 0.25)"
           onClick={() => onNavigateToTab("offers")}
-          className="glass p-4 rounded-2xl border border-white/5 space-y-2 hover:border-emerald-500/25 transition-all cursor-pointer group"
+          className="p-4 space-y-2 cursor-pointer group"
         >
           <div className="flex justify-between items-center text-[10px] uppercase font-mono tracking-wider text-gray-400">
             <span>Offers Released</span>
@@ -156,11 +164,12 @@ export default function CompanyDashboardOverview({
           </div>
           <div className="text-2xl font-black text-white">{offersReleased}</div>
           <p className="text-[9px] text-gray-500">Pending candidate signatures</p>
-        </div>
+        </HolographicCard>
 
-        <div 
+        <HolographicCard 
+          glowColor="rgba(234, 179, 8, 0.25)"
           onClick={() => onNavigateToTab("offers")}
-          className="glass p-4 rounded-2xl border border-white/5 space-y-2 hover:border-yellow-500/25 transition-all cursor-pointer group"
+          className="p-4 space-y-2 cursor-pointer group"
         >
           <div className="flex justify-between items-center text-[10px] uppercase font-mono tracking-wider text-gray-400">
             <span>Hires This Month</span>
@@ -168,11 +177,12 @@ export default function CompanyDashboardOverview({
           </div>
           <div className="text-2xl font-black text-white">{hiresThisMonth}</div>
           <p className="text-[9px] text-gray-500">Hires onboarded and signed</p>
-        </div>
+        </HolographicCard>
 
-        <div 
+        <HolographicCard 
+          glowColor="rgba(99, 102, 241, 0.25)"
           onClick={() => onNavigateToTab("reports")}
-          className="glass p-4 rounded-2xl border border-white/5 space-y-2 hover:border-indigo-500/25 transition-all cursor-pointer group"
+          className="p-4 space-y-2 cursor-pointer group"
         >
           <div className="flex justify-between items-center text-[10px] uppercase font-mono tracking-wider text-gray-400">
             <span>Success Rate</span>
@@ -182,8 +192,15 @@ export default function CompanyDashboardOverview({
             {totalApplications > 0 ? Math.round(((shortlistedCount + offersReleased) / totalApplications) * 100) : 0}%
           </div>
           <p className="text-[9px] text-gray-500">Application pipeline advancement index</p>
-        </div>
+        </HolographicCard>
       </div>
+
+      {/* Interactive Recharts Analytics Block */}
+      <DashboardAnalyticsCharts 
+        applications={applications} 
+        candidatesCount={shortlistedCount} 
+        jobsCount={jobs.length} 
+      />
 
       {/* Two Column details split */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

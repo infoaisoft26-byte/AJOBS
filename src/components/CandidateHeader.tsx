@@ -4,6 +4,18 @@ import {
   CheckCircle, LogOut, ExternalLink, X, Settings
 } from "lucide-react";
 import { NotificationRecord } from "../types";
+import { motion, AnimatePresence } from "motion/react";
+
+const SAMPLE_SUGGESTIONS = [
+  "React Developer",
+  "Fullstack Engineer (Node.js)",
+  "AI & ML Research Specialist",
+  "Cloud Solutions Architect",
+  "DevOps Engineer (Kubernetes)",
+  "Python Backend Developer",
+  "Data Scientist",
+  "UI/UX Design Lead"
+];
 
 interface HeaderProps {
   userName: string;
@@ -36,8 +48,13 @@ export default function CandidateHeader({
 }: HeaderProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
 
   const unreadCount = notifications.filter(n => !n.read).length;
+  
+  const filteredSuggestions = SAMPLE_SUGGESTIONS.filter(item => 
+    searchQuery && item.toLowerCase().includes(searchQuery.toLowerCase())
+  ).slice(0, 4);
 
   return (
     <div className="sticky top-[73px] z-30 w-full bg-[#030305]/85 backdrop-blur-md border-b border-white/5 py-3.5 px-4 md:px-8 flex items-center justify-between gap-4">
@@ -57,18 +74,83 @@ export default function CandidateHeader({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setTimeout(() => setInputFocused(false), 250)}
             placeholder="Search open positions or technology stack..."
-            className="w-full pl-9 pr-4 py-2 text-xs bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 text-white transition-all font-mono"
+            className="w-full pl-9 pr-12 py-2 text-xs bg-[#11111a]/80 border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 text-white transition-all font-mono"
             id="candidate-search-jobs-input"
+            autoComplete="off"
           />
           {searchQuery && (
             <button 
               onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-2.5 text-gray-500 hover:text-white text-xs"
+              className="absolute right-3 top-2.5 text-gray-500 hover:text-white text-xs cursor-pointer"
             >
               Clear
             </button>
           )}
+
+          {/* Holographic suggestions dropdown with upward-floating particle animation */}
+          <AnimatePresence>
+            {inputFocused && filteredSuggestions.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                className="absolute top-12 left-0 w-full bg-zinc-950/95 border border-indigo-500/40 backdrop-blur-3xl rounded-2xl p-3.5 z-50 shadow-[0_15px_40px_rgba(59,130,246,0.25),0_0_20px_rgba(99,102,241,0.15)] space-y-2 overflow-hidden"
+              >
+                {/* Background Rising Matrix Particles */}
+                <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl z-0">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ y: 90, opacity: 0, scale: 0.6 }}
+                      animate={{ y: -15, opacity: [0, 0.7, 0], scale: [0.6, 1.2, 0.6] }}
+                      transition={{
+                        duration: 2.2 + i * 0.4,
+                        repeat: Infinity,
+                        delay: i * 0.2,
+                        ease: "easeInOut"
+                      }}
+                      className="absolute bg-indigo-500/30 rounded-full"
+                      style={{
+                        width: Math.random() * 5 + 3,
+                        height: Math.random() * 5 + 3,
+                        left: `${15 + i * 18}%`,
+                      }}
+                    />
+                  ))}
+                </div>
+
+                <div className="text-[9px] uppercase font-mono text-indigo-400 tracking-widest mb-1.5 flex justify-between items-center relative z-10">
+                  <span>HOLOGRAPHIC INDEX MATCHES</span>
+                  <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-ping" />
+                </div>
+
+                <div className="space-y-1.5 relative z-10">
+                  {filteredSuggestions.map((suggestion, idx) => (
+                    <motion.button
+                      key={suggestion}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2, delay: idx * 0.04 }}
+                      onMouseDown={() => {
+                        setSearchQuery(suggestion);
+                        setInputFocused(false);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-xl bg-white/5 border border-white/5 hover:border-indigo-500/40 hover:bg-indigo-500/15 text-xs text-gray-300 hover:text-white transition-all flex items-center justify-between group cursor-pointer"
+                    >
+                      <span className="truncate font-mono">{suggestion}</span>
+                      <span className="text-[9px] font-mono opacity-0 group-hover:opacity-100 text-indigo-400 transition-opacity">
+                        QUERY &rarr;
+                      </span>
+                    </motion.button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 

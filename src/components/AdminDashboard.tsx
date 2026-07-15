@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { db, auth } from "../firebase";
 import { collection, getDocs, doc, setDoc, getDoc } from "firebase/firestore";
+import { recordActivityLog } from "../services/activityLogService";
 
 // Sub-components
 import { LiveStats, SystemAuditLog, SupportTicket, ApprovalRequest, CMSContent, EmailTemplate, AdminSystemSettings, PaymentTransaction } from "./admin/AdminTypes";
@@ -282,6 +283,22 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
       }
 
       setSuccessMessage("Premium enterprise-grade dataset successfully seeded!");
+      
+      // Log the database seeding action
+      try {
+        await recordActivityLog({
+          userId: currentUserId,
+          userName: currentUserName,
+          role: "admin",
+          action: "seed_database",
+          details: "Admin seeded premium enterprise-grade mock datasets into Firestore.",
+          entityType: "admin",
+          entityId: currentUserId
+        });
+      } catch (logErr) {
+        console.error("Non-blocking activity logging failure:", logErr);
+      }
+
       setTimeout(() => setSuccessMessage(""), 4000);
       fetchWorkspaceData();
     } catch (err) {

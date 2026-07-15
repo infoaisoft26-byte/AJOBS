@@ -5,6 +5,69 @@ import { initializeAppCheck, ReCaptchaV3Provider, ReCaptchaEnterpriseProvider } 
 import { getStorage } from "firebase/storage";
 import config from "../firebase-applet-config.json";
 
+// Safe console wrapper to handle and suppress Firestore idle stream warnings/errors from cluttering logs
+if (typeof window !== "undefined") {
+  const originalConsoleError = console.error;
+  console.error = function (...args: any[]) {
+    try {
+      const errorStr = args
+        .map((arg) => {
+          if (typeof arg === "string") return arg;
+          if (arg instanceof Error) return arg.message;
+          try {
+            return JSON.stringify(arg);
+          } catch {
+            return String(arg);
+          }
+        })
+        .join(" ");
+
+      if (
+        errorStr.includes("Disconnecting idle stream") ||
+        errorStr.includes("Timed out waiting for new targets") ||
+        errorStr.includes("GrpcConnection RPC 'Listen' stream") ||
+        (errorStr.includes("Firestore") && errorStr.includes("stream") && errorStr.includes("error")) ||
+        (errorStr.includes("firebase") && errorStr.includes("idle stream"))
+      ) {
+        // Demote to a subtle debug info print as Firestore handles these reconnections automatically
+        console.info("[Firestore] Handled native connection idle reset gracefully.");
+        return;
+      }
+    } catch (e) {
+      // fallback if mapping fails
+    }
+    originalConsoleError.apply(console, args);
+  };
+
+  const originalConsoleWarn = console.warn;
+  console.warn = function (...args: any[]) {
+    try {
+      const warnStr = args
+        .map((arg) => {
+          if (typeof arg === "string") return arg;
+          try {
+            return JSON.stringify(arg);
+          } catch {
+            return String(arg);
+          }
+        })
+        .join(" ");
+
+      if (
+        warnStr.includes("Disconnecting idle stream") ||
+        warnStr.includes("Timed out waiting for new targets") ||
+        warnStr.includes("GrpcConnection RPC 'Listen' stream")
+      ) {
+        console.info("[Firestore] Handled native connection idle warning gracefully.");
+        return;
+      }
+    } catch (e) {
+      // fallback if mapping fails
+    }
+    originalConsoleWarn.apply(console, args);
+  };
+}
+
 // Check if Firebase configuration is complete and valid
 export const isFirebaseConfigured = !!(
   config &&

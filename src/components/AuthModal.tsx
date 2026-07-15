@@ -3,8 +3,9 @@ import logoImg from "../assets/images/aijobs_logo_1783014982325.jpg";
 import { 
   X, User, Shield, Briefcase, Mail, Lock, UserPlus, Sparkles, 
   Building2, Phone, Key, ArrowLeft, Send, CheckCircle2, AlertCircle,
-  HelpCircle, Eye, EyeOff, ShieldCheck
+  HelpCircle, Eye, EyeOff, ShieldCheck, Fingerprint
 } from "lucide-react";
+import { motion } from "motion/react";
 import { auth, db, isFirebaseConfigured, firebaseConfigError } from "../firebase";
 import { 
   createUserWithEmailAndPassword, 
@@ -706,30 +707,47 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-2xl">
       {/* Hidden reCAPTCHA anchor */}
       <div id="recaptcha-container" className="hidden"></div>
 
-      <div 
-        className="relative w-full max-w-lg bg-gray-950/90 rounded-2xl overflow-hidden border border-white/10 shadow-2xl glow-indigo flex flex-col max-h-[92vh] text-white"
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.93, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: -10 }}
+        transition={{ type: "spring", damping: 25, stiffness: 160 }}
+        className="relative w-full max-w-lg bg-black/60 rounded-[28px] overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(59,130,246,0.15)] backdrop-blur-3xl flex flex-col max-h-[92vh] text-white"
         id="auth-modal-container"
       >
         {/* Background Gradients */}
         <div className="absolute inset-0 pointer-events-none z-0 opacity-20">
-          <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500 rounded-full blur-[80px]"></div>
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-500 rounded-full blur-[80px]"></div>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600 rounded-full blur-[100px]"></div>
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-600 rounded-full blur-[100px]"></div>
         </div>
 
+        {/* Laser scanner vertical sweep bar */}
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-500/60 to-transparent pointer-events-none animate-scan-laser z-20 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+
+        {/* Fine Bevel Lines */}
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/15 to-transparent pointer-events-none z-20" />
+
         {/* Header */}
-        <div className="relative z-10 p-5 border-b border-white/10 flex items-center justify-between bg-black/40">
-          <div className="flex items-center space-x-2">
-            <img
-              src={logoImg}
-              alt="AIJobs"
-              referrerPolicy="no-referrer"
-              className="w-5 h-5 rounded object-cover shadow-sm shadow-indigo-500/25"
-            />
-            <span className="font-display font-extrabold text-lg tracking-tight">
+        <div className="relative z-10 p-5.5 border-b border-white/5 flex items-center justify-between bg-white/[0.01]">
+          <div className="flex items-center space-x-3">
+            {/* Rotating AI microchip */}
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 18, ease: "linear" }}
+              className="relative w-8 h-8 flex items-center justify-center shrink-0 bg-blue-500/10 rounded-lg border border-blue-500/25 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
+            >
+              <svg className="w-5 h-5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                <rect x="5" y="5" width="14" height="14" rx="2" />
+                <path d="M9 1v4M15 1v4M9 19v4M15 19v4M1 9h4M1 15h4M19 9h4M19 15h4M9 9h6v6H9z" />
+              </svg>
+              <div className="absolute w-1.5 h-1.5 rounded-full bg-blue-300 animate-ping" />
+            </motion.div>
+
+            <span className="font-display font-black text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-gray-100 to-gray-300">
               {mode === "signin" && "Welcome back to AIJobs"}
               {mode === "signup" && "Create your Workspace"}
               {mode === "phone-otp" && "SMS OTP Authentication"}
@@ -739,7 +757,7 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
           </div>
           <button 
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-all cursor-pointer"
+            className="p-2 rounded-xl hover:bg-white/10 text-gray-400 hover:text-white transition-all cursor-pointer border border-transparent hover:border-white/5"
             id="close-auth-modal"
           >
             <X className="w-5 h-5" />
@@ -1309,7 +1327,7 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

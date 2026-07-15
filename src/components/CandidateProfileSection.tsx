@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 import { db } from "../firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { recordActivityLog } from "../services/activityLogService";
 
 interface SectionProps {
   userId: string;
@@ -31,6 +32,21 @@ export default function CandidateProfileSection({
       const candidateDocRef = doc(db, "candidates", userId);
       await updateDoc(candidateDocRef, updatedData);
       
+      // Record in general activity logs
+      try {
+        await recordActivityLog({
+          userId: userId,
+          userName: profile?.name || "Candidate Profile",
+          role: "candidate",
+          action: "update_profile",
+          details: `Updated profile parameter: ${Object.keys(updatedData).join(", ")}.`,
+          entityType: "user",
+          entityId: userId
+        });
+      } catch (logErr) {
+        console.error("Non-blocking activity logging failure:", logErr);
+      }
+
       // Update local state
       setProfile({
         ...profile,

@@ -6,6 +6,7 @@ import {
 import { CandidateProfile, JobApplication, NotificationRecord } from "../types";
 import { db } from "../firebase";
 import { doc, setDoc } from "firebase/firestore";
+import HolographicCard from "./HolographicCard";
 
 interface OverviewProps {
   userName: string;
@@ -137,9 +138,7 @@ export default function CandidateDashboardOverview({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Welcome & Profile Completion */}
-        <div className="lg:col-span-2 glass p-6 rounded-2xl relative overflow-hidden flex flex-col justify-between space-y-6 bg-gradient-to-br from-indigo-950/20 to-[#090d16]/30 border border-white/10 shadow-2xl">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-[50px] pointer-events-none"></div>
-          
+        <HolographicCard glowColor="rgba(99, 102, 241, 0.25)" className="lg:col-span-2 p-6 flex flex-col justify-between h-full relative overflow-hidden bg-gradient-to-br from-indigo-950/20 to-black/40">
           <div className="space-y-2">
             <div className="flex items-center space-x-2">
               <Sparkles className="text-indigo-400 w-5 h-5 animate-pulse" />
@@ -171,17 +170,17 @@ export default function CandidateDashboardOverview({
               <span>Setup qualifications, past roles, and ATS text keywords.</span>
               <button 
                 onClick={() => onSelectTab("profile")}
-                className="text-indigo-400 hover:text-indigo-300 font-semibold flex items-center space-x-0.5"
+                className="text-indigo-400 hover:text-indigo-300 font-semibold flex items-center space-x-0.5 cursor-pointer"
               >
                 <span>Edit Profile</span>
                 <ChevronRight className="w-3 h-3" />
               </button>
             </div>
           </div>
-        </div>
+        </HolographicCard>
 
         {/* AI Verified Badge Status */}
-        <div className="glass p-6 rounded-2xl flex flex-col justify-between space-y-4 bg-gradient-to-br from-[#090d16]/30 to-black/40 border border-white/10 relative overflow-hidden">
+        <HolographicCard glowColor={isAiVerified ? "rgba(16, 185, 129, 0.25)" : "rgba(107, 114, 128, 0.2)"} className="p-6 flex flex-col justify-between h-full bg-gradient-to-br from-[#090d16]/30 to-black/40">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-mono tracking-wider font-extrabold text-gray-400 uppercase">
               Hiring Credentials
@@ -196,10 +195,10 @@ export default function CandidateDashboardOverview({
           <div className="text-center py-4 space-y-2 relative">
             <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center border transition-all duration-500 ${
               isAiVerified 
-                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-lg shadow-emerald-500/10" 
+                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-lg shadow-emerald-500/10 animate-pulse" 
                 : "bg-white/5 border-white/10 text-gray-500"
             }`}>
-              <Star className={`w-8 h-8 ${isAiVerified ? "fill-emerald-400" : ""}`} />
+              <Star className={`w-8 h-8 ${isAiVerified ? "fill-emerald-400 text-emerald-400" : ""}`} />
             </div>
             <div>
               <p className="font-bold text-sm text-white">AI Verified Badge</p>
@@ -219,13 +218,13 @@ export default function CandidateDashboardOverview({
               Start Simulator Challenge
             </button>
           )}
-        </div>
+        </HolographicCard>
       </div>
 
       {/* Overview Stats Cards Bento Grid */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {/* Card 1: Resume Score */}
-        <div className="glass p-5 rounded-2xl flex flex-col justify-between space-y-2.5 hover:border-indigo-500/30 transition-all cursor-pointer" onClick={() => onSelectTab("resume")}>
+        <HolographicCard glowColor="rgba(99, 102, 241, 0.25)" className="p-5 flex flex-col justify-between" onClick={() => onSelectTab("resume")}>
           <div className="flex items-center justify-between">
             <span className="text-[9px] font-mono tracking-wider font-bold text-gray-400 uppercase">ATS Resume Score</span>
             <Award className="w-4 h-4 text-indigo-400" />
@@ -237,10 +236,10 @@ export default function CandidateDashboardOverview({
             </div>
             <p className="text-[10px] text-gray-400 mt-1">Audit status: <span className="text-indigo-400 font-semibold">{resumeScore ? "Active" : "No audit"}</span></p>
           </div>
-        </div>
+        </HolographicCard>
 
         {/* Card 2: AI Interview Score */}
-        <div className="glass p-5 rounded-2xl flex flex-col justify-between space-y-2.5 hover:border-purple-500/30 transition-all cursor-pointer" onClick={() => onSelectTab("interview")}>
+        <HolographicCard glowColor="rgba(168, 85, 247, 0.25)" className="p-5 flex flex-col justify-between" onClick={() => onSelectTab("interview")}>
           <div className="flex items-center justify-between">
             <span className="text-[9px] font-mono tracking-wider font-bold text-gray-400 uppercase">Interview Rating</span>
             <Brain className="w-4 h-4 text-purple-400" />
@@ -252,10 +251,10 @@ export default function CandidateDashboardOverview({
             </div>
             <p className="text-[10px] text-gray-400 mt-1">Simulations completed: <span className="text-purple-400 font-semibold">{interviewScore ? "Done" : "None"}</span></p>
           </div>
-        </div>
+        </HolographicCard>
 
         {/* Card 3: Saved Jobs Count */}
-        <div className="glass p-5 rounded-2xl flex flex-col justify-between space-y-2.5 hover:border-pink-500/30 transition-all cursor-pointer" onClick={() => onSelectTab("saved-jobs")}>
+        <HolographicCard glowColor="rgba(236, 72, 153, 0.25)" className="p-5 flex flex-col justify-between" onClick={() => onSelectTab("saved-jobs")}>
           <div className="flex items-center justify-between">
             <span className="text-[9px] font-mono tracking-wider font-bold text-gray-400 uppercase">Saved Openings</span>
             <Heart className="w-4 h-4 text-pink-400" />
@@ -264,10 +263,10 @@ export default function CandidateDashboardOverview({
             <span className="text-3xl font-extrabold font-display text-white">{savedJobsCount}</span>
             <p className="text-[10px] text-gray-400 mt-1">All postings boarded: <span className="text-pink-400 font-semibold">{jobsCount}</span></p>
           </div>
-        </div>
+        </HolographicCard>
 
         {/* Card 4: Applications Count */}
-        <div className="glass p-5 rounded-2xl flex flex-col justify-between space-y-2.5 hover:border-emerald-500/30 transition-all cursor-pointer" onClick={() => onSelectTab("applied-jobs")}>
+        <HolographicCard glowColor="rgba(16, 185, 129, 0.25)" className="p-5 flex flex-col justify-between" onClick={() => onSelectTab("applied-jobs")}>
           <div className="flex items-center justify-between">
             <span className="text-[9px] font-mono tracking-wider font-bold text-gray-400 uppercase">Applications Sent</span>
             <Briefcase className="w-4 h-4 text-emerald-400" />
@@ -278,10 +277,10 @@ export default function CandidateDashboardOverview({
               {applications.filter(a => a.status === "offered").length}
             </span></p>
           </div>
-        </div>
+        </HolographicCard>
 
         {/* Card 5: AI Talent Score */}
-        <div className="glass p-5 rounded-2xl flex flex-col justify-between space-y-2.5 hover:border-teal-500/30 transition-all cursor-pointer bg-gradient-to-br from-indigo-950/20 to-[#0a0f1d]/50" onClick={() => onSelectTab("reports")}>
+        <HolographicCard glowColor="rgba(20, 184, 166, 0.25)" className="p-5 flex flex-col justify-between bg-gradient-to-br from-indigo-950/20 to-[#0a0f1d]/50" onClick={() => onSelectTab("reports")}>
           <div className="flex items-center justify-between">
             <span className="text-[9px] font-mono tracking-wider font-bold text-gray-400 uppercase">AI Talent Rating</span>
             <Sparkles className="w-4 h-4 text-teal-400 animate-pulse" />
@@ -295,7 +294,7 @@ export default function CandidateDashboardOverview({
               {grade.label}
             </div>
           </div>
-        </div>
+        </HolographicCard>
       </div>
 
       {/* Lower Information Bento Grid */}

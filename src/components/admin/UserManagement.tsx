@@ -6,6 +6,7 @@ import {
 import { UserProfile } from "../../types";
 import { doc, setDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../../firebase";
+import InteractiveExportTable from "../InteractiveExportTable";
 
 interface UserManagementProps {
   users: UserProfile[];
@@ -219,99 +220,106 @@ export default function UserManagement({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Main Users Table */}
-        <div className="lg:col-span-2 glass p-5 rounded-2xl border border-white/5 space-y-4">
-          <h4 className="text-xs font-bold text-white uppercase font-mono tracking-wider">Directory Log</h4>
+        <div className="lg:col-span-2 space-y-4">
+          <InteractiveExportTable
+            id="user-directory-matrix-export-table"
+            title="System Directory Log"
+            exportFileName="system_users_report"
+            data={filteredUsers}
+            columns={[
+              {
+                key: "name",
+                label: "User Information",
+                sortable: true,
+                render: (val: any, u: UserProfile) => (
+                  <div className="py-1">
+                    <div className="font-bold text-white group-hover:text-indigo-400 transition-all">{u.name}</div>
+                    <div className="text-[10px] text-gray-400 font-mono mt-0.5">{u.email}</div>
+                    <div className="text-[8px] text-gray-500 font-mono mt-0.5">UID: {u.uid}</div>
+                  </div>
+                )
+              },
+              {
+                key: "role",
+                label: "Clearance Role",
+                sortable: true,
+                render: (val: any, u: UserProfile) => (
+                  <span className={`px-2 py-0.5 rounded font-mono text-[10px] font-bold ${
+                    u.role === "candidate" ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" :
+                    u.role === "employer" ? "bg-pink-500/10 text-pink-400 border border-pink-500/20" :
+                    u.role === "consultancy" ? "bg-purple-500/10 text-purple-400 border border-purple-500/20" :
+                    "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                  }`}>
+                    {u.role}
+                  </span>
+                )
+              },
+              {
+                key: "isSuspended",
+                label: "Status",
+                sortable: true,
+                render: (val: any, u: UserProfile) => {
+                  const isSusp = (u as any).isSuspended || false;
+                  return (
+                    <span className={`px-2 py-0.5 rounded font-mono text-[9px] font-bold ${
+                      isSusp 
+                        ? "bg-rose-500/10 text-rose-400 border border-rose-500/20" 
+                        : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                    }`}>
+                      {isSusp ? "SUSPENDED" : "ACTIVE"}
+                    </span>
+                  );
+                }
+              },
+              {
+                key: "actions",
+                label: "Actions",
+                sortable: false,
+                render: (val: any, u: UserProfile) => {
+                  const isSusp = (u as any).isSuspended || false;
+                  return (
+                    <div className="flex justify-end gap-1.5 whitespace-nowrap">
+                      <button
+                        onClick={() => setSelectedUserForDetail(u)}
+                        className="p-1.5 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-lg transition-all cursor-pointer inline-flex items-center"
+                        title="Inspect User Details"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-white/5 text-gray-400 font-mono">
-                  <th className="pb-3">User Information</th>
-                  <th className="pb-3">Clearance Role</th>
-                  <th className="pb-3">Status</th>
-                  <th className="pb-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5 text-gray-300">
-                {filteredUsers.length > 0 ? (
-                  filteredUsers.map((u) => {
-                    const isSusp = (u as any).isSuspended || false;
-                    return (
-                      <tr key={u.uid} className="hover:bg-white/5 group">
-                        <td className="py-3 pr-3">
-                          <div className="font-bold text-white group-hover:text-indigo-400 transition-all">{u.name}</div>
-                          <div className="text-[10px] text-gray-400 font-mono mt-0.5">{u.email}</div>
-                          <div className="text-[8px] text-gray-500 font-mono mt-0.5">UID: {u.uid}</div>
-                        </td>
-                        <td className="py-3 pr-3">
-                          <span className={`px-2 py-0.5 rounded font-mono text-[10px] font-bold ${
-                            u.role === "candidate" ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" :
-                            u.role === "employer" ? "bg-pink-500/10 text-pink-400 border border-pink-500/20" :
-                            u.role === "consultancy" ? "bg-purple-500/10 text-purple-400 border border-purple-500/20" :
-                            "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                          }`}>
-                            {u.role}
-                          </span>
-                        </td>
-                        <td className="py-3">
-                          <span className={`px-2 py-0.5 rounded font-mono text-[9px] font-bold ${
-                            isSusp 
-                              ? "bg-rose-500/10 text-rose-400 border border-rose-500/20" 
-                              : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                          }`}>
-                            {isSusp ? "SUSPENDED" : "ACTIVE"}
-                          </span>
-                        </td>
-                        <td className="py-3 text-right space-x-1 whitespace-nowrap">
-                          <button
-                            onClick={() => setSelectedUserForDetail(u)}
-                            className="p-1 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded transition-all cursor-pointer inline-flex items-center"
-                            title="Inspect User Details"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
+                      <button
+                        onClick={() => handleToggleSuspend(u)}
+                        className={`p-1.5 rounded-lg transition-all cursor-pointer inline-flex items-center border ${
+                          isSusp 
+                            ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white"
+                            : "bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white"
+                        }`}
+                        title={isSusp ? "Activate account" : "Suspend account"}
+                      >
+                        <Ban className="w-3.5 h-3.5" />
+                      </button>
 
-                          <button
-                            onClick={() => handleToggleSuspend(u)}
-                            className={`p-1 rounded transition-all cursor-pointer inline-flex items-center border ${
-                              isSusp 
-                                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white"
-                                : "bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white"
-                            }`}
-                            title={isSusp ? "Activate account" : "Suspend account"}
-                          >
-                            <Ban className="w-3.5 h-3.5" />
-                          </button>
+                      <button
+                        onClick={() => handleTriggerResetPassword(u)}
+                        className="p-1.5 bg-amber-500/10 hover:bg-amber-500 border border-amber-500/20 text-amber-400 hover:text-white rounded-lg transition-all cursor-pointer inline-flex items-center"
+                        title="Reset Credentials Code"
+                      >
+                        <Key className="w-3.5 h-3.5" />
+                      </button>
 
-                          <button
-                            onClick={() => handleTriggerResetPassword(u)}
-                            className="p-1 bg-amber-500/10 hover:bg-amber-500 border border-amber-500/20 text-amber-400 hover:text-white rounded transition-all cursor-pointer inline-flex items-center"
-                            title="Reset Credentials Code"
-                          >
-                            <Key className="w-3.5 h-3.5" />
-                          </button>
-
-                          <button
-                            onClick={() => handleDeleteUser(u)}
-                            className="p-1 bg-red-500/10 hover:bg-red-500 border border-red-500/20 text-red-400 hover:text-white rounded transition-all cursor-pointer inline-flex items-center"
-                            title="Delete User permanently"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={4} className="text-center py-12 text-xs text-gray-500 italic">
-                      No matching user row matches search query.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                      <button
+                        onClick={() => handleDeleteUser(u)}
+                        className="p-1.5 bg-red-500/10 hover:bg-red-500 border border-red-500/20 text-red-400 hover:text-white rounded-lg transition-all cursor-pointer inline-flex items-center"
+                        title="Delete User permanently"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  );
+                }
+              }
+            ]}
+          />
         </div>
 
         {/* User Inspections Side Panel */}

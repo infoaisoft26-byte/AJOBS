@@ -4,6 +4,7 @@ import {
   HelpCircle, Calendar, Briefcase, TrendingUp, Sparkles, Building
 } from "lucide-react";
 import { CompanyJob, CompanyApplication, CompanyInterview, CompanyOffer } from "./EmployerTypes";
+import InteractiveExportTable from "../InteractiveExportTable";
 
 interface ReportsAnalyticsProps {
   jobs: CompanyJob[];
@@ -125,117 +126,181 @@ export default function ReportsAnalytics({
         
         {activeReportTab === "hiring" && (
           <div className="space-y-4">
-            <div className="flex justify-between items-center border-b border-white/5 pb-2">
-              <h4 className="font-extrabold text-sm text-white">Full Hiring Pipeline Log</h4>
-              <span className="text-[10px] text-gray-500 font-mono">Synced • Real-time</span>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-white/5 text-gray-400 font-mono">
-                    <th className="pb-3 font-normal">Candidate Name</th>
-                    <th className="pb-3 font-normal">Target Job Opening</th>
-                    <th className="pb-3 font-normal">ATS Resume Match</th>
-                    <th className="pb-3 font-normal">Current Pipeline Stage</th>
-                    <th className="pb-3 font-normal">Applied Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5 text-gray-300">
-                  {applications.map((app) => (
-                    <tr key={app.id} className="hover:bg-white/5">
-                      <td className="py-3 font-bold text-white">{app.candidateName}</td>
-                      <td className="py-3">{app.jobTitle}</td>
-                      <td className="py-3 font-mono text-indigo-400">{app.resumeScore || 70}/100</td>
-                      <td className="py-3">
-                        <span className="px-2 py-0.5 bg-indigo-500/10 text-indigo-400 rounded-full font-mono text-[9px] font-bold">
-                          {app.status}
-                        </span>
-                      </td>
-                      <td className="py-3 font-mono">{new Date(app.appliedAt).toLocaleDateString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <InteractiveExportTable
+              id="hiring-pipeline-report-table"
+              title="Full Hiring Pipeline Log"
+              exportFileName="Acme_Global_Hiring_Report"
+              data={applications}
+              columns={[
+                {
+                  key: "candidateName",
+                  label: "Candidate Name",
+                  sortable: true,
+                  render: (val: any, app: CompanyApplication) => (
+                    <span className="font-bold text-white">{app.candidateName}</span>
+                  )
+                },
+                {
+                  key: "jobTitle",
+                  label: "Target Job Opening",
+                  sortable: true,
+                  render: (val: any, app: CompanyApplication) => (
+                    <span>{app.jobTitle}</span>
+                  )
+                },
+                {
+                  key: "resumeScore",
+                  label: "ATS Resume Match",
+                  sortable: true,
+                  render: (val: any, app: CompanyApplication) => (
+                    <span className="font-mono text-indigo-400">{app.resumeScore || 70}/100</span>
+                  )
+                },
+                {
+                  key: "status",
+                  label: "Current Pipeline Stage",
+                  sortable: true,
+                  render: (val: any, app: CompanyApplication) => (
+                    <span className="px-2 py-0.5 bg-indigo-500/10 text-indigo-400 rounded-full font-mono text-[9px] font-bold">
+                      {app.status}
+                    </span>
+                  )
+                },
+                {
+                  key: "appliedAt",
+                  label: "Applied Date",
+                  sortable: true,
+                  render: (val: any, app: CompanyApplication) => (
+                    <span className="font-mono">{new Date(app.appliedAt).toLocaleDateString()}</span>
+                  )
+                }
+              ]}
+            />
           </div>
         )}
 
         {activeReportTab === "interview" && (
           <div className="space-y-4">
-            <div className="flex justify-between items-center border-b border-white/5 pb-2">
-              <h4 className="font-extrabold text-sm text-white">Interviewer Feedback Audit Matrix</h4>
-              <span className="text-[10px] text-gray-500 font-mono">Scheduled & Completed Slots</span>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-white/5 text-gray-400 font-mono">
-                    <th className="pb-3 font-normal">Candidate</th>
-                    <th className="pb-3 font-normal">Position</th>
-                    <th className="pb-3 font-normal">Interviewer</th>
-                    <th className="pb-3 font-normal">Date</th>
-                    <th className="pb-3 font-normal">Status</th>
-                    <th className="pb-3 font-normal">Evaluation Score</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5 text-gray-300">
-                  {interviews.map((int) => (
-                    <tr key={int.id} className="hover:bg-white/5">
-                      <td className="py-3 font-bold text-white">{int.candidateName}</td>
-                      <td className="py-3">{int.jobTitle}</td>
-                      <td className="py-3">{int.interviewer}</td>
-                      <td className="py-3 font-mono">{int.date}</td>
-                      <td className="py-3">
-                        <span className={`px-2 py-0.5 rounded font-mono text-[9px] font-bold ${
-                          int.status === "Completed" ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"
-                        }`}>
-                          {int.status}
-                        </span>
-                      </td>
-                      <td className="py-3 font-mono font-extrabold text-pink-400">{int.score ? `${int.score}/100` : "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <InteractiveExportTable
+              id="interview-feedback-audit-table"
+              title="Interviewer Feedback Audit Matrix"
+              exportFileName="Acme_Global_Interview_Report"
+              data={interviews}
+              columns={[
+                {
+                  key: "candidateName",
+                  label: "Candidate",
+                  sortable: true,
+                  render: (val: any, int: CompanyInterview) => (
+                    <span className="font-bold text-white">{int.candidateName}</span>
+                  )
+                },
+                {
+                  key: "jobTitle",
+                  label: "Position",
+                  sortable: true,
+                  render: (val: any, int: CompanyInterview) => (
+                    <span>{int.jobTitle}</span>
+                  )
+                },
+                {
+                  key: "interviewer",
+                  label: "Interviewer",
+                  sortable: true,
+                  render: (val: any, int: CompanyInterview) => (
+                    <span>{int.interviewer}</span>
+                  )
+                },
+                {
+                  key: "date",
+                  label: "Date",
+                  sortable: true,
+                  render: (val: any, int: CompanyInterview) => (
+                    <span className="font-mono">{int.date}</span>
+                  )
+                },
+                {
+                  key: "status",
+                  label: "Status",
+                  sortable: true,
+                  render: (val: any, int: CompanyInterview) => (
+                    <span className={`px-2 py-0.5 rounded font-mono text-[9px] font-bold ${
+                      int.status === "Completed" ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"
+                    }`}>
+                      {int.status}
+                    </span>
+                  )
+                },
+                {
+                  key: "score",
+                  label: "Evaluation Score",
+                  sortable: true,
+                  render: (val: any, int: CompanyInterview) => (
+                    <span className="font-mono font-extrabold text-pink-400">{int.score ? `${int.score}/100` : "—"}</span>
+                  )
+                }
+              ]}
+            />
           </div>
         )}
 
         {activeReportTab === "recruiter" && (
           <div className="space-y-4">
-            <div className="flex justify-between items-center border-b border-white/5 pb-2">
-              <h4 className="font-extrabold text-sm text-white">Recruitment Agency Sourcing Trails</h4>
-              <span className="text-[10px] text-gray-500 font-mono">Coordinator performance index</span>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-white/5 text-gray-400 font-mono">
-                    <th className="pb-3 font-normal">Sourcing Officer</th>
-                    <th className="pb-3 font-normal">Title Authority</th>
-                    <th className="pb-3 font-normal">Allocated Workspaces</th>
-                    <th className="pb-3 font-normal">Action Timestamp</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5 text-gray-300">
-                  <tr className="hover:bg-white/5">
-                    <td className="py-3 font-bold text-white">Preeti Nair</td>
-                    <td className="py-3 font-mono">HR Coordinator</td>
-                    <td className="py-3">Acme Global Sourcing Unit</td>
-                    <td className="py-3 font-mono">{new Date().toLocaleString()}</td>
-                  </tr>
-                  <tr className="hover:bg-white/5">
-                    <td className="py-3 font-bold text-white">Ananya HR</td>
-                    <td className="py-3 font-mono">Recruitment Manager</td>
-                    <td className="py-3">Acme Executive approvals</td>
-                    <td className="py-3 font-mono">{new Date().toLocaleString()}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <InteractiveExportTable
+              id="recruiter-sourcing-trail-table"
+              title="Recruitment Agency Sourcing Trails"
+              exportFileName="Acme_Global_Recruiter_Audit"
+              data={[
+                {
+                  id: "trail_1",
+                  sourcingOfficer: "Preeti Nair",
+                  titleAuthority: "HR Coordinator",
+                  allocatedWorkspace: "Acme Global Sourcing Unit",
+                  actionTimestamp: new Date().toLocaleString()
+                },
+                {
+                  id: "trail_2",
+                  sourcingOfficer: "Ananya HR",
+                  titleAuthority: "Recruitment Manager",
+                  allocatedWorkspace: "Acme Executive approvals",
+                  actionTimestamp: new Date().toLocaleString()
+                }
+              ]}
+              columns={[
+                {
+                  key: "sourcingOfficer",
+                  label: "Sourcing Officer",
+                  sortable: true,
+                  render: (val: any, trail: any) => (
+                    <span className="font-bold text-white">{trail.sourcingOfficer}</span>
+                  )
+                },
+                {
+                  key: "titleAuthority",
+                  label: "Title Authority",
+                  sortable: true,
+                  render: (val: any, trail: any) => (
+                    <span className="font-mono text-indigo-400">{trail.titleAuthority}</span>
+                  )
+                },
+                {
+                  key: "allocatedWorkspace",
+                  label: "Allocated Workspace",
+                  sortable: true,
+                  render: (val: any, trail: any) => (
+                    <span>{trail.allocatedWorkspace}</span>
+                  )
+                },
+                {
+                  key: "actionTimestamp",
+                  label: "Action Timestamp",
+                  sortable: true,
+                  render: (val: any, trail: any) => (
+                    <span className="font-mono text-gray-400">{trail.actionTimestamp}</span>
+                  )
+                }
+              ]}
+            />
           </div>
         )}
 

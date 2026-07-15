@@ -8,6 +8,7 @@ import {
 import { collection, getDocs, query, limit, orderBy, where } from "firebase/firestore";
 import { db } from "../../firebase";
 import { LiveStats, SystemAuditLog } from "./AdminTypes";
+import DashboardAnalyticsCharts from "../DashboardAnalyticsCharts";
 
 interface LiveDashboardProps {
   stats: LiveStats;
@@ -482,6 +483,13 @@ export default function LiveDashboard({
         </div>
 
       </div>
+
+      {/* Recharts AAA Interactive Charts section */}
+      <DashboardAnalyticsCharts 
+        applications={[]} 
+        candidatesCount={stats.totalCandidates} 
+        jobsCount={stats.totalJobs} 
+      />
 
       {/* Visual Analytics Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

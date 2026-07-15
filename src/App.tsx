@@ -8,6 +8,8 @@ import Header from "./components/Header";
 import AuthModal from "./components/AuthModal";
 import LandingPage from "./components/LandingPage";
 import SplashScreen from "./components/SplashScreen";
+import CinematicBackground from "./components/CinematicBackground";
+import { motion, AnimatePresence } from "motion/react";
 
 // Lazy-loaded dashboard components for smaller initial bundle sizes
 const CandidateDashboard = lazy(() => import("./components/CandidateDashboard"));
@@ -25,6 +27,52 @@ import { CookieConsent } from "./components/CookieConsent";
 import { ToastProvider, useToast } from "./components/GlobalToast";
 import { initGA, trackPageView, trackInteraction } from "./utils/analytics";
 import { validateEnvironment } from "./utils/envValidation";
+
+function PageTransitionParticles({ triggerKey }: { triggerKey: string }) {
+  const [particles, setParticles] = useState<Array<{ id: number; left: number; top: number; size: number; delay: number }>>([]);
+
+  useEffect(() => {
+    const newParticles = Array.from({ length: 45 }).map((_, i) => ({
+      id: i + Math.random(),
+      left: Math.random() * 100,
+      top: Math.random() * 100,
+      size: Math.random() * 6 + 3,
+      delay: Math.random() * 0.25,
+    }));
+    setParticles(newParticles);
+  }, [triggerKey]);
+
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden z-40">
+      <AnimatePresence>
+        {particles.map((p) => (
+          <motion.div
+            key={p.id}
+            initial={{ opacity: 0, scale: 0, y: 40 }}
+            animate={{ 
+              opacity: [0, 0.75, 0], 
+              scale: [0, 1.4, 0], 
+              y: -100, 
+              x: (Math.random() - 0.5) * 60,
+            }}
+            transition={{ 
+              duration: 1.1, 
+              delay: p.delay,
+              ease: "easeOut" 
+            }}
+            className="absolute rounded bg-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.6)]"
+            style={{
+              left: `${p.left}%`,
+              top: `${p.top}%`,
+              width: p.size,
+              height: p.size,
+            }}
+          />
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 function MainAppContent() {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -227,16 +275,10 @@ function MainAppContent() {
 
   return (
     <div className={`min-h-screen flex flex-col font-sans relative overflow-hidden transition-colors duration-300 ${
-      theme === "dark" ? "bg-[#050508] text-white" : "bg-gray-100 text-gray-900"
+      theme === "dark" ? "bg-[#020204] text-white" : "bg-gray-100 text-gray-900"
     }`}>
-      {/* Background Atmosphere */}
-      {theme === "dark" && (
-        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-[-100px] left-[-100px] w-[500px] h-[500px] bg-blue-600/15 rounded-full blur-[120px]"></div>
-          <div className="absolute bottom-[-100px] right-[-100px] w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[120px]"></div>
-          <div className="absolute inset-0 opacity-10 bg-immersive-grid"></div>
-        </div>
-      )}
+      {/* Global Cinematic 3D Background */}
+      {theme === "dark" && <CinematicBackground />}
 
       {/* Header */}
       <Header
@@ -265,103 +307,117 @@ function MainAppContent() {
 
       {/* Main Panel Routing with Lazy Loading & Skeletons */}
       <main className="flex-1 w-full relative">
+        <PageTransitionParticles triggerKey={activeView} />
         <ErrorBoundary>
           {authLoading ? (
             <div className="flex items-center justify-center h-96">
               <span className="text-sm text-gray-400 font-mono animate-pulse">Establishing Secure Workspace Connect...</span>
             </div>
-          ) : activeView === "home" ? (
-            <LandingPage
-              onGetStarted={() => {
-                if (user) {
-                  setActiveView("dashboard");
-                } else {
-                  setAuthMode("signup");
-                }
-              }}
-              setActiveView={setActiveView}
-            />
-          ) : activeView === "notifications" ? (
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in duration-300">
-              {user ? (
-                <Suspense fallback={<GeneralLoading />}>
-                  <NotificationCenterViewLazy 
-                    userId={user.uid} 
-                    userRole={user.role} 
-                    userName={user.name} 
-                  />
-                </Suspense>
-              ) : (
-                <div className="text-center text-gray-400 py-12 font-mono">Please log in to configure communication endpoints.</div>
-              )}
-            </div>
           ) : (
-            <div className="animate-in fade-in duration-300">
-              <Suspense fallback={<DashboardSkeleton />}>
-                {user && (user.role === "candidate") && (
-                  <CandidateDashboard userId={user.uid} userName={user.name} />
-                )}
-                {user && (user.role === "consultancy" || user.role === "agency") && (
-                  <ConsultancyDashboard userId={user.uid} userName={user.name} />
-                )}
-                {user && (user.role === "employer" || user.role === "recruiter" || user.role === "corporate") && (
-                  <EmployerDashboard userId={user.uid} userName={user.name} />
-                )}
-                {user && (user.role === "admin" || user.role === "superadmin") && (
-                  <AdminDashboard userId={user.uid} userName={user.name} />
-                )}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeView}
+                initial={{ opacity: 0, y: 15, scale: 0.98, filter: "blur(8px)" }}
+                animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+                exit={{ opacity: 0, y: -15, scale: 1.02, filter: "blur(12px)" }}
+                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                className="w-full min-h-full"
+              >
+                {activeView === "home" ? (
+                  <LandingPage
+                    onGetStarted={() => {
+                      if (user) {
+                        setActiveView("dashboard");
+                      } else {
+                        setAuthMode("signup");
+                      }
+                    }}
+                    setActiveView={setActiveView}
+                  />
+                ) : activeView === "notifications" ? (
+                  <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    {user ? (
+                      <Suspense fallback={<GeneralLoading />}>
+                        <NotificationCenterViewLazy 
+                          userId={user.uid} 
+                          userRole={user.role} 
+                          userName={user.name} 
+                        />
+                      </Suspense>
+                    ) : (
+                      <div className="text-center text-gray-400 py-12 font-mono">Please log in to configure communication endpoints.</div>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <Suspense fallback={<DashboardSkeleton />}>
+                      {user && (user.role === "candidate") && (
+                        <CandidateDashboard userId={user.uid} userName={user.name} />
+                      )}
+                      {user && (user.role === "consultancy" || user.role === "agency") && (
+                        <ConsultancyDashboard userId={user.uid} userName={user.name} />
+                      )}
+                      {user && (user.role === "employer" || user.role === "recruiter" || user.role === "corporate") && (
+                        <EmployerDashboard userId={user.uid} userName={user.name} />
+                      )}
+                      {user && (user.role === "admin" || user.role === "superadmin") && (
+                        <AdminDashboard userId={user.uid} userName={user.name} />
+                      )}
 
-                {/* Resilient Fallback - If user exists but role doesn't match any of the above */}
-                {user && !["candidate", "consultancy", "agency", "employer", "recruiter", "corporate", "admin", "superadmin"].includes(user.role || "") && (
-                  <div className="p-8 max-w-lg mx-auto text-center space-y-4 glass rounded-2xl border border-white/10 my-12 bg-gray-900/40">
-                    <AlertTriangle className="w-12 h-12 text-yellow-400 mx-auto" />
-                    <h3 className="font-bold text-white text-lg">Select Dashboard Workspace</h3>
-                    <p className="text-xs text-gray-400">Your profile doesn't have a workspace role designated. Please select your account type to proceed:</p>
-                    <div className="grid grid-cols-2 gap-4 pt-4">
-                      <button 
-                        onClick={() => handleUpdateUserRole("candidate")}
-                        className="py-2.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-xs font-bold text-indigo-300 rounded-xl border border-indigo-500/30 transition-all cursor-pointer"
-                      >
-                        Candidate Workspace
-                      </button>
-                      <button 
-                        onClick={() => handleUpdateUserRole("employer")}
-                        className="py-2.5 bg-pink-600/20 hover:bg-pink-600/40 text-xs font-bold text-pink-300 rounded-xl border border-pink-500/30 transition-all cursor-pointer"
-                      >
-                        Recruiter Workspace
-                      </button>
-                      <button 
-                        onClick={() => handleUpdateUserRole("consultancy")}
-                        className="py-2.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-xs font-bold text-emerald-300 rounded-xl border border-emerald-500/30 transition-all cursor-pointer"
-                      >
-                        Consultancy Agency
-                      </button>
-                      <button 
-                        onClick={() => handleUpdateUserRole("admin")}
-                        className="py-2.5 bg-yellow-600/20 hover:bg-yellow-600/40 text-xs font-bold text-yellow-300 rounded-xl border border-yellow-500/30 transition-all cursor-pointer"
-                      >
-                        Administrator Desk
-                      </button>
-                    </div>
+                      {/* Resilient Fallback - If user exists but role doesn't match any of the above */}
+                      {user && !["candidate", "consultancy", "agency", "employer", "recruiter", "corporate", "admin", "superadmin"].includes(user.role || "") && (
+                        <div className="p-8 max-w-lg mx-auto text-center space-y-4 glass rounded-2xl border border-white/10 my-12 bg-gray-900/40">
+                          <AlertTriangle className="w-12 h-12 text-yellow-400 mx-auto" />
+                          <h3 className="font-bold text-white text-lg">Select Dashboard Workspace</h3>
+                          <p className="text-xs text-gray-400">Your profile doesn't have a workspace role designated. Please select your account type to proceed:</p>
+                          <div className="grid grid-cols-2 gap-4 pt-4">
+                            <button 
+                              onClick={() => handleUpdateUserRole("candidate")}
+                              className="py-2.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-xs font-bold text-indigo-300 rounded-xl border border-indigo-500/30 transition-all cursor-pointer"
+                            >
+                              Candidate Workspace
+                            </button>
+                            <button 
+                              onClick={() => handleUpdateUserRole("employer")}
+                              className="py-2.5 bg-pink-600/20 hover:bg-pink-600/40 text-xs font-bold text-pink-300 rounded-xl border border-pink-500/30 transition-all cursor-pointer"
+                            >
+                              Recruiter Workspace
+                            </button>
+                            <button 
+                              onClick={() => handleUpdateUserRole("consultancy")}
+                              className="py-2.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-xs font-bold text-emerald-300 rounded-xl border border-emerald-500/30 transition-all cursor-pointer"
+                            >
+                              Consultancy Agency
+                            </button>
+                            <button 
+                              onClick={() => handleUpdateUserRole("admin")}
+                              className="py-2.5 bg-yellow-600/20 hover:bg-yellow-600/40 text-xs font-bold text-yellow-300 rounded-xl border border-yellow-500/30 transition-all cursor-pointer"
+                            >
+                              Administrator Desk
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Fallback if user is null but activeView is dashboard */}
+                      {!user && (
+                        <div className="p-8 max-w-md mx-auto text-center space-y-4 glass rounded-2xl border border-white/10 my-12 bg-gray-900/40">
+                          <AlertTriangle className="w-12 h-12 text-indigo-400 mx-auto animate-bounce" />
+                          <h3 className="font-bold text-white text-lg">Dashboard Access Locked</h3>
+                          <p className="text-xs text-gray-400">Please login or register to access the intelligence portals.</p>
+                          <button 
+                            onClick={() => setAuthMode("signin")}
+                            className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white rounded-xl transition-all cursor-pointer"
+                          >
+                            Sign In Now
+                          </button>
+                        </div>
+                      )}
+                    </Suspense>
                   </div>
                 )}
-                
-                {/* Fallback if user is null but activeView is dashboard */}
-                {!user && (
-                  <div className="p-8 max-w-md mx-auto text-center space-y-4 glass rounded-2xl border border-white/10 my-12 bg-gray-900/40">
-                    <AlertTriangle className="w-12 h-12 text-indigo-400 mx-auto animate-bounce" />
-                    <h3 className="font-bold text-white text-lg">Dashboard Access Locked</h3>
-                    <p className="text-xs text-gray-400">Please login or register to access the intelligence portals.</p>
-                    <button 
-                      onClick={() => setAuthMode("signin")}
-                      className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white rounded-xl transition-all cursor-pointer"
-                    >
-                      Sign In Now
-                    </button>
-                  </div>
-                )}
-              </Suspense>
-            </div>
+              </motion.div>
+            </AnimatePresence>
           )}
         </ErrorBoundary>
       </main>
