@@ -98,19 +98,42 @@ export default function CandidateInterviewSection({
     try {
       // Query interviews collection from Firestore
       const interviewsRef = collection(db, "interviews");
-      const q = query(interviewsRef, where("candidateId", "==", userId));
-      const querySnap = await getDocs(q);
-      
       const list: any[] = [];
-      querySnap.forEach(docSnap => {
-        list.push({ id: docSnap.id, ...docSnap.data() });
-      });
+
+      // 1. Try querying by candidateId
+      try {
+        const q1 = query(interviewsRef, where("candidateId", "==", userId));
+        const querySnap1 = await getDocs(q1);
+        querySnap1.forEach(docSnap => {
+          list.push({ id: docSnap.id, ...docSnap.data() });
+        });
+      } catch (err1) {
+        console.warn("Error querying interviews by candidateId:", err1);
+      }
+
+      // 2. Try querying by userId (compatible with demo seeds)
+      try {
+        const q2 = query(interviewsRef, where("userId", "==", userId));
+        const querySnap2 = await getDocs(q2);
+        querySnap2.forEach(docSnap => {
+          const data = docSnap.data();
+          if (!list.some(item => item.id === docSnap.id)) {
+            list.push({ id: docSnap.id, ...data });
+          }
+        });
+      } catch (err2) {
+        console.warn("Error querying interviews by userId:", err2);
+      }
 
       // Sort by createdAt
-      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      list.sort((a, b) => {
+        const dateA = a.createdAt || a.dateTime || "";
+        const dateB = b.createdAt || b.dateTime || "";
+        return new Date(dateB).getTime() - new Date(dateA).getTime();
+      });
 
-      const completed = list.filter(item => item.status === "completed");
-      const upcoming = list.filter(item => item.status === "scheduled");
+      const completed = list.filter(item => item.status === "completed" || item.overallScore !== undefined);
+      const upcoming = list.filter(item => item.status === "scheduled" || item.status === "pending" || !item.overallScore);
 
       setCompletedInterviews(completed);
       setUpcomingInterviews(upcoming);

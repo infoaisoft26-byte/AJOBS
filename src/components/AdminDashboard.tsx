@@ -78,139 +78,192 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
   const fetchWorkspaceData = async () => {
     setLoading(true);
     setError(null);
+    
+    let users: any[] = [];
+    let jobs: any[] = [];
+    let approvals: ApprovalRequest[] = [];
+    let support: SupportTicket[] = [];
+    let cms: CMSContent[] = [];
+    let emails: EmailTemplate[] = [];
+    let notifs: any[] = [];
+    let payments: PaymentTransaction[] = [];
+    let audit: SystemAuditLog[] = [];
+    let config: AdminSystemSettings | null = null;
+    let syncErrorsList: string[] = [];
+
+    // 1. Fetch Users
     try {
-      // 1. Fetch Users
       const usersSnap = await getDocs(collection(db, "users"));
-      const users: any[] = [];
       usersSnap.forEach(doc => {
         users.push({ uid: doc.id, ...doc.data() });
       });
       setUserList(users);
+    } catch (err: any) {
+      console.warn("Resilient Fetch: Failed to retrieve users from Firestore:", err.message);
+      syncErrorsList.push("users");
+    }
 
-      // 2. Fetch Jobs
+    // 2. Fetch Jobs
+    try {
       const jobsSnap = await getDocs(collection(db, "jobs"));
-      const jobs: any[] = [];
       jobsSnap.forEach(doc => {
         jobs.push({ id: doc.id, ...doc.data() });
       });
       setJobsList(jobs);
+    } catch (err: any) {
+      console.warn("Resilient Fetch: Failed to retrieve jobs from Firestore:", err.message);
+      syncErrorsList.push("jobs");
+    }
 
-      // 3. Fetch Approvals
+    // 3. Fetch Approvals
+    try {
       const approvalsSnap = await getDocs(collection(db, "approvals"));
-      const approvals: ApprovalRequest[] = [];
       approvalsSnap.forEach(doc => {
         approvals.push({ id: doc.id, ...doc.data() } as ApprovalRequest);
       });
       setApprovalsList(approvals);
+    } catch (err: any) {
+      console.warn("Resilient Fetch: Failed to retrieve approvals from Firestore:", err.message);
+      syncErrorsList.push("approvals");
+    }
 
-      // 4. Fetch Support Tickets
+    // 4. Fetch Support Tickets
+    try {
       const supportSnap = await getDocs(collection(db, "support"));
-      const support: SupportTicket[] = [];
       supportSnap.forEach(doc => {
         support.push({ id: doc.id, ...doc.data() } as SupportTicket);
       });
       setSupportTickets(support);
+    } catch (err: any) {
+      console.warn("Resilient Fetch: Failed to retrieve support from Firestore:", err.message);
+      syncErrorsList.push("support");
+    }
 
-      // 5. Fetch CMS
+    // 5. Fetch CMS
+    try {
       const cmsSnap = await getDocs(collection(db, "cms"));
-      const cms: CMSContent[] = [];
       cmsSnap.forEach(doc => {
         cms.push({ id: doc.id, ...doc.data() } as CMSContent);
       });
       setCmsList(cms);
+    } catch (err: any) {
+      console.warn("Resilient Fetch: Failed to retrieve cms from Firestore:", err.message);
+      syncErrorsList.push("cms");
+    }
 
-      // 6. Fetch Email templates
+    // 6. Fetch Email templates
+    try {
       const emailSnap = await getDocs(collection(db, "email_templates"));
-      const emails: EmailTemplate[] = [];
       emailSnap.forEach(doc => {
         emails.push({ id: doc.id, ...doc.data() } as EmailTemplate);
       });
       setEmailTemplates(emails);
+    } catch (err: any) {
+      console.warn("Resilient Fetch: Failed to retrieve email_templates from Firestore:", err.message);
+      syncErrorsList.push("email_templates");
+    }
 
-      // 7. Fetch Notifications / Broadcasts
+    // 7. Fetch Notifications / Broadcasts
+    try {
       const notifSnap = await getDocs(collection(db, "notifications"));
-      const notifs: any[] = [];
       notifSnap.forEach(doc => {
         notifs.push({ id: doc.id, ...doc.data() });
       });
       setNotificationsList(notifs);
+    } catch (err: any) {
+      console.warn("Resilient Fetch: Failed to retrieve notifications from Firestore:", err.message);
+      syncErrorsList.push("notifications");
+    }
 
-      // 8. Fetch Payments
+    // 8. Fetch Payments
+    try {
       const paySnap = await getDocs(collection(db, "payments"));
-      const payments: PaymentTransaction[] = [];
       paySnap.forEach(doc => {
         payments.push({ id: doc.id, ...doc.data() } as PaymentTransaction);
       });
       setPaymentsList(payments);
+    } catch (err: any) {
+      console.warn("Resilient Fetch: Failed to retrieve payments from Firestore:", err.message);
+      syncErrorsList.push("payments");
+    }
 
-      // 9. Fetch Audit logs
+    // 9. Fetch Audit logs
+    try {
       const auditSnap = await getDocs(collection(db, "audit_logs"));
-      const audit: SystemAuditLog[] = [];
       auditSnap.forEach(doc => {
         audit.push({ id: doc.id, ...doc.data() } as SystemAuditLog);
       });
       // Sort newest first
       audit.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setAuditLogsList(audit);
+    } catch (err: any) {
+      console.warn("Resilient Fetch: Failed to retrieve audit_logs from Firestore:", err.message);
+      syncErrorsList.push("audit_logs");
+    }
 
-      // 10. Fetch Global Config settings
+    // 10. Fetch Global Config settings
+    try {
       const configSnap = await getDocs(collection(db, "system_settings"));
-      let config: AdminSystemSettings | null = null;
       configSnap.forEach(doc => {
         if (doc.id === "global_config") {
           config = { id: doc.id, ...doc.data() } as AdminSystemSettings;
         }
       });
       setGlobalConfig(config);
-
-      // Calculate aggregated Live Stats safely
-      const candidatesCount = users.filter(u => u.role === "candidate").length;
-      const employersCount = users.filter(u => u.role === "employer").length;
-      const consultanciesCount = users.filter(u => u.role === "consultancy").length;
-
-      const activeJobsCount = jobs.filter(j => j.status === "open").length;
-      const pendingVerificationCount = approvals.filter(a => a.status === "PENDING").length;
-      const openSupportCount = support.filter(s => s.status === "OPEN" || s.status === "ESCALATED").length;
-
-      // Billing aggregations
-      const successPayments = payments.filter(p => p.status === "SUCCESS");
-      const totalRevCollected = successPayments.reduce((sum, current) => sum + (current.totalPaid || 0), 0);
-
-      // Fetch live telemetry from Express server
-      let telemetryData = { activeUsers: 4, aiRequests: 0, failedAiRequests: 0, paymentsCount: 0, errorsCount: 0, averageLatencyMs: 820 };
-      try {
-        const telRes = await fetch("/api/telemetry");
-        if (telRes.ok) {
-          telemetryData = await telRes.json();
-        }
-      } catch (telErr) {
-        console.warn("Failed to fetch live API telemetry, using fallback defaults:", telErr);
-      }
-
-      setStats({
-        totalCandidates: candidatesCount || 124,
-        totalConsultancies: consultanciesCount || 8,
-        totalEmployers: employersCount || 14,
-        totalJobs: jobs.length || 38,
-        activeJobs: activeJobsCount || 19,
-        applicationsToday: 18 + (telemetryData.aiRequests || 0),
-        interviewsToday: 12,
-        resumesAnalyzedToday: 41 + (telemetryData.aiRequests || 0),
-        revenueToday: 14500 + (telemetryData.paymentsCount * 9999),
-        monthlyRevenue: (totalRevCollected || 113000) + (telemetryData.paymentsCount * 9999),
-        yearlyRevenue: (totalRevCollected ? totalRevCollected * 12 : 1356000) + (telemetryData.paymentsCount * 9999 * 12),
-        pendingApprovals: pendingVerificationCount || 2,
-        supportTickets: openSupportCount || 3,
-        liveOnlineUsers: telemetryData.activeUsers || 4,
-        registrationsToday: 8
-      });
-
     } catch (err: any) {
-      console.error("Workspace telemetry sync issue:", err);
-      setError(err?.message || "Failed to sync administrative workspace data");
-    } finally {
-      setLoading(false);
+      console.warn("Resilient Fetch: Failed to retrieve system_settings from Firestore:", err.message);
+      syncErrorsList.push("system_settings");
     }
+
+    // Calculate aggregated Live Stats safely with fallbacks
+    const candidatesCount = users.filter(u => u.role === "candidate").length;
+    const employersCount = users.filter(u => u.role === "employer").length;
+    const consultanciesCount = users.filter(u => u.role === "consultancy").length;
+
+    const activeJobsCount = jobs.filter(j => j.status === "open").length;
+    const pendingVerificationCount = approvals.filter(a => a.status === "PENDING").length;
+    const openSupportCount = support.filter(s => s.status === "OPEN" || s.status === "ESCALATED").length;
+
+    // Billing aggregations
+    const successPayments = payments.filter(p => p.status === "SUCCESS");
+    const totalRevCollected = successPayments.reduce((sum, current) => sum + (current.totalPaid || 0), 0);
+
+    // Fetch live telemetry from Express server
+    let telemetryData = { activeUsers: 4, aiRequests: 0, failedAiRequests: 0, paymentsCount: 0, errorsCount: 0, averageLatencyMs: 820 };
+    try {
+      const telRes = await fetch("/api/telemetry");
+      if (telRes.ok) {
+        telemetryData = await telRes.json();
+      }
+    } catch (telErr) {
+      console.warn("Failed to fetch live API telemetry, using fallback defaults:", telErr);
+    }
+
+    setStats({
+      totalCandidates: candidatesCount || 124,
+      totalConsultancies: consultanciesCount || 8,
+      totalEmployers: employersCount || 14,
+      totalJobs: jobs.length || 38,
+      activeJobs: activeJobsCount || 19,
+      applicationsToday: 18 + (telemetryData.aiRequests || 0),
+      interviewsToday: 12,
+      resumesAnalyzedToday: 41 + (telemetryData.aiRequests || 0),
+      revenueToday: 14500 + (telemetryData.paymentsCount * 9999),
+      monthlyRevenue: (totalRevCollected || 113000) + (telemetryData.paymentsCount * 9999),
+      yearlyRevenue: (totalRevCollected ? totalRevCollected * 12 : 1356000) + (telemetryData.paymentsCount * 9999 * 12),
+      pendingApprovals: pendingVerificationCount || 2,
+      supportTickets: openSupportCount || 3,
+      liveOnlineUsers: telemetryData.activeUsers || 4,
+      registrationsToday: 8
+    });
+
+    if (syncErrorsList.length > 0) {
+      // Set a non-blocking toast or banner state rather than crashing with Administrative Sync Error
+      setError(`Some platform databases are sync-restricted: [${syncErrorsList.join(", ")}]. Offline-resilient fallback active.`);
+    } else {
+      setError(null);
+    }
+    setLoading(false);
   };
 
   const syncAdminRoleFromFirestore = async () => {
@@ -490,21 +543,22 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
             </div>
           )}
 
-          {error ? (
-            <div className="p-8 max-w-lg mx-auto text-center space-y-4 glass rounded-2xl border border-red-500/20 my-12 bg-red-950/10 text-white" id="admin-dashboard-error">
-              <ShieldAlert className="w-12 h-12 text-red-400 mx-auto animate-bounce" />
-              <h3 className="font-bold text-white text-lg">Administrative Sync Error</h3>
-              <p className="text-xs text-gray-400">{error}</p>
-              <div className="flex justify-center space-x-4 pt-4">
-                <button 
-                  onClick={() => fetchWorkspaceData()}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white rounded-xl transition-all cursor-pointer"
-                >
-                  Retry Admin Sync
-                </button>
+          {error && (
+            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-xs text-red-300 flex items-center justify-between space-x-2 animate-in fade-in duration-300">
+              <div className="flex items-center space-x-2">
+                <ShieldAlert className="w-4 h-4 text-red-400 shrink-0" />
+                <span><strong>Admin Database Sync Warning:</strong> {error} (Dashboard running in offline resilient mode)</span>
               </div>
+              <button 
+                onClick={() => fetchWorkspaceData()}
+                className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-[10px] font-bold text-white cursor-pointer transition-all shrink-0"
+              >
+                Retry Sync
+              </button>
             </div>
-          ) : loading ? (
+          )}
+
+          {loading ? (
             <div className="flex flex-col items-center justify-center py-44 space-y-3">
               <span className="text-xs text-indigo-400 font-mono animate-pulse tracking-widest uppercase">Fetching Platform Telemetry...</span>
               <p className="text-[10px] text-gray-500">Connecting securely to Firestore collection pools.</p>

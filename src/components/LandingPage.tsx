@@ -14,9 +14,10 @@ import HolographicCard from "./HolographicCard";
 interface LandingPageProps {
   onGetStarted: () => void;
   setActiveView: (view: string) => void;
+  onOpenCompanyPage?: (pageType: string) => void;
 }
 
-export default function LandingPage({ onGetStarted, setActiveView }: LandingPageProps) {
+export default function LandingPage({ onGetStarted, setActiveView, onOpenCompanyPage }: LandingPageProps) {
   // Navigation & Interactive States
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [activeLegalDoc, setActiveLegalDoc] = useState<LegalDocType | null>(null);
@@ -1177,32 +1178,36 @@ export default function LandingPage({ onGetStarted, setActiveView }: LandingPage
           <div className="md:col-span-2 space-y-3 text-left">
             <h5 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Company</h5>
             <ul className="space-y-2 text-xs text-gray-400">
-              <li><button onClick={() => setDemoOpen(true)} className="hover:text-blue-400 transition-colors cursor-pointer">About Us</button></li>
-              <li><button onClick={onGetStarted} className="hover:text-blue-400 transition-colors cursor-pointer">Careers</button></li>
-              <li><button onClick={() => setDemoOpen(true)} className="hover:text-blue-400 transition-colors cursor-pointer">Partner Program</button></li>
-              <li><button onClick={() => setDemoOpen(true)} className="hover:text-blue-400 transition-colors cursor-pointer">Pressroom</button></li>
+              <li><button onClick={() => onOpenCompanyPage?.("about")} className="hover:text-blue-400 transition-colors cursor-pointer text-left w-full">About Us</button></li>
+              <li><button onClick={() => onOpenCompanyPage?.("about")} className="hover:text-blue-400 transition-colors cursor-pointer text-left w-full">Our Team</button></li>
+              <li><button onClick={() => onOpenCompanyPage?.("careers")} className="hover:text-blue-400 transition-colors cursor-pointer text-left w-full">Careers</button></li>
+              <li><button onClick={() => onOpenCompanyPage?.("press")} className="hover:text-blue-400 transition-colors cursor-pointer text-left w-full">Press & Media</button></li>
+              <li><button onClick={() => onOpenCompanyPage?.("about")} className="hover:text-blue-400 transition-colors cursor-pointer text-left w-full">Investor Relations</button></li>
+              <li><button onClick={() => onOpenCompanyPage?.("blog")} className="hover:text-blue-400 transition-colors cursor-pointer text-left w-full">Success Stories</button></li>
             </ul>
           </div>
 
-          {/* Links Column 2: Resources & Legal */}
+          {/* Links Column 2: Support */}
           <div className="md:col-span-2 space-y-3 text-left">
-            <h5 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Resources & Legal</h5>
+            <h5 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Support</h5>
             <ul className="space-y-2 text-xs text-gray-400">
-              <li><button onClick={() => setActiveLegalDoc("cookie")} className="hover:text-indigo-400 transition-colors cursor-pointer text-left">Cookie Policy</button></li>
-              <li><button onClick={() => setActiveLegalDoc("disclaimer")} className="hover:text-indigo-400 transition-colors cursor-pointer text-left">Disclaimer</button></li>
-              <li><button onClick={onGetStarted} className="hover:text-indigo-400 transition-colors cursor-pointer text-left">Pricing Matrix</button></li>
-              <li><button onClick={() => setAssistantOpen(true)} className="hover:text-indigo-400 transition-colors cursor-pointer text-left">Contact Helpdesk</button></li>
+              <li><button onClick={() => onOpenCompanyPage?.("contact")} className="hover:text-indigo-400 transition-colors cursor-pointer text-left w-full">Contact Us</button></li>
+              <li><button onClick={() => onOpenCompanyPage?.("help")} className="hover:text-indigo-400 transition-colors cursor-pointer text-left w-full">Help Center</button></li>
+              <li><button onClick={() => onOpenCompanyPage?.("faq")} className="hover:text-indigo-400 transition-colors cursor-pointer text-left w-full">FAQs</button></li>
+              <li><button onClick={() => onOpenCompanyPage?.("report")} className="hover:text-indigo-400 transition-colors cursor-pointer text-left w-full">Report a Problem</button></li>
+              <li><button onClick={() => onOpenCompanyPage?.("report")} className="hover:text-indigo-400 transition-colors cursor-pointer text-left w-full">Raise a Ticket</button></li>
+              <li><button onClick={() => onOpenCompanyPage?.("contact")} className="hover:text-indigo-400 transition-colors cursor-pointer text-left w-full">Customer Support</button></li>
             </ul>
           </div>
 
-          {/* Links Column 3: Legal & Support */}
+          {/* Links Column 3: Legal */}
           <div className="md:col-span-2 space-y-3 text-left">
-            <h5 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Legal Policies</h5>
+            <h5 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Legal</h5>
             <ul className="space-y-2 text-xs text-gray-400">
-              <li><button onClick={() => setActiveLegalDoc("privacy")} className="hover:text-indigo-400 transition-colors cursor-pointer text-left">Privacy Policy</button></li>
-              <li><button onClick={() => setActiveLegalDoc("terms")} className="hover:text-indigo-400 transition-colors cursor-pointer text-left">Terms & Conditions</button></li>
-              <li><button onClick={() => setActiveLegalDoc("refund")} className="hover:text-indigo-400 transition-colors cursor-pointer text-left">Refund Policy</button></li>
-              <li><button onClick={() => setActiveLegalDoc("cancellation")} className="hover:text-indigo-400 transition-colors cursor-pointer text-left">Cancellation Policy</button></li>
+              <li><button onClick={() => onOpenCompanyPage?.("privacy")} className="hover:text-indigo-400 transition-colors cursor-pointer text-left w-full">Privacy Policy</button></li>
+              <li><button onClick={() => onOpenCompanyPage?.("terms")} className="hover:text-indigo-400 transition-colors cursor-pointer text-left w-full">Terms & Conditions</button></li>
+              <li><button onClick={() => onOpenCompanyPage?.("cookie")} className="hover:text-indigo-400 transition-colors cursor-pointer text-left w-full">Cookie Policy</button></li>
+              <li><button onClick={() => onOpenCompanyPage?.("refund")} className="hover:text-indigo-400 transition-colors cursor-pointer text-left w-full">Refund Policy</button></li>
             </ul>
           </div>
 

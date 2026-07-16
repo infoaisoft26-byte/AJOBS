@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import { 
   Search, SlidersHorizontal, MapPin, Briefcase, Award, MessageSquare, 
   UserCheck, RefreshCw, X, ShieldCheck, Mail, CreditCard, ChevronRight,
-  TrendingUp, Star, Filter, Code2, ArrowUpRight
+  TrendingUp, Star, Filter, Code2, ArrowUpRight, Plus, Trash2, Tag
 } from "lucide-react";
-import { db } from "../../firebase";
-import { collection, getDocs, doc, setDoc } from "firebase/firestore";
+import { db, auth } from "../../firebase";
+import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
 
 interface CandidateProfile {
   id: string;
@@ -21,6 +21,7 @@ interface CandidateProfile {
   availability: string;
   isAiVerified: boolean;
   avatarUrl: string;
+  tags?: string[];
 }
 
 export default function TalentSearch() {
@@ -37,6 +38,104 @@ export default function TalentSearch() {
 
   // Detail side drawer
   const [selectedCand, setSelectedCand] = useState<CandidateProfile | null>(null);
+
+  // Recruiter Notes & Tagging States
+  const [recruiterNotes, setRecruiterNotes] = useState<any[]>([]);
+  const [newNoteText, setNewNoteText] = useState("");
+  const [isSavingNote, setIsSavingNote] = useState(false);
+  const [newTagInput, setNewTagInput] = useState("");
+
+  useEffect(() => {
+    if (selectedCand) {
+      fetchRecruiterNotes(selectedCand.id);
+    } else {
+      setRecruiterNotes([]);
+    }
+  }, [selectedCand]);
+
+  const fetchRecruiterNotes = async (candId: string) => {
+    try {
+      const snap = await getDocs(collection(db, "candidates", candId, "notes"));
+      const list: any[] = [];
+      snap.forEach((docSnap) => {
+        list.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setRecruiterNotes(list);
+    } catch (err) {
+      console.error("Failed to load recruiter notes:", err);
+    }
+  };
+
+  const handleAddRecruiterNote = async () => {
+    if (!newNoteText.trim() || !selectedCand) return;
+    setIsSavingNote(true);
+    try {
+      const noteId = "note_" + Math.random().toString(36).substr(2, 9);
+      const notePayload = {
+        id: noteId,
+        text: newNoteText.trim(),
+        authorName: auth.currentUser?.displayName || auth.currentUser?.email || "Recruiter",
+        authorEmail: auth.currentUser?.email || "recruiter@aijobs.com",
+        createdAt: new Date().toISOString()
+      };
+      await setDoc(doc(db, "candidates", selectedCand.id, "notes", noteId), notePayload);
+      setNewNoteText("");
+      fetchRecruiterNotes(selectedCand.id);
+    } catch (err) {
+      console.error("Failed to append note:", err);
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+
+  const handleDeleteRecruiterNote = async (noteId: string) => {
+    if (!selectedCand) return;
+    try {
+      await deleteDoc(doc(db, "candidates", selectedCand.id, "notes", noteId));
+      fetchRecruiterNotes(selectedCand.id);
+    } catch (err) {
+      console.error("Failed to delete note:", err);
+    }
+  };
+
+  const handleAddTag = async () => {
+    if (!newTagInput.trim() || !selectedCand) return;
+    const cleanTag = newTagInput.trim();
+    const currentTags = selectedCand.tags || [];
+    if (currentTags.includes(cleanTag)) return;
+    const updatedTags = [...currentTags, cleanTag];
+    try {
+      await setDoc(doc(db, "candidates", selectedCand.id), {
+        tags: updatedTags
+      }, { merge: true });
+      setSelectedCand({
+        ...selectedCand,
+        tags: updatedTags
+      });
+      setNewTagInput("");
+      setCandidates(prev => prev.map(c => c.id === selectedCand.id ? { ...c, tags: updatedTags } : c));
+    } catch (err) {
+      console.error("Failed to add tag:", err);
+    }
+  };
+
+  const handleRemoveTag = async (tagToRemove: string) => {
+    if (!selectedCand) return;
+    const updatedTags = (selectedCand.tags || []).filter(t => t !== tagToRemove);
+    try {
+      await setDoc(doc(db, "candidates", selectedCand.id), {
+        tags: updatedTags
+      }, { merge: true });
+      setSelectedCand({
+        ...selectedCand,
+        tags: updatedTags
+      });
+      setCandidates(prev => prev.map(c => c.id === selectedCand.id ? { ...c, tags: updatedTags } : c));
+    } catch (err) {
+      console.error("Failed to remove tag:", err);
+    }
+  };
 
   useEffect(() => {
     fetchCandidates();
@@ -63,7 +162,8 @@ export default function TalentSearch() {
           location: data.preferredLocation || data.location || "Bengaluru",
           availability: data.availability || "Immediate",
           isAiVerified: (data.aiInterviewScore || 80) >= 80,
-          avatarUrl: `https://images.unsplash.com/photo-${docSnap.id === "demo_candidate_ananya" ? "1494790108377-be9c29b29330" : "1535713875002-d1d0cf377fde"}?auto=format&fit=crop&w=80&q=80`
+          avatarUrl: `https://images.unsplash.com/photo-${docSnap.id === "demo_candidate_ananya" ? "1494790108377-be9c29b29330" : "1535713875002-d1d0cf377fde"}?auto=format&fit=crop&w=80&q=80`,
+          tags: data.tags || []
         });
       });
 
@@ -507,6 +607,101 @@ export default function TalentSearch() {
                       <div className="h-full bg-pink-500" style={{ width: `${selectedCand.interviewScore}%` }}></div>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Collaborative Tagging System */}
+              <div className="space-y-2 pt-2 border-t border-white/5">
+                <p className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Collaborative Candidate Tagging</span>
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {(selectedCand.tags || []).map((tag) => (
+                    <span 
+                      key={tag}
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-neutral-900 border border-white/10 rounded-full text-[10px] font-mono text-gray-300"
+                    >
+                      <span>#{tag}</span>
+                      <button 
+                        onClick={() => handleRemoveTag(tag)}
+                        className="text-red-400 hover:text-red-300 ml-1 font-bold font-mono"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                  {(selectedCand.tags || []).length === 0 && (
+                    <span className="text-[10px] text-gray-500 italic block">No custom tags attached.</span>
+                  )}
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <input
+                    type="text"
+                    value={newTagInput}
+                    onChange={(e) => setNewTagInput(e.target.value)}
+                    placeholder="Add tag (e.g. urgent, v-matched)..."
+                    className="flex-1 bg-neutral-900 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white font-mono placeholder-gray-600"
+                    onKeyDown={(e) => { if (e.key === "Enter") handleAddTag(); }}
+                  />
+                  <button
+                    onClick={handleAddTag}
+                    className="p-1 px-2.5 bg-indigo-600 hover:bg-indigo-500 text-[11px] font-bold text-white rounded-lg cursor-pointer"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+
+              {/* Collaborative Recruiter Notes */}
+              <div className="space-y-2 pt-2 border-t border-white/5">
+                <p className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <MessageSquare className="w-3.5 h-3.5 text-pink-400" />
+                  <span>Recruiter Discussion & Collab Notes</span>
+                </p>
+                
+                {/* Notes log */}
+                <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
+                  {recruiterNotes.map((note) => (
+                    <div key={note.id} className="p-2.5 bg-neutral-900 border border-white/5 rounded-lg space-y-1 text-[11px]">
+                      <div className="flex justify-between text-[10px] text-gray-500 font-mono">
+                        <span>{note.authorName}</span>
+                        <div className="flex items-center gap-1">
+                          <span>{new Date(note.createdAt).toLocaleDateString()}</span>
+                          <button 
+                            onClick={() => handleDeleteRecruiterNote(note.id)}
+                            className="text-red-500 hover:text-red-400 p-0.5"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-gray-300 leading-relaxed text-[11px] italic">"{note.text}"</p>
+                    </div>
+                  ))}
+                  {recruiterNotes.length === 0 && (
+                    <p className="text-[10px] text-gray-500 italic py-2 text-center font-mono">No discussion notes logged yet. Start the collab discussion thread!</p>
+                  )}
+                </div>
+
+                {/* Add Note form */}
+                <div className="flex gap-2 pt-1.5">
+                  <input
+                    type="text"
+                    value={newNoteText}
+                    onChange={(e) => setNewNoteText(e.target.value)}
+                    placeholder="Type note..."
+                    className="flex-1 bg-neutral-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-[11px] text-white font-sans placeholder-gray-600"
+                    onKeyDown={(e) => { if (e.key === "Enter") handleAddRecruiterNote(); }}
+                  />
+                  <button
+                    onClick={handleAddRecruiterNote}
+                    disabled={isSavingNote || !newNoteText.trim()}
+                    className="p-1.5 px-3 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white rounded-lg cursor-pointer disabled:opacity-50"
+                  >
+                    Post
+                  </button>
                 </div>
               </div>
 

@@ -1,7 +1,7 @@
 import { 
   LayoutDashboard, User, GraduationCap, Briefcase, Award, 
   FileText, Heart, Clock, Bell, Settings, Brain, Sparkles, X, Menu, Search,
-  MessageSquare, ShieldCheck, Calendar
+  MessageSquare, ShieldCheck, Calendar, CloudLightning
 } from "lucide-react";
 
 interface SidebarProps {
@@ -27,6 +27,7 @@ export default function CandidateSidebar({ activeTab, setActiveTab, isOpen, setI
     { id: "notifications", label: "Notifications", icon: Bell, badge: unreadCount > 0 ? unreadCount : undefined },
     { id: "abac", label: "ABAC Security Guard", icon: ShieldCheck },
     { id: "chat", label: "Secure Chat", icon: MessageSquare },
+    { id: "workspace", label: "Google Workspace", icon: CloudLightning },
     { id: "settings", label: "Settings", icon: Settings },
   ];
 

@@ -4,11 +4,18 @@ import {
   Sparkles, FileText, Upload, AlertTriangle, CheckCircle2, Download, RefreshCw, 
   Trash2, Calendar, Award, Briefcase, GraduationCap, Code2, Globe, FileCheck, 
   MapPin, Landmark, TrendingUp, Compass, ArrowUpRight, CheckCircle, ChevronRight,
-  BookOpen, Trophy
+  BookOpen, Trophy, FolderOpen, CloudLightning
 } from "lucide-react";
 import { db, storage } from "../firebase";
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs, query, where, deleteDoc, orderBy } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { 
+  loadGooglePickerApi, 
+  getWorkspaceAccessToken, 
+  workspaceSignIn 
+} from "../services/workspaceService";
+
+declare const google: any;
 
 interface ResumeSectionProps {
   resumeText: string;
@@ -30,7 +37,7 @@ export default function CandidateResumeSection({
   setProfile
 }: ResumeSectionProps) {
   // Local active analytical view tabs
-  const [activeSubView, setActiveSubView] = useState<"parsed" | "metrics" | "gaps" | "suggestions" | "salary">("parsed");
+  const [activeSubView, setActiveSubView] = useState<"parsed" | "metrics" | "gaps" | "suggestions" | "salary" | "documents">("parsed");
   
   // File upload UI states
   const [isDragging, setIsDragging] = useState(false);
@@ -46,6 +53,10 @@ export default function CandidateResumeSection({
   const [recommendations, setRecommendations] = useState<any | null>(null);
   const [versions, setVersions] = useState<any[]>([]);
   const [isActivating, setIsActivating] = useState(false);
+
+  // Document management states
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [isLoadingDocs, setIsLoadingDocs] = useState(false);
 
   const userId = profile?.userId;
 
@@ -90,7 +101,21 @@ export default function CandidateResumeSection({
         if (versionsList.length > 0 && uploadedFileName === "None active") {
           setUploadedFileName(versionsList[0].fileName);
         }
+
+        // Fetch candidate documents for document management
+        setIsLoadingDocs(true);
+        const docsRef = collection(db, "candidate_documents");
+        const docsQuery = query(docsRef, where("userId", "==", userId));
+        const docsSnap = await getDocs(docsQuery);
+        const docsList: any[] = [];
+        docsSnap.forEach(dDoc => {
+          docsList.push(dDoc.data());
+        });
+        docsList.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+        setDocuments(docsList);
+        setIsLoadingDocs(false);
       } catch (err: any) {
+        setIsLoadingDocs(false);
         if (err?.message?.includes("permissions") || err?.code === "permission-denied" || err?.message?.includes("permission-denied")) {
           console.warn("Candidate Resume Section loading redirected to local memory sandbox due to Firestore rules validation:", err.message);
         } else {
@@ -130,51 +155,76 @@ export default function CandidateResumeSection({
   };
 
   // Read plain text file content or simulate docx/pdf structure parsing
-  const handleIncomingFile = async (file: File) => {
+  const handleIncomingFile = async (file: File, source: string = "Local") => {
+    // 1. Audit file size
     if (file.size > 5 * 1024 * 1024) {
       alert("Maximum file size is 5MB. Please upload a smaller file.");
+      setIsUploading(false);
+      setUploadProgress(0);
+      return;
+    }
+
+    // 2. Audit MIME type & Extensions
+    const allowedMimeTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "text/plain"
+    ];
+    const allowedExtensions = [".pdf", ".doc", ".docx", ".txt"];
+    const fileExtension = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
+
+    if (!allowedMimeTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
+      alert(`Unsupported file type: "${file.name}". Please upload a PDF, DOC, DOCX, or TXT file.`);
+      setIsUploading(false);
+      setUploadProgress(0);
       return;
     }
 
     if (!userId) {
       alert("Please log in to upload a resume file.");
+      setIsUploading(false);
+      setUploadProgress(0);
       return;
     }
 
     setIsUploading(true);
     setUploadProgress(10);
 
-    // 1. Upload to Firebase Storage
-    let storageUrl = "";
     try {
-      setUploadProgress(25);
-      const storagePath = `resumes/${userId}/${Date.now()}_${file.name}`;
-      const storageRef = ref(storage, storagePath);
-      setUploadProgress(45);
-      const uploadResult = await uploadBytes(storageRef, file);
-      setUploadProgress(75);
-      storageUrl = await getDownloadURL(uploadResult.ref);
-      setUploadedFileUrl(storageUrl);
-      console.log("[Storage] File uploaded successfully to Firebase Storage. URL:", storageUrl);
-    } catch (storageErr) {
-      console.warn("[Storage] Non-critical warning: Real storage write skipped/deferred or running locally. Path reference registered.", storageErr);
-    }
+      // 1. Upload to Firebase Storage
+      let storageUrl = "";
+      try {
+        setUploadProgress(25);
+        const storagePath = `resumes/${userId}/${Date.now()}_${file.name}`;
+        const storageRef = ref(storage, storagePath);
+        setUploadProgress(45);
+        const uploadResult = await uploadBytes(storageRef, file);
+        setUploadProgress(75);
+        storageUrl = await getDownloadURL(uploadResult.ref);
+        setUploadedFileUrl(storageUrl);
+        console.log(`[Storage] File uploaded successfully from ${source} to Firebase Storage. URL:`, storageUrl);
+      } catch (storageErr) {
+        console.warn("[Storage] Non-critical warning: Real storage write skipped/deferred or running locally. Path reference registered.", storageErr);
+      }
 
-    setUploadProgress(90);
+      setUploadProgress(90);
 
-    // 2. Extract content
-    setTimeout(() => {
-      setIsUploading(false);
+      // 2. Extract content
       setUploadedFileName(file.name);
 
       // Read the file if it's text, otherwise simulate structured extraction
       if (file.type === "text/plain") {
         const reader = new FileReader();
-        reader.onload = (event) => {
-          const text = event.target?.result as string;
-          setResumeText(text);
-        };
-        reader.readAsText(file);
+        await new Promise<void>((resolve, reject) => {
+          reader.onload = (event) => {
+            const text = event.target?.result as string;
+            setResumeText(text);
+            resolve();
+          };
+          reader.onerror = (err) => reject(err);
+          reader.readAsText(file);
+        });
       } else {
         // High-fidelity structured prompt text generator based on standard filenames
         const baseName = file.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
@@ -210,7 +260,215 @@ Certifications:
         setResumeText(simulatedTranscript);
       }
       setUploadProgress(100);
-    }, 400);
+      
+      // Write to activity logs
+      await setDoc(doc(db, "activity_logs", `act_res_${Date.now()}`), {
+        id: `act_res_${Date.now()}`,
+        userId,
+        userName: profile?.name || "Candidate",
+        role: "candidate",
+        action: "upload_resume",
+        details: `Uploaded resume "${file.name}" via ${source}.`,
+        createdAt: new Date().toISOString()
+      });
+
+    } catch (err: any) {
+      console.error("Resume file processing error:", err);
+      alert(`An error occurred while uploading your resume: ${err.message}`);
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  // Google Drive Picker trigger and file importer
+  const handleImportFromGoogleDrive = async (targetType: "resume" | "document") => {
+    setIsUploading(true);
+    setUploadProgress(10);
+    try {
+      // 1. Ensure Google Picker SDK is loaded
+      await loadGooglePickerApi();
+      setUploadProgress(30);
+
+      // 2. Get Access Token (reuse workspace session token if available)
+      let token = getWorkspaceAccessToken();
+      if (!token) {
+        // If not authenticated, trigger workspaceSignIn popup flow
+        const authResult = await workspaceSignIn();
+        if (authResult) {
+          token = authResult.accessToken;
+        }
+      }
+
+      if (!token) {
+        alert("Google Workspace connection is required to import from Google Drive.");
+        setIsUploading(false);
+        setUploadProgress(0);
+        return;
+      }
+      
+      setUploadProgress(50);
+
+      // 3. Launch Google Picker
+      const pickerOrigin = window.location.origin;
+      const view = new google.picker.DocsView(google.picker.ViewId.DOCS);
+      view.setMimeTypes("application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/png,image/jpeg");
+
+      const picker = new google.picker.PickerBuilder()
+        .addView(view)
+        .setOAuthToken(token)
+        .setOrigin(pickerOrigin)
+        .setTitle(targetType === "resume" ? "Import Resume from Google Drive" : "Import Document from Google Drive")
+        .setCallback(async (data: any) => {
+          if (data.action === google.picker.Action.CANCEL) {
+            setIsUploading(false);
+            setUploadProgress(0);
+          } else if (data.action === google.picker.Action.PICKED) {
+            const docSelected = data.docs[0];
+            try {
+              setIsUploading(true);
+              setUploadProgress(65);
+              console.log("[Google Picker] Selected item details:", docSelected);
+
+              // 4. Download file from Google Drive alt=media using authenticated fetch
+              const downloadResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${docSelected.id}?alt=media`, {
+                headers: {
+                  Authorization: `Bearer ${token}`
+                }
+              });
+
+              if (!downloadResponse.ok) {
+                throw new Error(`Failed to download from Drive: ${downloadResponse.statusText}`);
+              }
+
+              const blob = await downloadResponse.blob();
+              const importedFile = new File([blob], docSelected.name, { type: docSelected.mimeType });
+              
+              // 5. Route to appropriate uploader
+              if (targetType === "resume") {
+                await handleIncomingFile(importedFile, "Google Drive");
+              } else {
+                await handleUploadDocument(importedFile, "Google Drive");
+              }
+            } catch (dlErr: any) {
+              console.error("[Picker Import Error]", dlErr);
+              alert(`Error downloading file from Google Drive: ${dlErr.message}`);
+              setIsUploading(false);
+              setUploadProgress(0);
+            }
+          }
+        })
+        .build();
+
+      picker.setVisible(true);
+    } catch (err: any) {
+      console.error("[Google Picker Launch Failed]", err);
+      alert(`Could not open Google Picker: ${err.message}`);
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  // Upload secondary documents (Portfolios, Certifications, etc.)
+  const handleUploadDocument = async (file: File, source: string = "Local") => {
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Maximum document size is 5MB. Please upload a smaller file.");
+      return;
+    }
+
+    const allowedMimeTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "text/plain",
+      "image/png",
+      "image/jpeg"
+    ];
+    const allowedExtensions = [".pdf", ".doc", ".docx", ".txt", ".png", ".jpg", ".jpeg"];
+    const fileExtension = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
+
+    if (!allowedMimeTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
+      alert(`Unsupported file type: "${file.name}". Please upload a PDF, DOC, DOCX, TXT, PNG, or JPEG file.`);
+      return;
+    }
+
+    if (!userId) {
+      alert("Please log in to upload documents.");
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadProgress(15);
+
+    try {
+      setUploadProgress(35);
+      const storagePath = `documents/${userId}/${Date.now()}_${file.name}`;
+      const storageRef = ref(storage, storagePath);
+      setUploadProgress(65);
+      const uploadResult = await uploadBytes(storageRef, file);
+      setUploadProgress(85);
+      const storageUrl = await getDownloadURL(uploadResult.ref);
+      
+      const docId = `doc_${Math.random().toString(36).substr(2, 9)}`;
+      const newDocRecord = {
+        id: docId,
+        userId,
+        fileName: file.name,
+        fileUrl: storageUrl,
+        fileSize: file.size,
+        mimeType: file.type || "application/octet-stream",
+        uploadedAt: new Date().toISOString(),
+        source: source
+      };
+
+      await setDoc(doc(db, "candidate_documents", docId), newDocRecord);
+      setDocuments(prev => [newDocRecord, ...prev]);
+      
+      // Log activity
+      await setDoc(doc(db, "activity_logs", `act_${Date.now()}`), {
+        id: `act_${Date.now()}`,
+        userId,
+        userName: profile?.name || "Candidate",
+        role: "candidate",
+        action: "upload_document",
+        details: `Uploaded document "${file.name}" from ${source}.`,
+        createdAt: new Date().toISOString()
+      });
+
+      alert(`Success! "${file.name}" has been uploaded to your Document Vault.`);
+    } catch (err: any) {
+      console.error("Error uploading document:", err);
+      alert(`Upload failed: ${err.message}`);
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  // Delete secondary document
+  const handleDeleteDocument = async (docId: string, fileName: string) => {
+    if (!window.confirm(`Are you sure you want to delete "${fileName}"? This cannot be undone.`)) return;
+
+    try {
+      await deleteDoc(doc(db, "candidate_documents", docId));
+      setDocuments(prev => prev.filter(d => d.id !== docId));
+      
+      // Log activity
+      await setDoc(doc(db, "activity_logs", `act_del_${Date.now()}`), {
+        id: `act_del_${Date.now()}`,
+        userId,
+        userName: profile?.name || "Candidate",
+        role: "candidate",
+        action: "delete_document",
+        details: `Deleted document "${fileName}".`,
+        createdAt: new Date().toISOString()
+      });
+
+      alert(`"${fileName}" has been deleted successfully.`);
+    } catch (err: any) {
+      console.error("Error deleting document:", err);
+      alert(`Deletion failed: ${err.message}`);
+    }
   };
 
   // Elite AI Audit Executor calling upgraded backend and storing inside Firestore Collections
@@ -748,13 +1006,30 @@ Certifications:
               </div>
             </div>
           ) : (
-            <label htmlFor="file-resume-uploader-premium" className="cursor-pointer flex flex-col items-center py-4">
-              <div className="p-4 bg-indigo-500/10 rounded-2xl border border-indigo-500/25 text-indigo-400 mb-3">
-                <Upload className="w-6 h-6 animate-pulse" />
+            <div className="flex flex-col items-center py-4 w-full">
+              <label htmlFor="file-resume-uploader-premium" className="cursor-pointer flex flex-col items-center">
+                <div className="p-4 bg-indigo-500/10 rounded-2xl border border-indigo-500/25 text-indigo-400 mb-3">
+                  <Upload className="w-6 h-6 animate-pulse" />
+                </div>
+                <h3 className="font-display font-bold text-sm text-white">Drag & Drop Resume File</h3>
+                <p className="text-[10px] text-gray-400 mt-1.5">Supports PDF, DOCX, or TXT formats (Max 5MB)</p>
+              </label>
+
+              <div className="flex items-center space-x-2 w-full max-w-[180px] my-3">
+                <div className="h-[1px] bg-white/10 flex-1"></div>
+                <span className="text-[9px] text-gray-500 uppercase font-bold tracking-widest font-mono">or</span>
+                <div className="h-[1px] bg-white/10 flex-1"></div>
               </div>
-              <h3 className="font-display font-bold text-sm text-white">Drag & Drop Resume File</h3>
-              <p className="text-[10px] text-gray-400 mt-1.5">Supports PDF, DOCX, or TXT formats (Max 5MB)</p>
-            </label>
+
+              <button
+                type="button"
+                onClick={() => handleImportFromGoogleDrive("resume")}
+                className="px-4 py-2 bg-gradient-to-r from-blue-600/20 to-indigo-600/20 hover:from-blue-600/35 hover:to-indigo-600/35 border border-blue-500/30 hover:border-indigo-500/40 text-blue-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-2 cursor-pointer shadow-lg shadow-indigo-500/5"
+              >
+                <CloudLightning className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
+                <span>Import from Google Drive</span>
+              </button>
+            </div>
           )}
 
           {isUploading && (
@@ -915,7 +1190,7 @@ Certifications:
             <Compass className="w-3.5 h-3.5" />
             <span>AI Suggestions Checklist</span>
           </button>
-          <button
+           <button
             onClick={() => setActiveSubView("salary")}
             className={`px-3 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center space-x-1.5 ${
               activeSubView === "salary" ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/10" : "text-gray-400 hover:text-white"
@@ -923,6 +1198,15 @@ Certifications:
           >
             <Landmark className="w-3.5 h-3.5" />
             <span>Salary Preds Gauge</span>
+          </button>
+          <button
+            onClick={() => setActiveSubView("documents")}
+            className={`px-3 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center space-x-1.5 ${
+              activeSubView === "documents" ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/10" : "text-gray-400 hover:text-white"
+            }`}
+          >
+            <FolderOpen className="w-3.5 h-3.5" />
+            <span>Document Vault</span>
           </button>
         </div>
 
@@ -1314,6 +1598,147 @@ Certifications:
                     Targeting roles like <strong>{detailedAnalysis.designation || "Senior Engineer"}</strong> in <strong>{detailedAnalysis.preferredLocation || "Bangalore / Remote"}</strong>. Backed by solid proficiency in <strong>{detailedAnalysis.skills?.slice(0, 3).join(", ")}</strong>. High demand for these specialized typescript bundles commands strong premium ranges.
                   </p>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* STATE H: CAREER DOCUMENT VAULT MANAGEMENT */}
+          {activeSubView === "documents" && (
+            <div className="space-y-6 animate-in fade-in duration-300 text-xs flex-1 flex flex-col justify-between">
+              <div>
+                <div className="border-b border-white/5 pb-2.5 mb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                  <div>
+                    <h3 className="font-display font-bold text-sm text-white">Career Document Vault</h3>
+                    <p className="text-[10px] text-gray-400">Import and store cover letters, certification proofs, transcripts, or portfolios.</p>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    {/* Google Picker direct import */}
+                    <button
+                      type="button"
+                      onClick={() => handleImportFromGoogleDrive("document")}
+                      className="px-3 py-1.5 bg-gradient-to-r from-blue-600/20 to-indigo-600/20 hover:from-blue-600/30 hover:to-indigo-600/30 border border-blue-500/30 hover:border-indigo-500/40 text-blue-300 rounded-lg text-[10px] font-bold transition-all flex items-center space-x-1.5 cursor-pointer"
+                    >
+                      <CloudLightning className="w-3.5 h-3.5 text-blue-400" />
+                      <span>Drive Import</span>
+                    </button>
+
+                    {/* Local upload proxy label */}
+                    <label
+                      htmlFor="local-doc-vault-uploader"
+                      className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-[10px] font-bold text-gray-300 border border-white/10 rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Upload Local</span>
+                    </label>
+                    <input
+                      type="file"
+                      id="local-doc-vault-uploader"
+                      className="hidden"
+                      onChange={(e) => {
+                        const files = e.target.files;
+                        if (files && files.length > 0) {
+                          handleUploadDocument(files[0], "Local Device");
+                        }
+                      }}
+                      accept=".pdf,.docx,.doc,.txt,.png,.jpg,.jpeg"
+                    />
+                  </div>
+                </div>
+
+                {isLoadingDocs ? (
+                  <div className="text-center py-16 space-y-3">
+                    <RefreshCw className="w-7 h-7 text-indigo-400 mx-auto animate-spin" />
+                    <p className="text-gray-400 font-mono text-[10px]">Loading vault database...</p>
+                  </div>
+                ) : documents.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[360px] overflow-y-auto pr-1 scrollbar">
+                    {documents.map((docItem) => {
+                      const fileExt = docItem.fileName.substring(docItem.fileName.lastIndexOf(".")).toLowerCase();
+                      const isImage = [".png", ".jpg", ".jpeg"].includes(fileExt);
+                      
+                      const formatBytes = (bytes: number) => {
+                        if (bytes === 0) return '0 Bytes';
+                        const k = 1024;
+                        const sizes = ['Bytes', 'KB', 'MB'];
+                        const i = Math.floor(Math.log(bytes) / Math.log(k));
+                        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+                      };
+
+                      return (
+                        <div 
+                          key={docItem.id} 
+                          className="p-3.5 bg-[#090d16] border border-white/5 rounded-xl flex items-center justify-between hover:border-indigo-500/25 hover:bg-white/5 transition-all group"
+                        >
+                          <div className="flex items-center space-x-3 truncate">
+                            <div className={`p-2 rounded-lg shrink-0 ${
+                              isImage 
+                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
+                                : "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
+                            }`}>
+                              {isImage ? (
+                                <Award className="w-4 h-4" />
+                              ) : (
+                                <FileText className="w-4 h-4" />
+                              )}
+                            </div>
+                            <div className="truncate space-y-0.5">
+                              <p className="font-bold text-gray-200 text-[11px] truncate group-hover:text-indigo-300 transition-all" title={docItem.fileName}>
+                                {docItem.fileName}
+                              </p>
+                              <div className="flex items-center space-x-2 text-[9px] text-gray-500 font-mono">
+                                <span>{formatBytes(docItem.fileSize)}</span>
+                                <span>•</span>
+                                <span className={`px-1 rounded ${
+                                  docItem.source === "Google Drive" 
+                                    ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" 
+                                    : "bg-gray-500/10 text-gray-400 border border-white/5"
+                                } text-[7px] font-black uppercase tracking-wider`}>
+                                  {docItem.source || "Local"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center space-x-1.5 shrink-0 pl-2">
+                            <a 
+                              href={docItem.fileUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="p-1.5 bg-white/5 hover:bg-indigo-500/10 text-gray-400 hover:text-indigo-400 rounded-lg transition-all"
+                              title="Download document file"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </a>
+                            <button
+                              onClick={() => handleDeleteDocument(docItem.id, docItem.fileName)}
+                              className="p-1.5 bg-white/5 hover:bg-red-500/10 text-gray-500 hover:text-red-400 rounded-lg transition-all"
+                              title="Delete file permanently"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-16 space-y-4 border border-dashed border-white/5 rounded-2xl">
+                    <FolderOpen className="w-10 h-10 text-gray-600 mx-auto animate-pulse" />
+                    <div>
+                      <h4 className="font-bold text-gray-300">Your Document Vault is empty</h4>
+                      <p className="text-[10px] text-gray-500 max-w-xs mx-auto mt-1 leading-normal">
+                        Store Cover Letters or certificates to attach dynamically inside any job application submission.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Quick statistics bottom banner */}
+              <div className="pt-4 mt-4 border-t border-white/5 flex justify-between items-center text-[10px] text-gray-500 font-mono font-bold">
+                <span>Vault Capacity: {documents.length} / 25 Files</span>
+                <span className="text-indigo-400/80">Cloud Sync Active</span>
               </div>
             </div>
           )}

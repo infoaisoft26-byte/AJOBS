@@ -559,10 +559,10 @@ export default function CandidateJobsSection({
 
                     <div className="flex items-center space-x-2">
                       <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase font-mono border ${
-                        app.status === "applied" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
-                        app.status === "interviewing" ? "bg-purple-500/10 text-purple-400 border-purple-500/20" :
-                        app.status === "offered" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
-                        app.status === "rejected" ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-white/5 text-gray-300"
+                        app.status?.toLowerCase() === "applied" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
+                        app.status?.toLowerCase() === "interviewing" ? "bg-purple-500/10 text-purple-400 border-purple-500/20" :
+                        app.status?.toLowerCase() === "offered" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                        app.status?.toLowerCase() === "rejected" ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-white/5 text-gray-300"
                       }`}>
                         {app.status}
                       </span>

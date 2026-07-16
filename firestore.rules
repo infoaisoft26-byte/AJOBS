@@ -62,14 +62,30 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
     
-    // Jobs postings - visible to all authenticated users, editable by employers/admins
+    // Jobs postings - visible to all users (including guest visitors and backend schedulers), editable by employers/admins
     match /jobs/{jobId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() || (
+        // Allow unauthenticated background scheduler to auto-close expired job listings
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+        request.resource.data.status == "Closed" &&
+        resource.data.applyDeadline != null &&
+        resource.data.applyDeadline != ""
+      );
+      allow delete: if isAdmin();
     }
     match /company_jobs/{jobId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() || (
+        // Allow unauthenticated background scheduler to auto-close expired job listings
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+        request.resource.data.status == "Closed" &&
+        resource.data.applyDeadline != null &&
+        resource.data.applyDeadline != ""
+      );
+      allow delete: if isAdmin();
     }
     
     // Applications
@@ -114,6 +130,18 @@ service cloud.firestore {
     match /interview_reports/{reportId} {
       allow read, write: if isSignedIn();
     }
+    match /interview_questions/{questionId} {
+      allow read, write: if isSignedIn();
+    }
+    match /interview_answers/{answerId} {
+      allow read, write: if isSignedIn();
+    }
+    match /ai_reports/{reportId} {
+      allow read, write: if isSignedIn();
+    }
+    match /job_recommendations/{recId} {
+      allow read, write: if isSignedIn();
+    }
     
     // Notifications and logs
     match /notifications/{notificationId} {
@@ -123,6 +151,12 @@ service cloud.firestore {
       allow read, write: if isOwner(userId) || isAdmin();
     }
     match /activity_logs/{logId} {
+      allow read, write: if isSignedIn();
+    }
+    match /submission_logs/{logId} {
+      allow read, write: if isSignedIn();
+    }
+    match /candidate_documents/{docId} {
       allow read, write: if isSignedIn();
     }
     match /company_activity_logs/{logId} {
@@ -178,6 +212,98 @@ service cloud.firestore {
     match /email_templates/{templateId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
+    }
+
+    // Audit logs
+    match /audit_logs/{logId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    // Social links
+    match /social_links/{linkId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+    
+    // Clients
+    match /clients/{clientId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    // Consultancy Jobs
+    match /consultancy_jobs/{jobId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    // Consultancy Candidates
+    match /consultancy_candidates/{candidateId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    // Placements
+    match /placements/{placementId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    // Team Members
+    match /team_members/{memberId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    // Message logs
+    match /message_logs/{logId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    // Offers
+    match /offers/{offerId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    // Chats and nested Messages
+    match /chats/{chatId} {
+      allow read, write: if isSignedIn();
+      
+      match /messages/{messageId} {
+        allow read, write: if isSignedIn();
+      }
+    }
+    
+    // Career goals
+    match /career_goals/{goalId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    // Success predictions
+    match /success_predictions/{predId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    // Cover letters
+    match /cover_letters/{letterId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    // Resume templates
+    match /resume_templates/{templateId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    // Learning paths
+    match /learning_paths/{pathId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    // FAQs
+    match /faqs/{faqId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+    
+    // Blogs
+    match /blogs/{blogId} {
+      allow read: if true;
+      allow write: if isSignedIn();
     }
   }
 }

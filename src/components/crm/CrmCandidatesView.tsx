@@ -7,6 +7,7 @@ import { doc, setDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { ConsultancyCandidateModel } from "./CrmTypes";
 import * as XLSX from "xlsx";
+import Papa from "papaparse";
 
 interface CrmCandidatesViewProps {
   candidates: ConsultancyCandidateModel[];
@@ -22,6 +23,217 @@ export default function CrmCandidatesView({
   const [selectedCand, setSelectedCand] = useState<ConsultancyCandidateModel | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+
+  // Bulk CSV/Excel spreadsheet upload handlers
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleBulkUploadFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setUploadError(null);
+
+    const isCsv = file.name.endsWith(".csv");
+    const isExcel = file.name.endsWith(".xlsx") || file.name.endsWith(".xls");
+
+    if (!isCsv && !isExcel) {
+      alert("Unsupported file format. Please upload a .csv, .xlsx, or .xls file.");
+      setUploadError("Unsupported file format. Please upload a .csv, .xlsx, or .xls file.");
+      setIsUploading(false);
+      return;
+    }
+
+    try {
+      const processParsedData = async (rawData: any[]) => {
+        if (!rawData || rawData.length === 0) {
+          alert("The uploaded spreadsheet contains no data rows.");
+          setUploadError("The uploaded spreadsheet contains no data rows.");
+          setIsUploading(false);
+          return;
+        }
+
+        let addedCount = 0;
+        let skippedCount = 0;
+        const errors: string[] = [];
+
+        for (let i = 0; i < rawData.length; i++) {
+          const row = rawData[i];
+          // Case-insensitive cell matches
+          const rName = row.Name || row["Candidate Name"] || row["name"] || row["CandidateName"] || "";
+          const rEmail = row.Email || row["Email Address"] || row["email"] || row["EmailAddress"] || "";
+          const rPhone = row.Phone || row["phone"] || row["Phone Number"] || row["PhoneNumber"] || "";
+          const rSkills = row.Skills || row["skills"] || row["Skills Stack"] || row["SkillsStack"] || "";
+          const rExp = row.Experience || row["experience"] || "Mid-Level (5+ Years)";
+          const rLoc = row.Location || row["location"] || "Bengaluru";
+          const rSal = row.ExpectedSalary || row["expectedSalary"] || row["Expected Salary (LPA)"] || row["ExpectedSalaryLpa"] || "12";
+          const rNotes = row.Notes || row["notes"] || "Bulk uploaded profile";
+          const rTagsText = row.Tags || row["tags"] || "bulk_imported";
+
+          // Validation Logic
+          if (!rName || rName.toString().trim().length < 2) {
+            errors.push(`Row ${i + 2}: Invalid or missing Name.`);
+            skippedCount++;
+            continue;
+          }
+
+          const emailStr = rEmail.toString().trim();
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailStr || !emailRegex.test(emailStr)) {
+            errors.push(`Row ${i + 2} (${rName}): Invalid or missing Email Address.`);
+            skippedCount++;
+            continue;
+          }
+
+          // Map and Save
+          const candId = "ccand_" + Math.random().toString(36).substr(2, 9);
+          const skillsArr = typeof rSkills === "string" 
+            ? rSkills.split(/[,,|]/).map(s => s.trim()).filter(s => s.length > 0)
+            : Array.isArray(rSkills) ? rSkills : ["React", "TypeScript"];
+          
+          const tagsArr = typeof rTagsText === "string"
+            ? rTagsText.split(/[,,|]/).map(t => t.trim()).filter(t => t.length > 0)
+            : ["bulk_imported"];
+          if (!tagsArr.includes("bulk_imported")) {
+            tagsArr.push("bulk_imported");
+          }
+
+          const parsedCandidateObj: ConsultancyCandidateModel = {
+            id: candId,
+            name: rName.toString().trim(),
+            email: emailStr,
+            phone: rPhone ? rPhone.toString().trim() : "+91-9876543210",
+            skills: skillsArr,
+            experience: rExp.toString().trim(),
+            location: rLoc.toString().trim(),
+            expectedSalary: rSal.toString().trim(),
+            notes: rNotes.toString().trim(),
+            tags: tagsArr,
+            status: "active",
+            resumeScore: 82,
+            aiInterviewScore: 78
+          };
+
+          // Write to consultancy_candidates (Agency CRM)
+          await setDoc(doc(db, "consultancy_candidates", candId), parsedCandidateObj);
+
+          // Write to general candidates
+          const generalCandidateObj = {
+            id: candId,
+            name: parsedCandidateObj.name,
+            email: parsedCandidateObj.email,
+            title: parsedCandidateObj.skills[0] ? `${parsedCandidateObj.skills[0]} Specialist` : "SDE Professional",
+            skills: parsedCandidateObj.skills,
+            experience: parsedCandidateObj.experience,
+            resumeScore: 82,
+            aiInterviewScore: 78,
+            expectedSalary: parsedCandidateObj.expectedSalary + " LPA",
+            location: parsedCandidateObj.location,
+            availability: "Immediate",
+            isAiVerified: true,
+            tags: parsedCandidateObj.tags
+          };
+          await setDoc(doc(db, "candidates", candId), generalCandidateObj);
+
+          addedCount++;
+        }
+
+        if (errors.length > 0) {
+          alert(`Bulk upload completed with warnings:\n- ${addedCount} profiles registered successfully.\n- ${skippedCount} rows skipped due to errors:\n\n${errors.slice(0, 5).join("\n")}${errors.length > 5 ? "\n...and more" : ""}`);
+        } else {
+          alert(`Bulk upload successful! Registered ${addedCount} candidates into Agency CRM & Candidate database via PapaParse.`);
+        }
+        
+        setIsUploading(false);
+        onRefresh();
+      };
+
+      if (isCsv) {
+        Papa.parse(file, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            processParsedData(results.data);
+          },
+          error: (error) => {
+            console.error(error);
+            alert(`PapaParse failed to process CSV: ${error.message}`);
+            setUploadError(`PapaParse failed to process CSV: ${error.message}`);
+            setIsUploading(false);
+          }
+        });
+      } else {
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+          try {
+            const bstr = evt.target?.result;
+            const workbook = XLSX.read(bstr, { type: "binary" });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const csvData = XLSX.utils.sheet_to_csv(worksheet);
+            
+            Papa.parse(csvData, {
+              header: true,
+              skipEmptyLines: true,
+              complete: (results) => {
+                processParsedData(results.data);
+              },
+              error: (error) => {
+                console.error(error);
+                alert(`PapaParse failed to process converted Excel CSV: ${error.message}`);
+                setUploadError(`PapaParse failed to process converted Excel CSV: ${error.message}`);
+                setIsUploading(false);
+              }
+            });
+          } catch (innerErr) {
+            console.error(innerErr);
+            alert("Error reading the Excel spreadsheet. Make sure file is not corrupted.");
+            setUploadError("Error reading the Excel spreadsheet. Make sure file is not corrupted.");
+            setIsUploading(false);
+          }
+        };
+        reader.readAsBinaryString(file);
+      }
+
+    } catch (err) {
+      console.error(err);
+      alert("Failed to read upload file.");
+      setUploadError("Failed to read upload file.");
+      setIsUploading(false);
+    }
+  };
+
+  const downloadSampleTemplate = () => {
+    const templateData = [
+      {
+        "Candidate Name": "Aryan Malhotra",
+        "Email Address": "aryan.malhotra@gmail.com",
+        "Phone": "+91-9988776655",
+        "Skills": "React, TypeScript, Node.js",
+        "Experience": "Mid-Level (5 Years)",
+        "Location": "Delhi NCR (Hybrid)",
+        "Expected Salary (LPA)": "18",
+        "Tags": "developer, frontend",
+        "Notes": "Great match for urgent frontend developer opening."
+      },
+      {
+        "Candidate Name": "Nisha Verma",
+        "Email Address": "nisha.verma@outlook.com",
+        "Phone": "+91-9876543210",
+        "Skills": "Python, Django, AWS, PostgreSQL",
+        "Experience": "Senior (8 Years)",
+        "Location": "Bengaluru (Onsite)",
+        "Expected Salary (LPA)": "26",
+        "Tags": "backend, lead",
+        "Notes": "Excellent system architecture design score."
+      }
+    ];
+    const worksheet = XLSX.utils.json_to_sheet(templateData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Candidates Template");
+    XLSX.writeFile(workbook, "AIJobs_Bulk_Upload_Template.xlsx");
+  };
 
   const downloadCrmCandidateExcel = (cand: ConsultancyCandidateModel) => {
     const dataRow = [{
@@ -278,13 +490,48 @@ export default function CrmCandidatesView({
         </div>
 
         {!isReadOnly && (
-          <button
-            onClick={handleOpenAdd}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-xs font-bold text-white rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/15"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Register Candidate</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Hidden spreadsheet input */}
+            <input
+              type="file"
+              id="bulk-spreadsheet-input"
+              accept=".xlsx,.xls,.csv"
+              onChange={handleBulkUploadFileChange}
+              className="hidden"
+            />
+            
+            <button
+              onClick={downloadSampleTemplate}
+              className="flex items-center gap-1.5 px-3 py-2 bg-[#090d16] hover:bg-neutral-900 text-gray-400 hover:text-white border border-white/10 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+              title="Get Sample Template"
+            >
+              <FileDown className="w-3.5 h-3.5 text-pink-400" />
+              <span>Get Sample XLS</span>
+            </button>
+
+            <button
+              onClick={() => document.getElementById("bulk-spreadsheet-input")?.click()}
+              disabled={isUploading}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-pink-600/10 hover:bg-pink-600/20 text-pink-400 border border-pink-500/20 text-xs font-bold rounded-xl transition-all cursor-pointer"
+            >
+              {isUploading ? (
+                <span>Uploading...</span>
+              ) : (
+                <>
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Bulk Upload</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={handleOpenAdd}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-xs font-bold text-white rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/15"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Register Candidate</span>
+            </button>
+          </div>
         )}
       </div>
 

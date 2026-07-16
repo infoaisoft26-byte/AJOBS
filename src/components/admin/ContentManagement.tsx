@@ -18,9 +18,139 @@ export default function ContentManagement({
   emailTemplates,
   onRefresh
 }: ContentManagementProps) {
-  const [activeTab, setActiveTab] = useState<"cms" | "emails">("cms");
+  const [activeTab, setActiveTab] = useState<"cms" | "emails" | "company">("cms");
   const [cmsType, setCmsType] = useState<string>("all");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Company Information & Socials edit state
+  const [compName, setCompName] = useState("AIJobs");
+  const [compBrand, setCompBrand] = useState("AIJobs");
+  const [compAddress, setCompAddress] = useState("AIJobs\nJuhi Corp Park, Vasai West, Mumbai, Maharashtra – 401202, India");
+  const [compEmail, setCompEmail] = useState("infoaisoft26@gmail.com");
+  const [compSalesEmail, setCompSalesEmail] = useState("sales@aijobs.in");
+  const [compPhone, setCompPhone] = useState("+91 9324773994");
+  const [compWhatsapp, setCompWhatsapp] = useState("+91 9324773994");
+  const [compHours, setCompHours] = useState("Monday – Friday: 09:00 AM – 06:00 PM IST");
+  
+  const [compAboutTitle, setCompAboutTitle] = useState("About AIJobs");
+  const [compAboutSub, setCompAboutSub] = useState("India's AI-Powered Recruitment Platform");
+  const [compAboutDesc, setCompAboutDesc] = useState("AIJobs is an AI-powered recruitment platform connecting talented candidates with trusted recruiters, companies, and consultancies across India. Our mission is to simplify hiring using artificial intelligence, smart job matching, AI interviews, and an easy application process.");
+  const [compMission, setCompMission] = useState("To make hiring faster, smarter, and transparent for everyone.");
+  const [compVision, setCompVision] = useState("To become India's most trusted AI recruitment platform.");
+  const [compValuesText, setCompValuesText] = useState("Trust, Innovation, Transparency, Speed, Customer Success");
+
+  // Social Links state
+  const [socialFb, setSocialFb] = useState("https://facebook.com/aijobs");
+  const [socialIg, setSocialIg] = useState("https://instagram.com/aijobs");
+  const [socialLi, setSocialLi] = useState("https://linkedin.com/company/aijobs");
+  const [socialYt, setSocialYt] = useState("https://youtube.com/aijobs");
+  const [socialTw, setSocialTw] = useState("https://twitter.com/aijobs");
+  const [socialTg, setSocialTg] = useState("https://t.me/aijobs");
+  const [socialWa, setSocialWa] = useState("https://wa.me/919324773994");
+
+  useEffect(() => {
+    const loadCompanyConfig = async () => {
+      try {
+        const settingsSnap = await getDocs(collection(db, "settings"));
+        if (!settingsSnap.empty) {
+          settingsSnap.forEach(d => {
+            if (d.id === "company_info") {
+              const data = d.data();
+              if (data.companyName) setCompName(data.companyName);
+              if (data.brandName) setCompBrand(data.brandName);
+              if (data.address) setCompAddress(data.address);
+              if (data.supportEmail) setCompEmail(data.supportEmail);
+              if (data.salesEmail) setCompSalesEmail(data.salesEmail);
+              if (data.phone) setCompPhone(data.phone);
+              if (data.whatsapp) setCompWhatsapp(data.whatsapp);
+              if (data.businessHours) setCompHours(data.businessHours);
+              if (data.aboutTitle) setCompAboutTitle(data.aboutTitle);
+              if (data.aboutSubtitle) setCompAboutSub(data.aboutSubtitle);
+              if (data.aboutDescription) setCompAboutDesc(data.aboutDescription);
+              if (data.mission) setCompMission(data.mission);
+              if (data.vision) setCompVision(data.vision);
+              if (data.values) setCompValuesText(data.values);
+            }
+          });
+        }
+        const socialsSnap = await getDocs(collection(db, "social_links"));
+        if (!socialsSnap.empty) {
+          socialsSnap.forEach(d => {
+            if (d.id === "global_socials") {
+              const data = d.data();
+              if (data.facebook) setSocialFb(data.facebook);
+              if (data.instagram) setSocialIg(data.instagram);
+              if (data.linkedin) setSocialLi(data.linkedin);
+              if (data.youtube) setSocialYt(data.youtube);
+              if (data.twitter) setSocialTw(data.twitter);
+              if (data.telegram) setSocialTg(data.telegram);
+              if (data.whatsapp) setSocialWa(data.whatsapp);
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Error loading company config:", err);
+      }
+    };
+    loadCompanyConfig();
+  }, []);
+
+  const handleSaveCompanyConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await setDoc(doc(db, "settings", "company_info"), {
+        companyName: compName,
+        brandName: compBrand,
+        address: compAddress,
+        supportEmail: compEmail,
+        salesEmail: compSalesEmail,
+        phone: compPhone,
+        whatsapp: compWhatsapp,
+        businessHours: compHours,
+        aboutTitle: compAboutTitle,
+        aboutSubtitle: compAboutSub,
+        aboutDescription: compAboutDesc,
+        mission: compMission,
+        vision: compVision,
+        values: compValuesText
+      }, { merge: true });
+
+      await setDoc(doc(db, "social_links", "global_socials"), {
+        facebook: socialFb,
+        instagram: socialIg,
+        linkedin: socialLi,
+        youtube: socialYt,
+        twitter: socialTw,
+        telegram: socialTg,
+        whatsapp: socialWa
+      }, { merge: true });
+
+      // Audit Log
+      const logId = "log_" + Math.random().toString(36).substr(2, 9);
+      await setDoc(doc(db, "audit_logs", logId), {
+        id: logId,
+        userId: "system_admin",
+        userName: "Super Admin",
+        userEmail: "admin@aijobs.global",
+        role: "Super Admin",
+        action: "UPDATE",
+        category: "System",
+        description: `Updated Company Profile & Social Coordinates from CMS.`,
+        ipAddress: "157.45.18.221",
+        deviceInfo: "Chrome 124.0",
+        createdAt: new Date().toISOString()
+      });
+
+      alert("🎉 Company Information and Social Links updated successfully in Firestore!");
+      onRefresh();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save Company Config.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Form states for CMS Content
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -175,6 +305,14 @@ export default function ContentManagement({
           >
             Email Templates
           </button>
+          <button
+            onClick={() => setActiveTab("company")}
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+              activeTab === "company" ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-white"
+            }`}
+          >
+            Company Pages Info
+          </button>
         </div>
       </div>
 
@@ -260,6 +398,228 @@ export default function ContentManagement({
             )}
           </div>
         </div>
+      ) : activeTab === "company" ? (
+        <form onSubmit={handleSaveCompanyConfig} className="glass p-6 rounded-2xl border border-white/5 space-y-6 text-xs text-gray-300">
+          <div className="flex justify-between items-center border-b border-white/5 pb-3">
+            <div>
+              <h4 className="font-extrabold text-white text-base">Corporate Details & Website CMS</h4>
+              <p className="text-[11px] text-gray-400 mt-1">Configure professional content rendered across the company website About Us, Mission, Contact, and footer grids.</p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
+            >
+              <Save className="w-4 h-4" />
+              <span>{isSubmitting ? "Saving Config..." : "Save Corporate Profile"}</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Column 1: Core Brand Identity & Social Coordinates */}
+            <div className="space-y-4">
+              <h5 className="font-bold text-xs text-white uppercase tracking-wider font-mono border-b border-white/5 pb-1">Brand & Contacts</h5>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-gray-400 font-mono block">Official Corporate Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={compName}
+                    onChange={e => setCompName(e.target.value)}
+                    placeholder="e.g. AIJobs Private Limited"
+                    className="w-full bg-neutral-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-white"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-gray-400 font-mono block">Marketing Brand Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={compBrand}
+                    onChange={e => setCompBrand(e.target.value)}
+                    placeholder="e.g. AIJobs"
+                    className="w-full bg-neutral-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-gray-400 font-mono block">Primary Support Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={compEmail}
+                    onChange={e => setCompEmail(e.target.value)}
+                    placeholder="infoaisoft26@gmail.com"
+                    className="w-full bg-neutral-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-white"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-gray-400 font-mono block">Sales / Inquiries Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={compSalesEmail}
+                    onChange={e => setCompSalesEmail(e.target.value)}
+                    placeholder="sales@aijobs.in"
+                    className="w-full bg-neutral-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-gray-400 font-mono block">Official Contact Phone</label>
+                  <input
+                    type="text"
+                    required
+                    value={compPhone}
+                    onChange={e => setCompPhone(e.target.value)}
+                    placeholder="+91 9324773994"
+                    className="w-full bg-neutral-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-white"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-gray-400 font-mono block">Business WhatsApp Link</label>
+                  <input
+                    type="text"
+                    required
+                    value={compWhatsapp}
+                    onChange={e => setCompWhatsapp(e.target.value)}
+                    placeholder="e.g. +91 9324773994"
+                    className="w-full bg-neutral-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-gray-400 font-mono block">Business Operational Hours</label>
+                <input
+                  type="text"
+                  required
+                  value={compHours}
+                  onChange={e => setCompHours(e.target.value)}
+                  className="w-full bg-neutral-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-white"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-gray-400 font-mono block">Registered Head Office Address</label>
+                <textarea
+                  required
+                  rows={2}
+                  value={compAddress}
+                  onChange={e => setCompAddress(e.target.value)}
+                  className="w-full bg-neutral-900 border border-white/10 rounded-lg p-2.5 text-white font-mono leading-normal resize-none"
+                />
+              </div>
+
+              <h5 className="font-bold text-xs text-white uppercase tracking-wider font-mono border-b border-white/5 pt-2 pb-1">Social Channel Links</h5>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-gray-400 font-mono text-[10px] block">LinkedIn Company Link</label>
+                  <input type="text" value={socialLi} onChange={e => setSocialLi(e.target.value)} className="w-full bg-neutral-900 border border-white/10 rounded-lg px-2.5 py-1 text-white font-mono text-[10px]" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-gray-400 font-mono text-[10px] block">Twitter (X) Link</label>
+                  <input type="text" value={socialTw} onChange={e => setSocialTw(e.target.value)} className="w-full bg-neutral-900 border border-white/10 rounded-lg px-2.5 py-1 text-white font-mono text-[10px]" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-gray-400 font-mono text-[10px] block">Facebook Page Link</label>
+                  <input type="text" value={socialFb} onChange={e => setSocialFb(e.target.value)} className="w-full bg-neutral-900 border border-white/10 rounded-lg px-2.5 py-1 text-white font-mono text-[10px]" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-gray-400 font-mono text-[10px] block">Instagram Profile Link</label>
+                  <input type="text" value={socialIg} onChange={e => setSocialIg(e.target.value)} className="w-full bg-neutral-900 border border-white/10 rounded-lg px-2.5 py-1 text-white font-mono text-[10px]" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-gray-400 font-mono text-[10px] block">YouTube Channel Link</label>
+                  <input type="text" value={socialYt} onChange={e => setSocialYt(e.target.value)} className="w-full bg-neutral-900 border border-white/10 rounded-lg px-2.5 py-1 text-white font-mono text-[10px]" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-gray-400 font-mono text-[10px] block">Telegram Group Link</label>
+                  <input type="text" value={socialTg} onChange={e => setSocialTg(e.target.value)} className="w-full bg-neutral-900 border border-white/10 rounded-lg px-2.5 py-1 text-white font-mono text-[10px]" />
+                </div>
+              </div>
+            </div>
+
+            {/* Column 2: About us, Mission & Vision, Core Values CMS */}
+            <div className="space-y-4">
+              <h5 className="font-bold text-xs text-white uppercase tracking-wider font-mono border-b border-white/5 pb-1">Website About Us & Values</h5>
+
+              <div className="space-y-1">
+                <label className="text-gray-400 font-mono block">About Us Section Title</label>
+                <input
+                  type="text"
+                  required
+                  value={compAboutTitle}
+                  onChange={e => setCompAboutTitle(e.target.value)}
+                  className="w-full bg-neutral-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-white font-bold"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-gray-400 font-mono block">About Us Subtitle</label>
+                <input
+                  type="text"
+                  required
+                  value={compAboutSub}
+                  onChange={e => setCompAboutSub(e.target.value)}
+                  className="w-full bg-neutral-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-white"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-gray-400 font-mono block">About Us Narrative Description</label>
+                <textarea
+                  required
+                  rows={4}
+                  value={compAboutDesc}
+                  onChange={e => setCompAboutDesc(e.target.value)}
+                  className="w-full bg-neutral-900 border border-white/10 rounded-lg p-2.5 text-white leading-relaxed resize-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-gray-400 font-mono block">Corporate Mission statement</label>
+                <textarea
+                  required
+                  rows={2}
+                  value={compMission}
+                  onChange={e => setCompMission(e.target.value)}
+                  className="w-full bg-neutral-900 border border-white/10 rounded-lg p-2.5 text-white resize-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-gray-400 font-mono block">Corporate Vision statement</label>
+                <textarea
+                  required
+                  rows={2}
+                  value={compVision}
+                  onChange={e => setCompVision(e.target.value)}
+                  className="w-full bg-neutral-900 border border-white/10 rounded-lg p-2.5 text-white resize-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-gray-400 font-mono block">Corporate Core Values (comma separated)</label>
+                <input
+                  type="text"
+                  required
+                  value={compValuesText}
+                  onChange={e => setCompValuesText(e.target.value)}
+                  placeholder="e.g. Trust, Innovation, Speed, Customer Success"
+                  className="w-full bg-neutral-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-white"
+                />
+              </div>
+            </div>
+          </div>
+        </form>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           

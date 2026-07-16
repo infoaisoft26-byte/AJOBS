@@ -35,11 +35,11 @@ export default function D3PerformanceCharts({
     d3.select(radarRef.current).selectAll("*").remove();
 
     const data = [
-      { axis: "Technical", value: technicalScore },
-      { axis: "Communication", value: communicationScore },
-      { axis: "Confidence", value: confidenceScore },
-      { axis: "Problem Solving", value: problemSolvingScore },
-      { axis: "Behavioral", value: behaviorScore }
+      { axis: "Technical", value: technicalScore ?? 0 },
+      { axis: "Communication", value: communicationScore ?? 0 },
+      { axis: "Confidence", value: confidenceScore ?? 0 },
+      { axis: "Problem Solving", value: problemSolvingScore ?? 0 },
+      { axis: "Behavioral", value: behaviorScore ?? 0 }
     ];
 
     const width = 360;

@@ -1535,6 +1535,7 @@ async function startExpiredJobsScheduler() {
     // Dynamically import Firebase Client SDK on the server side
     const { initializeApp, getApps, getApp } = await import("firebase/app");
     const { getFirestore, collection, getDocs, doc, updateDoc } = await import("firebase/firestore");
+    const { getAuth, signInAnonymously } = await import("firebase/auth");
 
     const firebaseConfig = {
       apiKey: config.apiKey,
@@ -1547,6 +1548,17 @@ async function startExpiredJobsScheduler() {
 
     const firebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
     const db = getFirestore(firebaseApp, config.firestoreDatabaseId);
+
+    // Optional: Authenticate server session anonymously if possible to pass standard auth rules
+    try {
+      const auth = getAuth(firebaseApp);
+      if (!auth.currentUser) {
+        await signInAnonymously(auth);
+        console.log("[Scheduler] Authenticated server session anonymously.");
+      }
+    } catch (authErr: any) {
+      console.warn("[Scheduler] Optional anonymous authentication skipped/unavailable:", authErr?.message || authErr);
+    }
 
     const runCheck = async () => {
       const todayStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD

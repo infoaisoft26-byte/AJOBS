@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Users, ChevronRight, Check, X, ShieldCheck, 
-  MapPin, Clock, Brain, FileText, ArrowRightLeft, CalendarClock, Award, Download, FileDown
+  MapPin, Clock, Brain, FileText, ArrowRightLeft, CalendarClock, Award, Download, FileDown,
+  Plus, Trash2, Tag, MessageSquare
 } from "lucide-react";
 import { CompanyApplication, CompanyJob } from "./EmployerTypes";
-import { doc, setDoc } from "firebase/firestore";
-import { db } from "../../firebase";
+import { doc, setDoc, collection, getDocs, addDoc, deleteDoc } from "firebase/firestore";
+import { db, auth } from "../../firebase";
 import * as XLSX from "xlsx";
 
 interface ApplicationPipelineProps {
@@ -42,6 +43,129 @@ export default function ApplicationPipeline({
   // Modal detail drawer state
   const [activeApp, setActiveApp] = useState<CompanyApplication | null>(null);
   const [isChangingStatus, setIsChangingStatus] = useState(false);
+
+  // Notes and Tags Collaboration States
+  const [appNotes, setAppNotes] = useState<any[]>([]);
+  const [newNote, setNewNote] = useState("");
+  const [newTag, setNewTag] = useState("");
+  const [loadingNotes, setLoadingNotes] = useState(false);
+
+  useEffect(() => {
+    if (activeApp) {
+      fetchAppNotes(activeApp.id);
+    } else {
+      setAppNotes([]);
+    }
+  }, [activeApp]);
+
+  const fetchAppNotes = async (appId: string) => {
+    setLoadingNotes(true);
+    try {
+      const notesRef = collection(db, "company_applications", appId, "notes");
+      const snap = await getDocs(notesRef);
+      const notesList: any[] = [];
+      snap.forEach((d) => {
+        notesList.push({ id: d.id, ...d.data() });
+      });
+      // Sort notes by createdAt asc
+      notesList.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      setAppNotes(notesList);
+    } catch (err) {
+      console.error("Error fetching candidate recruiter notes:", err);
+    } finally {
+      setLoadingNotes(false);
+    }
+  };
+
+  const handleAddNote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeApp || !newNote.trim()) return;
+
+    try {
+      const authorName = auth.currentUser?.displayName || "Recruiter";
+      const authorEmail = auth.currentUser?.email || "recruiter@aijobs.com";
+      const notePayload = {
+        text: newNote.trim(),
+        authorName,
+        authorEmail,
+        createdAt: new Date().toISOString(),
+      };
+
+      const notesCollectionRef = collection(db, "company_applications", activeApp.id, "notes");
+      const docRef = await addDoc(notesCollectionRef, notePayload);
+      
+      setAppNotes(prev => [...prev, { id: docRef.id, ...notePayload }]);
+      setNewNote("");
+    } catch (err) {
+      console.error("Error adding note:", err);
+      alert("Failed to save note.");
+    }
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    if (!activeApp) return;
+    try {
+      const noteDocRef = doc(db, "company_applications", activeApp.id, "notes", noteId);
+      await deleteDoc(noteDocRef);
+      setAppNotes(prev => prev.filter(n => n.id !== noteId));
+    } catch (err) {
+      console.error("Error deleting note:", err);
+      alert("Failed to delete note.");
+    }
+  };
+
+  const handleAddTag = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeApp || !newTag.trim()) return;
+
+    const cleanTag = newTag.trim().toLowerCase();
+    const currentTags = activeApp.tags || [];
+
+    if (currentTags.includes(cleanTag)) {
+      setNewTag("");
+      return;
+    }
+
+    const updatedTags = [...currentTags, cleanTag];
+    try {
+      const appRef = doc(db, "company_applications", activeApp.id);
+      await setDoc(appRef, { tags: updatedTags }, { merge: true });
+
+      // Update standard applications collection too
+      const standardAppRef = doc(db, "applications", activeApp.id);
+      await setDoc(standardAppRef, { tags: updatedTags }, { merge: true });
+
+      // Update local state
+      const updatedApp = { ...activeApp, tags: updatedTags };
+      setActiveApp(updatedApp);
+      setNewTag("");
+      onRefresh(); // Refresh parent lists
+    } catch (err) {
+      console.error("Error saving tag:", err);
+      alert("Failed to save tag.");
+    }
+  };
+
+  const handleRemoveTag = async (tagToRemove: string) => {
+    if (!activeApp) return;
+    const currentTags = activeApp.tags || [];
+    const updatedTags = currentTags.filter((t: string) => t !== tagToRemove);
+
+    try {
+      const appRef = doc(db, "company_applications", activeApp.id);
+      await setDoc(appRef, { tags: updatedTags }, { merge: true });
+
+      const standardAppRef = doc(db, "applications", activeApp.id);
+      await setDoc(standardAppRef, { tags: updatedTags }, { merge: true });
+
+      const updatedApp = { ...activeApp, tags: updatedTags };
+      setActiveApp(updatedApp);
+      onRefresh();
+    } catch (err) {
+      console.error("Error removing tag:", err);
+      alert("Failed to remove tag.");
+    }
+  };
 
   const downloadCandidateExcel = (app: CompanyApplication) => {
     const dataRow = [{
@@ -267,7 +391,18 @@ export default function ApplicationPipeline({
 
                     <p className="text-[10px] text-gray-400 font-mono line-clamp-1">{app.jobTitle}</p>
 
-                    <div className="flex justify-between items-center text-[9px] font-mono text-gray-500 pt-1">
+                    {/* Candidate Tags Display on card */}
+                    {app.tags && app.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {app.tags.map((t: string) => (
+                          <span key={t} className="px-1.5 py-0.5 bg-pink-500/10 text-pink-300 border border-pink-500/10 rounded font-mono text-[8px] tracking-tight">
+                            #{t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center text-[9px] font-mono text-gray-500 pt-1 border-t border-white/5">
                       <span>ATS: <strong className="text-indigo-400">{app.resumeScore || 70}</strong></span>
                       <span>Interview: <strong className="text-pink-400">{app.interviewScore || "—"}</strong></span>
                     </div>
@@ -288,7 +423,7 @@ export default function ApplicationPipeline({
       {/* Details drawer overlay */}
       {activeApp && (
         <div className="fixed inset-0 bg-neutral-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="w-full max-w-lg bg-[#0a0a0f] border border-white/10 rounded-2xl p-6 space-y-5 text-xs">
+          <div className="w-full max-w-xl bg-[#0a0a0f] border border-white/10 rounded-2xl p-6 space-y-5 text-xs max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
             <div className="flex justify-between items-start border-b border-white/5 pb-3">
               <div>
                 <h4 className="font-extrabold text-base text-white">{activeApp.candidateName}</h4>
@@ -296,7 +431,7 @@ export default function ApplicationPipeline({
               </div>
               <button
                 onClick={() => setActiveApp(null)}
-                className="text-gray-400 hover:text-white bg-white/5 p-1 rounded-lg border border-white/5"
+                className="text-gray-400 hover:text-white bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 text-[10px] font-mono cursor-pointer transition-colors"
               >
                 Close
               </button>
@@ -315,6 +450,104 @@ export default function ApplicationPipeline({
               <div className="mt-2">
                 AI Interview Score: <span className="text-pink-400 block font-bold">{activeApp.interviewScore || "N/A"}/100</span>
               </div>
+            </div>
+
+            {/* Tagging Section */}
+            <div className="space-y-3 p-4 bg-[#0e0e15] border border-white/5 rounded-2xl">
+              <span className="text-[10px] font-mono font-bold text-pink-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Tag className="w-3.5 h-3.5 text-pink-400" />
+                <span>Collaborative Candidate Tags</span>
+              </span>
+              
+              <div className="flex flex-wrap gap-1.5">
+                {(activeApp.tags || []).map((t: string) => (
+                  <span key={t} className="px-2 py-1 bg-neutral-950 text-pink-300 border border-white/5 rounded-lg flex items-center gap-1 text-[9px] font-mono">
+                    <span>#{t}</span>
+                    <button 
+                      type="button"
+                      onClick={() => handleRemoveTag(t)}
+                      className="text-gray-500 hover:text-white transition-colors ml-0.5 text-[10px] leading-none"
+                      title="Remove tag"
+                    >
+                      &times;
+                    </button>
+                  </span>
+                ))}
+                {(activeApp.tags || []).length === 0 && (
+                  <span className="text-gray-600 italic text-[9px] font-mono">No active tags assigned. Add custom hashtags below.</span>
+                )}
+              </div>
+
+              <form onSubmit={handleAddTag} className="flex gap-1.5 pt-1">
+                <input
+                  type="text"
+                  value={newTag}
+                  onChange={e => setNewTag(e.target.value)}
+                  placeholder="e.g. react-expert, short-notice..."
+                  className="flex-1 bg-neutral-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-white text-[10px] font-mono outline-none focus:border-pink-500"
+                />
+                <button
+                  type="submit"
+                  className="py-1.5 px-3 bg-pink-500/10 hover:bg-pink-500 hover:text-white border border-pink-500/20 text-pink-400 font-mono text-[10px] rounded-lg transition-all flex items-center gap-1 shrink-0 cursor-pointer"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>Tag</span>
+                </button>
+              </form>
+            </div>
+
+            {/* Recruiter Notes Subcollection Section */}
+            <div className="space-y-3 p-4 bg-[#0e0e15] border border-white/5 rounded-2xl">
+              <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Collaborative Recruiter Notes ({appNotes.length})</span>
+              </span>
+
+              {/* Scrolling list of notes */}
+              <div className="space-y-2 max-h-36 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/5 scrollbar-track-transparent">
+                {appNotes.map((note) => (
+                  <div key={note.id} className="p-2.5 bg-neutral-950 rounded-xl border border-white/5 space-y-1 relative group">
+                    <div className="flex justify-between items-center text-[9px] font-mono">
+                      <span className="text-emerald-400 font-bold">{note.authorName} <span className="text-gray-500 font-normal">({note.authorEmail})</span></span>
+                      <span className="text-gray-600">{new Date(note.createdAt).toLocaleDateString()}</span>
+                    </div>
+                    <p className="text-gray-300 font-mono text-[10px] leading-relaxed break-words pr-5">{note.text}</p>
+                    
+                    {/* Delete note button */}
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteNote(note.id)}
+                      className="absolute top-1.5 right-1.5 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 cursor-pointer"
+                      title="Delete note"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+                {appNotes.length === 0 && (
+                  <div className="text-center py-4 text-gray-600 italic text-[9px] font-mono">
+                    No recruiter collaboration logs added yet.
+                  </div>
+                )}
+              </div>
+
+              {/* Add Note Form */}
+              <form onSubmit={handleAddNote} className="flex gap-1.5 pt-1">
+                <input
+                  type="text"
+                  value={newNote}
+                  onChange={e => setNewNote(e.target.value)}
+                  placeholder="Type a collaborative note for other recruiters..."
+                  className="flex-1 bg-neutral-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-white text-[10px] font-mono outline-none focus:border-emerald-500"
+                />
+                <button
+                  type="submit"
+                  className="py-1.5 px-3 bg-emerald-500/10 hover:bg-emerald-500 hover:text-white border border-emerald-500/20 text-emerald-400 font-mono text-[10px] rounded-lg transition-all flex items-center gap-1 shrink-0 cursor-pointer"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>Log Note</span>
+                </button>
+              </form>
             </div>
 
             {/* Premium Resume Preview and Sourcing Downloads Suite */}
@@ -410,7 +643,7 @@ export default function ApplicationPipeline({
                       key={stage}
                       onClick={() => handleMoveStage(activeApp, stage)}
                       disabled={isChangingStatus}
-                      className="py-1.5 px-2 bg-neutral-900 hover:bg-white/5 border border-white/5 text-[9px] text-gray-300 font-medium rounded-lg text-left transition-all hover:text-white"
+                      className="py-1.5 px-2 bg-neutral-900 hover:bg-white/5 border border-white/5 text-[9px] text-gray-300 font-medium rounded-lg text-left transition-all hover:text-white cursor-pointer"
                     >
                       {stage} &rarr;
                     </button>

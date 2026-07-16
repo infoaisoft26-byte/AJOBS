@@ -67,6 +67,8 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
   const fetchCrmData = async () => {
     setLoading(true);
     setError(null);
+    let syncErrorsList: string[] = [];
+
     try {
       // 1. Fetch/Initialize profile
       const profRef = doc(db, "consultancies", userId);
@@ -86,52 +88,90 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
         await setDoc(profRef, newProfile);
         setProfile(newProfile);
       }
+    } catch (err: any) {
+      console.warn("Resilient Fetch: Failed to retrieve or initialize consultancy profile:", err.message);
+      syncErrorsList.push("profile");
+    }
 
-      // 2. Auto seed empty collections with high quality examples
+    // 2. Auto seed empty collections with high quality examples
+    try {
       await seedCrmCollectionsIfEmpty();
+    } catch (err: any) {
+      console.warn("Resilient Fetch: Seeding CRM collections warning:", err.message);
+    }
 
-      // 3. Retrieve clients
+    // 3. Retrieve clients
+    try {
       const clientsSnap = await getDocs(collection(db, "clients"));
       const clList: ClientModel[] = [];
       clientsSnap.forEach(d => clList.push({ id: d.id, ...d.data() } as ClientModel));
       setClients(clList);
+    } catch (err: any) {
+      console.warn("Resilient Fetch: Failed to retrieve clients:", err.message);
+      syncErrorsList.push("clients");
+    }
 
-      // 4. Retrieve jobs
+    // 4. Retrieve jobs
+    try {
       const jobsSnap = await getDocs(collection(db, "consultancy_jobs"));
       const jList: ConsultancyJobModel[] = [];
       jobsSnap.forEach(d => jList.push({ id: d.id, ...d.data() } as ConsultancyJobModel));
       setJobs(jList);
+    } catch (err: any) {
+      console.warn("Resilient Fetch: Failed to retrieve consultancy_jobs:", err.message);
+      syncErrorsList.push("consultancy_jobs");
+    }
 
-      // 5. Retrieve candidates
+    // 5. Retrieve candidates
+    try {
       const candSnap = await getDocs(collection(db, "consultancy_candidates"));
       const cList: ConsultancyCandidateModel[] = [];
       candSnap.forEach(d => cList.push({ id: d.id, ...d.data() } as ConsultancyCandidateModel));
       setCandidates(cList);
+    } catch (err: any) {
+      console.warn("Resilient Fetch: Failed to retrieve consultancy_candidates:", err.message);
+      syncErrorsList.push("consultancy_candidates");
+    }
 
-      // 6. Retrieve placements
+    // 6. Retrieve placements
+    try {
       const placeSnap = await getDocs(collection(db, "placements"));
       const pList: PlacementModel[] = [];
       placeSnap.forEach(d => pList.push({ id: d.id, ...d.data() } as PlacementModel));
       setPlacements(pList);
+    } catch (err: any) {
+      console.warn("Resilient Fetch: Failed to retrieve placements:", err.message);
+      syncErrorsList.push("placements");
+    }
 
-      // 7. Retrieve team members
+    // 7. Retrieve team members
+    try {
       const teamSnap = await getDocs(collection(db, "team_members"));
       const tList: TeamMemberModel[] = [];
       teamSnap.forEach(d => tList.push({ id: d.id, ...d.data() } as TeamMemberModel));
       setTeam(tList);
+    } catch (err: any) {
+      console.warn("Resilient Fetch: Failed to retrieve team_members:", err.message);
+      syncErrorsList.push("team_members");
+    }
 
-      // 8. Retrieve interviews scheduled
+    // 8. Retrieve interviews scheduled
+    try {
       const intSnap = await getDocs(collection(db, "interviews_scheduled"));
       const iList: InterviewModel[] = [];
       intSnap.forEach(d => iList.push({ id: d.id, ...d.data() } as InterviewModel));
       setInterviews(iList);
-
     } catch (err: any) {
-      console.error("CRM State Fetch Error:", err);
-      setError(err?.message || "CRM State Fetch Error");
-    } finally {
-      setLoading(false);
+      console.warn("Resilient Fetch: Failed to retrieve interviews_scheduled:", err.message);
+      syncErrorsList.push("interviews_scheduled");
     }
+
+    if (syncErrorsList.length > 0) {
+      setError(`Some CRM databases are sync-restricted: [${syncErrorsList.join(", ")}]. Offline-resilient fallback active.`);
+    } else {
+      setError(null);
+    }
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -145,24 +185,6 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
         <p className="text-xs font-mono text-gray-400 uppercase tracking-widest animate-pulse">
           Synchronizing CRM Systems...
         </p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-8 max-w-lg mx-auto text-center space-y-4 glass rounded-2xl border border-red-500/20 my-24 bg-[#030305] text-white" id="consultancy-dashboard-error">
-        <ShieldAlert className="w-12 h-12 text-red-400 mx-auto animate-bounce" />
-        <h3 className="font-bold text-white text-lg">CRM Sync Error</h3>
-        <p className="text-xs text-gray-400">{error}</p>
-        <div className="flex justify-center space-x-4 pt-4">
-          <button 
-            onClick={() => fetchCrmData()}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white rounded-xl transition-all cursor-pointer"
-          >
-            Retry CRM Sync
-          </button>
-        </div>
       </div>
     );
   }
@@ -243,6 +265,21 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
 
       {/* RIGHT COLUMN: Active Module Visual Stage */}
       <div className="md:col-span-3 space-y-6">
+        {error && (
+          <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-xs text-red-300 flex items-center justify-between space-x-2 animate-in fade-in duration-300">
+            <div className="flex items-center space-x-2">
+              <ShieldAlert className="w-4 h-4 text-red-400 shrink-0" />
+              <span><strong>CRM Sync Warning:</strong> {error} (Dashboard running in offline resilient mode)</span>
+            </div>
+            <button 
+              onClick={() => fetchCrmData()}
+              className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-[10px] font-bold text-white cursor-pointer transition-all shrink-0"
+            >
+              Retry Sync
+            </button>
+          </div>
+        )}
+
         {showMainPostForm ? (
           <PostJobForm
             userId={userId}

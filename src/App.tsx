@@ -7,6 +7,7 @@ import { initializeUserCollectionsAndDocs, getOrCreateUserProfile } from "./serv
 import Header from "./components/Header";
 import AuthModal from "./components/AuthModal";
 import LandingPage from "./components/LandingPage";
+import CompanySection from "./components/CompanySection";
 import SplashScreen from "./components/SplashScreen";
 import CinematicBackground from "./components/CinematicBackground";
 import { motion, AnimatePresence } from "motion/react";
@@ -138,6 +139,7 @@ function ProtectedRoute({
 function MainAppContent() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [activeView, setActiveView] = useState<string>("home");
+  const [activeCompanyPage, setActiveCompanyPage] = useState<string | null>(null);
   const [authMode, setAuthMode] = useState<"signin" | "signup" | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [authLoading, setAuthLoading] = useState(true);
@@ -394,6 +396,7 @@ function MainAppContent() {
                       }
                     }}
                     setActiveView={setActiveView}
+                    onOpenCompanyPage={(page) => setActiveCompanyPage(page)}
                   />
                 ) : activeView === "notifications" ? (
                   <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -526,6 +529,13 @@ function MainAppContent() {
 
       {/* Cookie Consent Banner */}
       <CookieConsent />
+
+      {activeCompanyPage && (
+        <CompanySection
+          pageType={activeCompanyPage}
+          onClose={() => setActiveCompanyPage(null)}
+        />
+      )}
 
       {/* Premium SplashScreen Overlay */}
       {showSplash && (

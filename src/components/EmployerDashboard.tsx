@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { 
   Building2, TrendingUp, Briefcase, Brain, Users, 
   Calendar, Award, BarChart2, ShieldAlert, ShieldCheck, RefreshCw, LogOut, CreditCard, Bell,
-  MessageSquare, FileText, Search
+  MessageSquare, FileText, Search, CloudLightning
 } from "lucide-react";
 import { db } from "../firebase";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
@@ -11,6 +11,7 @@ import { NotificationCenterView } from "./NotificationCenter";
 import LiveChatSection from "./LiveChatSection";
 import TalentSearch from "./employer/TalentSearch";
 import LeadManagement from "./LeadManagement";
+import GoogleWorkspaceHub from "./GoogleWorkspaceHub";
 
 // Types
 import { 
@@ -42,7 +43,7 @@ interface EmployerDashboardProps {
 export default function EmployerDashboard({ userId, userName, userRole }: EmployerDashboardProps) {
   // Navigation active tab routing
   const [activeTab, setActiveTab] = useState<
-    "overview" | "registration" | "jobs" | "discovery" | "pipeline" | "leads" | "interviews" | "offers" | "reports" | "subscription" | "notifications" | "documents" | "chat" | "talent-search" | "performance"
+    "overview" | "registration" | "jobs" | "discovery" | "pipeline" | "leads" | "interviews" | "offers" | "reports" | "subscription" | "notifications" | "documents" | "chat" | "talent-search" | "performance" | "workspace"
   >("overview");
 
   // Corporate core data stores
@@ -256,6 +257,7 @@ export default function EmployerDashboard({ userId, userName, userRole }: Employ
             { id: "interviews", label: "Interviews Suite", icon: Calendar },
             { id: "offers", label: "Acceptance & Offers", icon: Award },
             { id: "documents", label: "Enterprise Documents", icon: FileText },
+            { id: "workspace", label: "Google Workspace Hub", icon: CloudLightning },
             { id: "chat", label: "Secure Live Chat", icon: MessageSquare },
             { id: "reports", label: "Metrics & Reports", icon: BarChart2 },
             { id: "performance", label: "Hiring Performance", icon: TrendingUp },
@@ -397,6 +399,14 @@ export default function EmployerDashboard({ userId, userName, userRole }: Employ
 
           {activeTab === "documents" && (
             <EnterpriseDocumentEngine companyName={corpName} />
+          )}
+
+          {activeTab === "workspace" && (
+            <GoogleWorkspaceHub 
+              userId={userId}
+              userName={userName}
+              userRole="employer"
+            />
           )}
 
           {activeTab === "chat" && (

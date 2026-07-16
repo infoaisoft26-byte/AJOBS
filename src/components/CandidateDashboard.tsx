@@ -23,6 +23,7 @@ import CandidateCareerCenter from "./CandidateCareerCenter";
 import LiveChatSection from "./LiveChatSection";
 import CandidateRecruiterInterviews from "./CandidateRecruiterInterviews";
 import AbacControlInspector from "./AbacControlInspector";
+import GoogleWorkspaceHub from "./GoogleWorkspaceHub";
 
 interface CandidateDashboardProps {
   userId: string;
@@ -33,7 +34,7 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
   // Main Navigation state
   const [activeTab, setActiveTab] = useState<
     "overview" | "profile" | "education" | "experience" | "skills" | 
-    "resume" | "explore-jobs" | "saved-jobs" | "applied-jobs" | "interviews" | "notifications" | "settings" | "interview" | "coach" | "ai-report" | "chat"
+    "resume" | "explore-jobs" | "saved-jobs" | "applied-jobs" | "interviews" | "notifications" | "settings" | "interview" | "coach" | "ai-report" | "chat" | "workspace"
   >("overview");
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -322,6 +323,27 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
 
   // 4. One Click Apply Handler
   const handleOneClickApply = async (job: JobPosting) => {
+    // 1. Verify authentication
+    if (!userId || !auth.currentUser) {
+      alert("Authentication is required. Please sign in or register to apply for jobs.");
+      return;
+    }
+
+    // 2. Verify candidate profile exists
+    if (!profile) {
+      alert("Candidate profile is required to apply. Redirecting to Profile section...");
+      setActiveTab("profile");
+      return;
+    }
+
+    // 3. Verify resume exists
+    const hasResume = (resumeText && resumeText.trim().length > 0) || (profile?.resumeText && profile.resumeText.trim().length > 0) || profile?.resumeFileName;
+    if (!hasResume) {
+      alert("A resume is required to apply for this job. Redirecting you to the Resume & ATS Audit tab to upload or paste your resume.");
+      setActiveTab("resume");
+      return;
+    }
+
     // Prevent duplicate applications
     const alreadyApplied = applications.some(a => a.jobId === job.id);
     if (alreadyApplied) {
@@ -777,6 +799,15 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
               userName={userName}
               profile={profile}
               triggerNotification={triggerNotification}
+            />
+          )}
+
+          {/* TAB 15: GOOGLE WORKSPACE HUB */}
+          {activeTab === "workspace" && (
+            <GoogleWorkspaceHub 
+              userId={userId}
+              userName={userName}
+              userRole="candidate"
             />
           )}
 
