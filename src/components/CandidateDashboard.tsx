@@ -7,6 +7,8 @@ import {
 import { db, auth } from "../firebase";
 import { doc, getDoc, setDoc, collection, getDocs, updateDoc, arrayUnion, increment, query, where, onSnapshot } from "firebase/firestore";
 import { CandidateProfile, JobPosting, JobApplication, InterviewSession, ChatMessage, NotificationRecord } from "../types";
+import { getLiveJobs } from "../services/jobService";
+import { applyToJob } from "../services/applicationService";
 
 // Import modular panels
 import { NotificationCenterView } from "./NotificationCenter";
@@ -111,12 +113,17 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
         setProfile(bootstrap);
       }
 
-      // 2. Jobs Postings
-      const jobsSnap = await getDocs(collection(db, "jobs"));
-      const jobsList: JobPosting[] = [];
-      jobsSnap.forEach(doc => {
-        jobsList.push({ id: doc.id, ...doc.data() } as JobPosting);
-      });
+      // 2. Jobs Postings (Retrieve only Live jobs sorted by createdAt desc)
+      let jobsList: JobPosting[] = [];
+      try {
+        jobsList = await getLiveJobs();
+      } catch (err) {
+        console.warn("Could not fetch live jobs, fallback to manual getDocs:", err);
+        const jobsSnap = await getDocs(collection(db, "jobs"));
+        jobsSnap.forEach(doc => {
+          jobsList.push({ id: doc.id, ...doc.data() } as JobPosting);
+        });
+      }
       setJobs(jobsList);
 
       // 3. Applications
@@ -351,107 +358,29 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
       return;
     }
 
-    const appId = `app_${Math.random().toString(36).substr(2, 9)}`;
-    const newApp: JobApplication = {
-      id: appId,
-      jobId: job.id,
-      candidateId: userId,
-      candidateName: userName,
-      jobTitle: job.title,
-      companyName: job.companyName,
-      status: "Applied",
-      appliedAt: new Date().toISOString(),
-      resumeScore: profile?.resumeScore || 70
-    };
-
-    const newCompanyApp = {
-      id: appId,
-      jobId: job.id,
-      jobTitle: job.title,
-      candidateId: userId,
-      candidateName: userName,
-      candidateEmail: profile?.email || "",
-      resumeUrl: profile?.resumeFileName || "gs://aijobs-resumes/resume.pdf",
-      resumeScore: profile?.resumeScore || 70,
-      interviewScore: profile?.aiInterviewScore || 0,
-      status: "Applied",
-      appliedAt: new Date().toISOString()
-    };
-
-    // Priority 3: Lead Management - Generate a lead automatically
-    const leadId = `lead_${Math.random().toString(36).substr(2, 9)}`;
-    const newLead = {
-      id: leadId,
-      candidateId: userId,
-      candidateName: userName,
-      email: profile?.email || auth.currentUser?.email || "candidate@aijobs.global",
-      phone: profile?.phone || profile?.profileDetails?.mobileNumber || "Not Provided",
-      resume: profile?.resumeFileName || profile?.resumeUrl || "No Resume Attached",
-      jobId: job.id,
-      jobTitle: job.title,
-      company: job.companyName,
-      recruiter: job.employerId || job.createdBy || "Direct Employer",
-      consultancy: job.consultancy || "Direct",
-      currentStatus: "Applied",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
     try {
-      // Save application
-      await setDoc(doc(db, "applications", appId), newApp);
-      await setDoc(doc(db, "company_applications", appId), newCompanyApp);
-      
-      // Save lead (Priority 3)
-      await setDoc(doc(db, "leads", leadId), newLead);
-
-      // Increment application counts (Priority 2.5)
-      try {
-        await updateDoc(doc(db, "jobs", job.id), {
-          applicationCount: increment(1)
-        });
-      } catch (e) {
-        console.warn("Could not increment app count in jobs collection, trying merge setDoc:", e);
-        await setDoc(doc(db, "jobs", job.id), { applicationCount: 1 }, { merge: true });
+      const result = await applyToJob(job, userId, profile, resumeText);
+      if (result.success) {
+        const appId = result.applicationId || `app_${Math.random().toString(36).substring(2, 11)}`;
+        const newApp: JobApplication = {
+          id: appId,
+          jobId: job.id,
+          candidateId: userId,
+          candidateName: profile?.name || userName,
+          jobTitle: job.title,
+          companyName: job.companyName,
+          status: "Applied",
+          appliedAt: new Date().toISOString(),
+          resumeScore: profile?.resumeScore || 70
+        };
+        setApplications(prev => [newApp, ...prev]);
+        triggerNotification("💼 Application Filed", `Submitted to "${job.title}" at ${job.companyName} with ATS compliant profile.`);
+        alert(result.message);
+      } else {
+        alert(result.message);
       }
-
-      try {
-        await updateDoc(doc(db, "company_jobs", job.id), {
-          applicationCount: increment(1)
-        });
-      } catch (e) {
-        console.warn("Could not increment app count in company_jobs collection");
-      }
-
-      setApplications(prev => [newApp, ...prev]);
-      triggerNotification("💼 Application Filed", `Submitted to "${job.title}" at ${job.companyName} with ATS compliant profile.`);
-      
-      // Send a "Candidate Applied" notification to the recruiter / employer
-      const employerNotifId = "notif_" + Math.random().toString(36).substr(2, 9);
-      await setDoc(doc(db, "notifications", employerNotifId), {
-        id: employerNotifId,
-        userId: job.employerId || job.createdBy || "employer",
-        title: "Candidate Applied 💼",
-        message: `${userName} has applied for your job opening "${job.title}". A Sourcing Lead has been automatically registered.`,
-        read: false,
-        type: "success",
-        createdAt: new Date().toISOString()
-      });
-
-      // Send separate confirmation notification
-      const confNotifId = "notif_" + Math.random().toString(36).substr(2, 9);
-      await setDoc(doc(db, "notifications", confNotifId), {
-        id: confNotifId,
-        userId: userId,
-        title: "Application Received Successfully",
-        message: `Your application for "${job.title}" at ${job.companyName} has been processed. A Lead has been registered under status "Applied".`,
-        read: false,
-        createdAt: new Date().toISOString()
-      });
-
-      alert(`Success! Your application for "${job.title}" has been submitted to ${job.companyName}.`);
     } catch (err) {
-      console.error("Error submitting application:", err);
+      console.error("Error submitting application via service:", err);
       alert("There was an error filing your application. Please check console logs.");
     }
   };

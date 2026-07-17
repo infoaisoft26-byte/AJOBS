@@ -2,7 +2,7 @@ import { useState } from "react";
 import { 
   Plus, Edit, Trash2, Copy, ToggleLeft, ToggleRight, Archive, CheckCircle, 
   Search, X, Briefcase, PlusCircle, Building, Users, Clock, HelpCircle, Save,
-  Pause, Play
+  Pause, Play, Eye
 } from "lucide-react";
 import { CompanyJob } from "./EmployerTypes";
 import { doc, setDoc, deleteDoc } from "firebase/firestore";
@@ -30,6 +30,7 @@ export default function JobManagement({
   // Form toggles
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingJob, setEditingJob] = useState<CompanyJob | null>(null);
+  const [previewJob, setPreviewJob] = useState<CompanyJob | null>(null);
 
   // Form states
   const [title, setTitle] = useState("");
@@ -496,6 +497,13 @@ export default function JobManagement({
                 >
                   <Copy className="w-3.5 h-3.5" />
                 </button>
+                <button
+                  onClick={() => setPreviewJob(job)}
+                  className="p-1.5 bg-white/5 hover:bg-teal-600 hover:text-white text-gray-400 rounded-lg transition-all cursor-pointer"
+                  title="Preview Job Posting"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                </button>
 
                 {job.status === "Draft" && (
                   <button
@@ -885,6 +893,93 @@ export default function JobManagement({
                 <span>{isSubmitting ? "Syncing Workspace..." : "Confirm & Save Vacancy"}</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* JOB PREVIEW MODAL OVERLAY */}
+      {previewJob && (
+        <div className="fixed inset-0 bg-[#020204]/85 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200" id="employer-job-preview-modal">
+          <div className="glass w-full max-w-2xl rounded-3xl border border-white/10 overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            
+            {/* Header */}
+            <div className="p-6 border-b border-white/5 flex justify-between items-start bg-[#090d16]/40">
+              <div className="flex gap-4">
+                <div className="bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white font-black text-xl rounded-2xl w-14 h-14 shadow-lg shadow-indigo-500/20 shrink-0 uppercase">
+                  {previewJob.companyName?.slice(0, 2) || companyName?.slice(0, 2) || "CO"}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono text-indigo-400 font-extrabold uppercase">{previewJob.companyName || companyName}</span>
+                    <span className="bg-white/5 text-gray-400 text-[9px] font-mono px-2 py-0.5 rounded border border-white/5">
+                      {previewJob.status || "Draft"}
+                    </span>
+                  </div>
+                  <h3 className="font-extrabold text-lg text-white mt-1">{previewJob.title}</h3>
+                </div>
+              </div>
+              <button
+                onClick={() => setPreviewJob(null)}
+                className="p-2 hover:bg-white/5 text-gray-400 hover:text-white rounded-xl transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-6 overflow-y-auto flex-1 text-xs text-gray-300 leading-relaxed">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white/[0.02] p-4 rounded-2xl border border-white/5 text-[11px]">
+                <div className="space-y-0.5">
+                  <p className="text-gray-500 font-mono font-bold uppercase text-[9px]">Salary package</p>
+                  <p className="font-bold text-white">💰 {previewJob.salary || "Competitive"}</p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-gray-500 font-mono font-bold uppercase text-[9px]">Location</p>
+                  <p className="font-bold text-white">📍 {previewJob.location || "Remote"}</p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-gray-500 font-mono font-bold uppercase text-[9px]">Experience Required</p>
+                  <p className="font-bold text-white">💼 {previewJob.experience || "Any level"}</p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-gray-500 font-mono font-bold uppercase text-[9px]">Posted Date</p>
+                  <p className="font-bold text-white">⏱️ {previewJob.createdAt ? new Date(previewJob.createdAt).toLocaleDateString() : "Just Now"}</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-bold text-white text-xs uppercase tracking-wider text-indigo-400 font-mono">Position Description</h4>
+                <p className="text-gray-300 whitespace-pre-wrap">{previewJob.description || "No description provided."}</p>
+              </div>
+
+              {previewJob.skillsRequired && previewJob.skillsRequired.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="font-bold text-white text-xs uppercase tracking-wider text-indigo-400 font-mono">Required Core Stack</h4>
+                  <div className="flex flex-wrap gap-1.5">
+                    {previewJob.skillsRequired.map((sk, k) => (
+                      <span key={k} className="text-[10px] font-mono px-2.5 py-1 bg-indigo-500/10 text-indigo-300 rounded-lg border border-indigo-500/20 font-semibold">{sk}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2 text-gray-400 border-t border-white/5 pt-4">
+                <p className="text-[10px] font-mono">
+                  🚨 This is a dynamic, high-fidelity administrative live-render preview of your candidate-facing posting. Newly submitted jobs are queued for instant AI credential vetting and administrative approval.
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 border-t border-white/5 bg-[#090d16]/40 flex justify-end">
+              <button
+                onClick={() => setPreviewJob(null)}
+                className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
+              >
+                Close Preview
+              </button>
+            </div>
+
           </div>
         </div>
       )}

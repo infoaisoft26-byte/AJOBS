@@ -154,6 +154,30 @@ export default function InterviewManagement({
         createdAt: new Date().toISOString()
       });
 
+      // Trigger Twilio Interview SMS notification (Requirement 5)
+      try {
+        let candidatePhone = "+919999999998"; // default
+        const candSnap = await getDoc(doc(db, "users", selectedApp.candidateId));
+        if (candSnap.exists()) {
+          const candData = candSnap.data();
+          candidatePhone = candData.phone || candData.profileDetails?.mobileNumber || "+919999999998";
+        }
+
+        await fetch("/api/twilio/interview-scheduled", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            candidatePhone,
+            candidateName: selectedApp.candidateName,
+            dateStr: date,
+            timeStr: time,
+            jobTitle: selectedApp.jobTitle
+          })
+        });
+      } catch (smsErr) {
+        console.warn("Failed to trigger Twilio Interview SMS scheduled notification:", smsErr);
+      }
+
       alert(`🎉 Scheduled ${type} interview successfully!${googleEventId ? " Synced to Google Calendar." : ""}`);
       setIsFormOpen(false);
       setSyncToGCal(false);

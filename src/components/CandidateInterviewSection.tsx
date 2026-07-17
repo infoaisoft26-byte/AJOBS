@@ -84,6 +84,12 @@ export default function CandidateInterviewSection({
 
   // Local state for UI loading & simulation
   const [isAnalyzingReport, setIsAnalyzingReport] = useState(false);
+  const [realtimeSentimentFeedback, setRealtimeSentimentFeedback] = useState<{
+    sentiment: string;
+    competenceScore: number;
+    coachingTip: string;
+  } | null>(null);
+  const [isAnalyzingSentiment, setIsAnalyzingSentiment] = useState(false);
 
   // Soundwave and camera elements
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -434,6 +440,35 @@ export default function CandidateInterviewSection({
   };
 
   // Speak/Mic Simulation (Step 5 - Voice Answer) with Real Web Speech API
+  const analyzeRealtimeResponse = async (textToAnalyze: string) => {
+    if (!textToAnalyze.trim()) return;
+    setIsAnalyzingSentiment(true);
+    try {
+      const currentQuestionText = currentQuestions[currentIndex]?.questionText || "General Response";
+      const response = await fetch("/api/analyze-sentiment", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "x-user-id": userId,
+          "x-user-role": "candidate"
+        },
+        body: JSON.stringify({
+          text: textToAnalyze,
+          questionText: currentQuestionText
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setRealtimeSentimentFeedback(data);
+      }
+    } catch (err) {
+      console.error("Real-time sentiment evaluation failed:", err);
+    } finally {
+      setIsAnalyzingSentiment(false);
+    }
+  };
+
   const toggleVoiceRecording = () => {
     if (isRecording) {
       setIsRecording(false);
@@ -444,6 +479,9 @@ export default function CandidateInterviewSection({
           console.error(e);
         }
       }
+      setTimeout(() => {
+        analyzeRealtimeResponse(userAnswerText);
+      }, 800);
     } else {
       setIsRecording(true);
       setRecordingSeconds(0);
@@ -465,7 +503,10 @@ export default function CandidateInterviewSection({
               }
             }
             if (chunkText) {
-              setUserAnswerText(prev => prev ? prev + " " + chunkText.trim() : chunkText.trim());
+              setUserAnswerText(prev => {
+                const updated = prev ? prev + " " + chunkText.trim() : chunkText.trim();
+                return updated;
+              });
             }
           };
 
@@ -486,7 +527,11 @@ export default function CandidateInterviewSection({
         // Fallback simulated text if API not supported in client environment
         const spokenMockText = "Utilizing highly optimized react hook pipelines paired with Firestore streams provides absolute sub-millisecond rendering states.";
         setTimeout(() => {
-          setUserAnswerText(prev => prev ? prev + " " + spokenMockText : spokenMockText);
+          setUserAnswerText(prev => {
+            const updated = prev ? prev + " " + spokenMockText : spokenMockText;
+            analyzeRealtimeResponse(updated);
+            return updated;
+          });
           setIsRecording(false);
         }, 3000);
       }
@@ -1455,9 +1500,84 @@ export default function CandidateInterviewSection({
                             </>
                           )}
                         </button>
+
+                        {userAnswerText.trim().length > 10 && (
+                          <button
+                            type="button"
+                            onClick={() => analyzeRealtimeResponse(userAnswerText)}
+                            disabled={isAnalyzingSentiment}
+                            className="px-4 py-2 text-xs font-bold bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-400 rounded-xl transition-all cursor-pointer flex items-center space-x-1.5"
+                          >
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>Analyze Response</span>
+                          </button>
+                        )}
                       </div>
 
                     </div>
+
+                    {/* Live AI Speech coach feedback widget */}
+                    {(isAnalyzingSentiment || realtimeSentimentFeedback) && (
+                      <div className="p-4 bg-indigo-950/20 border border-indigo-500/20 rounded-2xl space-y-3 shadow-lg shadow-indigo-950/50 animate-in slide-in-from-bottom-2 duration-300">
+                        <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                          <h4 className="text-[11px] font-mono font-bold tracking-widest text-indigo-400 uppercase flex items-center space-x-1.5">
+                            <Sparkles className="w-3.5 h-3.5 animate-pulse" />
+                            <span>Gemini Live Voice Coach Feedback</span>
+                          </h4>
+                          {realtimeSentimentFeedback && (
+                            <button
+                              type="button"
+                              onClick={() => analyzeRealtimeResponse(userAnswerText)}
+                              disabled={isAnalyzingSentiment}
+                              className="text-[9px] text-gray-400 hover:text-white flex items-center gap-1 bg-white/5 hover:bg-white/10 px-2 py-1 rounded-md border border-white/5 transition-all cursor-pointer"
+                            >
+                              <RefreshCw className={`w-2.5 h-2.5 ${isAnalyzingSentiment ? "animate-spin" : ""}`} />
+                              <span>Re-Audit</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {isAnalyzingSentiment ? (
+                          <div className="flex items-center space-x-2 py-3 text-xs text-gray-400">
+                            <RefreshCw className="w-4 h-4 text-indigo-400 animate-spin" />
+                            <span>Gemini is compiling speech tone, sentiment, and competence scores...</span>
+                          </div>
+                        ) : (
+                          realtimeSentimentFeedback && (
+                            <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+                              {/* Sentiment Tag */}
+                              <div className="sm:col-span-4 bg-white/5 p-3 rounded-xl border border-white/5 space-y-1">
+                                <span className="text-[9px] font-mono tracking-wider text-gray-500 uppercase block">Speech Sentiment</span>
+                                <span className="text-xs font-bold text-white block truncate">
+                                  {realtimeSentimentFeedback.sentiment}
+                                </span>
+                              </div>
+
+                              {/* Competence Score */}
+                              <div className="sm:col-span-8 bg-white/5 p-3 rounded-xl border border-white/5 space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-[9px] font-mono tracking-wider text-gray-500 uppercase block">Competence Score</span>
+                                  <span className="text-xs font-mono font-bold text-indigo-400">{realtimeSentimentFeedback.competenceScore}%</span>
+                                </div>
+                                <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                                  <div 
+                                    className="h-full bg-indigo-500 transition-all duration-500" 
+                                    style={{ width: `${realtimeSentimentFeedback.competenceScore}%` }}
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Coach Tip */}
+                              <div className="sm:col-span-12 bg-indigo-500/10 p-3 rounded-xl border border-indigo-500/10">
+                                <p className="text-[10px] text-indigo-300 leading-normal font-sans">
+                                  <span className="font-bold">AI Suggestion:</span> {realtimeSentimentFeedback.coachingTip}
+                                </p>
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    )}
 
                     {/* Webcam Video Response Recorder Module */}
                     <div className="flex flex-col gap-4 p-4 bg-white/5 border border-white/5 rounded-2xl">

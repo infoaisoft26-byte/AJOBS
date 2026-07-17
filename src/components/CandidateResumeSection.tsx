@@ -14,6 +14,7 @@ import {
   getWorkspaceAccessToken, 
   workspaceSignIn 
 } from "../services/workspaceService";
+import ResumeRadarChart from "./ResumeRadarChart";
 
 declare const google: any;
 
@@ -38,6 +39,10 @@ export default function CandidateResumeSection({
 }: ResumeSectionProps) {
   // Local active analytical view tabs
   const [activeSubView, setActiveSubView] = useState<"parsed" | "metrics" | "gaps" | "suggestions" | "salary" | "documents">("parsed");
+  
+  // Scanned image states
+  const [resumeImageBase64, setResumeImageBase64] = useState<string | null>(null);
+  const [resumeImageMime, setResumeImageMime] = useState<string | null>(null);
   
   // File upload UI states
   const [isDragging, setIsDragging] = useState(false);
@@ -169,13 +174,15 @@ export default function CandidateResumeSection({
       "application/pdf",
       "application/msword",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "text/plain"
+      "text/plain",
+      "image/png",
+      "image/jpeg"
     ];
-    const allowedExtensions = [".pdf", ".doc", ".docx", ".txt"];
+    const allowedExtensions = [".pdf", ".doc", ".docx", ".txt", ".png", ".jpg", ".jpeg"];
     const fileExtension = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
 
     if (!allowedMimeTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
-      alert(`Unsupported file type: "${file.name}". Please upload a PDF, DOC, DOCX, or TXT file.`);
+      alert(`Unsupported file type: "${file.name}". Please upload a PDF, DOC, DOCX, TXT, PNG, or JPG file.`);
       setIsUploading(false);
       setUploadProgress(0);
       return;
@@ -213,19 +220,37 @@ export default function CandidateResumeSection({
       // 2. Extract content
       setUploadedFileName(file.name);
 
-      // Read the file if it's text, otherwise simulate structured extraction
-      if (file.type === "text/plain") {
+      // Read the file if it's an image, text, or simulate doc/pdf extraction
+      if (file.type.startsWith("image/")) {
+        const reader = new FileReader();
+        await new Promise<void>((resolve, reject) => {
+          reader.onload = (event) => {
+            const dataUrl = event.target?.result as string;
+            const base64Data = dataUrl.split(",")[1];
+            setResumeImageBase64(base64Data);
+            setResumeImageMime(file.type);
+            setResumeText(""); // Clear plain text to use image instead
+            resolve();
+          };
+          reader.onerror = (err) => reject(err);
+          reader.readAsDataURL(file);
+        });
+      } else if (file.type === "text/plain") {
         const reader = new FileReader();
         await new Promise<void>((resolve, reject) => {
           reader.onload = (event) => {
             const text = event.target?.result as string;
             setResumeText(text);
+            setResumeImageBase64(null);
+            setResumeImageMime(null);
             resolve();
           };
           reader.onerror = (err) => reject(err);
           reader.readAsText(file);
         });
       } else {
+        setResumeImageBase64(null);
+        setResumeImageMime(null);
         // High-fidelity structured prompt text generator based on standard filenames
         const baseName = file.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
         
@@ -473,7 +498,7 @@ Certifications:
 
   // Elite AI Audit Executor calling upgraded backend and storing inside Firestore Collections
   const executeResumeAudit = async () => {
-    if (!resumeText.trim() || !userId) return;
+    if ((!resumeText.trim() && !resumeImageBase64) || !userId) return;
     setIsAnalyzingLocal(true);
 
     try {
@@ -489,7 +514,12 @@ Certifications:
           "x-user-ai-interview-score": String(profile?.aiInterviewScore || 0),
           "x-user-subscription": profile?.subscription || "Free Tier"
         },
-        body: JSON.stringify({ resumeText, candidateName: profile?.name || "Candidate" })
+        body: JSON.stringify({ 
+          resumeText, 
+          candidateName: profile?.name || "Candidate",
+          resumeImage: resumeImageBase64,
+          mimeType: resumeImageMime
+        })
       });
 
       if (!response.ok) {
@@ -1385,31 +1415,39 @@ Certifications:
                 </div>
               </div>
 
-              {/* Progress bars of detailed scores */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 pt-2">
+              {/* Progress bars & D3 Radar Chart split layout */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start pt-2">
                 
-                {[
-                  { label: "ATS Layout Compatibility", value: scores.atsCompatibilityScore, desc: "Format, margins, text structures parsing safety." },
-                  { label: "Grammar & Vocabulary Integrity", value: scores.grammarScore, desc: "Syntax correctness and communication layout tone." },
-                  { label: "Visual Formatting Balance", value: scores.formattingScore, desc: "Consistency of bullets, margins, and section spacing." },
-                  { label: "Professional Summary Pitch", value: scores.professionalSummaryScore, desc: "Hook strength of the summary or objective." },
-                  { label: "Skills Alignment Vector", value: scores.skillsMatchScore, desc: "Relevance of skills listed to active job postings." },
-                  { label: "Experience Impact Bulletings", value: scores.experienceScore, desc: "Presence of action verbs and business results." },
-                  { label: "Educational Mapping Score", value: scores.educationScore, desc: "Proper layout and academic detail formatting." },
-                  { label: "Quantifiable Achievements", value: scores.achievementsScore, desc: "Involvement of numbers, stats, and scale KPIs." },
-                  { label: "Keyword Density Optimization", value: scores.keywordOptimizationScore, desc: "Frequency of required high-demand terms." }
-                ].map((item, idx) => (
-                  <div key={idx} className="space-y-1 bg-white/5 p-3 rounded-xl border border-white/5 hover:border-indigo-500/15 transition-all">
-                    <div className="flex justify-between items-center text-[11px] font-bold">
-                      <span className="text-gray-300">{item.label}</span>
-                      <span className="text-indigo-400 font-mono">{item.value}%</span>
+                {/* Left side: D3 Radar Chart */}
+                <div className="lg:col-span-5 flex flex-col justify-center items-center">
+                  <ResumeRadarChart scores={scores} />
+                </div>
+
+                {/* Right side: Detailed Progress Bars */}
+                <div className="lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    { label: "ATS Layout Compatibility", value: scores.atsCompatibilityScore, desc: "Format, margins, text structures parsing safety." },
+                    { label: "Grammar & Vocabulary Integrity", value: scores.grammarScore, desc: "Syntax correctness and communication layout tone." },
+                    { label: "Visual Formatting Balance", value: scores.formattingScore, desc: "Consistency of bullets, margins, and section spacing." },
+                    { label: "Professional Summary Pitch", value: scores.professionalSummaryScore, desc: "Hook strength of the summary or objective." },
+                    { label: "Skills Alignment Vector", value: scores.skillsMatchScore, desc: "Relevance of skills listed to active job postings." },
+                    { label: "Experience Impact Bulletings", value: scores.experienceScore, desc: "Presence of action verbs and business results." },
+                    { label: "Educational Mapping Score", value: scores.educationScore, desc: "Proper layout and academic detail formatting." },
+                    { label: "Quantifiable Achievements", value: scores.achievementsScore, desc: "Involvement of numbers, stats, and scale KPIs." },
+                    { label: "Keyword Density Optimization", value: scores.keywordOptimizationScore, desc: "Frequency of required high-demand terms." }
+                  ].map((item, idx) => (
+                    <div key={idx} className="space-y-1 bg-white/5 p-3 rounded-xl border border-white/5 hover:border-indigo-500/15 transition-all">
+                      <div className="flex justify-between items-center text-[11px] font-bold">
+                        <span className="text-gray-300">{item.label}</span>
+                        <span className="text-indigo-400 font-mono">{item.value}%</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                        <div className="h-full bg-gradient-to-r from-indigo-500 to-indigo-400 rounded-full" style={{ width: `${item.value}%` }}></div>
+                      </div>
+                      <p className="text-[9px] text-gray-500 leading-relaxed">{item.desc}</p>
                     </div>
-                    <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                      <div className="h-full bg-gradient-to-r from-indigo-500 to-indigo-400 rounded-full" style={{ width: `${item.value}%` }}></div>
-                    </div>
-                    <p className="text-[9px] text-gray-500 leading-relaxed">{item.desc}</p>
-                  </div>
-                ))}
+                  ))}
+                </div>
 
               </div>
             </div>

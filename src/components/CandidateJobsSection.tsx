@@ -3,13 +3,14 @@ import { motion } from "motion/react";
 import { 
   Heart, Briefcase, Brain, Star, CheckCircle2, Search, ArrowRight, 
   Trash2, ShieldCheck, HelpCircle, Clock, Calendar, Check, X, Award, ChevronRight,
-  SlidersHorizontal, Sparkles, Filter, CheckCircle, Lock, AlertTriangle
+  SlidersHorizontal, Sparkles, Filter, CheckCircle, Lock, AlertTriangle, Share2, Building2
 } from "lucide-react";
 import { JobPosting, JobApplication } from "../types";
 import { deleteDoc, doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import { db } from "../firebase";
 import { evaluateAbacPolicy, mapUserToAbacSubject } from "../services/abacService";
 import { injectJobPostingSchema } from "../utils/schemaGenerator";
+import JobDetails from "./JobDetails";
 
 interface JobsSectionProps {
   userId: string;
@@ -43,6 +44,7 @@ export default function CandidateJobsSection({
   searchQuery
 }: JobsSectionProps) {
   const [selectedApp, setSelectedApp] = useState<JobApplication | null>(null);
+  const [selectedJobDetails, setSelectedJobDetails] = useState<JobPosting | null>(null);
 
   // Advanced search filters state
   const [filterLocation, setFilterLocation] = useState("");
@@ -189,6 +191,24 @@ export default function CandidateJobsSection({
     const idx = stages.indexOf(status.toLowerCase().replace(" ", "_"));
     return idx === -1 ? 0 : idx;
   };
+
+  if (selectedJobDetails) {
+    return (
+      <JobDetails
+        jobId={selectedJobDetails.id}
+        userId={userId}
+        userName={profile?.name || "Candidate"}
+        profile={profile}
+        resumeText={profile?.resumeText}
+        onBack={() => setSelectedJobDetails(null)}
+        onAppliedSuccess={(newApp) => {
+          if (!applications.some(a => a.jobId === selectedJobDetails.id)) {
+            applications.push(newApp);
+          }
+        }}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300" id="candidate-jobs-viewport">
@@ -367,10 +387,10 @@ export default function CandidateJobsSection({
                     ? "border-red-500/10 bg-red-950/[0.02]" 
                     : "border-white/5 hover:border-indigo-500/25"
                 }`}>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 cursor-pointer group" onClick={() => setSelectedJobDetails(job)}>
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] font-mono text-indigo-400 font-extrabold uppercase">{job.companyName}</span>
+                        <span className="text-[10px] font-mono text-indigo-400 font-extrabold uppercase group-hover:text-indigo-300 transition-colors">{job.companyName}</span>
                         {isAiOnly && (
                           <span className="bg-indigo-500/15 text-indigo-300 text-[8px] font-mono px-1.5 py-0.5 rounded flex items-center gap-0.5 border border-indigo-500/10">
                             <CheckCircle className="w-2.5 h-2.5 text-indigo-400" />
@@ -379,7 +399,7 @@ export default function CandidateJobsSection({
                         )}
                       </div>
                       <button 
-                        onClick={() => onSaveJob(job.id, isSaved)}
+                        onClick={(e) => { e.stopPropagation(); onSaveJob(job.id, isSaved); }}
                         className={`p-1.5 rounded-lg transition-all cursor-pointer ${
                           isSaved 
                             ? "bg-pink-500/10 text-pink-400 hover:bg-pink-500/20" 
@@ -390,7 +410,7 @@ export default function CandidateJobsSection({
                         <Heart className="w-3.5 h-3.5 fill-current" />
                       </button>
                     </div>
-                    <h4 className="font-bold text-sm text-white flex items-center gap-2">
+                    <h4 className="font-bold text-sm text-white flex items-center gap-2 group-hover:text-indigo-400 transition-colors">
                       {!abacCheck.granted && <Lock className="w-3.5 h-3.5 text-red-400 shrink-0" />}
                       <span>{job.title}</span>
                     </h4>
@@ -410,9 +430,13 @@ export default function CandidateJobsSection({
                       ))}
                     </div>
 
+                    <p className="text-[9px] text-indigo-400/60 font-mono mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      ⚡ Click to view full job specifications & apply
+                    </p>
+
                     {/* ABAC Restriction Warning Banner */}
                     {!abacCheck.granted && (
-                      <div className="mt-3 p-2.5 bg-red-950/25 border border-red-500/15 rounded-xl text-[10px] text-red-300 flex items-start gap-2 animate-in fade-in slide-in-from-top-1">
+                      <div className="mt-3 p-2.5 bg-red-950/25 border border-red-500/15 rounded-xl text-[10px] text-red-300 flex items-start gap-2 animate-in fade-in slide-in-from-top-1" onClick={(e) => e.stopPropagation()}>
                         <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
                         <div className="space-y-0.5">
                           <p className="font-bold uppercase tracking-wider font-mono text-[9px] text-red-400">ABAC Policy Restricted</p>
@@ -706,6 +730,166 @@ export default function CandidateJobsSection({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* 4. PREMIUM JOB DETAILS OVERLAY MODAL */}
+      {selectedJobDetails && (
+        <div className="fixed inset-0 bg-[#020204]/80 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200" id="job-details-modal">
+          <div className="glass w-full max-w-2xl rounded-3xl border border-white/10 overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            
+            {/* Modal Header */}
+            <div className="p-6 border-b border-white/5 flex justify-between items-start bg-[#090d16]/40">
+              <div className="flex gap-4">
+                <div className="bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white font-black text-xl rounded-2xl w-14 h-14 shadow-lg shadow-indigo-500/20 shrink-0 uppercase">
+                  {selectedJobDetails.companyName?.slice(0, 2) || "CO"}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono text-indigo-400 font-extrabold uppercase">{selectedJobDetails.companyName}</span>
+                    <span className="bg-white/5 text-gray-400 text-[9px] font-mono px-2 py-0.5 rounded border border-white/5">
+                      {selectedJobDetails.type || "Full-time"}
+                    </span>
+                  </div>
+                  <h3 className="font-extrabold text-lg text-white mt-1">{selectedJobDetails.title}</h3>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedJobDetails(null)}
+                className="p-2 hover:bg-white/5 text-gray-400 hover:text-white rounded-xl transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-6 overflow-y-auto flex-1 text-xs text-gray-300 leading-relaxed">
+              
+              {/* Badges Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white/[0.02] p-4 rounded-2xl border border-white/5 text-[11px]">
+                <div className="space-y-0.5">
+                  <p className="text-gray-500 font-mono font-bold uppercase text-[9px]">Salary package</p>
+                  <p className="font-bold text-white flex items-center gap-1"><span className="text-emerald-400">💰</span> {selectedJobDetails.salary || "Competitive"}</p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-gray-500 font-mono font-bold uppercase text-[9px]">Location</p>
+                  <p className="font-bold text-white flex items-center gap-1"><span className="text-indigo-400">📍</span> {selectedJobDetails.location || "Remote"}</p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-gray-500 font-mono font-bold uppercase text-[9px]">Experience</p>
+                  <p className="font-bold text-white flex items-center gap-1"><span className="text-purple-400">💼</span> {selectedJobDetails.experience || "Any level"}</p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-gray-500 font-mono font-bold uppercase text-[9px]">Posted Date</p>
+                  <p className="font-bold text-white flex items-center gap-1"><span className="text-amber-400">⏱️</span> {selectedJobDetails.createdAt ? new Date(selectedJobDetails.createdAt).toLocaleDateString() : "Just Now"}</p>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="space-y-2">
+                <h4 className="font-bold text-white text-xs uppercase tracking-wider text-indigo-400 font-mono">Job Description</h4>
+                <p className="text-gray-300 whitespace-pre-wrap">{selectedJobDetails.description || "No full description provided."}</p>
+              </div>
+
+              {/* Requirements & Responsibilities */}
+              {(selectedJobDetails.requirements || selectedJobDetails.responsibilities) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {selectedJobDetails.requirements && (
+                    <div className="space-y-1.5">
+                      <h4 className="font-bold text-white text-xs uppercase tracking-wider text-indigo-400 font-mono">Requirements</h4>
+                      <p className="text-gray-400 leading-normal">{selectedJobDetails.requirements}</p>
+                    </div>
+                  )}
+                  {selectedJobDetails.responsibilities && (
+                    <div className="space-y-1.5">
+                      <h4 className="font-bold text-white text-xs uppercase tracking-wider text-indigo-400 font-mono">Key Responsibilities</h4>
+                      <p className="text-gray-400 leading-normal">{selectedJobDetails.responsibilities}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Technical Skills Required */}
+              <div className="space-y-2">
+                <h4 className="font-bold text-white text-xs uppercase tracking-wider text-indigo-400 font-mono">Required Core Stack</h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedJobDetails.skillsRequired?.map((sk, k) => (
+                    <span key={k} className="text-[10px] font-mono px-2.5 py-1 bg-white/5 text-gray-200 rounded-lg border border-white/5 font-medium">{sk}</span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Benefits & Perks */}
+              <div className="space-y-2">
+                <h4 className="font-bold text-white text-xs uppercase tracking-wider text-indigo-400 font-mono">Benefits & Perks</h4>
+                <p className="text-gray-400 leading-relaxed">
+                  {selectedJobDetails.benefits || "Includes comprehensive medical insurance, flexible hybrid office schedule, fitness allowance, high-performance workstation equipment budget, and structured dual-track career progression planning."}
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="p-6 border-t border-white/5 bg-[#090d16]/40 flex gap-3 items-center justify-between">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const isSaved = savedJobIds.includes(selectedJobDetails.id);
+                    onSaveJob(selectedJobDetails.id, isSaved);
+                    alert(isSaved ? "Vacancy removed from bookmarks!" : "Vacancy bookmarked successfully!");
+                  }}
+                  className={`px-3 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 font-bold cursor-pointer text-xs border ${
+                    savedJobIds.includes(selectedJobDetails.id)
+                      ? "bg-pink-500/10 text-pink-400 border-pink-500/20 hover:bg-pink-500/15"
+                      : "bg-white/5 text-gray-300 border-white/10 hover:bg-white/10"
+                  }`}
+                  title="Save Job"
+                >
+                  <Heart className={`w-3.5 h-3.5 ${savedJobIds.includes(selectedJobDetails.id) ? "fill-current" : ""}`} />
+                  <span>{savedJobIds.includes(selectedJobDetails.id) ? "Saved" : "Save Job"}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.origin + "/?jobId=" + selectedJobDetails.id);
+                    alert("Application link copied to clipboard successfully!");
+                  }}
+                  className="px-3 py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl transition-all flex items-center justify-center gap-1.5 font-bold cursor-pointer text-xs border border-white/10"
+                  title="Share Posting"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span>Share</span>
+                </button>
+              </div>
+
+              <div className="flex gap-2 shrink-0">
+                <button
+                  onClick={() => {
+                    setSelectedJobDetails(null);
+                    onCheckMatch(selectedJobDetails);
+                  }}
+                  className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-200 text-xs font-bold rounded-xl transition-all border border-white/5 cursor-pointer flex items-center gap-1"
+                >
+                  <Brain className="w-4 h-4 text-indigo-400" />
+                  <span>Check Match</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedJobDetails(null);
+                    onOneClickApply(selectedJobDetails);
+                  }}
+                  disabled={applications.some(app => app.jobId === selectedJobDetails.id)}
+                  className={`px-6 py-2 text-xs font-black rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                    applications.some(app => app.jobId === selectedJobDetails.id)
+                      ? "bg-green-500/25 text-green-400 border border-green-500/20 cursor-not-allowed"
+                      : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20"
+                  }`}
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{applications.some(app => app.jobId === selectedJobDetails.id) ? "Applied" : "Apply Now"}</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
         </div>
       )}
 

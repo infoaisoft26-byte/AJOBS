@@ -104,6 +104,38 @@ export default function PostJobForm({ userId, userRole, userName, onJobPosted, o
 
       await setDoc(doc(db, "jobs", jobId), newJob);
 
+      // Sync to company_jobs or consultancy_jobs based on active userRole
+      try {
+        if (userRole === "employer" || userRole === "recruiter" || userRole === "corporate") {
+          await setDoc(doc(db, "company_jobs", jobId), {
+            id: jobId,
+            userId: userId,
+            title: title.trim(),
+            companyName: companyName.trim(),
+            location: location.trim(),
+            skillsRequired: skillsArray,
+            salary: salary,
+            experience: experience,
+            status: "Draft",
+            createdAt: new Date().toISOString()
+          });
+        } else if (userRole === "consultancy" || userRole === "agency") {
+          await setDoc(doc(db, "consultancy_jobs", jobId), {
+            id: jobId,
+            title: title.trim(),
+            companyName: companyName.trim(),
+            skillsRequired: skillsArray,
+            salaryMin: parseInt(salary.replace(/[^0-9]/g, "")) || 10,
+            salaryMax: parseInt(salary.replace(/[^0-9]/g, "")) || 20,
+            location: location.trim(),
+            status: "draft",
+            createdAt: new Date().toISOString()
+          });
+        }
+      } catch (syncErr) {
+        console.warn("Non-blocking role sync error on job draft save:", syncErr);
+      }
+
       // Trigger a notification to current user workspace
       const notifId = "notif_" + Math.random().toString(36).substr(2, 9);
       await setDoc(doc(db, "notifications", notifId), {

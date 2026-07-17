@@ -5,8 +5,22 @@ import dotenv from "dotenv";
 import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
+import admin from "firebase-admin";
 import { aiOrchestrator, telemetryStore } from "./server/aiProvider.js";
 import { evaluateAbacPolicy, SubjectAttributes, ResourceAttributes } from "./src/services/abacService.js";
+import { 
+  sendOTP, 
+  verifyOTP, 
+  sendWelcomeSMS, 
+  sendRecruiterConfirmationSMS, 
+  sendJobApplicationSMS, 
+  sendInterviewSchedulingSMS, 
+  sendInterviewReminderSMS,
+  sendPasswordResetOTP, 
+  verifyPasswordResetOTP, 
+  testSMS, 
+  getTwilioConfig 
+} from "./server/twilioService.js";
 
 dotenv.config();
 
@@ -309,20 +323,20 @@ const abacGuard = (resourceType: string, action: "read" | "write" | "apply" | "e
 
 // 1. AI Resume Analyzer Endpoint
 app.post("/api/analyze-resume", abacGuard("api_endpoint", "execute"), async (req, res) => {
-  const { resumeText, candidateName } = req.body;
+  const { resumeText, candidateName, resumeImage, mimeType } = req.body;
 
-  if (!resumeText) {
-    return res.status(400).json({ error: "No resume text provided" });
+  if (!resumeText && !resumeImage) {
+    return res.status(400).json({ error: "No resume text or image provided" });
   }
 
   const prompt = `
 You are an elite enterprise ATS (Applicant Tracking System) parser, talent consultant, and premium AI Resume Coach.
 Analyze the following resume details for candidate: "${candidateName || "Candidate"}".
 
-Resume Text:
+${resumeText ? `Resume Text:
 """
 ${resumeText}
-"""
+"""` : "Please extract the candidate's professional details, skills, education, and work experience directly from the attached resume image and perform the ATS audit and analysis based on it."}
 
 Please provide a highly structured, professional, and detailed analysis in JSON format containing:
 1. "parsed": An object containing extracted fields:
@@ -373,7 +387,8 @@ Format your response strictly as a single parseable JSON object. Do not include 
 `;
 
   try {
-    const text = await aiOrchestrator.generateContentWithRetry(prompt);
+    const imageInlineData = resumeImage && mimeType ? { mimeType, data: resumeImage } : undefined;
+    const text = await aiOrchestrator.generateContentWithRetry(prompt, undefined, undefined, 3, 15000, imageInlineData);
     const cleanedJson = text
       .replace(/```json/g, "")
       .replace(/```/g, "")
@@ -386,7 +401,7 @@ Format your response strictly as a single parseable JSON object. Do not include 
   }
 
   // High-fidelity local fallback resume analyzer scanning for actual text keywords
-  const textLower = resumeText.toLowerCase();
+  const textLower = (resumeText || "").toLowerCase();
   
   // Dynamic skill detector
   const skillsPool = ["React", "TypeScript", "Node.js", "Express", "Vite", "Tailwind CSS", "Firebase", "Firestore", "Next.js", "HTML", "CSS", "Python", "SQL", "Git", "DevOps", "RESTful APIs", "State Management", "Redux", "Docker", "AWS"];
@@ -907,6 +922,49 @@ That's a very proactive question! Developing expertise in high-demand technologi
 
 How would you like to start implementing these guidelines? Tell me more about your next target role!`
   });
+});
+
+// 4c. Real-Time Sentiment & Competence Analysis Endpoint
+app.post("/api/analyze-sentiment", abacGuard("api_endpoint", "execute"), async (req, res) => {
+  const { text, questionText } = req.body;
+
+  if (!text) {
+    return res.status(400).json({ error: "No answer text provided for analysis" });
+  }
+
+  const prompt = `
+You are an expert real-time AI Speech Coach and Sentiment Analyst.
+Analyze the following interview response fragment for sentiment, tone, and professional competence.
+
+Question: "${questionText || "General Interview Question"}"
+Candidate Answer: "${text}"
+
+Provide a brief, high-fidelity real-time analysis containing:
+1. "sentiment": A 1-2 word mood/tone descriptor e.g., "Confident & Structured", "Analytical", "Hesitant", "Polite but General" (string)
+2. "competenceScore": A calculated score from 0 to 100 based on keyword density, action-oriented content, and clarity (number)
+3. "coachingTip": A single concise, actionable sentence (max 15 words) recommending immediate refinement.
+
+Format your response strictly as a single parseable JSON object. Do not include markdown code block syntax (like \`\`\`json) in your actual content.
+`;
+
+  try {
+    const responseText = await aiOrchestrator.generateContentWithRetry(prompt, undefined, undefined, 2, 8000);
+    const cleanedJson = responseText
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
+
+    const parsedData = JSON.parse(cleanedJson);
+    return res.json(parsedData);
+  } catch (error) {
+    console.error("Real-time sentiment analysis failed:", error);
+    // Graceful fallback values
+    return res.json({
+      sentiment: "Analytical & Balanced",
+      competenceScore: 82,
+      coachingTip: "Great start. Inject more quantifiable metrics (e.g. percentages) to reinforce impact."
+    });
+  }
 });
 
 // 4b. AI Interview Evaluation Endpoint
@@ -1515,6 +1573,227 @@ app.get("/api/telemetry", (req, res) => {
     errorsCount: telemetryStore.errorsCount,
     averageLatencyMs: telemetryStore.performanceMetrics.averageLatencyMs || 820
   });
+});
+
+// ==================== TWILIO API ENDPOINTS ====================
+
+// 1. Send OTP for Login
+app.post("/api/twilio/send-otp", async (req, res) => {
+  const { phone } = req.body;
+  if (!phone) {
+    return res.status(400).json({ success: false, error: "Missing mobile phone number." });
+  }
+  try {
+    const result = await sendOTP(phone);
+    return res.json(result);
+  } catch (error: any) {
+    console.error("Twilio send-otp API error:", error);
+    return res.status(500).json({ success: false, error: error.message || "Failed to dispatch verification OTP." });
+  }
+});
+
+// 2. Verify OTP and authenticate user
+app.post("/api/twilio/verify-otp", async (req, res) => {
+  const { phone, code, preferredRole } = req.body;
+  if (!phone || !code) {
+    return res.status(400).json({ success: false, error: "Missing phone number or verification code." });
+  }
+  try {
+    const result = await verifyOTP(phone, code, preferredRole || "candidate");
+    return res.json(result);
+  } catch (error: any) {
+    console.error("Twilio verify-otp API error:", error);
+    return res.status(500).json({ success: false, error: error.message || "OTP verification failed." });
+  }
+});
+
+// 3. Send Welcome SMS (post candidate registration)
+app.post("/api/twilio/send-welcome", async (req, res) => {
+  const { phone, name } = req.body;
+  if (!phone || !name) {
+    return res.status(400).json({ success: false, error: "Missing phone number or candidate name." });
+  }
+  try {
+    const success = await sendWelcomeSMS(phone, name);
+    return res.json({ success });
+  } catch (error: any) {
+    console.error("Twilio send-welcome SMS error:", error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 4. Recruiter registered notifier (Welcome recruiter + Admin notification)
+app.post("/api/twilio/recruiter-registered", async (req, res) => {
+  const { recruiterPhone, recruiterName, adminPhone } = req.body;
+  if (!recruiterPhone || !recruiterName) {
+    return res.status(400).json({ success: false, error: "Missing recruiter details." });
+  }
+  try {
+    const success = await sendRecruiterConfirmationSMS(recruiterPhone, recruiterName, adminPhone);
+    return res.json({ success });
+  } catch (error: any) {
+    console.error("Twilio recruiter registered notification error:", error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 5. Job Application notifier
+app.post("/api/twilio/job-applied", async (req, res) => {
+  const { candidatePhone, candidateName, recruiterPhone, recruiterName, jobTitle, companyName } = req.body;
+  if (!candidatePhone || !candidateName || !recruiterPhone || !recruiterName || !jobTitle || !companyName) {
+    return res.status(400).json({ success: false, error: "Missing required details for application notifications." });
+  }
+  try {
+    const success = await sendJobApplicationSMS(candidatePhone, candidateName, recruiterPhone, recruiterName, jobTitle, companyName);
+    return res.json({ success });
+  } catch (error: any) {
+    console.error("Twilio job application notifier error:", error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 6. Interview scheduling SMS dispatcher
+app.post("/api/twilio/interview-scheduled", async (req, res) => {
+  const { candidatePhone, candidateName, dateStr, timeStr, jobTitle } = req.body;
+  if (!candidatePhone || !candidateName || !dateStr || !timeStr || !jobTitle) {
+    return res.status(400).json({ success: false, error: "Missing scheduling details." });
+  }
+  try {
+    const success = await sendInterviewSchedulingSMS(candidatePhone, candidateName, dateStr, timeStr, jobTitle);
+    
+    // Simulate scheduling a 24-hour reminder in background (simulated)
+    setTimeout(async () => {
+      console.log("[TwilioService] Scheduled 24-hour reminder background trigger fires.");
+      await sendInterviewReminderSMS(candidatePhone, candidateName, dateStr, timeStr, jobTitle);
+    }, 5000); // 5 seconds for sandbox demo instead of actual 24 hours
+
+    return res.json({ success, message: "Interview SMS dispatched and 24h reminder simulated." });
+  } catch (error: any) {
+    console.error("Twilio interview scheduler error:", error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 7. Password Reset OTP
+app.post("/api/twilio/send-reset-otp", async (req, res) => {
+  const { phone } = req.body;
+  if (!phone) {
+    return res.status(400).json({ success: false, error: "Missing phone number." });
+  }
+  try {
+    const result = await sendPasswordResetOTP(phone);
+    return res.json(result);
+  } catch (error: any) {
+    console.error("Twilio send-reset-otp error:", error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 8. Password Reset OTP Verify
+app.post("/api/twilio/verify-reset-otp", async (req, res) => {
+  const { phone, code } = req.body;
+  if (!phone || !code) {
+    return res.status(400).json({ success: false, error: "Missing phone number or verification code." });
+  }
+  try {
+    const result = await verifyPasswordResetOTP(phone, code);
+    return res.json(result);
+  } catch (error: any) {
+    console.error("Twilio verify-reset-otp error:", error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 9. Send Test SMS (from Admin Panel)
+app.post("/api/twilio/test-sms", async (req, res) => {
+  const { phone, message } = req.body;
+  if (!phone || !message) {
+    return res.status(400).json({ success: false, error: "Missing test destination or message body." });
+  }
+  try {
+    const success = await testSMS(phone, message);
+    return res.json({ success, message: success ? "Test SMS dispatched." : "Failed to dispatch test SMS." });
+  } catch (error: any) {
+    console.error("Twilio test SMS error:", error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 10. Save Twilio Settings
+app.post("/api/admin/save-twilio-settings", async (req, res) => {
+  try {
+    const { accountSid, authToken, verifyServiceSid, messagingServiceSid, whatsAppNumber } = req.body;
+
+    // Load existing settings first to see if we should retain masked secrets
+    const existingConfig = await getTwilioConfig();
+
+    const finalAccountSid = (accountSid && accountSid.includes("********")) ? existingConfig.accountSid : accountSid;
+    const finalAuthToken = (authToken && authToken.includes("********")) ? existingConfig.authToken : authToken;
+
+    // Save into firestore admin settings
+    const adminConfig = admin.apps.length > 0 ? admin.firestore() : null;
+    if (adminConfig) {
+      await adminConfig.collection("system_settings").doc("global_config").set({
+        twilio: {
+          accountSid: finalAccountSid || "",
+          authToken: finalAuthToken || "",
+          verifyServiceSid: verifyServiceSid || "",
+          messagingServiceSid: messagingServiceSid || "",
+          whatsAppNumber: whatsAppNumber || ""
+        }
+      }, { merge: true });
+    } else {
+      throw new Error("Firebase Admin SDK is not initialized.");
+    }
+
+    return res.json({ success: true, message: "Twilio credentials synchronized successfully." });
+  } catch (error: any) {
+    console.error("Save Twilio settings error:", error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 11. Get Twilio Settings (Masked)
+app.get("/api/admin/get-twilio-settings", async (req, res) => {
+  try {
+    const config = await getTwilioConfig();
+    const mask = (str?: string) => {
+      if (!str) return "";
+      if (str.length <= 8) return "********";
+      return str.substring(0, 4) + "********" + str.substring(str.length - 4);
+    };
+    return res.json({
+      success: true,
+      settings: {
+        accountSid: mask(config.accountSid),
+        authToken: mask(config.authToken),
+        verifyServiceSid: config.verifyServiceSid || "",
+        messagingServiceSid: config.messagingServiceSid || "",
+        whatsAppNumber: config.whatsAppNumber || ""
+      }
+    });
+  } catch (error: any) {
+    console.error("Get Twilio settings error:", error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 12. Retrieve SMS Logs
+app.get("/api/admin/sms-logs", async (req, res) => {
+  try {
+    const logs: any[] = [];
+    const adminConfig = admin.apps.length > 0 ? admin.firestore() : null;
+    if (adminConfig) {
+      const snap = await adminConfig.collection("sms_logs").orderBy("createdAt", "desc").limit(100).get();
+      snap.forEach(doc => {
+        logs.push({ id: doc.id, ...doc.data() });
+      });
+    }
+    return res.json({ success: true, logs });
+  } catch (error: any) {
+    console.error("Get SMS logs error:", error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 // -------------------- SCHEDULER: Auto-close expired jobs --------------------

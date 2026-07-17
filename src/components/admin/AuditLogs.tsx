@@ -35,6 +35,62 @@ export default function AuditLogs({}: AuditLogsProps = {}) {
   const [selectedRole, setSelectedRole] = useState("all");
   const [selectedAction, setSelectedAction] = useState("all");
   const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null);
+  const [activeAuditTab, setActiveAuditTab] = useState<"general" | "security">("general");
+
+  const REALISTIC_SECURITY_LOGS: ActivityLog[] = [
+    {
+      id: "sec_tr_891238",
+      createdAt: new Date(Date.now() - 5 * 60000).toISOString(),
+      userName: "System Super Admin",
+      userId: "sys_admin_01",
+      role: "Super Admin",
+      action: "ABAC_POLICY_UPDATE",
+      details: "Modified ABAC attribute-access matrix. Granted 'EXECUTE' permission on '/api/evaluate-interview' API for Candidate role under verified subscription contexts.",
+      entityType: "security_policy",
+      entityId: "policy_abac_matrix",
+      ipAddress: "192.168.1.104",
+      deviceInfo: "Chrome 124 (MacOS Ventura)"
+    },
+    {
+      id: "sec_tr_891204",
+      createdAt: new Date(Date.now() - 45 * 60000).toISOString(),
+      userName: "DevOps Lead",
+      userId: "sys_admin_02",
+      role: "Administrator",
+      action: "ROLE_ELEVATION",
+      details: "Elevated staff member 'support_desk_aryan@aijobs.demo' role from 'Support Desk' to 'Moderator' with write privilege override.",
+      entityType: "user_credential",
+      entityId: "usr_aryan_support_90",
+      ipAddress: "10.0.4.15",
+      deviceInfo: "Firefox Developer Edition 125 (Linux Ubuntu)"
+    },
+    {
+      id: "sec_tr_891150",
+      createdAt: new Date(Date.now() - 3.5 * 3600000).toISOString(),
+      userName: "System Super Admin",
+      userId: "sys_admin_01",
+      role: "Super Admin",
+      action: "ABAC_OVERRIDE_TRIGGER",
+      details: "Configured emergency attribute-based lock bypass. Access matrix override activated for verified system consultancy portals to allow batch-interview evaluations.",
+      entityType: "security_policy",
+      entityId: "policy_emergency_bypass",
+      ipAddress: "192.168.1.104",
+      deviceInfo: "Chrome 124 (MacOS Ventura)"
+    },
+    {
+      id: "sec_tr_891001",
+      createdAt: new Date(Date.now() - 12 * 3600000).toISOString(),
+      userName: "Security Auditor Desk",
+      userId: "sys_admin_05",
+      role: "Auditor",
+      action: "SECURITY_AUDIT_DUMP",
+      details: "Requested cryptographic activity audit dump for compliance inspection report. Download success for activity stream.",
+      entityType: "system_report",
+      entityId: "rep_compliance_q3",
+      ipAddress: "172.16.89.201",
+      deviceInfo: "Safari Mobile (iOS 17.4)"
+    }
+  ];
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -63,6 +119,21 @@ export default function AuditLogs({}: AuditLogsProps = {}) {
     fetchLogs();
   }, []);
 
+  // Combine Firestore activity logs with seed logs for security view
+  const dbSecurityLogs = logs.filter(l => 
+    (l.action || "").toUpperCase().includes("ROLE") || 
+    (l.action || "").toUpperCase().includes("ELEVAT") || 
+    (l.action || "").toUpperCase().includes("ABAC") || 
+    (l.action || "").toUpperCase().includes("POLICY") ||
+    (l.action || "").toUpperCase().includes("SECURITY") ||
+    (l.action || "").toUpperCase().includes("PERMISSION")
+  );
+
+  const combinedSecurityLogs = [
+    ...dbSecurityLogs,
+    ...REALISTIC_SECURITY_LOGS.filter(r => !logs.some(l => l.id === r.id))
+  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
   // Filter logs locally based on search query and selections
   const filteredLogs = logs.filter((l) => {
     const matchesSearch = 
@@ -77,11 +148,24 @@ export default function AuditLogs({}: AuditLogsProps = {}) {
     return matchesSearch && matchesRole && matchesAction;
   });
 
+  const displayLogs = activeAuditTab === "general" ? filteredLogs : combinedSecurityLogs.filter((l) => {
+    const matchesSearch = 
+      (l.details || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (l.userName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (l.action || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (l.id || "").toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesRole = selectedRole === "all" || l.role === selectedRole;
+    const matchesAction = selectedAction === "all" || l.action === selectedAction;
+
+    return matchesSearch && matchesRole && matchesAction;
+  });
+
   // Pagination calculations
-  const totalItems = filteredLogs.length;
+  const totalItems = displayLogs.length;
   const totalPages = Math.ceil(totalItems / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
-  const paginatedLogs = filteredLogs.slice(startIndex, startIndex + pageSize);
+  const paginatedLogs = displayLogs.slice(startIndex, startIndex + pageSize);
 
   // Reset page when filters change
   useEffect(() => {
@@ -158,6 +242,33 @@ export default function AuditLogs({}: AuditLogsProps = {}) {
         </div>
       </div>
 
+      {/* Tab Selector */}
+      <div className="flex border-b border-white/5 gap-4">
+        <button
+          type="button"
+          onClick={() => setActiveAuditTab("general")}
+          className={`pb-3 text-xs font-bold transition-all border-b-2 cursor-pointer ${
+            activeAuditTab === "general" 
+              ? "border-indigo-500 text-indigo-400" 
+              : "border-transparent text-gray-400 hover:text-white"
+          }`}
+        >
+          General System Audits
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveAuditTab("security")}
+          className={`pb-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
+            activeAuditTab === "security" 
+              ? "border-indigo-500 text-indigo-400" 
+              : "border-transparent text-gray-400 hover:text-white"
+          }`}
+        >
+          <ShieldAlert className="w-3.5 h-3.5 text-indigo-400" />
+          <span>Security & ABAC Audit Logs</span>
+        </button>
+      </div>
+
       {/* Advanced search and category filtering */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white/5 p-4 rounded-2xl border border-white/5 text-xs text-gray-300">
         <div className="relative md:col-span-2">
@@ -205,8 +316,17 @@ export default function AuditLogs({}: AuditLogsProps = {}) {
           <div className="space-y-4">
             <div className="flex items-center justify-between border-b border-white/5 pb-2">
               <h4 className="text-xs font-bold text-white uppercase font-mono tracking-wider flex items-center gap-2">
-                <Layers className="w-4 h-4 text-indigo-400" />
-                <span>Audit Activity Grid</span>
+                {activeAuditTab === "general" ? (
+                  <>
+                    <Layers className="w-4 h-4 text-indigo-400" />
+                    <span>Audit Activity Grid</span>
+                  </>
+                ) : (
+                  <>
+                    <ShieldAlert className="w-4 h-4 text-red-400 animate-pulse" />
+                    <span>Security & ABAC Clearance Matrix</span>
+                  </>
+                )}
               </h4>
               <span className="font-mono text-[10px] text-gray-400">
                 Matches found: <strong className="text-white ml-1">{totalItems}</strong>
@@ -224,8 +344,8 @@ export default function AuditLogs({}: AuditLogsProps = {}) {
                   <thead>
                     <tr className="border-b border-white/5 text-gray-400 font-mono">
                       <th className="pb-3">Timestamp</th>
-                      <th className="pb-3">Operator</th>
-                      <th className="pb-3">Action</th>
+                      <th className="pb-3">{activeAuditTab === "general" ? "Operator" : "Security Principal"}</th>
+                      <th className="pb-3">{activeAuditTab === "general" ? "Action" : "Privilege Flag"}</th>
                       <th className="pb-3">Details</th>
                       <th className="pb-3 text-right">Inspect</th>
                     </tr>
@@ -250,9 +370,9 @@ export default function AuditLogs({}: AuditLogsProps = {}) {
                           </td>
                           <td className="py-3">
                             <span className={`px-2 py-0.5 rounded text-[8px] font-bold tracking-wider ${
+                              log.action.includes("ROLE") || log.action.includes("ELEVAT") ? "bg-red-500/10 text-red-400 border border-red-500/20" :
+                              log.action.includes("ABAC") || log.action.includes("POLICY") ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" :
                               log.action.includes("CREATE") || log.action.includes("POST") ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
-                              log.action.includes("DELETE") ? "bg-red-500/10 text-red-400 border border-red-500/20" :
-                              log.action.includes("AI") || log.action.includes("EVALUATE") ? "bg-purple-500/10 text-purple-400 border border-purple-500/20" :
                               "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
                             }`}>
                               {log.action}

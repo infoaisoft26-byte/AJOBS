@@ -20,7 +20,8 @@ export interface AIProvider {
   generateContent(
     prompt: string, 
     systemInstruction?: string,
-    responseMimeType?: string
+    responseMimeType?: string,
+    imageInlineData?: { mimeType: string; data: string }
   ): Promise<string>;
 }
 
@@ -49,7 +50,8 @@ export class GeminiProvider implements AIProvider {
   async generateContent(
     prompt: string, 
     systemInstruction?: string,
-    responseMimeType?: string
+    responseMimeType?: string,
+    imageInlineData?: { mimeType: string; data: string }
   ): Promise<string> {
     if (!this.client) {
       throw new Error("Gemini Provider client is not initialized (missing API key)");
@@ -63,10 +65,23 @@ export class GeminiProvider implements AIProvider {
       config.responseMimeType = responseMimeType;
     }
 
+    let contents: any = prompt;
+    if (imageInlineData) {
+      contents = [
+        { text: prompt },
+        {
+          inlineData: {
+            mimeType: imageInlineData.mimeType,
+            data: imageInlineData.data
+          }
+        }
+      ];
+    }
+
     // Call using correct @google/genai guidelines
     const response = await this.client.models.generateContent({
       model: "gemini-3.5-flash",
-      contents: prompt,
+      contents,
       config
     });
 
@@ -85,7 +100,8 @@ export class OpenAIProvider implements AIProvider {
   async generateContent(
     prompt: string, 
     systemInstruction?: string,
-    responseMimeType?: string
+    responseMimeType?: string,
+    imageInlineData?: { mimeType: string; data: string }
   ): Promise<string> {
     console.log("[OpenAIProvider] (Mock Integration Interface Called) Prompt:", prompt.slice(0, 50));
     throw new Error("OpenAI API Provider is currently a placeholder and not fully configured in this environment.");
@@ -123,7 +139,8 @@ export class AIOrchestrator {
     systemInstruction?: string,
     responseMimeType?: string,
     maxRetries = 3,
-    timeoutMs = 15000
+    timeoutMs = 15000,
+    imageInlineData?: { mimeType: string; data: string }
   ): Promise<string> {
     telemetryStore.aiRequests++;
     const startTime = Date.now();
@@ -147,7 +164,7 @@ export class AIOrchestrator {
           setTimeout(() => reject(new Error("AI service request timed out")), timeoutMs)
         );
 
-        const apiPromise = provider.generateContent(prompt, systemInstruction, responseMimeType);
+        const apiPromise = provider.generateContent(prompt, systemInstruction, responseMimeType, imageInlineData);
         const result = await Promise.race([apiPromise, timeoutPromise]);
 
         // Success: Track telemetry

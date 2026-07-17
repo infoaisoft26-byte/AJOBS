@@ -70,6 +70,7 @@ service cloud.firestore {
         // Allow unauthenticated background scheduler to auto-close expired job listings
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
         request.resource.data.status == "Closed" &&
+        'applyDeadline' in resource.data &&
         resource.data.applyDeadline != null &&
         resource.data.applyDeadline != ""
       );
@@ -82,6 +83,7 @@ service cloud.firestore {
         // Allow unauthenticated background scheduler to auto-close expired job listings
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
         request.resource.data.status == "Closed" &&
+        'applyDeadline' in resource.data &&
         resource.data.applyDeadline != null &&
         resource.data.applyDeadline != ""
       );

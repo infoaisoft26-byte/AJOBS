@@ -111,7 +111,39 @@ export default function CrmJobsView({
       };
 
       await setDoc(doc(db, "consultancy_jobs", jobId), jobObj);
-      alert(isEditing ? "Job requirements updated in Firestore!" : "New job posted successfully and sync'd to database!");
+
+      // Sync to standard candidate jobs collection
+      const standardJob = {
+        id: jobId,
+        title: title.trim(),
+        companyName: companyName.trim(),
+        location: location.trim(),
+        workMode: "Hybrid",
+        type: "Full-time",
+        salary: `₹${salaryMin},00,000 - ₹${salaryMax},00,000`,
+        experience: experience,
+        education: "Graduate / Post Graduate",
+        openings: 1,
+        industry: "Information Technology",
+        category: "Software Development",
+        consultancy: "Agency Recruiters",
+        applyDeadline: "",
+        expiryDate: "",
+        skillsRequired: skills,
+        languages: "English",
+        benefits: "Medical insurance, Flexible working hours, Professional development allowance",
+        interviewProcess: "Resume Screening, Technical Assessment, Management Round",
+        responsibilities: "Perform core product development, architect secure high-performance data systems.",
+        requirements: "Demonstrated production experience, deep familiarity with enterprise code pipelines.",
+        description: `Strategic role at ${companyName}. Team seeks a motivated ${title} to join the ${department} department.`,
+        status: status === "open" ? "Live" : status === "closed" ? "Closed" : status === "draft" ? "Draft" : "Pending Approval",
+        createdBy: "recruiter_crm",
+        employerId: "recruiter_crm_" + companyName.toLowerCase().replace(/[^a-z0-9]/g, ""),
+        createdAt: jobObj.createdAt
+      };
+      await setDoc(doc(db, "jobs", jobId), standardJob);
+
+      alert(isEditing ? "Job requirements updated in Firestore and synced!" : "New job posted successfully and sync'd to candidate database!");
       setIsAdding(false);
       setIsEditing(false);
       setSelectedJob(null);
@@ -136,7 +168,39 @@ export default function CrmJobsView({
       };
 
       await setDoc(doc(db, "consultancy_jobs", newId), duplicatedObj);
-      alert("Job posting duplicated! Saved in database.");
+
+      // Sync duplicated to standard jobs
+      const standardJob = {
+        id: newId,
+        title: duplicatedObj.title,
+        companyName: duplicatedObj.companyName,
+        location: duplicatedObj.location,
+        workMode: "Hybrid",
+        type: "Full-time",
+        salary: `₹${duplicatedObj.salaryMin},00,000 - ₹${duplicatedObj.salaryMax},00,000`,
+        experience: duplicatedObj.experience,
+        education: "Graduate / Post Graduate",
+        openings: 1,
+        industry: "Information Technology",
+        category: "Software Development",
+        consultancy: "Agency Recruiters",
+        applyDeadline: "",
+        expiryDate: "",
+        skillsRequired: duplicatedObj.skillsRequired,
+        languages: "English",
+        benefits: "Medical insurance, Flexible working hours, Professional development allowance",
+        interviewProcess: "Resume Screening, Technical Assessment, Management Round",
+        responsibilities: "Perform core product development, architect secure high-performance data systems.",
+        requirements: "Demonstrated production experience, deep familiarity with enterprise code pipelines.",
+        description: `Strategic role at ${duplicatedObj.companyName}. Team seeks a motivated ${duplicatedObj.title} to join the ${duplicatedObj.department || "Engineering"} department.`,
+        status: "Draft", // Duplicates default to draft
+        createdBy: "recruiter_crm",
+        employerId: "recruiter_crm_" + duplicatedObj.companyName.toLowerCase().replace(/[^a-z0-9]/g, ""),
+        createdAt: duplicatedObj.createdAt
+      };
+      await setDoc(doc(db, "jobs", newId), standardJob);
+
+      alert("Job posting duplicated! Saved in database and synced as Draft.");
       onRefresh();
     } catch (err) {
       console.error(err);
@@ -152,6 +216,14 @@ export default function CrmJobsView({
 
     try {
       await deleteDoc(doc(db, "consultancy_jobs", id));
+      
+      // Also delete from standard jobs
+      try {
+        await deleteDoc(doc(db, "jobs", id));
+      } catch (e) {
+        console.warn("Could not delete from jobs:", e);
+      }
+
       alert("Vacancy record deleted from Firestore.");
       if (selectedJob?.id === id) {
         setSelectedJob(null);
