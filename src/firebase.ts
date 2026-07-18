@@ -1,36 +1,78 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
-import { getFirestore, enableMultiTabIndexedDbPersistence } from "firebase/firestore";
+import { getFirestore, enableMultiTabIndexedDbPersistence, setLogLevel } from "firebase/firestore";
 import { initializeAppCheck, ReCaptchaV3Provider, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 import { getStorage } from "firebase/storage";
 import config from "../firebase-applet-config.json";
+
+// Safe helper to extract all text from any log argument, including nested objects with circular references
+function extractLogText(arg: any): string {
+  if (arg === null || arg === undefined) return "";
+  if (typeof arg === "string") return arg;
+  if (arg instanceof Error) {
+    return `${arg.name}: ${arg.message}\n${arg.stack || ""}`;
+  }
+  
+  let info = "";
+  if (arg.message) info += " " + String(arg.message);
+  if (arg.code) info += " code:" + String(arg.code);
+  if (arg.name) info += " " + String(arg.name);
+  if (arg.stack) info += " " + String(arg.stack);
+  
+  if (typeof arg === "object") {
+    try {
+      const seen = new WeakSet();
+      const safeString = JSON.stringify(arg, (key, value) => {
+        if (typeof value === "object" && value !== null) {
+          if (seen.has(value)) {
+            return "[Circular]";
+          }
+          seen.add(value);
+        }
+        return value;
+      });
+      info += " " + safeString;
+    } catch (e) {
+      try {
+        for (const key of Object.keys(arg)) {
+          const val = arg[key];
+          if (typeof val === "string" || typeof val === "number" || typeof val === "boolean") {
+            info += ` ${key}:${val}`;
+          }
+        }
+      } catch (err) {}
+      info += " " + String(arg);
+    }
+  } else {
+    info += " " + String(arg);
+  }
+  return info;
+}
+
+// Set native firestore log level to silent to prevent library internals from flooding console
+try {
+  setLogLevel("silent");
+} catch (err) {
+  console.warn("Could not set Firestore log level:", err);
+}
 
 // Safe console wrapper to handle and suppress Firestore idle stream warnings/errors from cluttering logs
 if (typeof window !== "undefined") {
   const originalConsoleError = console.error;
   console.error = function (...args: any[]) {
     try {
-      const errorStr = args
-        .map((arg) => {
-          if (typeof arg === "string") return arg;
-          if (arg instanceof Error) return arg.message;
-          try {
-            return JSON.stringify(arg);
-          } catch {
-            return String(arg);
-          }
-        })
-        .join(" ");
+      const errorStr = args.map(extractLogText).join(" ");
 
       if (
         errorStr.includes("Disconnecting idle stream") ||
         errorStr.includes("Timed out waiting for new targets") ||
         errorStr.includes("GrpcConnection RPC 'Listen' stream") ||
+        errorStr.includes("CANCELLED: Disconnecting idle stream") ||
         (errorStr.includes("Firestore") && errorStr.includes("stream") && errorStr.includes("error")) ||
         (errorStr.includes("firebase") && errorStr.includes("idle stream"))
       ) {
         // Demote to a subtle debug info print as Firestore handles these reconnections automatically
-        console.info("[Firestore] Handled native connection idle reset gracefully.");
+        console.debug("[Firestore] Handled native connection idle reset gracefully.");
         return;
       }
     } catch (e) {
@@ -42,23 +84,15 @@ if (typeof window !== "undefined") {
   const originalConsoleWarn = console.warn;
   console.warn = function (...args: any[]) {
     try {
-      const warnStr = args
-        .map((arg) => {
-          if (typeof arg === "string") return arg;
-          try {
-            return JSON.stringify(arg);
-          } catch {
-            return String(arg);
-          }
-        })
-        .join(" ");
+      const warnStr = args.map(extractLogText).join(" ");
 
       if (
         warnStr.includes("Disconnecting idle stream") ||
         warnStr.includes("Timed out waiting for new targets") ||
-        warnStr.includes("GrpcConnection RPC 'Listen' stream")
+        warnStr.includes("GrpcConnection RPC 'Listen' stream") ||
+        warnStr.includes("CANCELLED: Disconnecting idle stream")
       ) {
-        console.info("[Firestore] Handled native connection idle warning gracefully.");
+        console.debug("[Firestore] Handled native connection idle warning gracefully.");
         return;
       }
     } catch (e) {
@@ -106,8 +140,7 @@ export function clearCachedFirebaseAndAppCheckTokens() {
           key.includes("appcheck") || 
           key.includes("app-check") || 
           key.includes("app_check") || 
-          key.includes("firebase:app-check") ||
-          key.includes("firebase:auth")
+          key.includes("firebase:app-check")
         )) {
           keysToClear.push(key);
         }
@@ -129,8 +162,7 @@ export function clearCachedFirebaseAndAppCheckTokens() {
           key.includes("appcheck") || 
           key.includes("app-check") || 
           key.includes("app_check") || 
-          key.includes("firebase:app-check") ||
-          key.includes("firebase:auth")
+          key.includes("firebase:app-check")
         )) {
           sessionKeysToClear.push(key);
         }

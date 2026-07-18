@@ -336,6 +336,120 @@ function MainAppContent() {
     }
   };
 
+  const renderDashboardByRole = () => {
+    if (!user) {
+      return (
+        <div id="dashboard-locked-fallback" className="p-8 max-w-md mx-auto text-center space-y-4 glass rounded-2xl border border-white/10 my-12 bg-gray-900/40">
+          <AlertTriangle className="w-12 h-12 text-indigo-400 mx-auto animate-bounce" />
+          <h3 className="font-bold text-white text-lg">Dashboard Access Locked</h3>
+          <p className="text-xs text-gray-400">Please login or register to access the intelligence portals.</p>
+          <button 
+            id="btn-signin-fallback"
+            onClick={() => setAuthMode("signin")}
+            className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white rounded-xl transition-all cursor-pointer"
+          >
+            Sign In Now
+          </button>
+        </div>
+      );
+    }
+
+    const normalizedRole = (user.role || "").toLowerCase();
+
+    switch (normalizedRole) {
+      case "candidate":
+        return (
+          <ProtectedRoute 
+            user={user} 
+            allowedRoles={["candidate"]} 
+            fallbackView="home" 
+            setActiveView={setActiveView} 
+            setAuthMode={setAuthMode}
+          >
+            <CandidateDashboard userId={user.uid} userName={user.name} />
+          </ProtectedRoute>
+        );
+      case "consultancy":
+      case "agency":
+        return (
+          <ProtectedRoute 
+            user={user} 
+            allowedRoles={["consultancy", "agency"]} 
+            fallbackView="home" 
+            setActiveView={setActiveView} 
+            setAuthMode={setAuthMode}
+          >
+            <ConsultancyDashboard userId={user.uid} userName={user.name} />
+          </ProtectedRoute>
+        );
+      case "employer":
+      case "recruiter":
+      case "corporate":
+        return (
+          <ProtectedRoute 
+            user={user} 
+            allowedRoles={["employer", "recruiter", "corporate"]} 
+            fallbackView="home" 
+            setActiveView={setActiveView} 
+            setAuthMode={setAuthMode}
+          >
+            <EmployerDashboard userId={user.uid} userName={user.name} userRole={user.role} />
+          </ProtectedRoute>
+        );
+      case "admin":
+      case "superadmin":
+        return (
+          <ProtectedRoute 
+            user={user} 
+            allowedRoles={["admin", "superadmin"]} 
+            fallbackView="home" 
+            setActiveView={setActiveView} 
+            setAuthMode={setAuthMode}
+          >
+            <AdminDashboard userId={user.uid} userName={user.name} />
+          </ProtectedRoute>
+        );
+      default:
+        return (
+          <div id="dashboard-role-selector" className="p-8 max-w-lg mx-auto text-center space-y-4 glass rounded-2xl border border-white/10 my-12 bg-gray-900/40">
+            <AlertTriangle className="w-12 h-12 text-yellow-400 mx-auto" />
+            <h3 className="font-bold text-white text-lg">Select Dashboard Workspace</h3>
+            <p className="text-xs text-gray-400">Your profile doesn't have a workspace role designated. Please select your account type to proceed:</p>
+            <div className="grid grid-cols-2 gap-4 pt-4">
+              <button 
+                id="btn-select-candidate"
+                onClick={() => handleUpdateUserRole("candidate")}
+                className="py-2.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-xs font-bold text-indigo-300 rounded-xl border border-indigo-500/30 transition-all cursor-pointer"
+              >
+                Candidate Workspace
+              </button>
+              <button 
+                id="btn-select-employer"
+                onClick={() => handleUpdateUserRole("employer")}
+                className="py-2.5 bg-pink-600/20 hover:bg-pink-600/40 text-xs font-bold text-pink-300 rounded-xl border border-pink-500/30 transition-all cursor-pointer"
+              >
+                Recruiter Workspace
+              </button>
+              <button 
+                id="btn-select-consultancy"
+                onClick={() => handleUpdateUserRole("consultancy")}
+                className="py-2.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-xs font-bold text-emerald-300 rounded-xl border border-emerald-500/30 transition-all cursor-pointer"
+              >
+                Consultancy Agency
+              </button>
+              <button 
+                id="btn-select-admin"
+                onClick={() => handleUpdateUserRole("admin")}
+                className="py-2.5 bg-yellow-600/20 hover:bg-yellow-600/40 text-xs font-bold text-yellow-300 rounded-xl border border-yellow-500/30 transition-all cursor-pointer"
+              >
+                Administrator Desk
+              </button>
+            </div>
+          </div>
+        );
+    }
+  };
+
   return (
     <div className={`min-h-screen flex flex-col font-sans relative overflow-hidden transition-colors duration-300 ${
       theme === "dark" ? "bg-[#020204] text-white" : "bg-gray-100 text-gray-900"
@@ -413,102 +527,9 @@ function MainAppContent() {
                     )}
                   </div>
                 ) : (
-                  <div>
+                  <div id="dashboard-render-container">
                     <Suspense fallback={<DashboardSkeleton />}>
-                      {user && (user.role === "candidate") && (
-                        <ProtectedRoute 
-                          user={user} 
-                          allowedRoles={["candidate"]} 
-                          fallbackView="home" 
-                          setActiveView={setActiveView} 
-                          setAuthMode={setAuthMode}
-                        >
-                          <CandidateDashboard userId={user.uid} userName={user.name} />
-                        </ProtectedRoute>
-                      )}
-                      {user && (user.role === "consultancy" || user.role === "agency") && (
-                        <ProtectedRoute 
-                          user={user} 
-                          allowedRoles={["consultancy", "agency"]} 
-                          fallbackView="home" 
-                          setActiveView={setActiveView} 
-                          setAuthMode={setAuthMode}
-                        >
-                          <ConsultancyDashboard userId={user.uid} userName={user.name} />
-                        </ProtectedRoute>
-                      )}
-                      {user && (user.role === "employer" || user.role === "recruiter" || user.role === "corporate") && (
-                        <ProtectedRoute 
-                          user={user} 
-                          allowedRoles={["employer", "recruiter", "corporate"]} 
-                          fallbackView="home" 
-                          setActiveView={setActiveView} 
-                          setAuthMode={setAuthMode}
-                        >
-                          <EmployerDashboard userId={user.uid} userName={user.name} userRole={user.role} />
-                        </ProtectedRoute>
-                      )}
-                      {user && (user.role === "admin" || user.role === "superadmin") && (
-                        <ProtectedRoute 
-                          user={user} 
-                          allowedRoles={["admin", "superadmin"]} 
-                          fallbackView="home" 
-                          setActiveView={setActiveView} 
-                          setAuthMode={setAuthMode}
-                        >
-                          <AdminDashboard userId={user.uid} userName={user.name} />
-                        </ProtectedRoute>
-                      )}
-
-                      {/* Resilient Fallback - If user exists but role doesn't match any of the above */}
-                      {user && !["candidate", "consultancy", "agency", "employer", "recruiter", "corporate", "admin", "superadmin"].includes(user.role || "") && (
-                        <div className="p-8 max-w-lg mx-auto text-center space-y-4 glass rounded-2xl border border-white/10 my-12 bg-gray-900/40">
-                          <AlertTriangle className="w-12 h-12 text-yellow-400 mx-auto" />
-                          <h3 className="font-bold text-white text-lg">Select Dashboard Workspace</h3>
-                          <p className="text-xs text-gray-400">Your profile doesn't have a workspace role designated. Please select your account type to proceed:</p>
-                          <div className="grid grid-cols-2 gap-4 pt-4">
-                            <button 
-                              onClick={() => handleUpdateUserRole("candidate")}
-                              className="py-2.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-xs font-bold text-indigo-300 rounded-xl border border-indigo-500/30 transition-all cursor-pointer"
-                            >
-                              Candidate Workspace
-                            </button>
-                            <button 
-                              onClick={() => handleUpdateUserRole("employer")}
-                              className="py-2.5 bg-pink-600/20 hover:bg-pink-600/40 text-xs font-bold text-pink-300 rounded-xl border border-pink-500/30 transition-all cursor-pointer"
-                            >
-                              Recruiter Workspace
-                            </button>
-                            <button 
-                              onClick={() => handleUpdateUserRole("consultancy")}
-                              className="py-2.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-xs font-bold text-emerald-300 rounded-xl border border-emerald-500/30 transition-all cursor-pointer"
-                            >
-                              Consultancy Agency
-                            </button>
-                            <button 
-                              onClick={() => handleUpdateUserRole("admin")}
-                              className="py-2.5 bg-yellow-600/20 hover:bg-yellow-600/40 text-xs font-bold text-yellow-300 rounded-xl border border-yellow-500/30 transition-all cursor-pointer"
-                            >
-                              Administrator Desk
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {/* Fallback if user is null but activeView is dashboard */}
-                      {!user && (
-                        <div className="p-8 max-w-md mx-auto text-center space-y-4 glass rounded-2xl border border-white/10 my-12 bg-gray-900/40">
-                          <AlertTriangle className="w-12 h-12 text-indigo-400 mx-auto animate-bounce" />
-                          <h3 className="font-bold text-white text-lg">Dashboard Access Locked</h3>
-                          <p className="text-xs text-gray-400">Please login or register to access the intelligence portals.</p>
-                          <button 
-                            onClick={() => setAuthMode("signin")}
-                            className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white rounded-xl transition-all cursor-pointer"
-                          >
-                            Sign In Now
-                          </button>
-                        </div>
-                      )}
+                      {renderDashboardByRole()}
                     </Suspense>
                   </div>
                 )}

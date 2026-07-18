@@ -79,7 +79,7 @@ export default function LiveDashboard({
       });
 
       // 4. Fetch Approvals
-      const approvalsSnap = await getDocs(collection(db, "approvals"), limit(5));
+      const approvalsSnap = await getDocs(query(collection(db, "approvals"), limit(5)));
       const approvalsList: any[] = [];
       approvalsSnap.forEach(d => {
         approvalsList.push({ id: d.id, ...d.data() });

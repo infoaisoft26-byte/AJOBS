@@ -9,6 +9,8 @@ import { doc, getDoc, setDoc, collection, getDocs, updateDoc, arrayUnion, increm
 import { CandidateProfile, JobPosting, JobApplication, InterviewSession, ChatMessage, NotificationRecord } from "../types";
 import { getLiveJobs } from "../services/jobService";
 import { applyToJob } from "../services/applicationService";
+import { useToast } from "./GlobalToast";
+import { saveJobToBookmarks, removeJobFromBookmarks, getSavedJobIdsFromBookmarks } from "../services/savedJobsService";
 
 // Import modular panels
 import { NotificationCenterView } from "./NotificationCenter";
@@ -33,6 +35,7 @@ interface CandidateDashboardProps {
 }
 
 export default function CandidateDashboard({ userId, userName }: CandidateDashboardProps) {
+  const { showToast } = useToast();
   // Main Navigation state
   const [activeTab, setActiveTab] = useState<
     "overview" | "profile" | "education" | "experience" | "skills" | 
@@ -83,10 +86,16 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
     try {
       // 1. Candidate document
       const docRef = doc(db, "candidates", userId);
-      const docSnap = await getDoc(docRef);
+      const [docSnap, savedFromBookmarks] = await Promise.all([
+        getDoc(docRef),
+        getSavedJobIdsFromBookmarks(userId)
+      ]);
+
       if (docSnap.exists()) {
         const data = docSnap.data();
-        setProfile(data);
+        const mergedSavedIds = Array.from(new Set([...(data.savedJobIds || []), ...savedFromBookmarks]));
+        const updatedProfile = { ...data, savedJobIds: mergedSavedIds };
+        setProfile(updatedProfile);
         setResumeText(data.resumeText || "");
         setCoachHistory(data.careerCoachChat || [
           { id: "1", sender: "ai", text: `Hi ${userName}! I am your dedicated AI Career Coach. Tell me about your dream job, or let's prepare for an upcoming interview.`, timestamp: new Date().toISOString() }
@@ -99,7 +108,7 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
           resumeText: "",
           resumeScore: 0,
           aiInterviewScore: 0,
-          savedJobIds: [],
+          savedJobIds: savedFromBookmarks,
           skills: { technical: ["React", "TypeScript", "Node.js"], soft: ["Team Collaboration"], languages: ["English"], level: "Mid" },
           education: {
             tenth: { board: "CBSE", school: "St. Mary School", score: "92%", year: "2020" },
@@ -265,9 +274,11 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
       let updatedSaved;
       if (remove) {
         updatedSaved = currentSaved.filter((id: string) => id !== jobId);
+        await removeJobFromBookmarks(userId, jobId);
       } else {
         if (currentSaved.includes(jobId)) return;
         updatedSaved = [...currentSaved, jobId];
+        await saveJobToBookmarks(userId, jobId);
       }
 
       await updateDoc(doc(db, "candidates", userId), { savedJobIds: updatedSaved });
@@ -276,8 +287,13 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
         remove ? "💔 Bookmark Removed" : "❤️ Position Bookmarked", 
         remove ? "Job removed from saved pool." : "Job saved for direct ATS matching."
       );
+      showToast(
+        remove ? "Bookmark removed successfully!" : "Position bookmarked successfully!",
+        "success"
+      );
     } catch (err) {
       console.error(err);
+      showToast("Could not update bookmark. Please try again.", "error");
     }
   };
 
@@ -332,13 +348,13 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
   const handleOneClickApply = async (job: JobPosting) => {
     // 1. Verify authentication
     if (!userId || !auth.currentUser) {
-      alert("Authentication is required. Please sign in or register to apply for jobs.");
+      showToast("Authentication is required. Please sign in or register to apply for jobs.", "warning");
       return;
     }
 
     // 2. Verify candidate profile exists
     if (!profile) {
-      alert("Candidate profile is required to apply. Redirecting to Profile section...");
+      showToast("Candidate profile is required to apply. Redirecting to Profile section...", "warning");
       setActiveTab("profile");
       return;
     }
@@ -346,7 +362,7 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
     // 3. Verify resume exists
     const hasResume = (resumeText && resumeText.trim().length > 0) || (profile?.resumeText && profile.resumeText.trim().length > 0) || profile?.resumeFileName;
     if (!hasResume) {
-      alert("A resume is required to apply for this job. Redirecting you to the Resume & ATS Audit tab to upload or paste your resume.");
+      showToast("A resume is required to apply for this job. Redirecting you to the Resume & ATS Audit tab to upload or paste your resume.", "warning");
       setActiveTab("resume");
       return;
     }
@@ -354,7 +370,7 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
     // Prevent duplicate applications
     const alreadyApplied = applications.some(a => a.jobId === job.id);
     if (alreadyApplied) {
-      alert(`You have already applied for the position of "${job.title}" at ${job.companyName}!`);
+      showToast(`You have already applied for the position of "${job.title}" at ${job.companyName}!`, "warning");
       return;
     }
 
@@ -375,13 +391,13 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
         };
         setApplications(prev => [newApp, ...prev]);
         triggerNotification("💼 Application Filed", `Submitted to "${job.title}" at ${job.companyName} with ATS compliant profile.`);
-        alert(result.message);
+        showToast("🎉 " + result.message, "success");
       } else {
-        alert(result.message);
+        showToast(result.message, "error");
       }
     } catch (err) {
       console.error("Error submitting application via service:", err);
-      alert("There was an error filing your application. Please check console logs.");
+      showToast("There was an error filing your application. Please check console logs.", "error");
     }
   };
 

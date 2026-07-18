@@ -131,13 +131,30 @@ export default function JobDetails({
     }
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
+    const shareUrl = `${window.location.origin}/?jobId=${jobId}`;
+    const shareData = {
+      title: job?.title || "Job Opening",
+      text: `Check out this job opening: ${job?.title} at ${job?.companyName || "AIJobs Partner"}`,
+      url: shareUrl,
+    };
+
     try {
-      const shareUrl = `${window.location.origin}/?jobId=${jobId}`;
-      navigator.clipboard.writeText(shareUrl);
-      alert("🚀 Vacancy link copied to clipboard successfully! Share with your network.");
-    } catch (err) {
-      alert("Failed to copy link. Feel free to copy your current browser URL!");
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        alert("🚀 Vacancy link copied to clipboard successfully! Share with your network.");
+      }
+    } catch (err: any) {
+      if (err.name !== "AbortError") {
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          alert("🚀 Vacancy link copied to clipboard successfully! Share with your network.");
+        } catch (clipErr) {
+          alert("Failed to copy link. Feel free to copy your current browser URL!");
+        }
+      }
     }
   };
 

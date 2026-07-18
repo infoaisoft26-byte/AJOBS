@@ -20,108 +20,126 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    // Role Lookup function for superuser capability verification
     function isAdmin() {
       return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // Role-based retrieval helpers
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function getUserRole() {
+      return getUserData().role;
+    }
+
+    function isCandidate() {
+      return isSignedIn() && getUserRole() == 'candidate';
+    }
+
+    function isRecruiter() {
+      return isSignedIn() && (getUserRole() == 'employer' || getUserRole() == 'recruiter' || getUserRole() == 'corporate');
+    }
+
+    function isConsultancy() {
+      return isSignedIn() && (getUserRole() == 'consultancy' || getUserRole() == 'agency');
+    }
+
+    function isSystemAdmin() {
+      return isAdmin() || (isSignedIn() && getUserRole() == 'admin');
     }
 
     // 3. Collection Rules with Specific Access Guardrails
     
     // Users Profiles Collection
     match /users/{userId} {
-      allow read: if isSignedIn();
+      allow get: if isOwner(userId) || isSystemAdmin() || isRecruiter() || isConsultancy();
+      allow list: if isSystemAdmin() || isRecruiter() || isConsultancy();
       allow create, update: if isOwner(userId);
-      allow delete: if isAdmin();
+      allow delete: if isSystemAdmin();
     }
     
     // Candidates collection
     match /candidates/{candidateId} {
-      allow read: if isSignedIn();
+      allow get: if isOwner(candidateId) || isRecruiter() || isConsultancy() || isSystemAdmin();
+      allow list: if isRecruiter() || isConsultancy() || isSystemAdmin();
       allow create, update: if isOwner(candidateId);
-      allow delete: if isAdmin();
+      allow delete: if isSystemAdmin();
     }
     
     // Consultancies collection
     match /consultancies/{consultancyId} {
       allow read: if isSignedIn();
       allow create, update: if isOwner(consultancyId);
-      allow delete: if isAdmin();
+      allow delete: if isSystemAdmin();
     }
     
     // Employers collection
     match /employers/{employerId} {
       allow read: if isSignedIn();
       allow create, update: if isOwner(employerId);
-      allow delete: if isAdmin();
+      allow delete: if isSystemAdmin();
     }
     
     // Companies collection
     match /companies/{companyId} {
       allow read: if isSignedIn();
       allow create, update: if isOwner(companyId);
-      allow delete: if isAdmin();
+      allow delete: if isSystemAdmin();
     }
     
-    // Jobs postings - visible to all users (including guest visitors and backend schedulers), editable by employers/admins
+    // Jobs postings - visible to all users, editable by recruiters/admins
     match /jobs/{jobId} {
       allow read: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() || (
-        // Allow unauthenticated background scheduler to auto-close expired job listings
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
-        request.resource.data.status == "Closed" &&
-        'applyDeadline' in resource.data &&
-        resource.data.applyDeadline != null &&
-        resource.data.applyDeadline != ""
-      );
-      allow delete: if isAdmin();
+      allow create: if isRecruiter() || isConsultancy() || isSystemAdmin();
+      allow update, delete: if isSystemAdmin() || (isSignedIn() && (resource.data.employerId == request.auth.uid || resource.data.userId == request.auth.uid));
     }
     match /company_jobs/{jobId} {
       allow read: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() || (
-        // Allow unauthenticated background scheduler to auto-close expired job listings
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
-        request.resource.data.status == "Closed" &&
-        'applyDeadline' in resource.data &&
-        resource.data.applyDeadline != null &&
-        resource.data.applyDeadline != ""
-      );
-      allow delete: if isAdmin();
+      allow create: if isRecruiter() || isConsultancy() || isSystemAdmin();
+      allow update, delete: if isSystemAdmin() || (isSignedIn() && (resource.data.companyId == request.auth.uid || resource.data.userId == request.auth.uid));
     }
     
     // Applications
     match /applications/{applicationId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && (isOwner(resource.data.candidateId) || isRecruiter() || isConsultancy() || isSystemAdmin());
+      allow write: if isSystemAdmin() || (isSignedIn() && (request.resource == null || request.resource.data.candidateId == request.auth.uid || isRecruiter() || isConsultancy()));
     }
     match /company_applications/{applicationId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && (isOwner(resource.data.candidateId) || isRecruiter() || isConsultancy() || isSystemAdmin());
+      allow write: if isSystemAdmin() || (isSignedIn() && (request.resource == null || request.resource.data.candidateId == request.auth.uid || isRecruiter() || isConsultancy()));
     }
     
     // Resumes and Resume Versions
     match /resumes/{resumeId} {
-      allow read: if isSignedIn();
-      allow write: if isOwner(resumeId) || isAdmin();
+      allow read: if isSignedIn() && (isOwner(resumeId) || isRecruiter() || isConsultancy() || isSystemAdmin());
+      allow write: if isOwner(resumeId) || isSystemAdmin();
     }
     match /resume_versions/{versionId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && (isOwner(resource.data.userId) || isRecruiter() || isConsultancy() || isSystemAdmin());
+      allow write: if isSignedIn() && (request.resource == null || isOwner(request.resource.data.userId) || isSystemAdmin());
     }
     match /resume_analysis/{analysisId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && (isOwner(resource.data.userId) || isRecruiter() || isConsultancy() || isSystemAdmin());
+      allow write: if isSignedIn() && (request.resource == null || isOwner(request.resource.data.userId) || isSystemAdmin());
     }
     match /resume_scores/{scoreId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && (isOwner(resource.data.userId) || isRecruiter() || isConsultancy() || isSystemAdmin());
+      allow write: if isSignedIn() && (request.resource == null || isOwner(request.resource.data.userId) || isSystemAdmin());
     }
     match /resume_recommendations/{recommendationId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && (isOwner(resource.data.userId) || isRecruiter() || isConsultancy() || isSystemAdmin());
+      allow write: if isSignedIn() && (request.resource == null || isOwner(request.resource.data.userId) || isSystemAdmin());
     }
     
     // Interviews and scheduled sessions
     match /interviews/{interviewId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && (isOwner(resource.data.candidateId) || isRecruiter() || isConsultancy() || isSystemAdmin());
+      allow write: if isSystemAdmin() || isRecruiter() || isConsultancy() || (isSignedIn() && request.resource != null && isOwner(request.resource.data.candidateId));
     }
     match /company_interviews/{interviewId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && (isOwner(resource.data.candidateId) || isRecruiter() || isConsultancy() || isSystemAdmin());
+      allow write: if isSystemAdmin() || isRecruiter() || isConsultancy() || (isSignedIn() && request.resource != null && isOwner(request.resource.data.candidateId));
     }
     match /interviews_scheduled/{interviewId} {
       allow read, write: if isSignedIn();
@@ -139,7 +157,8 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
     match /ai_reports/{reportId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && (isOwner(resource.data.userId) || isRecruiter() || isConsultancy() || isSystemAdmin());
+      allow write: if isSystemAdmin() || (isSignedIn() && request.resource != null && isOwner(request.resource.data.userId));
     }
     match /job_recommendations/{recId} {
       allow read, write: if isSignedIn();
@@ -147,10 +166,11 @@ service cloud.firestore {
     
     // Notifications and logs
     match /notifications/{notificationId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid);
+      allow write: if isSignedIn() && (request.resource == null || request.resource.data.userId == request.auth.uid || isRecruiter() || isConsultancy() || isSystemAdmin());
     }
     match /notification_preferences/{userId} {
-      allow read, write: if isOwner(userId) || isAdmin();
+      allow read, write: if isOwner(userId) || isSystemAdmin();
     }
     match /activity_logs/{logId} {
       allow read, write: if isSignedIn();
@@ -176,17 +196,19 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
     match /settings/{docId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isSystemAdmin();
     }
     match /system_settings/{docId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isSystemAdmin();
     }
     
     // Admin list
     match /admins/{adminId} {
       allow read: if isSignedIn();
-      allow create, update: if isOwner(adminId) || isAdmin();
-      allow delete: if isAdmin();
+      allow create, update: if isOwner(adminId) || isSystemAdmin();
+      allow delete: if isSystemAdmin();
     }
     
     // Leads Collection
@@ -207,13 +229,13 @@ service cloud.firestore {
     // CMS Contents
     match /cms/{cmsId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isSystemAdmin();
     }
     
     // Email Templates
     match /email_templates/{templateId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isSystemAdmin();
     }
 
     // Audit logs
@@ -234,7 +256,9 @@ service cloud.firestore {
     
     // Consultancy Jobs
     match /consultancy_jobs/{jobId} {
-      allow read, write: if isSignedIn();
+      allow read: if true;
+      allow create: if isConsultancy() || isSystemAdmin();
+      allow update, delete: if isSystemAdmin() || (isSignedIn() && (resource.data.userId == request.auth.uid));
     }
     
     // Consultancy Candidates

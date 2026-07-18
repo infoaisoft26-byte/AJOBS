@@ -19,7 +19,15 @@ import {
 } from "./crm/CrmTypes";
 
 // Import Seeding Utility
-import { seedCrmCollectionsIfEmpty } from "./crm/CrmSeedData";
+import { 
+  seedCrmCollectionsIfEmpty, 
+  DEFAULT_CLIENTS, 
+  DEFAULT_JOBS, 
+  DEFAULT_CANDIDATES, 
+  DEFAULT_PLACEMENTS, 
+  DEFAULT_TEAM, 
+  DEFAULT_INTERVIEWS 
+} from "./crm/CrmSeedData";
 
 // Import Modular Views
 import CrmDashboardView from "./crm/CrmDashboardView";
@@ -107,8 +115,9 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
       clientsSnap.forEach(d => clList.push({ id: d.id, ...d.data() } as ClientModel));
       setClients(clList);
     } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve clients:", err.message);
+      console.warn("Resilient Fetch: Failed to retrieve clients, falling back to local seed data:", err.message);
       syncErrorsList.push("clients");
+      setClients(DEFAULT_CLIENTS);
     }
 
     // 4. Retrieve jobs
@@ -118,8 +127,9 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
       jobsSnap.forEach(d => jList.push({ id: d.id, ...d.data() } as ConsultancyJobModel));
       setJobs(jList);
     } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve consultancy_jobs:", err.message);
+      console.warn("Resilient Fetch: Failed to retrieve consultancy_jobs, falling back to local seed data:", err.message);
       syncErrorsList.push("consultancy_jobs");
+      setJobs(DEFAULT_JOBS);
     }
 
     // 5. Retrieve candidates
@@ -129,8 +139,9 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
       candSnap.forEach(d => cList.push({ id: d.id, ...d.data() } as ConsultancyCandidateModel));
       setCandidates(cList);
     } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve consultancy_candidates:", err.message);
+      console.warn("Resilient Fetch: Failed to retrieve consultancy_candidates, falling back to local seed data:", err.message);
       syncErrorsList.push("consultancy_candidates");
+      setCandidates(DEFAULT_CANDIDATES);
     }
 
     // 6. Retrieve placements
@@ -140,8 +151,9 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
       placeSnap.forEach(d => pList.push({ id: d.id, ...d.data() } as PlacementModel));
       setPlacements(pList);
     } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve placements:", err.message);
+      console.warn("Resilient Fetch: Failed to retrieve placements, falling back to local seed data:", err.message);
       syncErrorsList.push("placements");
+      setPlacements(DEFAULT_PLACEMENTS);
     }
 
     // 7. Retrieve team members
@@ -151,8 +163,9 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
       teamSnap.forEach(d => tList.push({ id: d.id, ...d.data() } as TeamMemberModel));
       setTeam(tList);
     } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve team_members:", err.message);
+      console.warn("Resilient Fetch: Failed to retrieve team_members, falling back to local seed data:", err.message);
       syncErrorsList.push("team_members");
+      setTeam(DEFAULT_TEAM);
     }
 
     // 8. Retrieve interviews scheduled
@@ -162,8 +175,9 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
       intSnap.forEach(d => iList.push({ id: d.id, ...d.data() } as InterviewModel));
       setInterviews(iList);
     } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve interviews_scheduled:", err.message);
+      console.warn("Resilient Fetch: Failed to retrieve interviews_scheduled, falling back to local seed data:", err.message);
       syncErrorsList.push("interviews_scheduled");
+      setInterviews(DEFAULT_INTERVIEWS);
     }
 
     if (syncErrorsList.length > 0) {

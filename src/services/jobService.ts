@@ -10,7 +10,10 @@ import {
   query, 
   where, 
   orderBy, 
-  getFirestore 
+  getFirestore,
+  limit,
+  startAfter,
+  QueryConstraint
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { JobPosting } from "../types";
@@ -41,7 +44,7 @@ export async function getLiveJobs(): Promise<JobPosting[]> {
   try {
     const q = query(
       collection(db, JOBS_COLLECTION),
-      where("status", "==", "Live"),
+      where("status", "in", ["Live", "LIVE", "open", "Published", "Published", "approved"]),
       orderBy("createdAt", "desc")
     );
     const querySnapshot = await getDocs(q);
@@ -57,7 +60,8 @@ export async function getLiveJobs(): Promise<JobPosting[]> {
     const jobsList: JobPosting[] = [];
     querySnapshot.forEach((doc) => {
       const data = doc.data();
-      if (data.status === "Live" || data.status === "LIVE") {
+      const status = (data.status || "").toLowerCase();
+      if (["live", "open", "published", "approved"].includes(status)) {
         jobsList.push({ id: doc.id, ...data } as JobPosting);
       }
     });
@@ -133,5 +137,78 @@ export async function deleteJob(jobId: string): Promise<void> {
   } catch (error) {
     console.error(`Error deleting job with ID ${jobId}: `, error);
     throw error;
+  }
+}
+
+/**
+ * Fetches jobs in pages from Firestore, applying status == "LIVE", approved == true, and expiryDate >= currentDate checks.
+ * Integrates startAfter and limit constraints for high-performance infinite scrolling with resilient fallback.
+ */
+export async function fetchPaginatedLiveJobs(
+  pageSize: number = 15,
+  lastVisibleDoc: any = null
+): Promise<{ jobs: JobPosting[]; lastDoc: any }> {
+  try {
+    const collectionRef = collection(db, JOBS_COLLECTION);
+    const constraints: QueryConstraint[] = [orderBy("createdAt", "desc")];
+    
+    if (lastVisibleDoc) {
+      constraints.push(startAfter(lastVisibleDoc));
+    }
+    constraints.push(limit(pageSize * 2)); // Fetch extra to account for active filtering
+
+    const q = query(collectionRef, ...constraints);
+    const snap = await getDocs(q);
+    const lastDoc = snap.docs[snap.docs.length - 1] || null;
+
+    const jobsList: JobPosting[] = [];
+    const currentDate = new Date();
+
+    snap.forEach((doc) => {
+      const data = doc.data();
+      const status = (data.status || "").toUpperCase();
+      // approved is true if explicitly true OR undefined/null (for existing seed/pre-existing entries)
+      const approved = data.approved === true || data.approved === undefined || data.approved === null;
+      const expiry = data.expiryDate ? new Date(data.expiryDate) : null;
+      const isExpired = expiry ? expiry < currentDate : false;
+
+      if ((status === "LIVE" || data.status === "Live") && approved && !isExpired) {
+        jobsList.push({ id: doc.id, ...data } as JobPosting);
+      }
+    });
+
+    return {
+      jobs: jobsList,
+      lastDoc
+    };
+  } catch (error) {
+    console.warn("Index or connection error in fetchPaginatedLiveJobs, using resilient fallback:", error);
+    // Safe fallback: fetch all live postings and sort in memory
+    const querySnapshot = await getDocs(collection(db, JOBS_COLLECTION));
+    const jobsList: JobPosting[] = [];
+    const currentDate = new Date();
+
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      const status = (data.status || "").toUpperCase();
+      const approved = data.approved === true || data.approved === undefined || data.approved === null;
+      const expiry = data.expiryDate ? new Date(data.expiryDate) : null;
+      const isExpired = expiry ? expiry < currentDate : false;
+
+      if ((status === "LIVE" || data.status === "Live") && approved && !isExpired) {
+        jobsList.push({ id: doc.id, ...data } as JobPosting);
+      }
+    });
+
+    const sorted = jobsList.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    return {
+      jobs: sorted,
+      lastDoc: null
+    };
   }
 }

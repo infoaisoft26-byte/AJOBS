@@ -175,6 +175,18 @@ export async function applyToJob(
       createdAt: new Date().toISOString()
     });
 
+    // 5. Trigger Admin Notification
+    const adminNotifId = "notif_" + Math.random().toString(36).substring(2, 11);
+    await setDoc(doc(db, "notifications", adminNotifId), {
+      id: adminNotifId,
+      userId: "admin",
+      title: "New Job Application Logged 🚀",
+      message: `${userName} has submitted an application for "${job.title}" at ${job.companyName}. Lead Registered.`,
+      read: false,
+      type: "info",
+      createdAt: new Date().toISOString()
+    });
+
     // Trigger Twilio SMS Notifications (Requirement 4)
     try {
       const candidatePhone = profile?.phone || profile?.profileDetails?.mobileNumber || "+919999999998";
