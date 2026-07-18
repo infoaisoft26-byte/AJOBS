@@ -8,10 +8,13 @@ export interface UserProfile {
   phone?: string;
   role: "candidate" | "consultancy" | "employer" | "recruiter" | "admin" | "superadmin";
   profileImage?: string;
+  photoURL?: string;
   createdAt: string;
   lastLogin?: string;
   status?: string;
   subscription?: string;
+  resumeURL?: string;
+  profileCompleted?: boolean;
 }
 
 /**
@@ -36,10 +39,13 @@ export async function initializeUserCollectionsAndDocs(
     phone: fbUser.phoneNumber || "",
     role,
     profileImage: fbUser.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}`,
+    photoURL: fbUser.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}`,
     createdAt: isoDate,
     lastLogin: isoDate,
     status: "active",
-    subscription: role === "consultancy" ? "Pro Agency" : "Enterprise Access"
+    subscription: role === "consultancy" ? "Pro Agency" : "Enterprise Access",
+    resumeURL: "",
+    profileCompleted: false
   };
 
   // Helper to safely write a document if it doesn't already exist
@@ -424,10 +430,13 @@ export async function getOrCreateUserProfile(
       phone: fbUser.phoneNumber || "",
       role: deducedRole,
       profileImage: fbUser.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(fbUser.displayName || "Aryan Sharma")}`,
+      photoURL: fbUser.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(fbUser.displayName || "Aryan Sharma")}`,
       createdAt: new Date().toISOString(),
       lastLogin: new Date().toISOString(),
       status: "active",
-      subscription: deducedRole === "consultancy" ? "Pro Agency" : "Enterprise Access"
+      subscription: deducedRole === "consultancy" ? "Pro Agency" : "Enterprise Access",
+      resumeURL: "",
+      profileCompleted: false
     };
   }
 }

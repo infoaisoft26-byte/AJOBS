@@ -1800,51 +1800,32 @@ app.get("/api/admin/sms-logs", async (req, res) => {
 async function startExpiredJobsScheduler() {
   try {
     const configPath = path.join(process.cwd(), "firebase-applet-config.json");
-    if (!fs.existsSync(configPath)) {
-      console.warn("[Scheduler] firebase-applet-config.json not found, skipping scheduler initialization.");
-      return;
-    }
-    
-    const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-    if (!config.apiKey || !config.projectId) {
-      console.warn("[Scheduler] Missing apiKey or projectId in config, skipping scheduler.");
-      return;
-    }
-
-    // Dynamically import Firebase Client SDK on the server side
-    const { initializeApp, getApps, getApp } = await import("firebase/app");
-    const { getFirestore, collection, getDocs, doc, updateDoc } = await import("firebase/firestore");
-    const { getAuth, signInAnonymously } = await import("firebase/auth");
-
-    const firebaseConfig = {
-      apiKey: config.apiKey,
-      authDomain: config.authDomain,
-      projectId: config.projectId,
-      storageBucket: config.storageBucket,
-      messagingSenderId: config.messagingSenderId,
-      appId: config.appId
-    };
-
-    const firebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-    const db = getFirestore(firebaseApp, config.firestoreDatabaseId);
-
-    // Optional: Authenticate server session anonymously if possible to pass standard auth rules
-    try {
-      const auth = getAuth(firebaseApp);
-      if (!auth.currentUser) {
-        await signInAnonymously(auth);
-        console.log("[Scheduler] Authenticated server session anonymously.");
+    if (admin.apps.length === 0) {
+      if (fs.existsSync(configPath)) {
+        const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+        admin.initializeApp({
+          projectId: config.projectId,
+        });
+      } else {
+        admin.initializeApp();
       }
-    } catch (authErr: any) {
-      console.warn("[Scheduler] Optional anonymous authentication skipped/unavailable:", authErr?.message || authErr);
+    }
+
+    const config = fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, "utf-8")) : {};
+    
+    let db: any;
+    try {
+      db = config.firestoreDatabaseId ? admin.firestore(config.firestoreDatabaseId) : admin.firestore();
+    } catch (e) {
+      console.warn("[Scheduler] Failed to get Firestore with databaseId, falling back to default database:", e);
+      db = admin.firestore();
     }
 
     const runCheck = async () => {
       const todayStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-      console.log(`[Scheduler] Scanning for expired jobs. Current Date: ${todayStr}`);
+      console.log(`[Scheduler] Scanning for expired jobs using Admin SDK. Current Date: ${todayStr}`);
       try {
-        const jobsColRef = collection(db, "jobs");
-        const querySnapshot = await getDocs(jobsColRef);
+        const querySnapshot = await db.collection("jobs").get();
         
         let updateCount = 0;
         for (const docSnapshot of querySnapshot.docs) {
@@ -1852,8 +1833,7 @@ async function startExpiredJobsScheduler() {
           if (data.status !== "Closed" && data.applyDeadline) {
             // String comparison of dates (e.g., "2026-07-13" < "2026-07-14")
             if (data.applyDeadline < todayStr) {
-              const docRef = doc(db, "jobs", docSnapshot.id);
-              await updateDoc(docRef, { status: "Closed" });
+              await docSnapshot.ref.update({ status: "Closed" });
               updateCount++;
               console.log(`[Scheduler] Automatically closed expired job listing: "${data.title}" (ID: ${docSnapshot.id}, Deadline: ${data.applyDeadline})`);
             }

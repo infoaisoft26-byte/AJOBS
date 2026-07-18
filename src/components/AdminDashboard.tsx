@@ -289,12 +289,6 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
       registrationsToday: 8
     });
 
-    if (syncErrorsList.length > 0) {
-      // Set a non-blocking toast or banner state rather than crashing with Administrative Sync Error
-      setError(`Some platform databases are sync-restricted: [${syncErrorsList.join(", ")}]. Offline-resilient fallback active.`);
-    } else {
-      setError(null);
-    }
     setLoading(false);
   };
 
@@ -575,20 +569,7 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
             </div>
           )}
 
-          {error && (
-            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-xs text-red-300 flex items-center justify-between space-x-2 animate-in fade-in duration-300">
-              <div className="flex items-center space-x-2">
-                <ShieldAlert className="w-4 h-4 text-red-400 shrink-0" />
-                <span><strong>Admin Database Sync Warning:</strong> {error} (Dashboard running in offline resilient mode)</span>
-              </div>
-              <button 
-                onClick={() => fetchWorkspaceData()}
-                className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-[10px] font-bold text-white cursor-pointer transition-all shrink-0"
-              >
-                Retry Sync
-              </button>
-            </div>
-          )}
+
 
           {loading ? (
             <div className="flex flex-col items-center justify-center py-44 space-y-3">

@@ -180,11 +180,6 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
       setInterviews(DEFAULT_INTERVIEWS);
     }
 
-    if (syncErrorsList.length > 0) {
-      setError(`Some CRM databases are sync-restricted: [${syncErrorsList.join(", ")}]. Offline-resilient fallback active.`);
-    } else {
-      setError(null);
-    }
     setLoading(false);
   };
 
@@ -279,20 +274,7 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
 
       {/* RIGHT COLUMN: Active Module Visual Stage */}
       <div className="md:col-span-3 space-y-6">
-        {error && (
-          <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-xs text-red-300 flex items-center justify-between space-x-2 animate-in fade-in duration-300">
-            <div className="flex items-center space-x-2">
-              <ShieldAlert className="w-4 h-4 text-red-400 shrink-0" />
-              <span><strong>CRM Sync Warning:</strong> {error} (Dashboard running in offline resilient mode)</span>
-            </div>
-            <button 
-              onClick={() => fetchCrmData()}
-              className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-[10px] font-bold text-white cursor-pointer transition-all shrink-0"
-            >
-              Retry Sync
-            </button>
-          </div>
-        )}
+
 
         {showMainPostForm ? (
           <PostJobForm

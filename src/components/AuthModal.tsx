@@ -193,6 +193,10 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
       } catch (popupErr: any) {
         console.warn("Google popup login failed/blocked, falling back to Redirect:", popupErr);
         
+        if (popupErr.code === "auth/unauthorized-domain") {
+          throw popupErr;
+        }
+
         // Check for common popup blocked / iframe issues
         if (
           popupErr.code === "auth/popup-blocked" ||
@@ -207,83 +211,11 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
         }
       }
     } catch (err: any) {
-      const isAppCheckError = 
-        err.code?.includes("app-check") || 
-        err.message?.includes("app-check") ||
-        err.code?.includes("token-is-invalid") ||
-        err.message?.includes("token-is-invalid");
-
-      if (err.code === "auth/internal-error" || err.message?.includes("internal-error") || isAppCheckError) {
-        console.warn("Firebase Google login failed or App Check block detected, falling back to local guest profile:", err);
-        const fallbackUid = "google_fallback_" + Math.random().toString(36).substr(2, 9);
-        const fallbackProfile: UserProfile = {
-          uid: fallbackUid,
-          name: "Aryan Sharma (Google)",
-          email: "aryan.sharma@example.com",
-          role: role,
-          profileImage: "https://api.dicebear.com/7.x/adventurer/svg?seed=AryanGoogle",
-          createdAt: new Date().toISOString(),
-          lastLogin: new Date().toISOString(),
-          status: "active",
-          subscription: role === "consultancy" ? "Pro Agency" : "Enterprise Access"
-        };
-        showToast("⚠️ Signed in via Google local sandbox fallback.", "info");
-        onAuthSuccess(fallbackProfile);
-        onClose();
-        return;
+      if (err.code === "auth/unauthorized-domain" || err.message?.includes("unauthorized-domain")) {
+        setError("Error: This development domain is not authorized for Google Sign-In in your Firebase Console. Please add this URL to the 'Authorized domains' list in your Firebase Authentication settings.");
+      } else {
+        setError(translateError(err));
       }
-      setError(translateError(err));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Anonymous Guest Login
-  const handleGuestLogin = async () => {
-    setError("");
-    setSuccess("");
-    setLoading(true);
-    try {
-      console.log("Initiating Anonymous Guest Login...");
-      const result = await signInAnonymously(auth);
-      console.log("Anonymous Guest Authenticated successfully!", result.user);
-      setSuccess("Authenticated as Guest successfully!");
-      
-      const fbUser = result.user;
-      try {
-        await updateProfile(fbUser, { displayName: "Guest Candidate" });
-      } catch (profErr) {
-        console.warn("Failed to update profile display name for anonymous user:", profErr);
-      }
-      
-      await handlePostAuth(fbUser);
-    } catch (err: any) {
-      const isAppCheckError = 
-        err.code?.includes("app-check") || 
-        err.message?.includes("app-check") ||
-        err.code?.includes("token-is-invalid") ||
-        err.message?.includes("token-is-invalid");
-
-      if (err.code === "auth/internal-error" || err.message?.includes("internal-error") || isAppCheckError) {
-        console.warn("Guest login failed, falling back to local memory sandbox:", err);
-        const mockUid = "guest_" + Math.random().toString(36).substr(2, 9);
-        const userProfile: UserProfile = {
-          uid: mockUid,
-          email: "guest@aijobs.demo",
-          role: "candidate",
-          name: "Guest Candidate",
-          createdAt: new Date().toISOString(),
-          profileImage: "https://api.dicebear.com/7.x/adventurer/svg?seed=Guest",
-          lastLogin: new Date().toISOString(),
-          status: "active",
-          subscription: "Enterprise Access"
-        };
-        showToast("⚠️ Guest access active via local sandbox.", "info");
-        onAuthSuccess(userProfile);
-        onClose();
-        return;
-      }
-      setError(translateError(err));
     } finally {
       setLoading(false);
     }
@@ -669,32 +601,6 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
         await handlePostAuth(fbUser);
       }
     } catch (err: any) {
-      const isAppCheckError = 
-        err.code?.includes("app-check") || 
-        err.message?.includes("app-check") ||
-        err.code?.includes("token-is-invalid") ||
-        err.message?.includes("token-is-invalid");
-
-      if (err.code === "auth/internal-error" || err.message?.includes("internal-error") || isAppCheckError) {
-        console.warn("Firebase Auth error or App Check block detected, falling back to secure client-side sandbox mode:", err);
-        const fallbackUid = "local_" + Math.random().toString(36).substr(2, 9);
-        const displayName = role === "candidate" ? name : role === "consultancy" ? agencyName : (role === "employer" || role === "recruiter") ? companyName : name;
-        const fallbackProfile: UserProfile = {
-          uid: fallbackUid,
-          name: displayName || "Aryan Sharma",
-          email: email.trim(),
-          role: role,
-          profileImage: `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(displayName || "Aryan Sharma")}`,
-          createdAt: new Date().toISOString(),
-          lastLogin: new Date().toISOString(),
-          status: "active",
-          subscription: role === "consultancy" ? "Pro Agency" : "Enterprise Access"
-        };
-        showToast("⚠️ Auth process bypassed safely via local sandbox fallback mode.", "warning");
-        onAuthSuccess(fallbackProfile);
-        onClose();
-        return;
-      }
       setError(translateError(err));
     } finally {
       setLoading(false);
@@ -733,79 +639,7 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
     }
   };
 
-  // Quick Demo Portal Logins
-  const handleQuickDemoLogin = async (selectedRole: "candidate" | "consultancy" | "employer" | "admin") => {
-    setLoading(true);
-    setError("");
-    setSuccess("");
-    const mockNames = {
-      candidate: "Aryan Sharma",
-      consultancy: "Nexus Talent Partners",
-      employer: "Google AI Labs",
-      admin: "Super System Admin",
-    };
-    try {
-      const demoEmail = `demo_${selectedRole}_${Math.random().toString(36).substring(2, 7)}@aijobs.demo`;
-      const demoPassword = "demoPassword123!";
-      console.log("Creating rapid-access demo account:", demoEmail);
-      const userCredential = await createUserWithEmailAndPassword(auth, demoEmail, demoPassword);
-      const fbUser = userCredential.user;
-      const mockUid = fbUser.uid;
 
-      try {
-        await updateProfile(fbUser, { displayName: mockNames[selectedRole] });
-      } catch (profErr) {
-        console.warn("Failed to update auth display name during demo login:", profErr);
-      }
-
-      const userProfile: UserProfile = {
-        uid: mockUid,
-        email: demoEmail,
-        role: selectedRole,
-        name: mockNames[selectedRole],
-        createdAt: new Date().toISOString(),
-        profileImage: `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(mockNames[selectedRole])}`,
-        lastLogin: new Date().toISOString(),
-        status: "active",
-        subscription: selectedRole === "consultancy" ? "Pro Agency" : "Enterprise Access"
-      };
-
-      await initializeUserCollectionsAndDocs(fbUser, selectedRole, mockNames[selectedRole]);
-
-      setSuccess("Demo Login initialized!");
-      onAuthSuccess(userProfile);
-      onClose();
-    } catch (err: any) {
-      const isAppCheckError = 
-        err.code?.includes("app-check") || 
-        err.message?.includes("app-check") ||
-        err.code?.includes("token-is-invalid") ||
-        err.message?.includes("token-is-invalid");
-
-      if (err.code === "auth/internal-error" || err.message?.includes("internal-error") || isAppCheckError) {
-        console.warn("Firebase Auth error during demo login, falling back to local memory profile:", err);
-        const mockUid = "demo_" + selectedRole + "_" + Math.random().toString(36).substring(2, 7);
-        const userProfile: UserProfile = {
-          uid: mockUid,
-          email: `demo_${selectedRole}@aijobs.demo`,
-          role: selectedRole,
-          name: mockNames[selectedRole],
-          createdAt: new Date().toISOString(),
-          profileImage: `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(mockNames[selectedRole])}`,
-          lastLogin: new Date().toISOString(),
-          status: "active",
-          subscription: selectedRole === "consultancy" ? "Pro Agency" : "Enterprise Access"
-        };
-        showToast("⚠️ Demo account initialized via robust local sandbox fallback mode.", "info");
-        onAuthSuccess(userProfile);
-        onClose();
-        return;
-      }
-      setError(translateError(err));
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-2xl">
@@ -1491,16 +1325,8 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
                 </div>
               )}
 
-              {/* Alternative Auth Dividers */}
-              <div className="relative flex items-center justify-center py-2">
-                <span className="absolute px-3 bg-[#050508] text-[10px] text-gray-500 uppercase tracking-widest font-mono">
-                  Or Alternative Access
-                </span>
-                <div className="w-full h-[1px] bg-white/10"></div>
-              </div>
-
-              {/* Social/Google & Guest Buttons */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Social/Google Button */}
+              <div className="pt-2">
                 <button
                   onClick={handleGoogleLogin}
                   disabled={loading}
@@ -1512,56 +1338,9 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
                   </svg>
                   <span>Google Sign-In</span>
                 </button>
-
-                <button
-                  onClick={handleGuestLogin}
-                  disabled={loading}
-                  className="py-2.5 px-3 border border-white/10 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 transition-all cursor-pointer text-white disabled:opacity-50 w-full"
-                  id="guest-login-btn"
-                >
-                  <User className="w-4 h-4 text-indigo-400 shrink-0" />
-                  <span>Anonymous Guest</span>
-                </button>
               </div>
             </div>
           )}
-
-          {/* Quick Demo Logins Banner */}
-          <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-400/20 text-center space-y-3 relative z-10">
-            <h4 className="text-[10px] font-bold tracking-wider text-indigo-300 uppercase font-mono flex items-center justify-center gap-1">
-              <span>✨ Rapid-Access Developer Portals</span>
-            </h4>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <button
-                onClick={() => handleQuickDemoLogin("candidate")}
-                className="py-1.5 px-1 bg-indigo-600/30 hover:bg-indigo-600/50 rounded-lg text-[10px] font-bold border border-indigo-500/30 transition-all cursor-pointer text-white"
-                id="quick-candidate-login"
-              >
-                Candidate (Free)
-              </button>
-              <button
-                onClick={() => handleQuickDemoLogin("consultancy")}
-                className="py-1.5 px-1 bg-purple-600/30 hover:bg-purple-600/50 rounded-lg text-[10px] font-bold border border-purple-500/30 transition-all cursor-pointer text-white"
-                id="quick-consultancy-login"
-              >
-                Consultancy
-              </button>
-              <button
-                onClick={() => handleQuickDemoLogin("employer")}
-                className="py-1.5 px-1 bg-pink-600/30 hover:bg-pink-600/50 rounded-lg text-[10px] font-bold border border-pink-500/30 transition-all cursor-pointer text-white"
-                id="quick-employer-login"
-              >
-                Employer
-              </button>
-              <button
-                onClick={() => handleQuickDemoLogin("admin")}
-                className="py-1.5 px-1 bg-emerald-600/30 hover:bg-emerald-600/50 rounded-lg text-[10px] font-bold border border-emerald-500/30 transition-all cursor-pointer text-white"
-                id="quick-admin-login"
-              >
-                Super Admin
-              </button>
-            </div>
-          </div>
         </div>
       </motion.div>
     </div>
