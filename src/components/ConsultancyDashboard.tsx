@@ -11,7 +11,7 @@ import { NotificationCenterView } from "./NotificationCenter";
 import AbacControlInspector from "./AbacControlInspector";
 import LeadManagement from "./LeadManagement";
 import PostJobForm from "./PostJobForm";
-
+import { createRecruiterByConsultancy } from "../services/recruiter";
 // Import Shared Types
 import { 
   ClientModel, ConsultancyJobModel, ConsultancyCandidateModel, 
@@ -59,7 +59,15 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
   >("dashboard");
 
   const [showMainPostForm, setShowMainPostForm] = useState(false);
+const [showRecruiterModal, setShowRecruiterModal] = useState(false);
 
+const [recruiterForm, setRecruiterForm] = useState({
+  fullName: '',
+  email: '',
+  phone: '',
+  designation: '',
+  temporaryPassword: '',
+});
   // Fetch and Sync CRM Data
   const fetchCrmData = async () => {
     setLoading(true);
@@ -164,7 +172,34 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
 
     setLoading(false);
   };
+const handleCreateRecruiter = async () => {
+  try {
+    await createRecruiterByConsultancy(userId, {
+      fullName: recruiterForm.fullName,
+      email: recruiterForm.email,
+      phone: recruiterForm.phone,
+      designation: recruiterForm.designation,
+      temporaryPassword: recruiterForm.temporaryPassword,
+    });
 
+    alert('Recruiter created successfully');
+
+    setShowRecruiterModal(false);
+
+    setRecruiterForm({
+      fullName: '',
+      email: '',
+      phone: '',
+      designation: '',
+      temporaryPassword: '',
+    });
+
+    fetchCrmData();
+  } catch (error) {
+    console.error(error);
+    alert('Failed to create recruiter');
+  }
+};
   useEffect(() => {
     fetchCrmData();
   }, [userId]);
@@ -240,7 +275,13 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
               </button>
             );
           })}
-        </nav>
+        </nav><button
+  onClick={() => setShowRecruiterModal(true)}
+  className="w-full py-2.5 bg-cyan-500 hover:bg-cyan-400 text-black rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-cyan-500/20 mb-3"
+>
+  <Plus className="w-3.5 h-3.5" />
+  <span>Add Recruiter</span>
+</button>
         <div className="pt-3 border-t border-white/5">
           <button
             onClick={() => {
@@ -406,6 +447,84 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
           </>
         )}
       </div>
+      {showRecruiterModal && (
+  <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+    <div className="bg-[#0B1120] border border-cyan-500 rounded-xl p-6 w-full max-w-md">
+      <h2 className="text-xl font-bold text-cyan-400 mb-4">
+        Add Recruiter
+      </h2>
+
+      <input
+        type="text"
+        placeholder="Full Name"
+        value={recruiterForm.fullName}
+        onChange={(e) =>
+          setRecruiterForm({ ...recruiterForm, fullName: e.target.value })
+        }
+        className="w-full mb-3 p-3 rounded bg-gray-900 border border-gray-700 text-white"
+      />
+
+      <input
+        type="email"
+        placeholder="Email"
+        value={recruiterForm.email}
+        onChange={(e) =>
+          setRecruiterForm({ ...recruiterForm, email: e.target.value })
+        }
+        className="w-full mb-3 p-3 rounded bg-gray-900 border border-gray-700 text-white"
+      />
+
+      <input
+        type="text"
+        placeholder="Phone"
+        value={recruiterForm.phone}
+        onChange={(e) =>
+          setRecruiterForm({ ...recruiterForm, phone: e.target.value })
+        }
+        className="w-full mb-3 p-3 rounded bg-gray-900 border border-gray-700 text-white"
+      />
+
+      <input
+        type="text"
+        placeholder="Designation"
+        value={recruiterForm.designation}
+        onChange={(e) =>
+          setRecruiterForm({ ...recruiterForm, designation: e.target.value })
+        }
+        className="w-full mb-3 p-3 rounded bg-gray-900 border border-gray-700 text-white"
+      />
+
+      <input
+        type="password"
+        placeholder="Temporary Password"
+        value={recruiterForm.temporaryPassword}
+        onChange={(e) =>
+          setRecruiterForm({
+            ...recruiterForm,
+            temporaryPassword: e.target.value,
+          })
+        }
+        className="w-full mb-4 p-3 rounded bg-gray-900 border border-gray-700 text-white"
+      />
+
+      <div className="flex gap-3">
+        <button
+          onClick={handleCreateRecruiter}
+          className="flex-1 bg-cyan-500 hover:bg-cyan-400 text-black font-semibold py-3 rounded-lg"
+        >
+          Create Recruiter
+        </button>
+
+        <button
+          onClick={() => setShowRecruiterModal(false)}
+          className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
