@@ -11,6 +11,7 @@ import {
 } from "firebase/firestore";
 import { db, auth } from "../firebase";
 import { JobPosting, JobApplication } from "../types";
+import { NotificationService } from "./notificationService";
 
 export interface ApplyResult {
   success: boolean;
@@ -153,39 +154,37 @@ export async function applyToJob(
 
     // 4. Trigger Recruiter Notification
     const recruiterId = job.employerId || job.createdBy || "employer";
-    const employerNotifId = "notif_" + Math.random().toString(36).substring(2, 11);
-    await setDoc(doc(db, "notifications", employerNotifId), {
-      id: employerNotifId,
-      userId: recruiterId,
-      title: "Candidate Applied 💼",
-      message: `${userName} has applied for your job opening "${job.title}". A Sourcing Lead has been automatically registered.`,
-      read: false,
-      type: "success",
-      createdAt: new Date().toISOString()
-    });
+    try {
+      await NotificationService.triggerEvent({
+        userId: recruiterId,
+        event: "NEW_APPLICATION",
+        title: "Candidate Applied 💼",
+        message: `${userName} has applied for your job opening "${job.title}". A Sourcing Lead has been automatically registered.`,
+        type: "success",
+        link: `jobId=${job.id}`
+      });
 
-    // Trigger Candidate Confirmation Notification
-    const confNotifId = "notif_" + Math.random().toString(36).substring(2, 11);
-    await setDoc(doc(db, "notifications", confNotifId), {
-      id: confNotifId,
-      userId: userId,
-      title: "Application Received Successfully",
-      message: `Your application for "${job.title}" at ${job.companyName} has been processed. A Lead has been registered under status "Applied".`,
-      read: false,
-      createdAt: new Date().toISOString()
-    });
+      // Trigger Candidate Confirmation Notification
+      await NotificationService.triggerEvent({
+        userId: userId,
+        event: "APPLICATION_SUBMITTED",
+        title: "Application Received Successfully",
+        message: `Your application for "${job.title}" at ${job.companyName} has been processed. A Lead has been registered under status "Applied".`,
+        type: "info",
+        link: `jobId=${job.id}`
+      });
 
-    // 5. Trigger Admin Notification
-    const adminNotifId = "notif_" + Math.random().toString(36).substring(2, 11);
-    await setDoc(doc(db, "notifications", adminNotifId), {
-      id: adminNotifId,
-      userId: "admin",
-      title: "New Job Application Logged 🚀",
-      message: `${userName} has submitted an application for "${job.title}" at ${job.companyName}. Lead Registered.`,
-      read: false,
-      type: "info",
-      createdAt: new Date().toISOString()
-    });
+      // 5. Trigger Admin Notification
+      await NotificationService.triggerEvent({
+        userId: "admin",
+        event: "PENDING_APPROVALS",
+        title: "New Job Application Logged 🚀",
+        message: `${userName} has submitted an application for "${job.title}" at ${job.companyName}. Lead Registered.`,
+        type: "info"
+      });
+    } catch (notifErr) {
+      console.warn("FCM / In-App Notification triggers failed on application submit:", notifErr);
+    }
 
     // Trigger Twilio SMS Notifications (Requirement 4)
     try {

@@ -6,6 +6,7 @@ import {
 import { CompanyOffer, CompanyApplication, CompanyJob } from "./EmployerTypes";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../../firebase";
+import { NotificationService } from "../../services/notificationService";
 
 interface OfferManagementProps {
   userId: string;
@@ -118,6 +119,36 @@ ${companyName}`;
         description: `Offer letter generated & released for ${selectedApp.candidateName} (${salaryPackage}).`,
         createdAt: new Date().toISOString()
       });
+
+      // Trigger automatic FCM/Push/In-App notifications for Offer Letter Release
+      try {
+        await NotificationService.triggerEvent({
+          userId: selectedApp.candidateId,
+          event: "OFFER_LETTER_RECEIVED",
+          title: "Offer Letter Released! 🎉",
+          message: `Congratulations! ${companyName || "Employer"} has released your official offer letter for the position of "${selectedApp.jobTitle}". Please review and sign.`,
+          type: "success",
+          link: `jobId=${selectedApp.jobId}`,
+          templateName: "Offer Letter",
+          templateVars: {
+            userName: selectedApp.candidateName,
+            jobTitle: selectedApp.jobTitle,
+            companyName: companyName || "Employer",
+            offerLink: `jobId=${selectedApp.jobId}`
+          }
+        });
+
+        // Trigger notification for admin
+        await NotificationService.triggerEvent({
+          userId: "admin",
+          event: "PENDING_APPROVALS",
+          title: "Offer Letter Dispatched 🚀",
+          message: `Employer "${companyName}" released an offer letter to ${selectedApp.candidateName} for "${selectedApp.jobTitle}" with package ${salaryPackage}.`,
+          type: "info"
+        });
+      } catch (notifErr) {
+        console.warn("FCM Notification failed during offer release:", notifErr);
+      }
 
       alert(`🎉 Offer released successfully to ${selectedApp.candidateName}!`);
       setIsFormOpen(false);

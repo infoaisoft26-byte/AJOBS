@@ -9,6 +9,7 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import { JobPosting, JobApplication } from "../types";
 import { getJobById } from "../services/jobService";
 import { applyToJob } from "../services/applicationService";
+import { useJobPostingSchema } from "../hooks/useJobPostingSchema";
 
 interface JobDetailsProps {
   jobId: string;
@@ -35,6 +36,9 @@ export default function JobDetails({
   const [isApplying, setIsApplying] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+
+  // Invoke SEO structured JobPosting schema & dynamic meta management
+  useJobPostingSchema(job);
 
   // Load job details and check if already applied
   useEffect(() => {

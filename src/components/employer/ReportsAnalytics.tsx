@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { CompanyJob, CompanyApplication, CompanyInterview, CompanyOffer } from "./EmployerTypes";
 import InteractiveExportTable from "../InteractiveExportTable";
+import AiInsightsPanel from "../AiInsightsPanel";
 
 interface ReportsAnalyticsProps {
   jobs: CompanyJob[];
@@ -347,6 +348,9 @@ export default function ReportsAnalytics({
         )}
 
       </div>
+
+      {/* Visual AI Insights Panel for Recruiters */}
+      <AiInsightsPanel />
     </div>
   );
 }

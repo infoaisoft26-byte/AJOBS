@@ -18,17 +18,6 @@ import {
   PlacementModel, TeamMemberModel, InterviewModel 
 } from "./crm/CrmTypes";
 
-// Import Seeding Utility
-import { 
-  seedCrmCollectionsIfEmpty, 
-  DEFAULT_CLIENTS, 
-  DEFAULT_JOBS, 
-  DEFAULT_CANDIDATES, 
-  DEFAULT_PLACEMENTS, 
-  DEFAULT_TEAM, 
-  DEFAULT_INTERVIEWS 
-} from "./crm/CrmSeedData";
-
 // Import Modular Views
 import CrmDashboardView from "./crm/CrmDashboardView";
 import CrmClientsView from "./crm/CrmClientsView";
@@ -101,13 +90,6 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
       syncErrorsList.push("profile");
     }
 
-    // 2. Auto seed empty collections with high quality examples
-    try {
-      await seedCrmCollectionsIfEmpty();
-    } catch (err: any) {
-      console.warn("Resilient Fetch: Seeding CRM collections warning:", err.message);
-    }
-
     // 3. Retrieve clients
     try {
       const clientsSnap = await getDocs(collection(db, "clients"));
@@ -115,9 +97,9 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
       clientsSnap.forEach(d => clList.push({ id: d.id, ...d.data() } as ClientModel));
       setClients(clList);
     } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve clients, falling back to local seed data:", err.message);
+      console.warn("Resilient Fetch: Failed to retrieve clients:", err.message);
       syncErrorsList.push("clients");
-      setClients(DEFAULT_CLIENTS);
+      setClients([]);
     }
 
     // 4. Retrieve jobs
@@ -127,9 +109,9 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
       jobsSnap.forEach(d => jList.push({ id: d.id, ...d.data() } as ConsultancyJobModel));
       setJobs(jList);
     } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve consultancy_jobs, falling back to local seed data:", err.message);
+      console.warn("Resilient Fetch: Failed to retrieve consultancy_jobs:", err.message);
       syncErrorsList.push("consultancy_jobs");
-      setJobs(DEFAULT_JOBS);
+      setJobs([]);
     }
 
     // 5. Retrieve candidates
@@ -139,9 +121,9 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
       candSnap.forEach(d => cList.push({ id: d.id, ...d.data() } as ConsultancyCandidateModel));
       setCandidates(cList);
     } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve consultancy_candidates, falling back to local seed data:", err.message);
+      console.warn("Resilient Fetch: Failed to retrieve consultancy_candidates:", err.message);
       syncErrorsList.push("consultancy_candidates");
-      setCandidates(DEFAULT_CANDIDATES);
+      setCandidates([]);
     }
 
     // 6. Retrieve placements
@@ -151,9 +133,9 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
       placeSnap.forEach(d => pList.push({ id: d.id, ...d.data() } as PlacementModel));
       setPlacements(pList);
     } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve placements, falling back to local seed data:", err.message);
+      console.warn("Resilient Fetch: Failed to retrieve placements:", err.message);
       syncErrorsList.push("placements");
-      setPlacements(DEFAULT_PLACEMENTS);
+      setPlacements([]);
     }
 
     // 7. Retrieve team members
@@ -163,9 +145,9 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
       teamSnap.forEach(d => tList.push({ id: d.id, ...d.data() } as TeamMemberModel));
       setTeam(tList);
     } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve team_members, falling back to local seed data:", err.message);
+      console.warn("Resilient Fetch: Failed to retrieve team_members:", err.message);
       syncErrorsList.push("team_members");
-      setTeam(DEFAULT_TEAM);
+      setTeam([]);
     }
 
     // 8. Retrieve interviews scheduled
@@ -175,9 +157,9 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
       intSnap.forEach(d => iList.push({ id: d.id, ...d.data() } as InterviewModel));
       setInterviews(iList);
     } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve interviews_scheduled, falling back to local seed data:", err.message);
+      console.warn("Resilient Fetch: Failed to retrieve interviews_scheduled:", err.message);
       syncErrorsList.push("interviews_scheduled");
-      setInterviews(DEFAULT_INTERVIEWS);
+      setInterviews([]);
     }
 
     setLoading(false);

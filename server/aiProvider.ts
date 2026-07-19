@@ -21,7 +21,9 @@ export interface AIProvider {
     prompt: string, 
     systemInstruction?: string,
     responseMimeType?: string,
-    imageInlineData?: { mimeType: string; data: string }
+    imageInlineData?: { mimeType: string; data: string },
+    model?: string,
+    enableSearch?: boolean
   ): Promise<string>;
 }
 
@@ -51,7 +53,9 @@ export class GeminiProvider implements AIProvider {
     prompt: string, 
     systemInstruction?: string,
     responseMimeType?: string,
-    imageInlineData?: { mimeType: string; data: string }
+    imageInlineData?: { mimeType: string; data: string },
+    model?: string,
+    enableSearch?: boolean
   ): Promise<string> {
     if (!this.client) {
       throw new Error("Gemini Provider client is not initialized (missing API key)");
@@ -63,6 +67,9 @@ export class GeminiProvider implements AIProvider {
     }
     if (responseMimeType) {
       config.responseMimeType = responseMimeType;
+    }
+    if (enableSearch) {
+      config.tools = [{ googleSearch: {} }];
     }
 
     let contents: any = prompt;
@@ -78,9 +85,11 @@ export class GeminiProvider implements AIProvider {
       ];
     }
 
+    const selectedModel = model || "gemini-3.5-flash";
+
     // Call using correct @google/genai guidelines
     const response = await this.client.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: selectedModel,
       contents,
       config
     });
@@ -89,7 +98,27 @@ export class GeminiProvider implements AIProvider {
       throw new Error("Empty text response received from Gemini model");
     }
 
-    return response.text;
+    let resultText = response.text;
+
+    // Handle grounding metadata if googleSearch was enabled
+    const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+    if (enableSearch && chunks && chunks.length > 0) {
+      let footer = "\n\n---\n*Live Web Results Powered by Google*\n\n**Sources:**\n";
+      const seenUris = new Set<string>();
+      chunks.forEach((chunk: any) => {
+        const title = chunk.web?.title || "Reference";
+        const uri = chunk.web?.uri;
+        if (uri && !seenUris.has(uri)) {
+          seenUris.add(uri);
+          footer += `- [${title}](${uri})\n`;
+        }
+      });
+      if (seenUris.size > 0) {
+        resultText += footer;
+      }
+    }
+
+    return resultText;
   }
 }
 
@@ -101,7 +130,9 @@ export class OpenAIProvider implements AIProvider {
     prompt: string, 
     systemInstruction?: string,
     responseMimeType?: string,
-    imageInlineData?: { mimeType: string; data: string }
+    imageInlineData?: { mimeType: string; data: string },
+    model?: string,
+    enableSearch?: boolean
   ): Promise<string> {
     console.log("[OpenAIProvider] (Mock Integration Interface Called) Prompt:", prompt.slice(0, 50));
     throw new Error("OpenAI API Provider is currently a placeholder and not fully configured in this environment.");
@@ -140,7 +171,9 @@ export class AIOrchestrator {
     responseMimeType?: string,
     maxRetries = 3,
     timeoutMs = 15000,
-    imageInlineData?: { mimeType: string; data: string }
+    imageInlineData?: { mimeType: string; data: string },
+    model?: string,
+    enableSearch?: boolean
   ): Promise<string> {
     telemetryStore.aiRequests++;
     const startTime = Date.now();
@@ -157,14 +190,14 @@ export class AIOrchestrator {
     while (attempt < maxRetries) {
       try {
         attempt++;
-        console.log(`[AIOrchestrator] Call attempt ${attempt}/${maxRetries} to [${provider.name}]`);
+        console.log(`[AIOrchestrator] Call attempt ${attempt}/${maxRetries} to [${provider.name}] with model [${model || "default"}] and search [${!!enableSearch}]`);
 
         // Timeout race pattern
         const timeoutPromise = new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error("AI service request timed out")), timeoutMs)
         );
 
-        const apiPromise = provider.generateContent(prompt, systemInstruction, responseMimeType, imageInlineData);
+        const apiPromise = provider.generateContent(prompt, systemInstruction, responseMimeType, imageInlineData, model, enableSearch);
         const result = await Promise.race([apiPromise, timeoutPromise]);
 
         // Success: Track telemetry

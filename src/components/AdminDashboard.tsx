@@ -464,27 +464,7 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
             </button>
           </div>
 
-          {/* Interactive Simulated Role Access switcher */}
-          {!isSidebarCollapsed && (
-            <div className="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-xl space-y-1.5">
-              <span className="text-[8px] font-mono font-bold text-indigo-400 uppercase tracking-widest block">Simulated Access Clearance</span>
-              <select
-                value={activeRole}
-                onChange={(e) => {
-                  setActiveRole(e.target.value as any);
-                  setSuccessMessage(`Access Clearance simulated: ${e.target.value}!`);
-                  setTimeout(() => setSuccessMessage(""), 3000);
-                }}
-                className="w-full bg-neutral-900 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-white font-mono cursor-pointer focus:border-indigo-500"
-              >
-                <option value="Super Admin">👑 Super Admin</option>
-                <option value="Finance Officer">💰 Finance Officer</option>
-                <option value="Support Desk">🎧 Support Desk</option>
-                <option value="Moderator">🛡️ Moderator</option>
-                <option value="Read Only">👁️ Read Only</option>
-              </select>
-            </div>
-          )}
+
         </div>
 
         {/* Navigation list */}
@@ -526,7 +506,7 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
                 className="w-full py-2 px-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-[10px] font-extrabold text-white rounded-lg flex items-center justify-center gap-1 hover:shadow-lg transition-all cursor-pointer disabled:opacity-50"
               >
                 <Database className="w-3.5 h-3.5" />
-                <span>{seeding ? "Syncing..." : "Seed Mock Dataset"}</span>
+                <span>{seeding ? "Initializing..." : "Initialize Platform Data"}</span>
               </button>
             </div>
           )}

@@ -8,6 +8,7 @@ import { CompanyApplication, CompanyJob } from "./EmployerTypes";
 import { doc, setDoc, collection, getDocs, addDoc, deleteDoc } from "firebase/firestore";
 import { db, auth } from "../../firebase";
 import * as XLSX from "xlsx";
+import { NotificationService } from "../../services/notificationService";
 
 interface ApplicationPipelineProps {
   userId: string;
@@ -305,6 +306,31 @@ export default function ApplicationPipeline({
         description: `Candidate "${app.candidateName}" moved to stage: "${targetStage}" for "${app.jobTitle}".`,
         createdAt: new Date().toISOString()
       });
+
+      // 3. Trigger FCM / In-App Notifications for status change
+      try {
+        await NotificationService.triggerEvent({
+          userId: app.candidateId,
+          event: "OFFER_LETTER_RECEIVED",
+          title: `Application Update: ${targetStage} 💼`,
+          message: `Your application for "${app.jobTitle}" at ${app.companyName || "Employer"} has been moved to: "${targetStage}".`,
+          type: targetStage === "Rejected" ? "warning" : "success",
+          link: `jobId=${app.jobId}`
+        });
+
+        if (targetStage === "Shortlisted") {
+          await NotificationService.triggerEvent({
+            userId: app.candidateId,
+            event: "RESUME_ANALYSIS_COMPLETED",
+            title: "Congratulations! You've been Shortlisted 🎉",
+            message: `The recruiting team has shortlisted your application for "${app.jobTitle}" at ${app.companyName || "Employer"}. Get ready for the next stages!`,
+            type: "success",
+            link: `jobId=${app.jobId}`
+          });
+        }
+      } catch (notifErr) {
+        console.warn("FCM Notification failed during application pipeline status change:", notifErr);
+      }
 
       alert(`Candidate advanced to: "${targetStage}"`);
       setActiveApp(updatedApp);

@@ -15,6 +15,8 @@ export interface UserProfile {
   subscription?: string;
   resumeURL?: string;
   profileCompleted?: boolean;
+  companyId?: string;
+  subscriptionPlan?: string;
 }
 
 /**
@@ -45,7 +47,9 @@ export async function initializeUserCollectionsAndDocs(
     status: "active",
     subscription: role === "consultancy" ? "Pro Agency" : "Enterprise Access",
     resumeURL: "",
-    profileCompleted: false
+    profileCompleted: false,
+    companyId: role === "employer" || role === "recruiter" ? userId : "",
+    subscriptionPlan: role === "consultancy" ? "Pro Agency" : "Enterprise Access"
   };
 
   // Helper to safely write a document if it doesn't already exist
@@ -436,7 +440,9 @@ export async function getOrCreateUserProfile(
       status: "active",
       subscription: deducedRole === "consultancy" ? "Pro Agency" : "Enterprise Access",
       resumeURL: "",
-      profileCompleted: false
+      profileCompleted: false,
+      companyId: deducedRole === "employer" || deducedRole === "recruiter" ? userId : "",
+      subscriptionPlan: deducedRole === "consultancy" ? "Pro Agency" : "Enterprise Access"
     };
   }
 }

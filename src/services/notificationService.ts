@@ -330,6 +330,19 @@ export const NotificationService = {
         const payload = JSON.stringify({ title, body: message, event, link });
         console.log(`[FCM PUSH NOTIFICATION ABSTRACTION] Dispatched FCM push payload to device token belonging to user ${userId}`);
         
+        // Native browser notification payload execution
+        if (typeof window !== "undefined" && "Notification" in window) {
+          if (Notification.permission === "granted") {
+            new Notification(title, { body: message });
+          } else if (Notification.permission !== "denied") {
+            Notification.requestPermission().then(permission => {
+              if (permission === "granted") {
+                new Notification(title, { body: message });
+              }
+            });
+          }
+        }
+
         await this.logMessage({
           userId, event, medium: "push", recipient: `FCM_TOKEN_USER_${userId}`,
           body: payload, status: "success"

@@ -9,6 +9,7 @@ import { db } from "../../firebase";
 import { 
   signInWithGoogleCalendar, getCalendarAccessToken, GoogleCalendarService 
 } from "../../services/googleCalendarService";
+import { NotificationService } from "../../services/notificationService";
 
 interface InterviewManagementProps {
   userId: string;
@@ -141,18 +142,36 @@ export default function InterviewManagement({
         createdAt: new Date().toISOString()
       });
 
-      // 3. Trigger a 'Candidate Notification' for the interview in notifications collection
-      const notifId = "notif_" + Math.random().toString(36).substr(2, 9);
-      await setDoc(doc(db, "notifications", notifId), {
-        id: notifId,
-        userId: selectedApp.candidateId,
-        title: "Interview Scheduled 📅",
-        message: `Your interview for "${selectedApp.jobTitle}" has been scheduled. Type: ${type} on ${date} at ${time}.`,
-        event: "AI_INTERVIEW_SCHEDULED",
-        read: false,
-        type: "info",
-        createdAt: new Date().toISOString()
-      });
+      // 3. Trigger a 'Candidate Notification' for the interview using NotificationService
+      try {
+        await NotificationService.triggerEvent({
+          userId: selectedApp.candidateId,
+          event: "AI_INTERVIEW_SCHEDULED",
+          title: "Interview Scheduled 📅",
+          message: `Your interview for "${selectedApp.jobTitle}" has been scheduled. Type: ${type} on ${date} at ${time}. Link/Location: ${locationOrLink}`,
+          type: "info",
+          link: `jobId=${selectedApp.jobId}`,
+          templateName: "Interview Invite",
+          templateVars: {
+            userName: selectedApp.candidateName,
+            jobTitle: selectedApp.jobTitle,
+            companyName: selectedApp.companyName || "Employer",
+            interviewTime: `${date} at ${time}`,
+            interviewLink: locationOrLink
+          }
+        });
+
+        // Also trigger a notification for the Recruiter (userId) as a reminder
+        await NotificationService.triggerEvent({
+          userId: userId,
+          event: "INTERVIEW_REMINDER",
+          title: "Interview Scheduled Successfully 📆",
+          message: `Interview with ${selectedApp.candidateName} for "${selectedApp.jobTitle}" has been scheduled on ${date} at ${time}.`,
+          type: "success"
+        });
+      } catch (notifErr) {
+        console.warn("FCM / Notification failed on interview scheduling:", notifErr);
+      }
 
       // Trigger Twilio Interview SMS notification (Requirement 5)
       try {

@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 import { db, auth } from "../firebase";
 import { doc, setDoc, collection, updateDoc } from "firebase/firestore";
+import { NotificationService } from "../services/notificationService";
 
 interface PostJobFormProps {
   userId: string;
@@ -137,16 +138,18 @@ export default function PostJobForm({ userId, userRole, userName, onJobPosted, o
       }
 
       // Trigger a notification to current user workspace
-      const notifId = "notif_" + Math.random().toString(36).substr(2, 9);
-      await setDoc(doc(db, "notifications", notifId), {
-        id: notifId,
-        userId: userId,
-        title: "💼 Job Vacancy Draft Saved",
-        message: `Your job posting "${title}" for ${companyName} has been recorded as a Draft. Send to administrative review to publish.`,
-        read: false,
-        type: "success",
-        createdAt: new Date().toISOString()
-      });
+      try {
+        await NotificationService.triggerEvent({
+          userId: userId,
+          event: "SYSTEM_BROADCAST",
+          title: "💼 Job Vacancy Draft Saved",
+          message: `Your job posting "${title}" for ${companyName} has been recorded as a Draft. Send to administrative review to publish.`,
+          type: "success",
+          link: `jobId=${jobId}`
+        });
+      } catch (notifErr) {
+        console.warn("Notification trigger failed on job draft save:", notifErr);
+      }
 
       setSuccessMsg("🎉 Job vacancy successfully created as a Draft!");
       

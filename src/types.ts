@@ -5,10 +5,15 @@ export interface UserProfile {
   phone?: string;
   role: "candidate" | "consultancy" | "employer" | "recruiter" | "admin" | "superadmin";
   profileImage?: string;
+  photoURL?: string;
   createdAt: string;
   lastLogin?: string;
   status?: string;
   subscription?: string;
+  profileCompleted?: boolean;
+  resumeURL?: string;
+  companyId?: string;
+  subscriptionPlan?: string;
 }
 
 export interface CandidateProfile {

@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../../firebase";
+import AiInsightsPanel from "../AiInsightsPanel";
 
 interface AiControlCenterProps {
   onRefresh: () => void;
@@ -309,6 +310,11 @@ export default function AiControlCenter({
                 <p>• Daily Token Cap: 5,000k</p>
               </div>
             </div>
+          </div>
+
+          {/* Real-time Candidate AI Insights & Analytical Ranks panel */}
+          <div className="lg:col-span-3">
+            <AiInsightsPanel />
           </div>
 
         </div>

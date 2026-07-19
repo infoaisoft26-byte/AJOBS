@@ -7,6 +7,7 @@ import { initializeUserCollectionsAndDocs, getOrCreateUserProfile } from "./serv
 import Header from "./components/Header";
 import AuthModal from "./components/AuthModal";
 import LandingPage from "./components/LandingPage";
+import { GlobalChatbot } from "./components/GlobalChatbot";
 import CompanySection from "./components/CompanySection";
 import SplashScreen from "./components/SplashScreen";
 import CinematicBackground from "./components/CinematicBackground";
@@ -562,6 +563,9 @@ function MainAppContent() {
       {showSplash && (
         <SplashScreen onComplete={() => setShowSplash(false)} />
       )}
+
+      {/* Globally Floating AI Career Assistant */}
+      <GlobalChatbot user={user} />
     </div>
   );
 }

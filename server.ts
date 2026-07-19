@@ -319,6 +319,22 @@ const abacGuard = (resourceType: string, action: "read" | "write" | "apply" | "e
   };
 };
 
+const getFirestoreDb = () => {
+  const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+  if (admin.apps.length === 0) {
+    if (fs.existsSync(configPath)) {
+      const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+      admin.initializeApp({
+        projectId: config.projectId,
+      });
+    } else {
+      admin.initializeApp();
+    }
+  }
+  const config = fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, "utf-8")) : {};
+  return config.firestoreDatabaseId ? admin.firestore(config.firestoreDatabaseId) : admin.firestore();
+};
+
 // ==================== API ENDPOINTS ====================
 
 // 1. AI Resume Analyzer Endpoint
@@ -388,13 +404,34 @@ Format your response strictly as a single parseable JSON object. Do not include 
 
   try {
     const imageInlineData = resumeImage && mimeType ? { mimeType, data: resumeImage } : undefined;
-    const text = await aiOrchestrator.generateContentWithRetry(prompt, undefined, undefined, 3, 15000, imageInlineData);
+    const text = await aiOrchestrator.generateContentWithRetry(prompt, undefined, undefined, 3, 15000, imageInlineData, "gemini-2.5-pro");
     const cleanedJson = text
       .replace(/```json/g, "")
       .replace(/```/g, "")
       .trim();
 
     const parsedData = JSON.parse(cleanedJson);
+
+    // Save results to Firestore resume_scores collection
+    try {
+      const db = getFirestoreDb();
+      const userId = req.headers["x-user-id"] || req.body.userId || "anonymous";
+      if (userId && userId !== "anonymous") {
+        await db.collection("resume_scores").doc(`${userId}_scores`).set({
+          userId,
+          parsed: parsedData.parsed || {},
+          scores: parsedData.scores || {},
+          missingSkills: parsedData.missingSkills || {},
+          improvements: parsedData.improvements || {},
+          salaryPrediction: parsedData.salaryPrediction || {},
+          createdAt: new Date().toISOString()
+        }, { merge: true });
+        console.log(`[Firestore] Successfully saved resume analysis to resume_scores for user: ${userId}`);
+      }
+    } catch (fsErr: any) {
+      console.error("[Firestore] Failed to save resume analysis to resume_scores:", fsErr.message);
+    }
+
     return res.json(parsedData);
   } catch (error) {
     console.error("AI Resume Analysis failed, cascading to fallback:", error);
@@ -564,13 +601,35 @@ Output must be strictly valid JSON.
 `;
 
   try {
-    const text = await aiOrchestrator.generateContentWithRetry(prompt);
+    const text = await aiOrchestrator.generateContentWithRetry(prompt, undefined, undefined, 3, 15000, undefined, "gemini-2.5-pro");
     const cleanedJson = text
       .replace(/```json/g, "")
       .replace(/```/g, "")
       .trim();
 
     const parsedData = JSON.parse(cleanedJson);
+
+    // Save results to Firestore job_matches collection
+    try {
+      const db = getFirestoreDb();
+      const userId = req.headers["x-user-id"] || req.body.userId || "anonymous";
+      if (userId && userId !== "anonymous") {
+        const jobId = req.body.jobId || `job_${Math.random().toString(36).substr(2, 9)}`;
+        await db.collection("job_matches").doc(`${userId}_${jobId}`).set({
+          userId,
+          jobId,
+          matchPercentage: parsedData.matchPercentage || 0,
+          compatibilitySummary: parsedData.compatibilitySummary || "",
+          missingSkills: parsedData.missingSkills || [],
+          interviewTip: parsedData.interviewTip || "",
+          createdAt: new Date().toISOString()
+        }, { merge: true });
+        console.log(`[Firestore] Successfully saved job match score to job_matches for user: ${userId}`);
+      }
+    } catch (fsErr: any) {
+      console.error("[Firestore] Failed to save job match score to job_matches:", fsErr.message);
+    }
+
     return res.json(parsedData);
   } catch (error) {
     console.error("AI Job Match failed, cascading to fallback:", error);
@@ -1025,13 +1084,46 @@ Strictly JSON output only. Do not wrap in markdown or any other text blocks.
 `;
 
   try {
-    const text = await aiOrchestrator.generateContentWithRetry(prompt);
+    const text = await aiOrchestrator.generateContentWithRetry(prompt, undefined, undefined, 3, 15000, undefined, "gemini-2.5-pro");
     const cleanedJson = text
       .replace(/```json/g, "")
       .replace(/```/g, "")
       .trim();
 
     const parsedData = JSON.parse(cleanedJson);
+
+    // Save results to Firestore interview_scores collection
+    try {
+      const db = getFirestoreDb();
+      const userId = req.headers["x-user-id"] || req.body.userId || "anonymous";
+      if (userId && userId !== "anonymous") {
+        const sessionId = req.body.sessionId || `session_${Math.random().toString(36).substr(2, 9)}`;
+        await db.collection("interview_scores").doc(`${userId}_${sessionId}`).set({
+          userId,
+          sessionId,
+          category: category || "Technical",
+          level: level || "mid-level",
+          scores: {
+            overallScore: parsedData.overallScore || 0,
+            technicalScore: parsedData.technicalScore || 0,
+            communicationScore: parsedData.communicationScore || 0,
+            confidenceScore: parsedData.confidenceScore || 0,
+            grammarScore: parsedData.grammarScore || 0,
+            leadershipScore: parsedData.leadershipScore || 0,
+            behaviorScore: parsedData.behaviorScore || 0
+          },
+          strengths: parsedData.strengths || [],
+          weaknesses: parsedData.weaknesses || [],
+          recommendations: parsedData.recommendations || [],
+          learningRoadmap: parsedData.learningRoadmap || [],
+          createdAt: new Date().toISOString()
+        }, { merge: true });
+        console.log(`[Firestore] Successfully saved interview evaluation to interview_scores for user: ${userId}`);
+      }
+    } catch (fsErr: any) {
+      console.error("[Firestore] Failed to save interview evaluation to interview_scores:", fsErr.message);
+    }
+
     return res.json(parsedData);
   } catch (error) {
     console.error("AI Evaluation failed, cascading to fallback:", error);
@@ -1192,13 +1284,38 @@ Strictly JSON output only.
     }
     consolidatedPrompt += `User: ${userMessage}\n\nCareer Coach:`;
 
-    const text = await aiOrchestrator.generateContentWithRetry(consolidatedPrompt, systemPrompt);
+    const text = await aiOrchestrator.generateContentWithRetry(consolidatedPrompt, systemPrompt, undefined, 3, 15000, undefined, "gemini-2.5-pro");
     const cleanedJson = text
       .replace(/```json/g, "")
       .replace(/```/g, "")
       .trim();
 
     const parsedData = JSON.parse(cleanedJson);
+
+    // Save results to Firestore ai_recommendations collection
+    try {
+      const db = getFirestoreDb();
+      const userId = req.headers["x-user-id"] || req.body.userId || "anonymous";
+      if (userId && userId !== "anonymous") {
+        const recommendationId = `rec_${Math.random().toString(36).substr(2, 9)}`;
+        await db.collection("ai_recommendations").doc(recommendationId).set({
+          id: recommendationId,
+          userId,
+          responseText: parsedData.responseText || "",
+          careerSuggestions: parsedData.careerSuggestions || [],
+          skillsToLearn: parsedData.skillsToLearn || [],
+          certificationSuggestions: parsedData.certificationSuggestions || [],
+          learningPath: parsedData.learningPath || [],
+          expectedSalaryRange: parsedData.expectedSalaryRange || "",
+          suitableIndustries: parsedData.suitableIndustries || [],
+          createdAt: new Date().toISOString()
+        }, { merge: true });
+        console.log(`[Firestore] Successfully saved career recommendations to ai_recommendations for user: ${userId}`);
+      }
+    } catch (fsErr: any) {
+      console.error("[Firestore] Failed to save career recommendations to ai_recommendations:", fsErr.message);
+    }
+
     return res.json(parsedData);
   } catch (error) {
     console.error("AI Career Coach Full Advisor failed, cascading to fallback:", error);
@@ -1223,6 +1340,290 @@ Your focus on professional advancement is exceptional. Based on your target goal
     expectedSalaryRange: "₹18,00,000 - ₹32,00,000",
     suitableIndustries: ["SaaS & cloud Infrastructure Platforms", "Fintech & Automated Transactions", "E-Commerce Logistics Engines"]
   });
+});
+
+// --- Global Chatbot Endpoint with Grounding, Context, Rate Limiting & Firestore Logging ---
+const chatRateLimitStore = new Map<string, { count: number; resetTime: number }>();
+
+function isChatRateLimited(ipOrUserId: string): boolean {
+  const now = Date.now();
+  const limit = 30; // 30 requests per minute
+  const windowMs = 60 * 1000;
+  
+  const record = chatRateLimitStore.get(ipOrUserId);
+  if (!record) {
+    chatRateLimitStore.set(ipOrUserId, { count: 1, resetTime: now + windowMs });
+    return false;
+  }
+  
+  if (now > record.resetTime) {
+    chatRateLimitStore.set(ipOrUserId, { count: 1, resetTime: now + windowMs });
+    return false;
+  }
+  
+  if (record.count >= limit) {
+    return true;
+  }
+  
+  record.count++;
+  return false;
+}
+
+app.post("/api/ai/chatbot", async (req, res) => {
+  const { userMessage, sessionId, userId, chatHistory, enableSearch } = req.body;
+
+  if (!userMessage) {
+    return res.status(400).json({ error: "Missing message text" });
+  }
+
+  // Rate Limiting Check
+  const rateLimitKey = userId || req.ip || "anonymous";
+  if (isChatRateLimited(rateLimitKey)) {
+    return res.status(429).json({ error: "Too many chatbot requests. Please wait a moment and try again." });
+  }
+
+  const activeSessionId = sessionId || `session_${Math.random().toString(36).substr(2, 9)}`;
+  const activeUserId = userId || "anonymous";
+
+  try {
+    const db = getFirestoreDb();
+    
+    // Resolve user context from Firestore if logged in
+    let userContext: any = null;
+    if (activeUserId !== "anonymous") {
+      try {
+        const userDoc = await db.collection("users").doc(activeUserId).get();
+        if (userDoc.exists) {
+          const userData = userDoc.data();
+          const role = userData.role || "candidate";
+          userContext = {
+            name: userData.name || userData.displayName || "User",
+            role: role,
+            skills: [],
+            experience: "",
+            appliedJobs: [],
+            interviewStatus: "none"
+          };
+
+          if (role === "candidate") {
+            const candDoc = await db.collection("candidates").doc(activeUserId).get();
+            if (candDoc.exists) {
+              const candData = candDoc.data();
+              userContext.skills = candData.skills || [];
+              userContext.experience = candData.experience || "";
+            }
+            
+            // Applied jobs
+            const appsSnap = await db.collection("company_applications").where("candidateId", "==", activeUserId).get();
+            const apps: any[] = [];
+            appsSnap.forEach((doc: any) => {
+              const app = doc.data();
+              apps.push({
+                jobId: app.jobId || "",
+                jobTitle: app.jobTitle || "",
+                status: app.status || "Applied",
+                appliedAt: app.appliedAt || app.createdAt || ""
+              });
+            });
+            userContext.appliedJobs = apps;
+
+            // Interview sessions
+            const interviewsSnap = await db.collection("interview_sessions").where("candidateId", "==", activeUserId).get();
+            if (!interviewsSnap.empty) {
+              const statuses: string[] = [];
+              interviewsSnap.forEach((doc: any) => {
+                statuses.push(doc.data().status || "Scheduled");
+              });
+              userContext.interviewStatus = statuses.join(", ");
+            }
+          }
+        }
+      } catch (err: any) {
+        console.error("[Firestore] Failed to resolve user context for chatbot:", err.message);
+      }
+    }
+
+    const systemInstruction = `
+You are "AIJobs Career Assistant", an elite, encouragement-driven floating career companion on the premium recruitment portal AIJobs.
+${userContext ? `
+The current authenticated user is:
+- Name: ${userContext.name}
+- Role: ${userContext.role}
+- Skills: ${JSON.stringify(userContext.skills)}
+- Experience: ${userContext.experience}
+- Applied Jobs: ${JSON.stringify(userContext.appliedJobs)}
+- Interview Status: ${userContext.interviewStatus}
+
+Personalize your response by greeting them warmly by name, referencing their roles or skills or tracking application status, and suggesting relevant strategies.
+` : `No authenticated user context is present. Address the user as an anonymous career seeker. Support general job search, platform guidance, and career planning queries.`}
+
+Your capabilities are:
+- Search jobs on the platform (recommend matching jobs or search using search grounding)
+- Explain job descriptions, skills demand, and salary benchmarks
+- Suggest suitable career tracks, learning blueprints, and resume writing rules
+- Track application status and explain recruiter feedback
+- Help build resumes, audit ATS scores, and provide mock interview coaching
+- Guide consultancy registration, recruiter onboarding, and subscription plans
+- Answer payments or invoicing questions and escalate to human support if requested.
+
+Keep responses highly structured, concise, and professional using markdown formatting.
+`;
+
+    // Construct consolidated chat message history
+    let consolidatedPrompt = "";
+    if (chatHistory && Array.isArray(chatHistory)) {
+      chatHistory.forEach((msg: any) => {
+        const roleName = msg.sender === "user" ? "User" : "Assistant";
+        consolidatedPrompt += `${roleName}: ${msg.text}\n\n`;
+      });
+    }
+    consolidatedPrompt += `User: ${userMessage}\n\nAssistant:`;
+
+    // Initialize Express response for Streaming (SSE)
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders(); // Tell client we are streaming
+
+    // Initialize Google GenAI Client
+    const aiClient = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
+
+    const config: any = {
+      systemInstruction,
+      temperature: 0.7
+    };
+
+    if (enableSearch) {
+      config.tools = [{ googleSearch: {} }];
+    }
+
+    console.log(`[Stream Start] Session ${activeSessionId} - Search Grounding Enabled: ${enableSearch}`);
+
+    const responseStream = await aiClient.models.generateContentStream({
+      model: "gemini-2.5-flash",
+      contents: consolidatedPrompt,
+      config
+    });
+
+    let fullText = "";
+    let groundingSources: any[] = [];
+
+    for await (const chunk of responseStream) {
+      const text = chunk.text;
+      if (text) {
+        fullText += text;
+        // Write SSE packet
+        res.write(`data: ${JSON.stringify({ text })}\n\n`);
+      }
+
+      // Extract grounding sources if search is active
+      const chunks = chunk.candidates?.[0]?.groundingMetadata?.groundingChunks;
+      if (chunks) {
+        chunks.forEach((c: any) => {
+          if (c.web) {
+            groundingSources.push({
+              title: c.web.title,
+              uri: c.web.uri
+            });
+          }
+        });
+      }
+    }
+
+    // Terminate SSE stream
+    res.write(`data: ${JSON.stringify({ done: true, fullText })}\n\n`);
+    res.end();
+
+    // Persist conversation step in Firestore collections: chat_sessions and chat_messages
+    try {
+      await db.collection("chat_sessions").doc(activeSessionId).set({
+        sessionId: activeSessionId,
+        userId: activeUserId,
+        role: userContext?.role || "anonymous",
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+
+      const messageId = `msg_${Math.random().toString(36).substr(2, 9)}`;
+      await db.collection("chat_messages").doc(messageId).set({
+        id: messageId,
+        sessionId: activeSessionId,
+        userId: activeUserId,
+        role: userContext?.role || "anonymous",
+        message: userMessage,
+        response: fullText,
+        groundingSources: groundingSources.length > 0 ? groundingSources : null,
+        timestamp: new Date().toISOString(),
+        source: enableSearch ? "search" : "gemini"
+      });
+
+      // Log AI telemetry actions
+      const logId = `log_${Math.random().toString(36).substr(2, 9)}`;
+      await db.collection("ai_logs").doc(logId).set({
+        id: logId,
+        userId: activeUserId,
+        action: "chatbot_query",
+        description: `Chat message indexed. Search Grounding: ${enableSearch}`,
+        createdAt: new Date().toISOString()
+      });
+
+      console.log(`[Firestore] Successfully stored stream response log for session ${activeSessionId}`);
+    } catch (fsErr: any) {
+      console.error("[Firestore] Failed to store stream response log:", fsErr.message);
+    }
+
+  } catch (error: any) {
+    console.error("AI Chatbot streaming failed, writing fallback error chunk:", error);
+    res.write(`data: ${JSON.stringify({ 
+      text: `### Hello! I am your AIJobs Career Assistant.
+
+I am experiencing a brief latency spike while querying our live search nodes. Here is a guided pathway to assist you right away:
+
+1. **Job Search**: Check our **Job Search** page to explore curated roles matching your skills.
+2. **Resume Audit**: Upload your resume in the **Dashboard** to perform a high-fidelity ATS compatibility check.
+3. **Interview Training**: Initiate an interactive mock session in the **AI Interview Section** to receive structured performance metrics.` 
+    })}\n\n`);
+    res.end();
+  }
+});
+
+app.get("/api/ai/chat-history", async (req, res) => {
+  const { sessionId } = req.query;
+  if (!sessionId) {
+    return res.status(400).json({ error: "Missing sessionId parameter" });
+  }
+
+  try {
+    const db = getFirestoreDb();
+    const snap = await db.collection("chat_messages")
+      .where("sessionId", "==", sessionId)
+      .orderBy("timestamp", "asc")
+      .get();
+
+    const messages: any[] = [];
+    snap.forEach((doc: any) => {
+      const data = doc.data();
+      messages.push({
+        sender: "user",
+        text: data.message
+      });
+      messages.push({
+        sender: "ai",
+        text: data.response
+      });
+    });
+
+    return res.json({ messages });
+  } catch (err: any) {
+    console.error("Failed to retrieve chat history:", err.message);
+    return res.json({ messages: [] });
+  }
 });
 
 // 4e. AI Success Predictor Endpoint
@@ -1704,6 +2105,161 @@ app.post("/api/twilio/verify-reset-otp", async (req, res) => {
   }
 });
 
+// 8b. Smart AI Resume Onboarding Auto-Login & Profile Seeding API
+app.post("/api/auth/smart-onboard", async (req, res) => {
+  const { name, email, phone, skills, experience, education, city, resumeURL, resumeFileName, resumeText, scores } = req.body;
+  
+  if (!email) {
+    return res.status(400).json({ success: false, error: "Missing email address for onboarding." });
+  }
+
+  try {
+    let uid = "";
+    let isNewUser = false;
+    let userRecord: any = null;
+
+    try {
+      userRecord = await admin.auth().getUserByEmail(email);
+      uid = userRecord.uid;
+      console.log(`[SmartOnboard] Existing user found with email: ${email}, UID: ${uid}`);
+    } catch (err: any) {
+      if (err.code === "auth/user-not-found" || err.message?.includes("user-not-found") || err.message?.includes("no user record found")) {
+        isNewUser = true;
+        console.log(`[SmartOnboard] User not found with email: ${email}. Creating a new Firebase account automatically...`);
+        
+        let formattedPhone = phone;
+        if (formattedPhone && !formattedPhone.startsWith("+")) {
+          formattedPhone = "+91" + formattedPhone.replace(/\D/g, "");
+        }
+        if (formattedPhone && !/^\+[1-9]\d{1,14}$/.test(formattedPhone)) {
+          formattedPhone = undefined;
+        }
+
+        userRecord = await admin.auth().createUser({
+          email,
+          emailVerified: true,
+          phoneNumber: formattedPhone || undefined,
+          displayName: name || email.split("@")[0],
+        });
+        uid = userRecord.uid;
+        console.log(`[SmartOnboard] Created new Firebase user with UID: ${uid}`);
+      } else {
+        throw err;
+      }
+    }
+
+    const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+    const config = fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, "utf-8")) : {};
+    const dbFs = admin.apps.length > 0 ? (config.firestoreDatabaseId ? admin.firestore(config.firestoreDatabaseId) : admin.firestore()) : admin.firestore();
+    
+    if (dbFs) {
+      const isoDate = new Date().toISOString();
+      const userRef = dbFs.collection("users").doc(uid);
+      const userSnap = await userRef.get();
+
+      if (!userSnap.exists || isNewUser) {
+        console.log(`[SmartOnboard] Seeding firestore collections for UID: ${uid}`);
+        
+        const finalName = name || userRecord.displayName || email.split("@")[0] || "Aryan Sharma";
+        const finalPhone = phone || userRecord.phoneNumber || "";
+        const finalPhoto = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(finalName)}`;
+        
+        const userProfile = {
+          uid,
+          name: finalName,
+          email,
+          phone: finalPhone,
+          role: "candidate",
+          profileImage: finalPhoto,
+          photoURL: finalPhoto,
+          createdAt: isoDate,
+          lastLogin: isoDate,
+          status: "active",
+          subscription: "Free Tier",
+          resumeURL: resumeURL || "",
+          profileCompleted: true,
+          companyId: "",
+          subscriptionPlan: "Free Tier"
+        };
+        await userRef.set(userProfile);
+
+        const skillsList = skills && Array.isArray(skills) ? skills : ["React", "TypeScript", "Tailwind CSS", "Node.js", "Firebase", "Gemini SDK"];
+        await dbFs.collection("candidates").doc(uid).set({
+          userId: uid,
+          resumeUrl: resumeURL || "https://demo.pdf",
+          resumeFileName: resumeFileName || "Resume.pdf",
+          resumeScore: scores?.overallScore || 85,
+          skills: skillsList,
+          experience: experience || "3+ Years Web Developer",
+          aiInterviewScore: 88,
+          resumeText: resumeText || "Candidate resume details",
+          summary: `Skilled Software Engineer focused on interactive user dashboards. City: ${city || "Unknown"}`,
+          careerCoachChat: [
+            { id: "init_coach", sender: "ai", text: `Hi ${finalName}! I'm your AI Career Coach. Let's optimize your technical journey and interview pipeline today!`, timestamp: isoDate }
+          ]
+        });
+
+        await dbFs.collection("resumes").doc(uid).set({
+          id: uid,
+          userId: uid,
+          fileName: resumeFileName || "Resume.pdf",
+          fileUrl: resumeURL || "https://demo.pdf",
+          text: resumeText || "Candidate resume details",
+          score: scores?.overallScore || 85,
+          parsedSkills: skillsList,
+          createdAt: isoDate
+        });
+
+        await dbFs.collection("resume_scores").doc(`${uid}_scores`).set({
+          id: `${uid}_scores`,
+          userId: uid,
+          scores: {
+            overallScore: scores?.overallScore || 85,
+            atsCompatibilityScore: scores?.atsCompatibilityScore || 85,
+            grammarScore: scores?.grammarScore || 90,
+            formattingScore: scores?.formattingScore || 85,
+            professionalSummaryScore: scores?.professionalSummaryScore || 80,
+            skillsMatchScore: scores?.skillsMatchScore || 85,
+            experienceScore: scores?.experienceScore || 80,
+            educationScore: scores?.educationScore || 90,
+            achievementsScore: scores?.achievementsScore || 80,
+            keywordOptimizationScore: scores?.keywordOptimizationScore || 85
+          },
+          updatedAt: isoDate
+        });
+
+        await dbFs.collection("notifications").doc(`notif_welcome_${uid}`).set({
+          id: `notif_welcome_${uid}`,
+          userId: uid,
+          title: "Onboarded via Smart AI Resume Upload!",
+          message: `Welcome, ${finalName}! Your account was automatically created from your resume. Explore AI interview screening and matches now!`,
+          read: false,
+          archived: false,
+          createdAt: isoDate
+        });
+      } else {
+        await userRef.update({
+          lastLogin: isoDate,
+          resumeURL: resumeURL || userSnap.data()?.resumeURL || ""
+        });
+      }
+    }
+
+    const customToken = await admin.auth().createCustomToken(uid);
+    console.log(`[SmartOnboard] Created custom login token for UID: ${uid}`);
+
+    return res.json({
+      success: true,
+      customToken,
+      uid,
+      isNewUser
+    });
+  } catch (error: any) {
+    console.error("[SmartOnboard] Onboarding processing error:", error);
+    return res.status(500).json({ success: false, error: error.message || "Failed to finalize smart onboarding." });
+  }
+});
+
 // 9. Send Test SMS (from Admin Panel)
 app.post("/api/twilio/test-sms", async (req, res) => {
   const { phone, message } = req.body;
@@ -1862,6 +2418,11 @@ async function startExpiredJobsScheduler() {
 
 // Boot the scheduler background task
 startExpiredJobsScheduler();
+
+// ==================== ZOHO DOMAIN VERIFICATION ROUTE ====================
+app.get("/zohochallenge.html", (req, res) => {
+  res.send("zoho-verification=zb17330049.zmverify.zoho.in");
+});
 
 // ==================== DEV / PROD HOSTING ====================
 

@@ -9,6 +9,7 @@ import { doc, setDoc, deleteDoc } from "firebase/firestore";
 import { db, auth } from "../../firebase";
 import { useToast } from "../GlobalToast";
 import PostJobForm from "../PostJobForm";
+import { NotificationService } from "../../services/notificationService";
 
 interface JobManagementProps {
   userId: string;
@@ -206,6 +207,29 @@ export default function JobManagement({
         description: `Job ${editingJob ? "updated" : "published"}: "${title}" in ${department}.`,
         createdAt: new Date().toISOString()
       });
+
+      // Trigger automatic FCM/Push/In-App notifications for Job Posting
+      try {
+        await NotificationService.triggerEvent({
+          userId: userId,
+          event: "SYSTEM_ALERTS",
+          title: "Job Vacancy Published! 💼",
+          message: `Your job opening "${title}" for ${companyName || "My Company"} is now live. Candidates are being matching in real-time.`,
+          type: "success"
+        });
+
+        if (!editingJob) {
+          // Broadcast to all active candidates about the new job
+          await NotificationService.broadcastNotification({
+            title: `New Job Opportunity at ${companyName || "My Company"} 🚀`,
+            message: `Position: "${title}" is now open. Apply directly from your Candidate Portal.`,
+            targetRole: "candidate",
+            sentBy: userId
+          });
+        }
+      } catch (notifErr) {
+        console.warn("FCM / In-App Notification dispatch failed for job posting:", notifErr);
+      }
 
       showToast(`🎉 Job vacancy "${title}" saved successfully!`, "success");
       setIsFormOpen(false);
