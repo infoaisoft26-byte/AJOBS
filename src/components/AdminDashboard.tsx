@@ -71,6 +71,10 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
   const [paymentsList, setPaymentsList] = useState<PaymentTransaction[]>([]);
   const [auditLogsList, setAuditLogsList] = useState<SystemAuditLog[]>([]);
   const [globalConfig, setGlobalConfig] = useState<AdminSystemSettings | null>(null);
+  // 👇 Add these two states
+const [consultanciesList, setConsultanciesList] = useState<any[]>([]);
+const [recruitersList, setRecruitersList] = useState<any[]>([]);
+// 👆 End
   const [adminProfile, setAdminProfile] = useState<{ level: string; status: string }>({ level: "Super Admin", status: "active" });
 
   // Stats
