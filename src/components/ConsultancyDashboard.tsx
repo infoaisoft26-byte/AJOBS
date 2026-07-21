@@ -11,7 +11,7 @@ import { NotificationCenterView } from "./NotificationCenter";
 import AbacControlInspector from "./AbacControlInspector";
 import LeadManagement from "./LeadManagement";
 import PostJobForm from "./PostJobForm";
-
+import { createRecruiterByConsultancy } from "../services/recruiter";
 // Import Shared Types
 import { 
   ClientModel, ConsultancyJobModel, ConsultancyCandidateModel, 
@@ -68,7 +68,15 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
   }, []);
 
   const [showMainPostForm, setShowMainPostForm] = useState(false);
+const [showRecruiterModal, setShowRecruiterModal] = useState(false);
 
+const [recruiterForm, setRecruiterForm] = useState({
+  fullName: '',
+  email: '',
+  phone: '',
+  designation: '',
+  temporaryPassword: '',
+});
   // Fetch and Sync CRM Data
   const fetchCrmData = async () => {
     setLoading(true);
@@ -177,7 +185,38 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
   useEffect(() => {
     fetchCrmData();
   }, [userId]);
+const handleCreateRecruiter = async () => {
+  try {
+    await createRecruiterByConsultancy(userId, {
+      fullName: recruiterForm.fullName,
+      email: recruiterForm.email,
+      phone: recruiterForm.phone,
+      designation: recruiterForm.designation,
+      temporaryPassword: recruiterForm.temporaryPassword,
+    });
 
+    alert('Recruiter created successfully');
+
+    setShowRecruiterModal(false);
+
+    setRecruiterForm({
+      fullName: '',
+      email: '',
+      phone: '',
+      designation: '',
+      temporaryPassword: '',
+    });
+
+    fetchCrmData();
+  } catch (error) {
+    console.error(error);
+    alert('Failed to create recruiter');
+  }
+};
+
+useEffect(() => {
+  fetchCrmData();
+}, [userId]);
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4" id="consultancy-dashboard-loader">
@@ -250,6 +289,13 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
             );
           })}
         </nav>
+        <button
+  onClick={() => setShowRecruiterModal(true)}
+  className="w-full py-2.5 bg-cyan-500 hover:bg-cyan-400 text-black rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-cyan-500/20 mb-3"
+>
+  <Plus className="w-3.5 h-3.5" />
+  <span>Add Recruiter</span>
+</button>
         <div className="pt-3 border-t border-white/5">
           <button
             onClick={() => {
@@ -415,6 +461,22 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
           </>
         )}
       </div>
+      {showRecruiterModal && (
+  <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+    <div className="bg-[#0B1120] border border-cyan-500 rounded-xl p-6 w-full max-w-md">
+      <h2 className="text-xl font-bold text-cyan-400 mb-4">
+        Add Recruiter
+      </h2>
+
+      <button
+        onClick={() => setShowRecruiterModal(false)}
+        className="w-full bg-cyan-500 text-black font-semibold py-3 rounded-lg"
+      >
+        Close
+      </button>
+    </div>
+  </div>
+)}
     </div>
   );
 }
