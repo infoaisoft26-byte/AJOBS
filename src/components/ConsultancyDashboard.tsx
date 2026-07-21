@@ -295,6 +295,12 @@ useEffect(() => {
 >
   <Plus className="w-3.5 h-3.5" />
   <span>Add Recruiter</span>
+</button><button
+  onClick={() => setShowRecruiterModal(true)}
+  className="w-full py-2.5 bg-cyan-500 hover:bg-cyan-400 text-black rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-cyan-500/20 mb-3"
+>
+  <Plus className="w-3.5 h-3.5" />
+  <span>Add Recruiter</span>
 </button>
         <div className="pt-3 border-t border-white/5">
           <button
