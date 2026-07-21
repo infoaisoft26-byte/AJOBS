@@ -69,6 +69,17 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
   const [confirmationResult, setConfirmationResult] = useState<any>(null);
   const recaptchaVerifierRef = useRef<any>(null);
 
+  const [otpDigits, setOtpDigits] = useState<string[]>(Array(6).fill(""));
+  const [countdown, setCountdown] = useState(0);
+
+  // 60-Second countdown timer for Twilio SMS resend logic
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [countdown]);
+
   // States
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -222,6 +233,49 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
   };
 
   // Phone OTP - Send Code via Twilio
+  // Helper: Handle individual digit inputs for OTP verification
+  const handleDigitChange = (index: number, value: string) => {
+    if (/^[0-9]$/.test(value) || value === "") {
+      const newDigits = [...otpDigits];
+      newDigits[index] = value;
+      setOtpDigits(newDigits);
+      
+      // Auto focus to next input box if digit entered
+      if (value !== "" && index < 5) {
+        const nextInput = document.getElementById(`otp-input-${index + 1}`);
+        nextInput?.focus();
+      }
+    }
+  };
+
+  // Helper: Handle backspace key on individual digit input
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace") {
+      if (otpDigits[index] === "" && index > 0) {
+        const newDigits = [...otpDigits];
+        newDigits[index - 1] = "";
+        setOtpDigits(newDigits);
+        const prevInput = document.getElementById(`otp-input-${index - 1}`);
+        prevInput?.focus();
+      } else {
+        const newDigits = [...otpDigits];
+        newDigits[index] = "";
+        setOtpDigits(newDigits);
+      }
+    }
+  };
+
+  // Helper: Handle clipboard paste on the digit inputs
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData("text").trim();
+    if (/^[0-9]{6}$/.test(pastedData)) {
+      const chars = pastedData.split("");
+      setOtpDigits(chars);
+      document.getElementById("otp-input-5")?.focus();
+    }
+  };
+
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -280,17 +334,52 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
         throw new Error(data.error || "Failed to dispatch mobile OTP.");
       }
 
-      console.log("Twilio OTP sent successfully!");
-      setConfirmationResult({ isSimulated: false, phone: fullPhone, displayName });
+      console.log("Twilio OTP sent successfully to:", fullPhone);
+      setCountdown(60);
+      setOtpDigits(Array(6).fill(""));
+      setConfirmationResult({ phone: fullPhone, displayName });
       setPhoneStep("code");
       setSuccess("SMS verification code sent successfully via Twilio!");
     } catch (err: any) {
-      console.warn("Real OTP dispatch failed, running high-fidelity sandbox simulation fallback:", err);
-      showToast(`⚠️ Sandbox fallback active. SMS verification code auto-generated: 123456`, "info");
-      
-      setConfirmationResult({ isSimulated: true, phone: fullPhone, displayName });
-      setPhoneStep("code");
-      setSuccess("Verification code simulated successfully! Enter 123456 to verify.");
+      console.error("Twilio Verify OTP dispatch failed:", err);
+      setError(err.message || "Twilio Verify failed to send OTP. Please check your phone number.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (countdown > 0 || loading) return;
+    setError("");
+    setSuccess("");
+    setLoading(true);
+
+    const fullPhone = countryCode + rawPhoneNumber.trim();
+    console.log("Resending real Twilio Verify OTP to:", fullPhone);
+
+    try {
+      const res = await fetch("/api/twilio/resend-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: fullPhone })
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to communicate with Twilio OTP service backend.");
+      }
+
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.error || "Failed to resend mobile OTP.");
+      }
+
+      console.log("Twilio OTP resent successfully to:", fullPhone);
+      setCountdown(60);
+      setOtpDigits(Array(6).fill(""));
+      setSuccess("SMS verification code resent successfully via Twilio!");
+    } catch (err: any) {
+      console.error("Twilio Resend OTP failed:", err);
+      setError(err.message || "Failed to resend OTP. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -302,7 +391,8 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
     setError("");
     setSuccess("");
 
-    if (!otpCode.trim() || otpCode.trim().length !== 6) {
+    const codeToVerify = otpDigits.join("").trim();
+    if (!codeToVerify || codeToVerify.length !== 6) {
       setError("Please enter the 6-digit verification code.");
       return;
     }
@@ -313,38 +403,26 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
     setLoading(true);
 
     try {
-      let fbUser: any = null;
+      console.log("Verifying code on backend:", codeToVerify, "for phone:", fullPhone);
+      const res = await fetch("/api/twilio/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: fullPhone, code: codeToVerify, preferredRole: role })
+      });
 
-      if (confirmationResult?.isSimulated) {
-        if (otpCode.trim() !== "123456") {
-          throw new Error("Invalid verification code. Use code '123456' for sandbox simulation.");
-        }
-        fbUser = {
-          uid: "phone_" + Math.random().toString(36).substr(2, 9),
-          phoneNumber: fullPhone,
-          displayName: displayName
-        };
-      } else {
-        console.log("Verifying code on backend:", otpCode.trim());
-        const res = await fetch("/api/twilio/verify-otp", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone: fullPhone, code: otpCode.trim() })
-        });
-
-        if (!res.ok) {
-          throw new Error("Failed to communicate with OTP verify backend.");
-        }
-
-        const data = await res.json();
-        if (!data.success) {
-          throw new Error(data.error || "Incorrect verification code.");
-        }
-
-        console.log("Signing in using backend custom auth token...");
-        const userCred = await signInWithCustomToken(auth, data.customToken);
-        fbUser = userCred.user;
+      if (!res.ok) {
+        throw new Error("Failed to communicate with OTP verify backend.");
       }
+
+      const data = await res.json();
+      if (!data.success) {
+        console.log("OTP verification failed on backend for:", fullPhone);
+        throw new Error(data.error || "Incorrect verification code.");
+      }
+
+      console.log("Signing in using backend custom auth token...");
+      const userCred = await signInWithCustomToken(auth, data.customToken);
+      const fbUser = userCred.user;
 
       console.log("Phone number confirmed! Authenticated User:", fbUser);
 
@@ -361,7 +439,7 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
         console.log("Initializing all 18 database collections & user doc...");
         const userProfile = await initializeUserCollectionsAndDocs(fbUser, role, displayName);
         
-        // Trigger welcome SMS for Candidate or Recruiter/Employer registration
+        // Trigger welcome SMS
         try {
           await fetch("/api/twilio/send-registration-sms", {
             method: "POST",
@@ -452,10 +530,8 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
       setResetPhoneStep("code");
       setSuccess(data.message || "Password reset OTP dispatched to your mobile number!");
     } catch (err: any) {
-      console.warn("Password reset OTP dispatch failed, fallback to sandbox simulation:", err);
-      showToast("⚠️ Sandbox fallback active. SMS reset code auto-generated: 9901", "info");
-      setResetPhoneStep("code");
-      setSuccess("Verification code simulated successfully! Enter 9901 and your new password to verify.");
+      console.error("Password reset OTP dispatch failed:", err);
+      setError(err.message || "Failed to dispatch password reset OTP. Please check your network connection and configuration.");
     } finally {
       setLoading(false);
     }
@@ -1280,29 +1356,47 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
                       </button>
                     </form>
                   ) : (
-                    <form onSubmit={handleVerifyOtp} className="space-y-4">
+                    <form onSubmit={handleVerifyOtp} className="space-y-4 animate-in fade-in duration-300">
                       <div className="p-3 bg-indigo-950/40 border border-indigo-900/30 rounded-xl flex items-start space-x-2 text-xs text-indigo-200">
                         <Phone className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5 animate-pulse" />
                         <p>SMS verification code routed to <span className="font-bold text-white">{countryCode} {rawPhoneNumber}</span>. Enter code below.</p>
                       </div>
 
-                      <div>
-                        <label className="block text-xs font-medium text-gray-300 mb-1">6-Digit Verification Code</label>
-                        <div className="relative">
-                          <Key className="absolute left-3 top-3 w-4 h-4 text-gray-500" />
-                          <input
-                            type="text"
-                            maxLength={6}
-                            value={otpCode}
-                            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                            required
-                            className="w-full pl-9 pr-4 py-2.5 text-center text-lg font-mono tracking-[0.5em] bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 text-white focus:ring-1 focus:ring-indigo-500"
-                            placeholder="000000"
-                          />
+                      <div className="space-y-2">
+                        <label className="block text-xs font-medium text-gray-300 text-center mb-1">Enter 6-Digit OTP</label>
+                        <div className="flex justify-between gap-2 max-w-sm mx-auto" onPaste={handlePaste}>
+                          {otpDigits.map((digit, idx) => (
+                            <input
+                              key={idx}
+                              id={`otp-input-${idx}`}
+                              type="text"
+                              maxLength={1}
+                              value={digit}
+                              onChange={(e) => handleDigitChange(idx, e.target.value)}
+                              onKeyDown={(e) => handleKeyDown(idx, e)}
+                              className="w-12 h-12 text-center text-xl font-bold bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 text-white transition-all font-mono focus:ring-1 focus:ring-indigo-500"
+                              autoFocus={idx === 0}
+                            />
+                          ))}
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between pt-2">
+                      <div className="flex items-center justify-between text-xs text-gray-400 px-1 pt-1">
+                        <span>Didn't receive SMS?</span>
+                        {countdown > 0 ? (
+                          <span className="text-gray-500">Resend in <strong className="text-indigo-400 font-mono">{countdown}s</strong></span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleResendOtp}
+                            className="text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer"
+                          >
+                            Resend Code
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between pt-4">
                         <button
                           type="button"
                           onClick={() => setPhoneStep("phone")}

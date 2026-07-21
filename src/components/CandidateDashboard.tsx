@@ -40,11 +40,51 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
   const [activeTab, setActiveTab] = useState<
     "overview" | "profile" | "education" | "experience" | "skills" | 
     "resume" | "explore-jobs" | "saved-jobs" | "applied-jobs" | "interviews" | "notifications" | "settings" | "interview" | "coach" | "ai-report" | "chat" | "workspace"
-  >("overview");
+  >(() => {
+    const path = window.location.pathname;
+    if (path === "/candidate/profile") return "profile";
+    return "overview";
+  });
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Sync URL Path when activeTab changes
+  useEffect(() => {
+    if (activeTab === "profile") {
+      if (window.location.pathname !== "/candidate/profile") {
+        window.history.pushState({}, "", "/candidate/profile");
+      }
+    } else if (activeTab === "overview") {
+      if (window.location.pathname !== "/candidate/dashboard") {
+        window.history.pushState({}, "", "/candidate/dashboard");
+      }
+    }
+  }, [activeTab]);
+
+  // Sync activeTab when window popstate / path changes
+  useEffect(() => {
+    const handlePop = () => {
+      const path = window.location.pathname;
+      if (path === "/candidate/profile") {
+        setActiveTab("profile");
+      } else if (path === "/candidate/dashboard") {
+        setActiveTab("overview");
+      }
+    };
+    window.addEventListener("popstate", handlePop);
+    return () => window.removeEventListener("popstate", handlePop);
+  }, []);
+
+  // Listen to dashboard navigation event (e.g. from global shortcut Ctrl+D / Cmd+D)
+  useEffect(() => {
+    const handleResetToOverview = () => {
+      setActiveTab("overview");
+    };
+    window.addEventListener("navigate-to-dashboard-overview", handleResetToOverview);
+    return () => window.removeEventListener("navigate-to-dashboard-overview", handleResetToOverview);
+  }, []);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

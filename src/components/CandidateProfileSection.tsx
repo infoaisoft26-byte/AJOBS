@@ -165,9 +165,9 @@ export default function CandidateProfileSection({
   const ProfileDetailsView = () => {
     const details = profile?.profileDetails || {};
     const [form, setForm] = useState({
-      fullName: details.fullName || profile?.name || "",
-      mobileNumber: details.mobileNumber || "",
-      email: details.email || "",
+      fullName: details.fullName || profile?.fullName || profile?.name || "",
+      mobileNumber: details.mobileNumber || profile?.phone || profile?.phoneNumber || "",
+      email: details.email || profile?.email || "",
       dateOfBirth: details.dateOfBirth || "",
       gender: details.gender || "Male",
       address: details.address || "",
@@ -177,8 +177,8 @@ export default function CandidateProfileSection({
       noticePeriod: details.noticePeriod || "",
       employmentType: details.employmentType || "Full-time",
       languages: details.languages || "",
-      linkedinProfile: details.linkedinProfile || "",
-      portfolioUrl: details.portfolioUrl || "",
+      linkedinProfile: details.linkedinProfile || profile?.linkedin || "",
+      portfolioUrl: details.portfolioUrl || profile?.github || "",
       profilePhoto: details.profilePhoto || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop"
     });
 

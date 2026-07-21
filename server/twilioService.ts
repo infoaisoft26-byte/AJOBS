@@ -1,27 +1,34 @@
 import admin from "firebase-admin";
+import { getFirestore, Firestore } from "firebase-admin/firestore";
 import twilio from "twilio";
 import fs from "fs";
 import path from "path";
 
 // Initialize Firebase Admin SDK
-let firestoreDb: admin.firestore.Firestore | null = null;
+let firestoreDb: Firestore | null = null;
 let firebaseAuth: admin.auth.Auth | null = null;
 
 try {
   const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+  let app;
   if (fs.existsSync(configPath)) {
     const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
     if (!admin.apps.length) {
-      admin.initializeApp({
+      app = admin.initializeApp({
         projectId: config.projectId,
       });
+    } else {
+      app = admin.apps[0];
     }
   } else {
     if (!admin.apps.length) {
-      admin.initializeApp();
+      app = admin.initializeApp();
+    } else {
+      app = admin.apps[0];
     }
   }
-  firestoreDb = admin.firestore();
+  const config = fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, "utf-8")) : {};
+  firestoreDb = config.firestoreDatabaseId ? getFirestore(app, config.firestoreDatabaseId) : getFirestore(app);
   firebaseAuth = admin.auth();
   console.log("[TwilioService] Firebase Admin SDK initialized successfully.");
 } catch (err) {
@@ -126,47 +133,63 @@ function getTwilioClient(config: TwilioConfig) {
   return twilio(config.accountSid, config.authToken);
 }
 
-// Check if Twilio is ready or if we should run in simulated high-fidelity mock mode (useful for immediate sandbox preview)
+// Check if Twilio is configured with accountSid, authToken, and verifyServiceSid as required in production mode
 export async function isTwilioConfigured(): Promise<boolean> {
   const config = await getTwilioConfig();
-  return !!(config.accountSid && config.authToken);
+  return !!(config.accountSid && config.authToken && config.verifyServiceSid);
 }
 
 /**
  * 1. Mobile OTP Login - Send Verification Code
  */
-export async function sendOTP(phone: string): Promise<{ success: boolean; message: string; simulated?: boolean }> {
+export async function sendOTP(phone: string): Promise<{ success: boolean; message: string }> {
   const formattedPhone = formatPhoneNumber(phone);
   const config = await getTwilioConfig();
 
-  console.log(`[TwilioService] Initiating OTP send to ${formattedPhone}`);
+  console.log(`OTP request started for: ${formattedPhone}`);
 
   try {
     if (!config.accountSid || !config.authToken || !config.verifyServiceSid) {
-      // High-Fidelity Simulator
-      const msg = `Your OTP for AIJobs is 4518. Valid for 5 minutes. Do not share.`;
-      console.log(`[TwilioService] TWILIO SIMULATOR: Sending SMS to ${formattedPhone}: "${msg}"`);
-      await logSms(formattedPhone, msg, "SIMULATED", "OTP");
-      return {
-        success: true,
-        message: "OTP sent successfully (Simulated sandbox code: 4518)",
-        simulated: true
-      };
+      throw new Error("Twilio Verify Service is not configured. Real OTP delivery is currently offline.");
     }
 
     const client = getTwilioClient(config);
-    await client.verify.v2.services(config.verifyServiceSid).verifications.create({
-      to: formattedPhone,
-      channel: "sms"
-    });
+    let attempts = 0;
+    const maxRetries = 2;
+    let lastError: any = null;
 
-    await logSms(formattedPhone, "Verification Code triggered via Twilio Verify API", "SENT", "OTP");
-    return { success: true, message: "Verification OTP dispatched to your mobile number." };
+    while (attempts <= maxRetries) {
+      try {
+        await client.verify.v2.services(config.verifyServiceSid).verifications.create({
+          to: formattedPhone,
+          channel: "sms"
+        });
+        console.log(`OTP sent successfully to: ${formattedPhone}`);
+        await logSms(formattedPhone, "Verification Code triggered via Twilio Verify API", "SENT", "OTP");
+        return { success: true, message: "Verification OTP dispatched to your mobile number." };
+      } catch (err: any) {
+        lastError = err;
+        attempts++;
+        console.warn(`[TwilioService] sendOTP attempt ${attempts} failed. Retrying...`, err);
+        if (attempts <= maxRetries) {
+          await new Promise((resolve) => setTimeout(resolve, 1000 * attempts));
+        }
+      }
+    }
+    throw lastError || new Error("Failed to dispatch OTP after retries.");
   } catch (error: any) {
     console.error("[TwilioService] sendOTP error:", error);
     await logSms(formattedPhone, `Failed: ${error.message}`, "FAILED", "OTP", error.message);
     throw error;
   }
+}
+
+/**
+ * Helper for resending OTP
+ */
+export async function resendOTP(phone: string): Promise<{ success: boolean; message: string }> {
+  console.log(`Resending OTP started for: ${phone}`);
+  return sendOTP(phone);
 }
 
 /**
@@ -180,34 +203,28 @@ export async function verifyOTP(
   const formattedPhone = formatPhoneNumber(phone);
   const config = await getTwilioConfig();
 
-  console.log(`[TwilioService] Verifying OTP code for ${formattedPhone}`);
+  console.log(`Verifying OTP code for: ${formattedPhone}`);
 
   try {
-    let isValid = false;
-    let isSimulated = false;
-
     if (!config.accountSid || !config.authToken || !config.verifyServiceSid) {
-      // Mock validation
-      if (code === "4518" || code === "123456" || code === "111111") {
-        isValid = true;
-        isSimulated = true;
-      } else {
-        return { success: false, message: "Invalid OTP code entered. Please try again." };
-      }
-    } else {
-      const client = getTwilioClient(config);
-      const verificationCheck = await client.verify.v2.services(config.verifyServiceSid).verificationChecks.create({
-        to: formattedPhone,
-        code: code
-      });
-      isValid = verificationCheck.status === "approved";
+      throw new Error("Twilio Verify Service is not configured. Real OTP verification is offline.");
     }
 
+    const client = getTwilioClient(config);
+    const verificationCheck = await client.verify.v2.services(config.verifyServiceSid).verificationChecks.create({
+      to: formattedPhone,
+      code: code
+    });
+
+    const isValid = verificationCheck.status === "approved";
+
     if (!isValid) {
+      console.log(`OTP verification failed for: ${formattedPhone}`);
       return { success: false, message: "Invalid or expired OTP verification code." };
     }
 
-    await logSms(formattedPhone, "OTP verification approved successfully.", isSimulated ? "SIMULATED" : "DELIVERED", "OTP");
+    console.log(`OTP verification success for: ${formattedPhone}`);
+    await logSms(formattedPhone, "OTP verification approved successfully.", "DELIVERED", "OTP");
 
     // Perform User Creation / Login in Firebase Auth
     if (!firebaseAuth || !firestoreDb) {
@@ -216,6 +233,7 @@ export async function verifyOTP(
 
     let userRecord;
     let isNewUser = false;
+    const isoDate = new Date().toISOString();
 
     try {
       userRecord = await firebaseAuth.getUserByPhoneNumber(formattedPhone);
@@ -228,7 +246,7 @@ export async function verifyOTP(
           phoneNumber: formattedPhone,
           displayName: `User ${formattedPhone.slice(-4)}`
         });
-        console.log(`[TwilioService] Created new Firebase Auth user for phone ${formattedPhone}, UID: ${userRecord.uid}`);
+        console.log(`User auto-created in Firebase Auth: ${formattedPhone}, UID: ${userRecord.uid}`);
       } else {
         throw authErr;
       }
@@ -243,27 +261,53 @@ export async function verifyOTP(
       const initialProfile = {
         uid: userRecord.uid,
         phone: formattedPhone,
-        email: `otp_${userRecord.uid.substring(0, 8)}@aijobs.local`,
         name: `User ${formattedPhone.slice(-4)}`,
-        role: preferredRole,
-        createdAt: new Date().toISOString(),
-        isPhoneVerified: true
+        email: `otp_${userRecord.uid.substring(0, 8)}@aijobs.local`,
+        role: preferredRole || "candidate",
+        status: "active",
+        createdAt: isoDate,
+        lastLogin: isoDate,
+        profileCompleted: false,
+        resumeURL: ""
       };
       await userDocRef.set(initialProfile);
+      console.log(`User auto-created in Firestore users collection: ${userRecord.uid}`);
 
-      // Create a specific matching collection record
+      // Create candidates collection document too if role is candidate
       if (preferredRole === "candidate") {
-        await firestoreDb.collection("candidate_profiles").doc(userRecord.uid).set({
+        await firestoreDb.collection("candidates").doc(userRecord.uid).set({
+          userId: userRecord.uid,
           uid: userRecord.uid,
+          fullName: initialProfile.name,
           name: initialProfile.name,
-          phone: formattedPhone,
           email: initialProfile.email,
-          resumeScore: 70,
-          aiInterviewScore: 0,
-          createdAt: new Date().toISOString()
+          phone: formattedPhone,
+          skills: [],
+          totalExperience: "",
+          currentCompany: "",
+          currentDesignation: "",
+          education: "",
+          city: "",
+          state: "",
+          linkedin: "",
+          github: "",
+          resumeUrl: "",
+          resumeFileName: "",
+          resumeUploadedAt: "",
+          profileCompleted: false,
+          profileComplete: false,
+          profileSource: "phone_otp"
         });
+        console.log(`Candidate profile document created for: ${userRecord.uid}`);
       }
+    } else {
+      // Update lastLogin for existing user
+      await userDocRef.update({
+        lastLogin: isoDate
+      });
     }
+
+    console.log(`User logged in successfully: ${formattedPhone} (UID: ${userRecord.uid})`);
 
     // Generate Firebase Custom Token
     const customToken = await firebaseAuth.createCustomToken(userRecord.uid);
@@ -290,20 +334,34 @@ async function sendSmsMessage(phone: string, text: string, type: any): Promise<b
 
   try {
     if (!config.accountSid || !config.authToken || !config.messagingServiceSid) {
-      console.log(`[TwilioService] TWILIO SIMULATOR: Dispatch SMS to ${formattedPhone}: "${text}"`);
-      await logSms(formattedPhone, text, "SIMULATED", type);
-      return true;
+      throw new Error("Twilio SMS messaging service is not fully configured (Account SID, Auth Token, or Messaging Service SID is missing).");
     }
 
     const client = getTwilioClient(config);
-    await client.messages.create({
-      body: text,
-      messagingServiceSid: config.messagingServiceSid,
-      to: formattedPhone
-    });
+    let attempts = 0;
+    const maxRetries = 2;
+    let lastError: any = null;
 
-    await logSms(formattedPhone, text, "SENT", type);
-    return true;
+    while (attempts <= maxRetries) {
+      try {
+        await client.messages.create({
+          body: text,
+          messagingServiceSid: config.messagingServiceSid,
+          to: formattedPhone
+        });
+        await logSms(formattedPhone, text, "SENT", type);
+        return true;
+      } catch (err: any) {
+        lastError = err;
+        attempts++;
+        console.warn(`[TwilioService] SMS dispatch attempt ${attempts} failed. Retrying...`, err);
+        if (attempts <= maxRetries) {
+          await new Promise((resolve) => setTimeout(resolve, 1000 * attempts)); // exponential backoff
+        }
+      }
+    }
+
+    throw lastError || new Error("Failed to send SMS message after retries.");
   } catch (error: any) {
     console.error(`[TwilioService] sendSmsMessage error (${type}):`, error);
     await logSms(formattedPhone, `Failed: ${error.message}. Payload: ${text}`, "FAILED", type, error.message);
@@ -391,20 +449,13 @@ export async function sendInterviewReminderSMS(
 /**
  * 6. Password Reset Verification
  */
-export async function sendPasswordResetOTP(phone: string): Promise<{ success: boolean; message: string; simulated?: boolean }> {
+export async function sendPasswordResetOTP(phone: string): Promise<{ success: boolean; message: string }> {
   const formattedPhone = formatPhoneNumber(phone);
   const config = await getTwilioConfig();
 
   try {
     if (!config.accountSid || !config.authToken || !config.verifyServiceSid) {
-      const msg = `Your Password Reset OTP for AIJobs is 9901. Valid for 5 minutes.`;
-      console.log(`[TwilioService] TWILIO SIMULATOR: Sending Password Reset SMS to ${formattedPhone}: "${msg}"`);
-      await logSms(formattedPhone, msg, "SIMULATED", "PasswordReset");
-      return {
-        success: true,
-        message: "Password reset OTP sent successfully (Simulated code: 9901)",
-        simulated: true
-      };
+      throw new Error("Twilio Verify Service is not fully configured (Account SID, Auth Token, or Verify Service SID is missing). Real OTP delivery is offline.");
     }
 
     const client = getTwilioClient(config);
@@ -427,20 +478,17 @@ export async function verifyPasswordResetOTP(phone: string, code: string): Promi
   const config = await getTwilioConfig();
 
   try {
-    let isValid = false;
-
     if (!config.accountSid || !config.authToken || !config.verifyServiceSid) {
-      if (code === "9901" || code === "123456" || code === "111111") {
-        isValid = true;
-      }
-    } else {
-      const client = getTwilioClient(config);
-      const verificationCheck = await client.verify.v2.services(config.verifyServiceSid).verificationChecks.create({
-        to: formattedPhone,
-        code: code
-      });
-      isValid = verificationCheck.status === "approved";
+      throw new Error("Twilio Verify Service is not fully configured. Real OTP verification is offline.");
     }
+
+    const client = getTwilioClient(config);
+    const verificationCheck = await client.verify.v2.services(config.verifyServiceSid).verificationChecks.create({
+      to: formattedPhone,
+      code: code
+    });
+    
+    const isValid = verificationCheck.status === "approved";
 
     if (!isValid) {
       return { success: false, message: "Invalid or expired password reset verification OTP." };

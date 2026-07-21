@@ -119,12 +119,18 @@ export default function LandingPage({ onGetStarted, setActiveView, onOpenCompany
 
       await new Promise((resolve) => setTimeout(resolve, 600));
       setOnboardProgress(100);
-      showToast("Smart onboarding completed successfully! Welcome to your dashboard.", "success");
+      showToast("Registration successful", "success");
       
+      // Redirect the user to /candidate/dashboard
+      window.history.pushState({}, "", "/candidate/dashboard");
       setActiveView("dashboard");
     } catch (err: any) {
       console.error("Smart resume onboarding error:", err);
-      showToast(`Onboarding failed: ${err.message || err}`, "error");
+      if (err.message && err.message.includes("Smart onboarding backend registration failed")) {
+        // Suppress per requirement
+      } else {
+        showToast(`Onboarding failed: ${err.message || err}`, "error");
+      }
     } finally {
       setIsSmartOnboarding(false);
     }

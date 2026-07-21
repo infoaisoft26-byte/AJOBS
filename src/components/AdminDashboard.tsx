@@ -45,6 +45,16 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
 
   // Navigation tabs state
   const [activeTab, setActiveTab] = useState<string>("dashboard");
+
+  // Listen to dashboard navigation event (e.g. from global shortcut Ctrl+D / Cmd+D)
+  useEffect(() => {
+    const handleResetToOverview = () => {
+      setActiveTab("dashboard");
+    };
+    window.addEventListener("navigate-to-dashboard-overview", handleResetToOverview);
+    return () => window.removeEventListener("navigate-to-dashboard-overview", handleResetToOverview);
+  }, []);
+
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Role Based Access state (Simulated active role override)

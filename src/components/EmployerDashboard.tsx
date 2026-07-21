@@ -46,6 +46,15 @@ export default function EmployerDashboard({ userId, userName, userRole }: Employ
     "overview" | "registration" | "jobs" | "discovery" | "pipeline" | "leads" | "interviews" | "offers" | "reports" | "subscription" | "notifications" | "documents" | "chat" | "talent-search" | "performance" | "workspace"
   >("overview");
 
+  // Listen to dashboard navigation event (e.g. from global shortcut Ctrl+D / Cmd+D)
+  useEffect(() => {
+    const handleResetToOverview = () => {
+      setActiveTab("overview");
+    };
+    window.addEventListener("navigate-to-dashboard-overview", handleResetToOverview);
+    return () => window.removeEventListener("navigate-to-dashboard-overview", handleResetToOverview);
+  }, []);
+
   // Corporate core data stores
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
   const [jobs, setJobs] = useState<CompanyJob[]>([]);

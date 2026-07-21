@@ -3,14 +3,17 @@ import path from "path";
 import fs from "fs";
 import dotenv from "dotenv";
 import crypto from "crypto";
+import mammoth from "mammoth";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
-import admin from "firebase-admin";
+import * as admin from "firebase-admin";
+import { getFirestore } from "firebase-admin/firestore";
 import { aiOrchestrator, telemetryStore } from "./server/aiProvider.js";
 import { evaluateAbacPolicy, SubjectAttributes, ResourceAttributes } from "./src/services/abacService.js";
 import { 
   sendOTP, 
   verifyOTP, 
+  resendOTP,
   sendWelcomeSMS, 
   sendRecruiterConfirmationSMS, 
   sendJobApplicationSMS, 
@@ -321,18 +324,22 @@ const abacGuard = (resourceType: string, action: "read" | "write" | "apply" | "e
 
 const getFirestoreDb = () => {
   const configPath = path.join(process.cwd(), "firebase-applet-config.json");
-  if (admin.apps.length === 0) {
+  const apps = admin.apps || [];
+  let app;
+  if (apps.length === 0) {
     if (fs.existsSync(configPath)) {
       const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-      admin.initializeApp({
+      app = admin.initializeApp({
         projectId: config.projectId,
       });
     } else {
-      admin.initializeApp();
+      app = admin.initializeApp();
     }
+  } else {
+    app = apps[0];
   }
   const config = fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, "utf-8")) : {};
-  return config.firestoreDatabaseId ? admin.firestore(config.firestoreDatabaseId) : admin.firestore();
+  return config.firestoreDatabaseId ? getFirestore(app, config.firestoreDatabaseId) : getFirestore(app);
 };
 
 // ==================== API ENDPOINTS ====================
@@ -2008,6 +2015,21 @@ app.post("/api/twilio/verify-otp", async (req, res) => {
   }
 });
 
+// 2b. Resend OTP
+app.post("/api/twilio/resend-otp", async (req, res) => {
+  const { phone } = req.body;
+  if (!phone) {
+    return res.status(400).json({ success: false, error: "Missing phone number." });
+  }
+  try {
+    const result = await resendOTP(phone);
+    return res.json(result);
+  } catch (error: any) {
+    console.error("Twilio resend-otp API error:", error);
+    return res.status(500).json({ success: false, error: error.message || "Failed to resend OTP." });
+  }
+});
+
 // 3. Send Welcome SMS (post candidate registration)
 app.post("/api/twilio/send-welcome", async (req, res) => {
   const { phone, name } = req.body;
@@ -2148,9 +2170,7 @@ app.post("/api/auth/smart-onboard", async (req, res) => {
       }
     }
 
-    const configPath = path.join(process.cwd(), "firebase-applet-config.json");
-    const config = fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, "utf-8")) : {};
-    const dbFs = admin.apps.length > 0 ? (config.firestoreDatabaseId ? admin.firestore(config.firestoreDatabaseId) : admin.firestore()) : admin.firestore();
+    const dbFs = getFirestoreDb();
     
     if (dbFs) {
       const isoDate = new Date().toISOString();
@@ -2260,6 +2280,212 @@ app.post("/api/auth/smart-onboard", async (req, res) => {
   }
 });
 
+// 8c. Real AI Resume Auto-Parsing API
+app.post("/api/resume/parse", async (req, res) => {
+  const { userId, resumeUrl, fileName, fileBase64, fileType } = req.body;
+  
+  if (!userId || !resumeUrl) {
+    return res.status(400).json({ success: false, error: "Missing required parameters: userId, resumeUrl" });
+  }
+
+  console.log(`[Parser] Starting automatic parsing for user ${userId}, file: ${fileName}`);
+
+  try {
+    if (!ai) {
+      throw new Error("Gemini API is not configured or initialized on the server.");
+    }
+
+    let geminiResponseText = "";
+
+    // 1. Extract text automatically using Gemini or Mammoth
+    if (fileType === "application/pdf" || (fileName && fileName.toLowerCase().endsWith(".pdf"))) {
+      let pdfBase64 = fileBase64;
+      if (!pdfBase64) {
+        console.log("[Parser] Fetching PDF from resumeUrl to convert to base64...");
+        const response = await fetch(resumeUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        pdfBase64 = Buffer.from(arrayBuffer).toString("base64");
+      }
+
+      console.log("[Parser] Dispatched native PDF bytes to Gemini...");
+      const geminiRes = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [
+          {
+            inlineData: {
+              data: pdfBase64,
+              mimeType: "application/pdf"
+            }
+          },
+          `You are an expert resume parser. Extract information from this resume and format it EXACTLY as the requested JSON schema. All fields should be string values, skills should be a list of strings.`
+        ],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              fullName: { type: "STRING" },
+              email: { type: "STRING" },
+              phone: { type: "STRING" },
+              skills: { type: "ARRAY", items: { type: "STRING" } },
+              totalExperience: { type: "STRING" },
+              currentCompany: { type: "STRING" },
+              currentDesignation: { type: "STRING" },
+              education: { type: "STRING" },
+              city: { type: "STRING" },
+              state: { type: "STRING" },
+              linkedin: { type: "STRING" },
+              github: { type: "STRING" }
+            },
+            required: ["fullName", "email", "phone", "skills", "totalExperience", "currentCompany", "currentDesignation", "education", "city", "state"]
+          }
+        }
+      });
+      geminiResponseText = geminiRes.text;
+    } else if (fileName && (fileName.toLowerCase().endsWith(".docx") || fileName.toLowerCase().endsWith(".doc"))) {
+      console.log("[Parser] Fetching DOCX/DOC from resumeUrl...");
+      const response = await fetch(resumeUrl);
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      let textResult = "";
+      try {
+        const mammothResult = await mammoth.extractRawText({ buffer });
+        textResult = mammothResult.value;
+      } catch (mErr: any) {
+        console.warn("[Parser] Mammoth failed, using binary extraction fallback:", mErr.message);
+        textResult = buffer.toString("utf-8").replace(/[^\x20-\x7E\n\r\t]/g, "");
+      }
+
+      console.log("[Parser] Word text extracted successfully. Length:", textResult.length);
+
+      console.log("[Parser] Dispatching extracted Word text to Gemini...");
+      const geminiRes = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [
+          `You are an expert resume parser. Extract information from the following resume text and format it EXACTLY as the requested JSON schema. All fields should be string values, skills should be a list of strings.\n\nResume Text:\n${textResult}`
+        ],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              fullName: { type: "STRING" },
+              email: { type: "STRING" },
+              phone: { type: "STRING" },
+              skills: { type: "ARRAY", items: { type: "STRING" } },
+              totalExperience: { type: "STRING" },
+              currentCompany: { type: "STRING" },
+              currentDesignation: { type: "STRING" },
+              education: { type: "STRING" },
+              city: { type: "STRING" },
+              state: { type: "STRING" },
+              linkedin: { type: "STRING" },
+              github: { type: "STRING" }
+            },
+            required: ["fullName", "email", "phone", "skills", "totalExperience", "currentCompany", "currentDesignation", "education", "city", "state"]
+          }
+        }
+      });
+      geminiResponseText = geminiRes.text;
+    } else {
+      let fileText = fileBase64 ? Buffer.from(fileBase64, "base64").toString("utf-8") : "";
+      if (!fileText) {
+        const response = await fetch(resumeUrl);
+        fileText = await response.text();
+      }
+
+      console.log("[Parser] Dispatching plain text to Gemini...");
+      const geminiRes = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [
+          `You are an expert resume parser. Extract information from the following resume text and format it EXACTLY as the requested JSON schema. All fields should be string values, skills should be a list of strings.\n\nResume Text:\n${fileText}`
+        ],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              fullName: { type: "STRING" },
+              email: { type: "STRING" },
+              phone: { type: "STRING" },
+              skills: { type: "ARRAY", items: { type: "STRING" } },
+              totalExperience: { type: "STRING" },
+              currentCompany: { type: "STRING" },
+              currentDesignation: { type: "STRING" },
+              education: { type: "STRING" },
+              city: { type: "STRING" },
+              state: { type: "STRING" },
+              linkedin: { type: "STRING" },
+              github: { type: "STRING" }
+            },
+            required: ["fullName", "email", "phone", "skills", "totalExperience", "currentCompany", "currentDesignation", "education", "city", "state"]
+          }
+        }
+      });
+      geminiResponseText = geminiRes.text;
+    }
+
+    console.log("[Parser] Gemini successfully returned extracted fields JSON!");
+    const parsedData = JSON.parse(geminiResponseText || "{}");
+
+    // Write to candidates/{uid} and users/{uid}
+    const dbFs = getFirestoreDb();
+    const isoDate = new Date().toISOString();
+
+    const candidateUpdate = {
+      uid: userId,
+      userId: userId,
+      fullName: parsedData.fullName || "",
+      name: parsedData.fullName || "",
+      email: parsedData.email || "",
+      phone: parsedData.phone || "",
+      skills: parsedData.skills || [],
+      totalExperience: parsedData.totalExperience || "",
+      currentCompany: parsedData.currentCompany || "",
+      currentDesignation: parsedData.currentDesignation || "",
+      education: parsedData.education || "",
+      city: parsedData.city || "",
+      state: parsedData.state || "",
+      linkedin: parsedData.linkedin || "",
+      github: parsedData.github || "",
+      resumeUrl: resumeUrl,
+      resumeFileName: fileName || "uploaded_resume.pdf",
+      resumeUploadedAt: isoDate,
+      profileComplete: true,
+      profileCompleted: true,
+      profileSource: "resume_parser"
+    };
+
+    const userUpdate = {
+      fullName: parsedData.fullName || "",
+      name: parsedData.fullName || "",
+      phone: parsedData.phone || "",
+      profileComplete: true,
+      profileCompleted: true,
+      resumeUploaded: true,
+      resumeUrl: resumeUrl,
+      resumeURL: resumeUrl
+    };
+
+    if (dbFs) {
+      console.log(`[Parser] Automatically creating/updating candidate profile document for user ${userId}`);
+      await dbFs.collection("candidates").doc(userId).set(candidateUpdate, { merge: true });
+      await dbFs.collection("users").doc(userId).set(userUpdate, { merge: true });
+    }
+
+    return res.json({
+      success: true,
+      message: "Resume parsed successfully. Profile created automatically.",
+      parsed: parsedData
+    });
+
+  } catch (parseErr: any) {
+    console.error("[Parser] Error parsing resume:", parseErr);
+    return res.status(500).json({ success: false, error: parseErr.message || "Failed to automatically parse resume." });
+  }
+});
+
 // 9. Send Test SMS (from Admin Panel)
 app.post("/api/twilio/test-sms", async (req, res) => {
   const { phone, message } = req.body;
@@ -2287,7 +2513,7 @@ app.post("/api/admin/save-twilio-settings", async (req, res) => {
     const finalAuthToken = (authToken && authToken.includes("********")) ? existingConfig.authToken : authToken;
 
     // Save into firestore admin settings
-    const adminConfig = admin.apps.length > 0 ? admin.firestore() : null;
+    const adminConfig = getFirestoreDb();
     if (adminConfig) {
       await adminConfig.collection("system_settings").doc("global_config").set({
         twilio: {
@@ -2338,7 +2564,7 @@ app.get("/api/admin/get-twilio-settings", async (req, res) => {
 app.get("/api/admin/sms-logs", async (req, res) => {
   try {
     const logs: any[] = [];
-    const adminConfig = admin.apps.length > 0 ? admin.firestore() : null;
+    const adminConfig = getFirestoreDb();
     if (adminConfig) {
       const snap = await adminConfig.collection("sms_logs").orderBy("createdAt", "desc").limit(100).get();
       snap.forEach(doc => {
@@ -2355,27 +2581,7 @@ app.get("/api/admin/sms-logs", async (req, res) => {
 // -------------------- SCHEDULER: Auto-close expired jobs --------------------
 async function startExpiredJobsScheduler() {
   try {
-    const configPath = path.join(process.cwd(), "firebase-applet-config.json");
-    if (admin.apps.length === 0) {
-      if (fs.existsSync(configPath)) {
-        const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-        admin.initializeApp({
-          projectId: config.projectId,
-        });
-      } else {
-        admin.initializeApp();
-      }
-    }
-
-    const config = fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, "utf-8")) : {};
-    
-    let db: any;
-    try {
-      db = config.firestoreDatabaseId ? admin.firestore(config.firestoreDatabaseId) : admin.firestore();
-    } catch (e) {
-      console.warn("[Scheduler] Failed to get Firestore with databaseId, falling back to default database:", e);
-      db = admin.firestore();
-    }
+    const db = getFirestoreDb();
 
     const runCheck = async () => {
       const todayStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD

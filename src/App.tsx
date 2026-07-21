@@ -7,6 +7,7 @@ import { initializeUserCollectionsAndDocs, getOrCreateUserProfile } from "./serv
 import Header from "./components/Header";
 import AuthModal from "./components/AuthModal";
 import LandingPage from "./components/LandingPage";
+import ResumeOnboarding from "./components/ResumeOnboarding";
 import { GlobalChatbot } from "./components/GlobalChatbot";
 import CompanySection from "./components/CompanySection";
 import SplashScreen from "./components/SplashScreen";
@@ -174,6 +175,20 @@ function MainAppContent() {
     validation.warnings.forEach((warn) => console.warn("[Production Env Warning]:", warn));
   }, []);
 
+  // Global keyboard shortcut listeners (Cmd+D or Ctrl+D) to navigate to the dashboard
+  useEffect(() => {
+    const handleShortcut = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === "d")) {
+        e.preventDefault();
+        console.log("[Shortcut] Navigating to dashboard...");
+        setActiveView("dashboard");
+        window.dispatchEvent(new CustomEvent("navigate-to-dashboard-overview"));
+      }
+    };
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, []);
+
   // SEO: Dynamic meta tags, Open Graph, and Structured Data (JSON-LD)
   useEffect(() => {
     const metaMap: Record<string, { title: string; desc: string }> = {
@@ -243,6 +258,12 @@ function MainAppContent() {
           const profile = await getOrCreateUserProfile(fbUser);
           setUser(profile);
           trackInteraction("login_success", "auth", profile.role);
+
+          // Auto-redirect if profile is incomplete
+          if (profile.role === "candidate" && !profile.profileCompleted) {
+            window.history.pushState({}, "", "/resume/onboarding");
+            setActiveView("resume-onboarding");
+          }
         } catch (err) {
           console.error("Error loading user snapshot, triggering resilient client-side fallback:", err);
           showToast("Failed to retrieve profile snapshot, entering fallback workspace mode", "warning");
@@ -279,6 +300,32 @@ function MainAppContent() {
 
     return () => unsubscribe();
   }, [showToast]);
+
+  // Handle URL Routing & Popstate
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path === "/resume/onboarding") {
+      setActiveView("resume-onboarding");
+    } else if (path === "/candidate/profile") {
+      setActiveView("dashboard");
+    } else if (path === "/candidate/dashboard") {
+      setActiveView("dashboard");
+    }
+
+    const handlePopState = () => {
+      const p = window.location.pathname;
+      if (p === "/resume/onboarding") {
+        setActiveView("resume-onboarding");
+      } else if (p === "/candidate/profile" || p === "/candidate/dashboard") {
+        setActiveView("dashboard");
+      } else if (p === "/") {
+        setActiveView("home");
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   // Theme support
   const toggleTheme = () => {
@@ -512,6 +559,12 @@ function MainAppContent() {
                     }}
                     setActiveView={setActiveView}
                     onOpenCompanyPage={(page) => setActiveCompanyPage(page)}
+                  />
+                ) : activeView === "resume-onboarding" ? (
+                  <ResumeOnboarding
+                    user={user}
+                    setUser={setUser}
+                    setActiveView={setActiveView}
                   />
                 ) : activeView === "notifications" ? (
                   <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
