@@ -100,7 +100,41 @@ const [recruitersList, setRecruitersList] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+// 1B. Fetch Consultancies
+try {
+  const consultanciesSnap = await getDocs(collection(db, "consultancies"));
+  const consultanciesData: any[] = [];
 
+  consultanciesSnap.forEach((docItem) => {
+    consultanciesData.push({
+      id: docItem.id,
+      ...docItem.data(),
+    });
+  });
+
+  setConsultanciesList(consultanciesData);
+} catch (err: any) {
+  console.warn("Failed to fetch consultancies:", err.message);
+  setConsultanciesList([]);
+}
+
+// 1C. Fetch Recruiters
+try {
+  const recruitersSnap = await getDocs(collection(db, "recruiters"));
+  const recruitersData: any[] = [];
+
+  recruitersSnap.forEach((docItem) => {
+    recruitersData.push({
+      id: docItem.id,
+      ...docItem.data(),
+    });
+  });
+
+  setRecruitersList(recruitersData);
+} catch (err: any) {
+  console.warn("Failed to fetch recruiters:", err.message);
+  setRecruitersList([]);
+}
   const fetchWorkspaceData = async () => {
     setLoading(true);
     setError(null);
@@ -116,7 +150,8 @@ const [recruitersList, setRecruitersList] = useState<any[]>([]);
     let audit: SystemAuditLog[] = [];
     let config: AdminSystemSettings | null = null;
     let syncErrorsList: string[] = [];
-
+let consultanciesData: any[] = [];
+let recruitersData: any[] = [];
     // 1. Fetch Users
     try {
       const usersSnap = await getDocs(collection(db, "users"));
@@ -131,7 +166,7 @@ const [recruitersList, setRecruitersList] = useState<any[]>([]);
       setUserList(FALLBACK_USERS);
     }
 
-    // 2. Fetch Jobs
+    
     try {
       const jobsSnap = await getDocs(collection(db, "jobs"));
       jobsSnap.forEach(doc => {
