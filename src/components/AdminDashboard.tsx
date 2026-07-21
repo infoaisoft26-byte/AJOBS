@@ -166,7 +166,33 @@ let recruitersData: any[] = [];
       setUserList(FALLBACK_USERS);
     }
 
-    
+    // Fetch Consultancies
+try {
+  const consultanciesSnap = await getDocs(collection(db, "consultancies"));
+
+  consultanciesSnap.forEach((docItem) => {
+    consultanciesData.push({
+      id: docItem.id,
+      ...docItem.data(),
+    });
+  });
+} catch (err: any) {
+  console.warn("Failed to fetch consultancies:", err.message);
+}
+
+// Fetch Recruiters
+try {
+  const recruitersSnap = await getDocs(collection(db, "recruiters"));
+
+  recruitersSnap.forEach((docItem) => {
+    recruitersData.push({
+      id: docItem.id,
+      ...docItem.data(),
+    });
+  });
+} catch (err: any) {
+  console.warn("Failed to fetch recruiters:", err.message);
+}
     try {
       const jobsSnap = await getDocs(collection(db, "jobs"));
       jobsSnap.forEach(doc => {
