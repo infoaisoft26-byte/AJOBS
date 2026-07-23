@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { motion } from "motion/react";
 import { 
   Sparkles, Upload, MessageSquare, Briefcase, Award, Send, Play, 
   Brain, CheckCircle2, TrendingUp, AlertTriangle, PlayCircle, Star, Info, FileText,
@@ -613,7 +614,12 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
   }
 
   return (
-    <div className={`min-h-screen text-white transition-colors duration-300 font-sans flex flex-col bg-[#030305]`} id="candidate-workspace-root">
+    <div 
+      className={`min-h-screen font-sans flex flex-col transition-colors duration-500 ease-in-out ${
+        theme === "dark" ? "bg-[#030305] text-white" : "bg-gray-50 text-gray-900"
+      }`} 
+      id="candidate-workspace-root"
+    >
       
       {/* Top Header */}
       <CandidateHeader 
@@ -631,8 +637,14 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
         setSearchQuery={setSearchQuery}
       />
 
-      {/* Main Workspace Frame */}
-      <div className="flex-1 flex max-w-7xl w-full mx-auto relative">
+      {/* Main Workspace Frame with Smooth Theme Fade Transition */}
+      <motion.div 
+        key={`candidate-theme-${theme}`}
+        initial={{ opacity: 0.82 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.45, ease: "easeInOut" }}
+        className="flex-1 flex max-w-7xl w-full mx-auto relative transition-all duration-500"
+      >
         
         {/* Left Sidebar Menu */}
         <CandidateSidebar 
@@ -797,7 +809,7 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
           )}
 
         </main>
-      </div>
+      </motion.div>
     </div>
   );
 }

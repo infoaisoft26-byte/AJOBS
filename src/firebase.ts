@@ -211,7 +211,7 @@ try {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
     authInstance = getAuth(app);
     dbInstance = getFirestore(app, (config as any).firestoreDatabaseId);
-    storageInstance = getStorage(app);
+    storageInstance = getStorage(app, "gs://planning-with-ai-1ea1c.firebasestorage.app");
 
     // Initialize App Check safely (Intentionally bypassed to prevent App Check HTTP 403 fetch errors in sandbox/preview domains)
     if (typeof window !== "undefined") {

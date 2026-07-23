@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { motion } from "motion/react";
 import { 
   Users, Search, ShieldCheck, Mail, Phone, Calendar, Briefcase, 
   Filter, ArrowUpRight, CheckCircle, AlertCircle, RefreshCw, 
@@ -6,6 +7,8 @@ import {
 } from "lucide-react";
 import { db, auth } from "../firebase";
 import { collection, doc, getDocs, updateDoc, deleteDoc, query, where, onSnapshot } from "firebase/firestore";
+import ExportActivityCsvButton from "./ExportActivityCsvButton";
+import OfflineSyncBadge from "./OfflineSyncBadge";
 
 interface Lead {
   id: string;
@@ -198,7 +201,13 @@ export default function LeadManagement({ userId, userRole, userName }: LeadManag
   };
 
   return (
-    <div className="space-y-6" id="lead-management-panel">
+    <motion.div 
+      initial={{ opacity: 0.85, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: "easeInOut" }}
+      className="space-y-6 transition-all duration-500" 
+      id="lead-management-panel"
+    >
       {/* Upper header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-white/5 pb-4 gap-4">
         <div>
@@ -213,7 +222,9 @@ export default function LeadManagement({ userId, userRole, userName }: LeadManag
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <OfflineSyncBadge />
+          <ExportActivityCsvButton role="consultancy" variant="compact" label="Export Agency CSV" />
           <span className="text-[10px] font-mono px-3 py-1.5 bg-indigo-500/10 text-indigo-300 rounded-xl border border-indigo-500/20 uppercase font-bold">
             Role: {normalizedRole.toUpperCase()}
           </span>
@@ -440,6 +451,6 @@ export default function LeadManagement({ userId, userRole, userName }: LeadManag
 
       </div>
 
-    </div>
+    </motion.div>
   );
 }

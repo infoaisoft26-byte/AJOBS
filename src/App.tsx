@@ -1,6 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from "react";
 import { auth, db, isFirebaseConfigured } from "./firebase";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, UserCheck } from "lucide-react";
 import { doc, getDoc } from "firebase/firestore";
 import { UserProfile } from "./types";
 import { initializeUserCollectionsAndDocs, getOrCreateUserProfile } from "./services/dbInitService";
@@ -12,6 +12,8 @@ import { GlobalChatbot } from "./components/GlobalChatbot";
 import CompanySection from "./components/CompanySection";
 import SplashScreen from "./components/SplashScreen";
 import CinematicBackground from "./components/CinematicBackground";
+import ThreeDBackground, { BackgroundMode } from "./components/ThreeDBackground";
+import CustomCursor from "./components/CustomCursor";
 import { motion, AnimatePresence } from "motion/react";
 
 // Lazy-loaded dashboard components for smaller initial bundle sizes
@@ -146,7 +148,20 @@ function MainAppContent() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [authLoading, setAuthLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(true);
+  const [threeDMode, setThreeDMode] = useState<BackgroundMode>(() => {
+    if (typeof localStorage !== "undefined") {
+      return (localStorage.getItem("aijobs_3d_mode") as BackgroundMode) || "neural";
+    }
+    return "neural";
+  });
   const { showToast } = useToast();
+
+  const handleThreeDModeChange = (newMode: BackgroundMode) => {
+    setThreeDMode(newMode);
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("aijobs_3d_mode", newMode);
+    }
+  };
 
   // On client startup: initialize telemetry, service worker, and env validation
   useEffect(() => {
@@ -459,36 +474,41 @@ function MainAppContent() {
         );
       default:
         return (
-          <div id="dashboard-role-selector" className="p-8 max-w-lg mx-auto text-center space-y-4 glass rounded-2xl border border-white/10 my-12 bg-gray-900/40">
-            <AlertTriangle className="w-12 h-12 text-yellow-400 mx-auto" />
+          <div id="dashboard-role-selector" className="p-8 max-w-lg mx-auto text-center space-y-4 glass rounded-2xl border border-white/10 my-12 bg-gray-900/40 shadow-2xl backdrop-blur-md">
+            <div className="flex justify-center">
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 uppercase tracking-wider shadow-sm">
+                <UserCheck className="w-3.5 h-3.5 text-indigo-400" /> Account Type
+              </span>
+            </div>
+            <AlertTriangle className="w-10 h-10 text-yellow-400 mx-auto" />
             <h3 className="font-bold text-white text-lg">Select Dashboard Workspace</h3>
             <p className="text-xs text-gray-400">Your profile doesn't have a workspace role designated. Please select your account type to proceed:</p>
             <div className="grid grid-cols-2 gap-4 pt-4">
               <button 
                 id="btn-select-candidate"
                 onClick={() => handleUpdateUserRole("candidate")}
-                className="py-2.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-xs font-bold text-indigo-300 rounded-xl border border-indigo-500/30 transition-all cursor-pointer"
+                className="py-2.5 px-3 bg-indigo-600/20 hover:bg-indigo-600/40 text-xs font-bold text-indigo-300 rounded-xl border border-indigo-500/30 hover:border-indigo-400 transition-all duration-200 transform hover:scale-105 hover:shadow-[0_0_15px_rgba(99,102,241,0.5)] cursor-pointer active:scale-95"
               >
                 Candidate Workspace
               </button>
               <button 
                 id="btn-select-employer"
                 onClick={() => handleUpdateUserRole("employer")}
-                className="py-2.5 bg-pink-600/20 hover:bg-pink-600/40 text-xs font-bold text-pink-300 rounded-xl border border-pink-500/30 transition-all cursor-pointer"
+                className="py-2.5 px-3 bg-pink-600/20 hover:bg-pink-600/40 text-xs font-bold text-pink-300 rounded-xl border border-pink-500/30 hover:border-pink-400 transition-all duration-200 transform hover:scale-105 hover:shadow-[0_0_15px_rgba(236,72,153,0.5)] cursor-pointer active:scale-95"
               >
                 Recruiter Workspace
               </button>
               <button 
                 id="btn-select-consultancy"
                 onClick={() => handleUpdateUserRole("consultancy")}
-                className="py-2.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-xs font-bold text-emerald-300 rounded-xl border border-emerald-500/30 transition-all cursor-pointer"
+                className="py-2.5 px-3 bg-emerald-600/20 hover:bg-emerald-600/40 text-xs font-bold text-emerald-300 rounded-xl border border-emerald-500/30 hover:border-emerald-400 transition-all duration-200 transform hover:scale-105 hover:shadow-[0_0_15px_rgba(16,185,129,0.5)] cursor-pointer active:scale-95"
               >
                 Consultancy Agency
               </button>
               <button 
                 id="btn-select-admin"
                 onClick={() => handleUpdateUserRole("admin")}
-                className="py-2.5 bg-yellow-600/20 hover:bg-yellow-600/40 text-xs font-bold text-yellow-300 rounded-xl border border-yellow-500/30 transition-all cursor-pointer"
+                className="py-2.5 px-3 bg-yellow-600/20 hover:bg-yellow-600/40 text-xs font-bold text-yellow-300 rounded-xl border border-yellow-500/30 hover:border-yellow-400 transition-all duration-200 transform hover:scale-105 hover:shadow-[0_0_15px_rgba(234,179,8,0.5)] cursor-pointer active:scale-95"
               >
                 Administrator Desk
               </button>
@@ -502,8 +522,11 @@ function MainAppContent() {
     <div className={`min-h-screen flex flex-col font-sans relative overflow-hidden transition-colors duration-300 ${
       theme === "dark" ? "bg-[#020204] text-white" : "bg-gray-100 text-gray-900"
     }`}>
-      {/* Global Cinematic 3D Background */}
-      {theme === "dark" && <CinematicBackground />}
+      {/* Interactive 5D Custom Cursor */}
+      <CustomCursor />
+
+      {/* Global 3D Interactive React Three Fiber Canvas Background */}
+      {theme === "dark" && <ThreeDBackground mode={threeDMode} />}
 
       {/* Header */}
       <Header
@@ -521,6 +544,9 @@ function MainAppContent() {
         }}
         theme={theme}
         toggleTheme={toggleTheme}
+        onReplayIntro={() => setShowSplash(true)}
+        threeDMode={threeDMode}
+        onThreeDModeChange={handleThreeDModeChange}
       />
 
       {!isFirebaseConfigured && (

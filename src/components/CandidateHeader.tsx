@@ -5,6 +5,8 @@ import {
 } from "lucide-react";
 import { NotificationRecord } from "../types";
 import { motion, AnimatePresence } from "motion/react";
+import { ExportActivityCsvButton } from "./ExportActivityCsvButton";
+import { OfflineSyncBadge } from "./OfflineSyncBadge";
 
 const SAMPLE_SUGGESTIONS = [
   "React Developer",
@@ -236,6 +238,16 @@ export default function CandidateHeader({
               </div>
             </div>
           )}
+        </div>
+
+        {/* Service Worker Offline Sync Badge */}
+        <div className="hidden sm:block">
+          <OfflineSyncBadge />
+        </div>
+
+        {/* CSV Export Button */}
+        <div className="hidden md:block">
+          <ExportActivityCsvButton role="candidate" variant="compact" label="Export CSV" />
         </div>
 
         {/* Dark Mode Toggle */}

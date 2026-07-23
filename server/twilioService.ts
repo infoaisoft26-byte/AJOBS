@@ -1,38 +1,18 @@
-import admin from "firebase-admin";
-import { getFirestore, Firestore } from "firebase-admin/firestore";
 import twilio from "twilio";
 import fs from "fs";
 import path from "path";
+import { getFirestoreDb, getFirebaseAuth } from "./firestoreHelper";
 
-// Initialize Firebase Admin SDK
-let firestoreDb: Firestore | null = null;
-let firebaseAuth: admin.auth.Auth | null = null;
+// Initialize Firebase DB and Auth
+let firestoreDb: any = null;
+let firebaseAuth: any = null;
 
 try {
-  const configPath = path.join(process.cwd(), "firebase-applet-config.json");
-  let app;
-  if (fs.existsSync(configPath)) {
-    const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-    if (!admin.apps.length) {
-      app = admin.initializeApp({
-        projectId: config.projectId,
-      });
-    } else {
-      app = admin.apps[0];
-    }
-  } else {
-    if (!admin.apps.length) {
-      app = admin.initializeApp();
-    } else {
-      app = admin.apps[0];
-    }
-  }
-  const config = fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, "utf-8")) : {};
-  firestoreDb = config.firestoreDatabaseId ? getFirestore(app, config.firestoreDatabaseId) : getFirestore(app);
-  firebaseAuth = admin.auth();
-  console.log("[TwilioService] Firebase Admin SDK initialized successfully.");
+  firestoreDb = getFirestoreDb();
+  firebaseAuth = getFirebaseAuth();
+  console.log("[TwilioService] Firebase DB and Auth initialized successfully.");
 } catch (err) {
-  console.error("[TwilioService] Failed to initialize Firebase Admin SDK:", err);
+  console.error("[TwilioService] Failed to initialize Firebase DB/Auth:", err);
 }
 
 // Format number to India standard if simple 10 digit, or retain + if formatted

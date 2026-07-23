@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { motion } from "motion/react";
 import logoImg from "../assets/images/aijobs_logo_1783014982325.jpg";
 import { 
   Users, ShieldAlert, Sparkles, RefreshCw, Trash2, Settings, 
@@ -38,6 +39,8 @@ import SystemSettings from "./admin/SystemSettings";
 import AuditLogs from "./admin/AuditLogs";
 import AbacControlInspector from "./AbacControlInspector";
 import LeadManagement from "./LeadManagement";
+import ExportActivityCsvButton from "./ExportActivityCsvButton";
+import OfflineSyncBadge from "./OfflineSyncBadge";
 
 export default function AdminDashboard({ userId, userName }: { userId?: string; userName?: string }) {
   const currentUserId = userId || auth.currentUser?.uid || "system_admin_01";
@@ -71,10 +74,6 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
   const [paymentsList, setPaymentsList] = useState<PaymentTransaction[]>([]);
   const [auditLogsList, setAuditLogsList] = useState<SystemAuditLog[]>([]);
   const [globalConfig, setGlobalConfig] = useState<AdminSystemSettings | null>(null);
-  // 👇 Add these two states
-const [consultanciesList, setConsultanciesList] = useState<any[]>([]);
-const [recruitersList, setRecruitersList] = useState<any[]>([]);
-// 👆 End
   const [adminProfile, setAdminProfile] = useState<{ level: string; status: string }>({ level: "Super Admin", status: "active" });
 
   // Stats
@@ -100,41 +99,7 @@ const [recruitersList, setRecruitersList] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
-// 1B. Fetch Consultancies
-try {
-  const consultanciesSnap = await getDocs(collection(db, "consultancies"));
-  const consultanciesData: any[] = [];
 
-  consultanciesSnap.forEach((docItem) => {
-    consultanciesData.push({
-      id: docItem.id,
-      ...docItem.data(),
-    });
-  });
-
-  setConsultanciesList(consultanciesData);
-} catch (err: any) {
-  console.warn("Failed to fetch consultancies:", err.message);
-  setConsultanciesList([]);
-}
-
-// 1C. Fetch Recruiters
-try {
-  const recruitersSnap = await getDocs(collection(db, "recruiters"));
-  const recruitersData: any[] = [];
-
-  recruitersSnap.forEach((docItem) => {
-    recruitersData.push({
-      id: docItem.id,
-      ...docItem.data(),
-    });
-  });
-
-  setRecruitersList(recruitersData);
-} catch (err: any) {
-  console.warn("Failed to fetch recruiters:", err.message);
-  setRecruitersList([]);
-}
   const fetchWorkspaceData = async () => {
     setLoading(true);
     setError(null);
@@ -150,8 +115,7 @@ try {
     let audit: SystemAuditLog[] = [];
     let config: AdminSystemSettings | null = null;
     let syncErrorsList: string[] = [];
-let consultanciesData: any[] = [];
-let recruitersData: any[] = [];
+
     // 1. Fetch Users
     try {
       const usersSnap = await getDocs(collection(db, "users"));
@@ -166,33 +130,7 @@ let recruitersData: any[] = [];
       setUserList(FALLBACK_USERS);
     }
 
-    // Fetch Consultancies
-try {
-  const consultanciesSnap = await getDocs(collection(db, "consultancies"));
-
-  consultanciesSnap.forEach((docItem) => {
-    consultanciesData.push({
-      id: docItem.id,
-      ...docItem.data(),
-    });
-  });
-} catch (err: any) {
-  console.warn("Failed to fetch consultancies:", err.message);
-}
-
-// Fetch Recruiters
-try {
-  const recruitersSnap = await getDocs(collection(db, "recruiters"));
-
-  recruitersSnap.forEach((docItem) => {
-    recruitersData.push({
-      id: docItem.id,
-      ...docItem.data(),
-    });
-  });
-} catch (err: any) {
-  console.warn("Failed to fetch recruiters:", err.message);
-}
+    // 2. Fetch Jobs
     try {
       const jobsSnap = await getDocs(collection(db, "jobs"));
       jobsSnap.forEach(doc => {
@@ -495,7 +433,13 @@ try {
   const activeView = getAuthorizedView();
 
   return (
-    <div className="flex min-h-screen bg-[#050508] relative" id="super-admin-root-workspace">
+    <motion.div 
+      initial={{ opacity: 0.85 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.45, ease: "easeInOut" }}
+      className="flex min-h-screen bg-[#050508] relative transition-all duration-500" 
+      id="super-admin-root-workspace"
+    >
       
       {/* Premium Sidebar layout */}
       <aside className={`bg-[#0a0a0f] border-r border-white/5 flex flex-col justify-between transition-all duration-300 z-10 shrink-0 ${
@@ -602,6 +546,8 @@ try {
           </div>
 
           <div className="flex items-center gap-3">
+            <OfflineSyncBadge />
+            <ExportActivityCsvButton role="admin" variant="compact" label="Export Admin CSV" />
             <button
               onClick={fetchWorkspaceData}
               className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg border border-white/5 text-gray-400 hover:text-white transition-all cursor-pointer"
@@ -609,7 +555,7 @@ try {
             >
               <RefreshCw className="w-3.5 h-3.5" />
             </button>
-            <div className="text-right text-[10px] font-mono text-gray-500 pr-1">
+            <div className="text-right text-[10px] font-mono text-gray-500 pr-1 hidden sm:block">
               v1.4 Enterprise
             </div>
           </div>
@@ -742,6 +688,6 @@ try {
 
       </main>
 
-    </div>
+    </motion.div>
   );
 }

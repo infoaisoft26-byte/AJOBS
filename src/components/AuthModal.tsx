@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import confetti from "canvas-confetti";
+import soundSynth from "../utils/audioSynth";
 import logoImg from "../assets/images/aijobs_logo_1783014982325.jpg";
 import { 
   X, User, Shield, Briefcase, Mail, Lock, UserPlus, Sparkles, 
@@ -178,6 +180,20 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
       console.log("Loading user profile for authenticated user UID:", fbUser.uid, "with role preference:", role);
       const userProfile = await getOrCreateUserProfile(fbUser, role);
       console.log("UserProfile loaded successfully:", userProfile);
+
+      // Trigger 5D Celebratory Effects
+      soundSynth.playSuccess();
+      try {
+        confetti({
+          particleCount: 80,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      } catch (e) {}
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        navigator.vibrate([30, 40, 30]);
+      }
+
       onAuthSuccess(userProfile);
       onClose();
     } catch (err: any) {
@@ -784,7 +800,7 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
               <div className="space-y-1">
                 <span className="font-bold text-yellow-200 block">Firebase Configuration Warning</span>
                 <p className="text-gray-300 leading-relaxed text-[11px]">
-                  {firebaseConfigError || "Firebase configuration is incomplete. Standard authentication may fail. Use Quick Demo portals to test the live workspace securely."}
+                  {firebaseConfigError || "Firebase configuration is incomplete. Standard authentication may fail. Please verify your Firebase project credentials."}
                 </p>
               </div>
             </div>

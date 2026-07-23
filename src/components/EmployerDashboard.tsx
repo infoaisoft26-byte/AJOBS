@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { motion } from "motion/react";
 import { 
   Building2, TrendingUp, Briefcase, Brain, Users, 
   Calendar, Award, BarChart2, ShieldAlert, ShieldCheck, RefreshCw, LogOut, CreditCard, Bell,
@@ -12,6 +13,8 @@ import LiveChatSection from "./LiveChatSection";
 import TalentSearch from "./employer/TalentSearch";
 import LeadManagement from "./LeadManagement";
 import GoogleWorkspaceHub from "./GoogleWorkspaceHub";
+import ExportActivityCsvButton from "./ExportActivityCsvButton";
+import OfflineSyncBadge from "./OfflineSyncBadge";
 
 // Types
 import { 
@@ -207,7 +210,13 @@ export default function EmployerDashboard({ userId, userName, userRole }: Employ
   const corpName = companyProfile?.companyName || "Corporate Workspace";
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 md:px-8 space-y-6" id="corporate-portal-container">
+    <motion.div 
+      initial={{ opacity: 0.85, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: "easeInOut" }}
+      className="max-w-7xl mx-auto px-4 py-8 md:px-8 space-y-6 transition-all duration-500" 
+      id="corporate-portal-container"
+    >
       
       {/* Premium Glassmorphic Header */}
       <div className="glass p-6 rounded-2xl border border-white/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden">
@@ -235,15 +244,19 @@ export default function EmployerDashboard({ userId, userName, userRole }: Employ
           </div>
         </div>
 
-        {/* Sync Indicator button */}
-        <button
-          onClick={() => synchronizeVault(true)}
-          disabled={isRefreshing}
-          className="flex items-center gap-1.5 px-3.5 py-2 bg-white/5 hover:bg-white/10 border border-white/5 text-xs text-gray-300 rounded-xl transition-all cursor-pointer font-bold disabled:opacity-50"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-indigo-400" : ""}`} />
-          <span>Sync Corporate Workspace</span>
-        </button>
+        {/* Action Buttons & Sync Badges */}
+        <div className="flex flex-wrap items-center gap-2">
+          <OfflineSyncBadge />
+          <ExportActivityCsvButton role="employer" label="Export Recruitment CSV" />
+          <button
+            onClick={() => synchronizeVault(true)}
+            disabled={isRefreshing}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-white/5 hover:bg-white/10 border border-white/5 text-xs text-gray-300 rounded-xl transition-all cursor-pointer font-bold disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-indigo-400" : ""}`} />
+            <span>Sync Workspace</span>
+          </button>
+        </div>
       </div>
 
       {/* Navigation and Tab switcher Row */}
@@ -432,6 +445,6 @@ export default function EmployerDashboard({ userId, userName, userRole }: Employ
         </div>
 
       </div>
-    </div>
+    </motion.div>
   );
 }
