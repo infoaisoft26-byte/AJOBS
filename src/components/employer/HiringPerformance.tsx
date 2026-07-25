@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { 
   TrendingUp, Calendar, Users, Award, ShieldCheck, Sparkles, Filter, 
   HelpCircle, ChevronDown, CheckCircle, Clock, PieChart as PieIcon, BarChart2,
-  Share2, ArrowUpRight, ArrowDownRight, Snail, Rocket, Target, Zap
+  Share2, ArrowUpRight, ArrowDownRight, Snail, Target, Zap
 } from "lucide-react";
 import { 
   AreaChart, Area, BarChart, Bar, LineChart, Line, XAxis, YAxis, 
@@ -336,7 +336,7 @@ export default function HiringPerformance({
             <span className="text-xs text-indigo-400 font-mono font-bold">Days</span>
           </div>
           <div className="flex items-center gap-1 text-[10px] text-emerald-400 font-mono font-bold">
-            <Rocket className="w-3 h-3 text-emerald-400" />
+            <Zap className="w-3 h-3 text-emerald-400" />
             <span>-4.5d vs Industry standard</span>
           </div>
         </div>

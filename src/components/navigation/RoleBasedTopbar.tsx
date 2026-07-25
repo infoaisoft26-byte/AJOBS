@@ -5,7 +5,7 @@ import {
   Search, PlusCircle, RefreshCw
 } from "lucide-react";
 import { UserProfile } from "../../types";
-import logoImg from "../../assets/images/aijobs_logo_1783014982325.jpg";
+import logoImg from "../../assets/images/aijobs-ai-logo.png";
 import { NotificationBellAndDrawer } from "../NotificationCenter";
 import { ExportActivityCsvButton } from "../ExportActivityCsvButton";
 import { OfflineSyncBadge } from "../OfflineSyncBadge";

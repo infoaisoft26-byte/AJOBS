@@ -383,7 +383,7 @@ export default function JobDetails({
             </div>
             <button
               onClick={() => {
-                alert("Running deep ATS match checklist in local sandbox...");
+                alert("Analyzing candidate profile against ATS parameters for fit score...");
               }}
               className="px-4 py-2 bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 text-[10px] font-bold rounded-xl border border-indigo-500/10 transition-all cursor-pointer shrink-0"
             >

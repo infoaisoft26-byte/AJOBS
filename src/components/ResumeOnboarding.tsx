@@ -1,10 +1,10 @@
 import { useState, useRef } from "react";
 import { Upload, Loader2, CheckCircle2, Sparkles, AlertTriangle, FileText, RefreshCw, ArrowRight } from "lucide-react";
 import { motion } from "motion/react";
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { doc, updateDoc, setDoc } from "firebase/firestore";
-import { auth, storage, db } from "../firebase";
+import { auth, db } from "../firebase";
 import { useToast } from "./GlobalToast";
+import { uploadResumeService } from "../services/resumeUploadService";
 
 interface ResumeOnboardingProps {
   user: any;
@@ -63,88 +63,19 @@ export default function ResumeOnboarding({ user, setUser, setActiveView }: Resum
   };
 
   const formatStorageError = (err: any): string => {
-    console.error("[ResumeOnboarding] Firebase Storage exact error:", err);
+    console.error("[ResumeOnboarding] Storage exact error:", err);
     if (!err) return "An unknown upload error occurred.";
     const code = err.code || "";
     const msg = String(err.message || err);
 
-    if (code === "storage/unauthorized") {
-      return "Unauthorized: You do not have permission to upload files to storage/unauthorized.";
-    } else if (code === "storage/canceled") {
+    if (code === "storage/unauthorized" || msg.includes("Unauthorized")) {
+      return "Unauthorized: You do not have permission to upload files to storage.";
+    } else if (code === "storage/canceled" || msg.includes("canceled")) {
       return "Upload was canceled or timed out.";
-    } else if (code === "storage/unknown") {
-      return "An unknown storage error occurred on Firebase (storage/unknown).";
     } else if (msg.includes("CORS") || msg.includes("Failed to fetch") || msg.includes("network")) {
       return "Network or CORS error. Please check your internet connection.";
     }
     return msg || "Resume upload failed. Please try again.";
-  };
-
-  /**
-   * Performs a single upload attempt using uploadBytesResumable with a 60-second timeout.
-   */
-  const uploadSingleAttempt = (storageRef: any, file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const uploadTask = uploadBytesResumable(storageRef, file, {
-        contentType: file.type || "application/pdf"
-      });
-
-      // 60-second timeout guard
-      const timeoutTimer = setTimeout(() => {
-        console.warn("[ResumeOnboarding] Upload timed out after 60 seconds. Canceling task...");
-        uploadTask.cancel();
-        reject(new Error("Upload timed out after 60 seconds. Please check your network connection."));
-      }, 60000);
-
-      uploadTask.on(
-        "state_changed",
-        (snapshot) => {
-          if (snapshot.totalBytes > 0) {
-            const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-            // Cap visual progress at 95% until final URL retrieval
-            setProgress(Math.min(95, Math.max(1, pct)));
-          }
-        },
-        (err) => {
-          clearTimeout(timeoutTimer);
-          reject(err);
-        },
-        async () => {
-          clearTimeout(timeoutTimer);
-          try {
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            resolve(downloadURL);
-          } catch (urlErr) {
-            reject(urlErr);
-          }
-        }
-      );
-    });
-  };
-
-  /**
-   * Retries upload up to maxRetries (3) times automatically.
-   */
-  const uploadWithRetries = async (storageRef: any, file: File, maxRetries = 3): Promise<string> => {
-    let lastErr: any = null;
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        setAttemptNum(attempt);
-        if (attempt > 1) {
-          setStep(`Connection retry (attempt ${attempt}/${maxRetries})...`);
-        }
-        console.log(`[ResumeOnboarding] Executing upload attempt ${attempt}/${maxRetries}...`);
-        const url = await uploadSingleAttempt(storageRef, file);
-        return url;
-      } catch (err: any) {
-        lastErr = err;
-        console.error(`[ResumeOnboarding] Attempt ${attempt} error:`, err);
-        if (attempt < maxRetries) {
-          await new Promise((res) => setTimeout(res, 1200));
-        }
-      }
-    }
-    throw lastErr;
   };
 
   const processResumeFile = async (fileToProcess?: File) => {
@@ -181,7 +112,7 @@ export default function ResumeOnboarding({ user, setUser, setActiveView }: Resum
     setIsProcessing(true);
     setError(null);
     setProgress(0);
-    setStep("Uploading resume to secure Firebase Storage...");
+    setStep("Uploading resume to secure storage...");
 
     try {
       const uid = user?.uid || auth.currentUser?.uid;
@@ -189,12 +120,20 @@ export default function ResumeOnboarding({ user, setUser, setActiveView }: Resum
         throw new Error("Authentication context missing. Please log in again.");
       }
 
-      // Upload path: resumes/{uid}/resume.pdf
-      const storagePath = `resumes/${uid}/resume.pdf`;
-      const storageRef = ref(storage, storagePath);
+      // Upload with uploadResumeService (handles retries, progress, and Firestore metadata)
+      const uploadResult = await uploadResumeService({
+        uid,
+        file,
+        maxRetries: 3,
+        timeoutMs: 60000,
+        onProgress: (pct) => setProgress(Math.min(95, Math.max(1, pct))),
+      });
 
-      // Upload with 3 retries and 60s timeout
-      const downloadURL = await uploadWithRetries(storageRef, file, 3);
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || "Resume upload failed.");
+      }
+
+      const downloadURL = uploadResult.downloadUrl;
 
       setStep("Reading document and analyzing with AI...");
       setProgress(96);
@@ -231,7 +170,7 @@ export default function ResumeOnboarding({ user, setUser, setActiveView }: Resum
         console.warn("[ResumeOnboarding] Resume parse endpoint notice:", pErr);
       }
 
-      // Update Firestore user document: users/{uid}.resumeURL and users/{uid}.resumeUploaded = true
+      // Update Firestore user document
       const userDocRef = doc(db, "users", uid);
       const updateData = {
         resumeURL: downloadURL,
@@ -254,7 +193,6 @@ export default function ResumeOnboarding({ user, setUser, setActiveView }: Resum
       setProgress(100);
       setStep("Resume uploaded successfully!");
 
-      // Update parent user state
       const updatedUser = {
         ...user,
         ...updateData,
@@ -264,7 +202,6 @@ export default function ResumeOnboarding({ user, setUser, setActiveView }: Resum
 
       showToast("Resume uploaded successfully!", "success");
 
-      // Redirect to candidate dashboard
       setTimeout(() => {
         window.history.pushState({}, "", "/candidate/dashboard");
         setActiveView("dashboard");

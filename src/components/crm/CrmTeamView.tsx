@@ -112,38 +112,6 @@ export default function CrmTeamView({
         )}
       </div>
 
-      {/* Role Switcher sandbox */}
-      <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-start gap-2 text-xs">
-          <Key className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-          <div className="space-y-0.5">
-            <strong className="text-white block">Active Sandbox Simulator Logins</strong>
-            <p className="text-gray-300 leading-relaxed text-[11px]">
-              Your simulated login is currently authorized as: <strong className="text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded uppercase font-mono">{currentUserRole}</strong>.
-              Choose any role below to test restrictions.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-1.5">
-          {(["Admin", "Manager", "Recruiter", "Viewer"] as const).map(rl => (
-            <button
-              key={rl}
-              onClick={() => {
-                onChangeUserRole(rl);
-                alert(`Switched active sandbox role to: ${rl.toUpperCase()}! CRM views and action forms will now adapt permissions.`);
-              }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer font-mono ${
-                currentUserRole === rl 
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20" 
-                  : "bg-white/5 text-gray-400 hover:bg-white/10"
-              }`}
-            >
-              {rl}
-            </button>
-          ))}
-        </div>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Team Members List */}

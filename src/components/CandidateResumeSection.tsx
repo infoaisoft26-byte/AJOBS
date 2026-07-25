@@ -9,6 +9,7 @@ import {
 import { db, storage } from "../firebase";
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs, query, where, deleteDoc, orderBy } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { uploadResumeService } from "../services/resumeUploadService";
 import { 
   loadGooglePickerApi, 
   getWorkspaceAccessToken, 
@@ -199,20 +200,22 @@ export default function CandidateResumeSection({
     setUploadProgress(10);
 
     try {
-      // 1. Upload to Firebase Storage
+      // 1. Upload to Firebase Storage using uploadResumeService
       let storageUrl = "";
       try {
         setUploadProgress(25);
-        const storagePath = `resumes/${userId}/${Date.now()}_${file.name}`;
-        const storageRef = ref(storage, storagePath);
-        setUploadProgress(45);
-        const uploadResult = await uploadBytes(storageRef, file);
-        setUploadProgress(75);
-        storageUrl = await getDownloadURL(uploadResult.ref);
-        setUploadedFileUrl(storageUrl);
-        console.log(`[Storage] File uploaded successfully from ${source} to Firebase Storage. URL:`, storageUrl);
+        const res = await uploadResumeService({
+          uid: userId,
+          file,
+          onProgress: (pct) => setUploadProgress(25 + Math.round(pct * 0.5)),
+        });
+        if (res.success && res.downloadUrl) {
+          storageUrl = res.downloadUrl;
+          setUploadedFileUrl(storageUrl);
+          console.log(`[Storage] File uploaded successfully from ${source} to Firebase Storage. URL:`, storageUrl);
+        }
       } catch (storageErr) {
-        console.warn("[Storage] Non-critical warning: Real storage write skipped/deferred or running locally. Path reference registered.", storageErr);
+        console.warn("[Storage] Storage upload notice:", storageErr);
       }
 
       setUploadProgress(90);

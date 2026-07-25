@@ -11,8 +11,10 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    function getUserData() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data
+        : {};
     }
 
     function getUserRole() {
@@ -21,304 +23,316 @@ service cloud.firestore {
         : 'guest';
     }
 
+    function isAdmin() {
+      return isSignedIn() && (
+        getUserRole() == 'admin' || 
+        getUserRole() == 'superadmin' || 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
     function isCandidate() {
       return isSignedIn() && getUserRole() == 'candidate';
     }
 
     function isRecruiter() {
-      return isSignedIn() && (getUserRole() == 'employer' || getUserRole() == 'recruiter' || getUserRole() == 'corporate');
+      return isSignedIn() && (
+        getUserRole() == 'employer' || 
+        getUserRole() == 'recruiter' || 
+        getUserRole() == 'corporate'
+      );
     }
 
     function isConsultancy() {
-      return isSignedIn() && (getUserRole() == 'consultancy' || getUserRole() == 'agency');
-    }
-
-    function isSystemAdmin() {
-      return isAdmin() || (isSignedIn() && getUserRole() == 'admin');
+      return isSignedIn() && (
+        getUserRole() == 'consultancy' || 
+        getUserRole() == 'agency'
+      );
     }
 
     // Collection Rules
 
     // Users Profiles Collection
     match /users/{userId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isOwner(userId) || isAdmin();
     }
     
     // Candidates collection
     match /candidates/{candidateId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isOwner(candidateId) || isRecruiter() || isConsultancy() || isAdmin();
     }
     
     // Consultancies collection
     match /consultancies/{consultancyId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isOwner(consultancyId) || isConsultancy() || isAdmin();
     }
     
     // Employers collection
     match /employers/{employerId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isOwner(employerId) || isRecruiter() || isAdmin();
     }
     
     // Companies collection
     match /companies/{companyId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isSignedIn();
     }
     
-    // Jobs postings - visible to all users
+    // Jobs postings - visible to public/guests, writeable by recruiters/consultancies/admins
     match /jobs/{jobId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isSignedIn();
     }
     match /company_jobs/{jobId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isSignedIn();
     }
     
     // Applications
     match /applications/{applicationId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /company_applications/{applicationId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     
     // Resumes and Resume Versions
     match /resumes/{resumeId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /resume_versions/{versionId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /resume_analysis/{analysisId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /resume_scores/{scoreId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /resume_recommendations/{recommendationId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     
     // Interviews and scheduled sessions
     match /interviews/{interviewId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /company_interviews/{interviewId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /interviews_scheduled/{interviewId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /interview_sessions/{sessionId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /interview_reports/{reportId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /interview_questions/{questionId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /interview_answers/{answerId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /ai_reports/{reportId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /ai_sessions/{sessionId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /ai_prompts/{promptId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /career_reports/{careerId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /job_recommendations/{recId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     
     // Notifications and logs
     match /notifications/{notificationId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /notification_preferences/{userId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /activity_logs/{logId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /submission_logs/{logId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /candidate_documents/{docId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /company_activity_logs/{logId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /login_logs/{logId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     
     // Support and settings
     match /support_tickets/{ticketId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /support/{ticketId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /settings/{docId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
     match /system_settings/{docId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
     
     // Admin list
     match /admins/{adminId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
     
     // Leads Collection
     match /leads/{leadId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     
     // Approvals Collection
     match /approvals/{approvalId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     
     // Payments & Subscriptions
     match /payments/{paymentId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /subscriptions/{subscriptionId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     
     // CMS Contents
     match /cms/{cmsId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isAdmin();
     }
     
     // Email Templates
     match /email_templates/{templateId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     // Audit logs
     match /audit_logs/{logId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     
     // Social links
     match /social_links/{linkId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isSignedIn();
     }
     
     // Clients
     match /clients/{clientId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     
-    // Consultancy Jobs
+    // Consultancy Jobs & Candidates
     match /consultancy_jobs/{jobId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
-    
-    // Consultancy Candidates
     match /consultancy_candidates/{candidateId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     
-    // Placements
+    // Placements & Team Members
     match /placements/{placementId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
-    
-    // Team Members
     match /team_members/{memberId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     
-    // Message logs
+    // Message logs, Offers
     match /message_logs/{logId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
-    
-    // Offers
     match /offers/{offerId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     
     // Chats and nested Messages
     match /chats/{chatId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
       
       match /messages/{messageId} {
-        allow read, write: if true;
+        allow read, write: if isSignedIn();
       }
     }
     
-    // Career goals
+    // Career goals, predictions, cover letters, learning paths
     match /career_goals/{goalId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
-    
-    // Success predictions
     match /success_predictions/{predId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
-    
-    // Cover letters
     match /cover_letters/{letterId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
-    
-    // Resume templates
     match /resume_templates/{templateId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isAdmin();
     }
-    
-    // Learning paths
     match /learning_paths/{pathId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     
-    // FAQs
+    // FAQs & Blogs
     match /faqs/{faqId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isAdmin();
     }
-    
-    // Blogs
     match /blogs/{blogId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
     // Chat messages & sessions
     match /chat_messages/{messageId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /chat_sessions/{sessionId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /ai_logs/{logId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
 
     // AI scoring & matching
     match /interview_scores/{scoreId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /ai_recommendations/{recId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
     match /job_matches/{matchId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
 
     // Catch-all fallback match for any other custom collection
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
   }
 }

@@ -89,7 +89,7 @@ export function NotificationBellAndDrawer({ userId, userRole, onSelectTab }: Not
               id: "demo_1",
               userId: userId,
               title: "Welcome to AIJobs Suite!",
-              message: "Your AI-powered recruitment gateway is fully functional in hybrid local sandboxed database mode.",
+              message: "Your AI-powered recruitment gateway is fully functional.",
               event: "system_status_alert",
               read: false,
               archived: false,

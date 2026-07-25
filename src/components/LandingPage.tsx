@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import logoImg from "../assets/images/aijobs_logo_1783014982325.jpg";
+import aiLogoImg from "../assets/images/aijobs-ai-logo.png";
 import { 
   Sparkles, ArrowRight, Upload, Play, CheckCircle2, 
   HelpCircle, Star, Send, Bot, MessageSquare, ChevronRight, 
@@ -400,18 +401,53 @@ export default function LandingPage({ onGetStarted, setActiveView, onOpenCompany
           <span className="tracking-wider uppercase">India's First AI Powered Recruitment Platform</span>
         </motion.div>
         
-        {/* Headline */}
-        <motion.h1 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.1 }}
-          className="font-display font-black text-5xl sm:text-7xl md:text-8xl tracking-tight leading-none mb-8 text-white"
-        >
-          🚀 Get Hired Faster <br />
-          <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-emerald-400 to-purple-500">
-            with Advanced AI
-          </span>
-        </motion.h1>
+        {/* Headline with 8D Glassmorphism AI Logo */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-6 md:gap-10 mb-8">
+          {/* Logo container with floating animation, neon glow, soft shadow and hover tilt */}
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ 
+              opacity: 1, 
+              scale: 1,
+              y: [0, -10, 0] 
+            }}
+            transition={{ 
+              opacity: { duration: 0.8 },
+              scale: { duration: 0.8 },
+              y: { repeat: Infinity, duration: 4, ease: "easeInOut" }
+            }}
+            className="relative group shrink-0"
+          >
+            {/* Blue/Purple Neon Ambient Glow */}
+            <div className="absolute -inset-4 rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 opacity-60 blur-2xl group-hover:opacity-90 group-hover:blur-3xl animate-pulse transition-all duration-500" />
+
+            {/* 8D Glassmorphism container with tilt effect on hover */}
+            <motion.div
+              whileHover={{ rotateX: 12, rotateY: 12, scale: 1.05 }}
+              transition={{ type: "spring", stiffness: 200, damping: 18 }}
+              className="relative z-10 p-3 sm:p-4 bg-white/5 backdrop-blur-2xl border border-white/15 rounded-3xl shadow-2xl shadow-purple-900/40 hover:shadow-blue-500/50 transition-all duration-300"
+            >
+              <img
+                src={aiLogoImg}
+                alt="AIJOBS AI Logo"
+                referrerPolicy="no-referrer"
+                className="w-[110px] sm:w-[175px] md:w-[245px] h-auto object-contain drop-shadow-[0_0_20px_rgba(168,85,247,0.4)]"
+              />
+            </motion.div>
+          </motion.div>
+
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.1 }}
+            className="font-display font-black text-4xl sm:text-6xl md:text-7xl lg:text-8xl tracking-tight leading-none text-center sm:text-left text-white"
+          >
+            Get Hired Faster <br />
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-emerald-400 to-purple-500">
+              with Advanced AI
+            </span>
+          </motion.h1>
+        </div>
 
         {/* Tagline */}
         <motion.p 
@@ -1030,7 +1066,7 @@ export default function LandingPage({ onGetStarted, setActiveView, onOpenCompany
                       </li>
                       <li className="flex items-center space-x-2.5">
                         <Check className="w-4 h-4 text-blue-400 shrink-0" />
-                        <span>AI Interview Simulation Sandbox</span>
+                        <span>AI Interview Evaluation Platform</span>
                       </li>
                       <li className="flex items-center space-x-2.5">
                         <Check className="w-4 h-4 text-blue-400 shrink-0" />
@@ -1113,7 +1149,7 @@ export default function LandingPage({ onGetStarted, setActiveView, onOpenCompany
                       </li>
                       <li className="flex items-center space-x-2.5">
                         <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                        <span>PayU test Order integration sandbox</span>
+                        <span>PayU Order Integration Gateway</span>
                       </li>
                       <li className="flex items-center space-x-2.5">
                         <Check className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -1268,8 +1304,8 @@ export default function LandingPage({ onGetStarted, setActiveView, onOpenCompany
               a: "We leverage advanced Gemini models to conduct multi-vector audits checking technical keyword distributions, structural phrasing, and standard ATS layout alignment. Results align closely with premium corporate ATS filter settings."
             },
             {
-              q: "How does the PayU subscription sandbox operate?",
-              a: "For Consultancy agencies, the checkout triggers a high-fidelity PayU transaction simulation. Completing this simulation instantly flags active premium recruiting features inside your Firestore account for testing."
+              q: "How does the PayU subscription billing operate?",
+              a: "For Consultancy agencies, the checkout triggers PayU's secure transaction flow. Completing payment instantly activates premium recruiting features inside your account."
             },
             {
               q: "Are the corporate job matching metrics reliable?",
@@ -1277,7 +1313,7 @@ export default function LandingPage({ onGetStarted, setActiveView, onOpenCompany
             },
             {
               q: "How does the 24/7 AI Career Coach protect my personal profile data?",
-              a: "Your conversation history is fully sandboxed in our secure Firestore database, linked to your verified account. We never sell profile details or resumes to third-party ad brokers."
+              a: "Your conversation history is securely encrypted in our Firestore database, linked to your verified account. We never sell profile details or resumes to third-party ad brokers."
             }
           ].map((item, idx) => (
             <div 

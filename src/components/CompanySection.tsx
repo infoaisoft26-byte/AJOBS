@@ -871,10 +871,18 @@ export default function CompanySection({ pageType, onClose, setActiveCompanyPage
                   <h5 className="font-bold text-white text-xs">Official Media Assets Kit</h5>
                   <p className="text-gray-400 text-[11px]">Download our logo vectors, PNG assets, corporate profiles, and co-founder bio documentation.</p>
                   <button 
-                    onClick={() => alert("Media Assets Kit downloaded (simulated ZIP export)")}
+                    onClick={() => {
+                      const element = document.createElement("a");
+                      const file = new Blob([JSON.stringify(companySettings, null, 2)], { type: "application/json" });
+                      element.href = URL.createObjectURL(file);
+                      element.download = "AIJobs_Official_BrandKit.json";
+                      document.body.appendChild(element);
+                      element.click();
+                      document.body.removeChild(element);
+                    }}
                     className="mt-2 px-3 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[10px] text-white font-mono cursor-pointer"
                   >
-                    DOWNLOAD ZIP BRANDKIT
+                    DOWNLOAD BRAND KIT
                   </button>
                 </div>
 

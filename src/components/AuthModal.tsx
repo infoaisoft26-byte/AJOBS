@@ -825,7 +825,7 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
             /* ===================================== */
             <form onSubmit={handleCompleteProfileSubmit} className="space-y-4">
               <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-xs text-indigo-300">
-                🚀 Authenticated successfully! Please choose your preferred account role and set your display name to complete onboarding.
+                ✨ Authenticated successfully! Please choose your preferred account role and set your display name to complete onboarding.
               </div>
 
               {/* Role Selection */}

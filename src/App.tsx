@@ -1,37 +1,37 @@
 import { useState, useEffect, lazy, Suspense } from "react";
-import { auth, db, isFirebaseConfigured } from "./firebase";
+import { auth, db, isFirebaseConfigured } from "@/firebase";
 import { AlertTriangle, UserCheck } from "lucide-react";
 import { doc, getDoc } from "firebase/firestore";
-import { UserProfile } from "./types";
-import { initializeUserCollectionsAndDocs, getOrCreateUserProfile } from "./services/dbInitService";
-import Header from "./components/Header";
-import AuthModal from "./components/AuthModal";
-import LandingPage from "./components/LandingPage";
-import ResumeOnboarding from "./components/ResumeOnboarding";
-import { GlobalChatbot } from "./components/GlobalChatbot";
-import CompanySection from "./components/CompanySection";
-import SplashScreen from "./components/SplashScreen";
-import CinematicBackground from "./components/CinematicBackground";
-import ThreeDBackground, { BackgroundMode } from "./components/ThreeDBackground";
-import CustomCursor from "./components/CustomCursor";
+import { UserProfile } from "@/types";
+import { initializeUserCollectionsAndDocs, getOrCreateUserProfile } from "@/services/dbInitService";
+import Header from "@/components/Header";
+import AuthModal from "@/components/AuthModal";
+import LandingPage from "@/components/LandingPage";
+import ResumeOnboarding from "@/components/ResumeOnboarding";
+import { GlobalChatbot } from "@/components/GlobalChatbot";
+import CompanySection from "@/components/CompanySection";
+import SplashScreen from "@/components/SplashScreen";
+import CinematicBackground from "@/components/CinematicBackground";
+import ThreeDBackground, { BackgroundMode } from "@/components/ThreeDBackground";
+import CustomCursor from "@/components/CustomCursor";
 import { motion, AnimatePresence } from "motion/react";
 
 // Lazy-loaded dashboard components for smaller initial bundle sizes
-const CandidateDashboard = lazy(() => import("./components/CandidateDashboard"));
-const ConsultancyDashboard = lazy(() => import("./components/ConsultancyDashboard"));
-const EmployerDashboard = lazy(() => import("./components/EmployerDashboard"));
-const AdminDashboard = lazy(() => import("./components/AdminDashboard"));
+const CandidateDashboard = lazy(() => import("@/components/CandidateDashboard"));
+const ConsultancyDashboard = lazy(() => import("@/components/ConsultancyDashboard"));
+const EmployerDashboard = lazy(() => import("@/components/EmployerDashboard"));
+const AdminDashboard = lazy(() => import("@/components/AdminDashboard"));
 const NotificationCenterViewLazy = lazy(() =>
-  import("./components/NotificationCenter").then((m) => ({ default: m.NotificationCenterView }))
+  import("@/components/NotificationCenter").then((m) => ({ default: m.NotificationCenterView }))
 );
 
 // Production infrastructure components
-import { ErrorBoundary } from "./components/ErrorBoundary";
-import { DashboardSkeleton, GeneralLoading } from "./components/LoadingSkeleton";
-import { CookieConsent } from "./components/CookieConsent";
-import { ToastProvider, useToast } from "./components/GlobalToast";
-import { initGA, trackPageView, trackInteraction } from "./utils/analytics";
-import { validateEnvironment } from "./utils/envValidation";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { DashboardSkeleton, GeneralLoading } from "@/components/LoadingSkeleton";
+import { CookieConsent } from "@/components/CookieConsent";
+import { ToastProvider, useToast } from "@/components/GlobalToast";
+import { initGA, trackPageView, trackInteraction } from "@/utils/analytics";
+import { validateEnvironment } from "@/utils/envValidation";
 
 function PageTransitionParticles({ triggerKey }: { triggerKey: string }) {
   const [particles, setParticles] = useState<Array<{ id: number; left: number; top: number; size: number; delay: number }>>([]);
