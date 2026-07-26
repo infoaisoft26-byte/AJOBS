@@ -290,14 +290,26 @@ export default function EmployerDashboard({ userId, userName, userRole }: Employ
 
         {/* Action Buttons & Sync Badges */}
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => handleSelectTab("post-job")}
-            className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-xs text-white rounded-xl transition-all cursor-pointer font-extrabold shadow-lg shadow-indigo-600/25 transform hover:scale-105 active:scale-95"
-            id="btn-employer-post-job"
-          >
-            <Plus className="w-4 h-4 text-white" />
-            <span>Post Job</span>
-          </button>
+          {["recruiter", "employer", "admin", "superadmin", "corporate", "consultancy", "agency"].includes((userRole || "").toLowerCase()) ? (
+            <button
+              onClick={() => handleSelectTab("post-job")}
+              className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-xs text-white rounded-xl transition-all cursor-pointer font-extrabold shadow-lg shadow-indigo-600/25 transform hover:scale-105 active:scale-95"
+              id="btn-employer-post-job"
+            >
+              <Plus className="w-4 h-4 text-white" />
+              <span>Post Job</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => alert("Access Restricted: Posting jobs is only permitted for Recruiter, Employer, or Admin designations.")}
+              className="flex items-center gap-1.5 px-4 py-2 bg-gray-800 border border-gray-700 text-xs text-gray-400 rounded-xl transition-all cursor-not-allowed font-semibold opacity-75"
+              id="btn-employer-post-job-disabled"
+              title="Restricted to Recruiter, Employer, or Admin roles"
+            >
+              <Plus className="w-4 h-4 text-gray-500" />
+              <span>Post Job (Restricted)</span>
+            </button>
+          )}
           <OfflineSyncBadge />
           <ExportActivityCsvButton role="employer" label="Export Recruitment CSV" />
           <button

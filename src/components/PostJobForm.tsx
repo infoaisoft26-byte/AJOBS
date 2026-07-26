@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { 
-  Briefcase, Save, X, Calendar, MapPin, DollarSign, ListTodo, Award, Gift, Clock, AlertCircle, Building2, CheckCircle
+  Briefcase, Save, X, Calendar, MapPin, DollarSign, ListTodo, Award, Gift, Clock, AlertCircle, Building2, CheckCircle, ShieldAlert
 } from "lucide-react";
 import { db, auth } from "../firebase";
 import { doc, setDoc, collection, updateDoc } from "firebase/firestore";
@@ -172,6 +172,32 @@ export default function PostJobForm({ userId, userRole, userName, onJobPosted, o
       setIsSubmitting(false);
     }
   };
+
+  const roleNormalized = (userRole || "").toLowerCase();
+  const isAuthorizedRole = ["recruiter", "employer", "admin", "superadmin", "corporate", "consultancy", "agency"].includes(roleNormalized);
+
+  if (!isAuthorizedRole) {
+    return (
+      <div className="glass border border-red-500/20 rounded-3xl p-8 space-y-4 max-w-lg mx-auto my-12 text-center bg-neutral-950/60 text-gray-200">
+        <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto text-red-400">
+          <ShieldAlert className="w-6 h-6" />
+        </div>
+        <h3 className="text-lg font-bold text-white">Role Permission Guard</h3>
+        <p className="text-xs text-gray-400 leading-relaxed">
+          Job posting capability is restricted to registered <strong className="text-white">Recruiters</strong>, <strong className="text-white">Employers</strong>, and <strong className="text-white">Administrators</strong> as required by security policy.
+        </p>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-xs font-bold text-white rounded-xl transition-all cursor-pointer mt-2"
+          >
+            Return to Dashboard
+          </button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="glass border border-white/10 rounded-3xl p-6 md:p-8 space-y-6 max-w-4xl mx-auto bg-neutral-950/40 text-gray-200">
