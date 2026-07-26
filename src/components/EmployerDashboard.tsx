@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { 
   Building2, TrendingUp, Briefcase, Brain, Users, 
   Calendar, Award, BarChart2, ShieldAlert, ShieldCheck, RefreshCw, LogOut, CreditCard, Bell,
-  MessageSquare, FileText, Search, CloudLightning
+  MessageSquare, FileText, Search, CloudLightning, Plus, PlusCircle
 } from "lucide-react";
 import { db } from "../firebase";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
@@ -15,6 +15,7 @@ import LeadManagement from "./LeadManagement";
 import GoogleWorkspaceHub from "./GoogleWorkspaceHub";
 import ExportActivityCsvButton from "./ExportActivityCsvButton";
 import OfflineSyncBadge from "./OfflineSyncBadge";
+import PostJobForm from "./PostJobForm";
 
 // Types
 import { 
@@ -36,6 +37,7 @@ import OfferManagement from "./employer/OfferManagement";
 import ReportsAnalytics from "./employer/ReportsAnalytics";
 import HiringPerformance from "./employer/HiringPerformance";
 import EnterpriseDocumentEngine from "./employer/EnterpriseDocumentEngine";
+import RecruiterApplicationTable from "./RecruiterApplicationTable";
 
 interface EmployerDashboardProps {
   userId: string;
@@ -46,17 +48,59 @@ interface EmployerDashboardProps {
 export default function EmployerDashboard({ userId, userName, userRole }: EmployerDashboardProps) {
   // Navigation active tab routing
   const [activeTab, setActiveTab] = useState<
-    "overview" | "registration" | "jobs" | "discovery" | "pipeline" | "leads" | "interviews" | "offers" | "reports" | "subscription" | "notifications" | "documents" | "chat" | "talent-search" | "performance" | "workspace"
-  >("overview");
+    "overview" | "post-job" | "registration" | "jobs" | "discovery" | "pipeline" | "recruiter-table" | "leads" | "interviews" | "offers" | "reports" | "subscription" | "notifications" | "documents" | "chat" | "talent-search" | "performance" | "workspace"
+  >(() => {
+    const p = typeof window !== "undefined" ? window.location.pathname : "";
+    if (p === "/employer/post-job" || p === "/recruiter/post-job") return "post-job";
+    if (p === "/employer/manage-jobs" || p === "/recruiter/manage-jobs") return "jobs";
+    if (p === "/employer/applications" || p === "/recruiter/applications") return "recruiter-table";
+    if (p === "/employer/candidate-database" || p === "/recruiter/candidate-database") return "discovery";
+    if (p === "/employer/interviews" || p === "/recruiter/interviews") return "interviews";
+    if (p === "/employer/reports" || p === "/recruiter/reports") return "reports";
+    if (p === "/employer/payments" || p === "/recruiter/payments") return "subscription";
+    return "overview";
+  });
 
-  // Listen to dashboard navigation event (e.g. from global shortcut Ctrl+D / Cmd+D)
+  const handleSelectTab = (tabId: string) => {
+    setActiveTab(tabId as any);
+    const prefix = userRole === "recruiter" ? "/recruiter" : "/employer";
+    let targetPath = prefix;
+    if (tabId === "post-job") targetPath = `${prefix}/post-job`;
+    else if (tabId === "jobs") targetPath = `${prefix}/manage-jobs`;
+    else if (tabId === "recruiter-table") targetPath = `${prefix}/applications`;
+    else if (tabId === "discovery") targetPath = `${prefix}/candidate-database`;
+    else if (tabId === "interviews") targetPath = `${prefix}/interviews`;
+    else if (tabId === "reports") targetPath = `${prefix}/reports`;
+    else if (tabId === "subscription") targetPath = `${prefix}/payments`;
+    
+    if (typeof window !== "undefined" && window.location.pathname !== targetPath) {
+      window.history.pushState({}, "", targetPath);
+    }
+  };
+
+  // Sync state with popstate and global shortcut events
   useEffect(() => {
     const handleResetToOverview = () => {
-      setActiveTab("overview");
+      handleSelectTab("overview");
     };
+    const syncRouteWithTab = () => {
+      const p = window.location.pathname;
+      if (p === "/employer/post-job" || p === "/recruiter/post-job") setActiveTab("post-job");
+      else if (p === "/employer/manage-jobs" || p === "/recruiter/manage-jobs") setActiveTab("jobs");
+      else if (p === "/employer/applications" || p === "/recruiter/applications") setActiveTab("recruiter-table");
+      else if (p === "/employer/candidate-database" || p === "/recruiter/candidate-database") setActiveTab("discovery");
+      else if (p === "/employer/interviews" || p === "/recruiter/interviews") setActiveTab("interviews");
+      else if (p === "/employer/reports" || p === "/recruiter/reports") setActiveTab("reports");
+      else if (p === "/employer/payments" || p === "/recruiter/payments") setActiveTab("subscription");
+    };
+
     window.addEventListener("navigate-to-dashboard-overview", handleResetToOverview);
-    return () => window.removeEventListener("navigate-to-dashboard-overview", handleResetToOverview);
-  }, []);
+    window.addEventListener("popstate", syncRouteWithTab);
+    return () => {
+      window.removeEventListener("navigate-to-dashboard-overview", handleResetToOverview);
+      window.removeEventListener("popstate", syncRouteWithTab);
+    };
+  }, [userRole]);
 
   // Corporate core data stores
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
@@ -246,6 +290,14 @@ export default function EmployerDashboard({ userId, userName, userRole }: Employ
 
         {/* Action Buttons & Sync Badges */}
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => handleSelectTab("post-job")}
+            className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-xs text-white rounded-xl transition-all cursor-pointer font-extrabold shadow-lg shadow-indigo-600/25 transform hover:scale-105 active:scale-95"
+            id="btn-employer-post-job"
+          >
+            <Plus className="w-4 h-4 text-white" />
+            <span>Post Job</span>
+          </button>
           <OfflineSyncBadge />
           <ExportActivityCsvButton role="employer" label="Export Recruitment CSV" />
           <button
@@ -269,21 +321,23 @@ export default function EmployerDashboard({ userId, userName, userRole }: Employ
           </span>
 
           {[
-            { id: "overview", label: "Dashboard overview", icon: TrendingUp },
+            { id: "overview", label: "Dashboard", icon: TrendingUp },
+            { id: "post-job", label: "Post Job", icon: PlusCircle },
+            { id: "jobs", label: "Manage Jobs", icon: Briefcase },
+            { id: "recruiter-table", label: "Applications", icon: Users },
+            { id: "discovery", label: "Candidate Database", icon: Brain },
+            { id: "interviews", label: "Interviews", icon: Calendar },
+            { id: "reports", label: "Reports", icon: BarChart2 },
+            { id: "subscription", label: "Payments", icon: CreditCard },
             { id: "registration", label: "Company Registry", icon: Building2 },
-            { id: "jobs", label: "Job Vacancies", icon: Briefcase },
-            { id: "discovery", label: "AI Candidate Discovery", icon: Brain },
-            { id: "talent-search", label: "Talent Search (Sourcing)", icon: Search },
+            { id: "talent-search", label: "Talent Search", icon: Search },
             { id: "pipeline", label: "Hiring Pipeline", icon: Users },
             { id: "leads", label: "Lead Management", icon: Users },
-            { id: "interviews", label: "Interviews Suite", icon: Calendar },
             { id: "offers", label: "Acceptance & Offers", icon: Award },
             { id: "documents", label: "Enterprise Documents", icon: FileText },
             { id: "workspace", label: "Google Workspace Hub", icon: CloudLightning },
             { id: "chat", label: "Secure Live Chat", icon: MessageSquare },
-            { id: "reports", label: "Metrics & Reports", icon: BarChart2 },
             { id: "performance", label: "Hiring Performance", icon: TrendingUp },
-            { id: "subscription", label: "Billing & Payment", icon: CreditCard },
             { id: "notifications", label: "Notification Hub", icon: Bell }
           ].map((item) => {
             const IconComp = item.icon;
@@ -291,7 +345,8 @@ export default function EmployerDashboard({ userId, userName, userRole }: Employ
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id as any)}
+                id={`sidebar-item-${item.id}`}
+                onClick={() => handleSelectTab(item.id)}
                 className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-bold text-left transition-all cursor-pointer ${
                   isActive 
                     ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/15" 
@@ -315,7 +370,22 @@ export default function EmployerDashboard({ userId, userName, userRole }: Employ
               offers={offers}
               activities={activities}
               onRefresh={synchronizeVault}
-              onNavigateToTab={(tab) => setActiveTab(tab)}
+              onNavigateToTab={(tab) => handleSelectTab(tab)}
+            />
+          )}
+
+          {activeTab === "post-job" && (
+            <PostJobForm
+              userId={userId}
+              userRole={userRole || "employer"}
+              userName={userName}
+              onJobPosted={(jobId) => {
+                synchronizeVault();
+                handleSelectTab("jobs");
+              }}
+              onCancel={() => {
+                handleSelectTab("overview");
+              }}
             />
           )}
 
@@ -361,6 +431,14 @@ export default function EmployerDashboard({ userId, userName, userRole }: Employ
               onOpenReleaseOffer={(app) => {
                 setActiveTab("offers");
               }}
+            />
+          )}
+
+          {activeTab === "recruiter-table" && (
+            <RecruiterApplicationTable
+              recruiterId={userId}
+              recruiterName={userName}
+              onRefresh={synchronizeVault}
             />
           )}
 

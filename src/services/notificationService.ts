@@ -114,7 +114,7 @@ export const DEFAULT_EMAIL_TEMPLATES: Record<string, Omit<EmailTemplate, "id">> 
   Welcome: {
     name: "Welcome",
     category: "Welcome",
-    subject: "Welcome to AIJobs, {{userName}}! 🚀",
+    subject: "Welcome to AIJobs, {{userName}}! ✨",
     body: `Hi {{userName}},\n\nWelcome to AIJobs! We are thrilled to help you scale your recruitment or career journey with next-generation AI interfaces.\n\nBest Regards,\nThe AIJobs Team`,
     variables: ["userName"],
   },

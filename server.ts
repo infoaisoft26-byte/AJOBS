@@ -29,7 +29,8 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // -------------------- RATE LIMITER & CSRF MITIGATION --------------------
 const rateLimitsStore = new Map<string, { count: number; resetTime: number }>();

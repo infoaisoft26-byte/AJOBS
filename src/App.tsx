@@ -21,6 +21,7 @@ const CandidateDashboard = lazy(() => import("@/components/CandidateDashboard"))
 const ConsultancyDashboard = lazy(() => import("@/components/ConsultancyDashboard"));
 const EmployerDashboard = lazy(() => import("@/components/EmployerDashboard"));
 const AdminDashboard = lazy(() => import("@/components/AdminDashboard"));
+const JobDetailsLazy = lazy(() => import("@/components/JobDetails"));
 const NotificationCenterViewLazy = lazy(() =>
   import("@/components/NotificationCenter").then((m) => ({ default: m.NotificationCenterView }))
 );
@@ -319,19 +320,34 @@ function MainAppContent() {
   // Handle URL Routing & Popstate
   useEffect(() => {
     const path = window.location.pathname;
-    if (path === "/resume/onboarding") {
+    const searchParams = new URLSearchParams(window.location.search);
+    const searchJobId = searchParams.get("jobId");
+
+    if (searchJobId) {
+      setActiveView(`job-details-${searchJobId}`);
+    } else if (path.startsWith("/jobs/")) {
+      const parts = path.split("-");
+      const jId = parts[parts.length - 1];
+      if (jId) setActiveView(`job-details-${jId}`);
+    } else if (path === "/resume/onboarding") {
       setActiveView("resume-onboarding");
-    } else if (path === "/candidate/profile") {
+    } else if (path === "/candidate/profile" || path === "/candidate/dashboard") {
       setActiveView("dashboard");
-    } else if (path === "/candidate/dashboard") {
+    } else if (path.startsWith("/recruiter/") || path.startsWith("/employer/") || path === "/recruiter" || path === "/employer") {
       setActiveView("dashboard");
     }
 
     const handlePopState = () => {
       const p = window.location.pathname;
-      if (p === "/resume/onboarding") {
+      if (p.startsWith("/jobs/")) {
+        const parts = p.split("-");
+        const jId = parts[parts.length - 1];
+        if (jId) setActiveView(`job-details-${jId}`);
+      } else if (p === "/resume/onboarding") {
         setActiveView("resume-onboarding");
       } else if (p === "/candidate/profile" || p === "/candidate/dashboard") {
+        setActiveView("dashboard");
+      } else if (p.startsWith("/recruiter/") || p.startsWith("/employer/") || p === "/recruiter" || p === "/employer") {
         setActiveView("dashboard");
       } else if (p === "/") {
         setActiveView("home");
@@ -585,7 +601,23 @@ function MainAppContent() {
                     }}
                     setActiveView={setActiveView}
                     onOpenCompanyPage={(page) => setActiveCompanyPage(page)}
+                    onSelectJob={(jobId) => setActiveView(`job-details-${jobId}`)}
+                    onOpenAuth={(mode) => setAuthMode(mode)}
+                    user={user}
                   />
+                ) : activeView.startsWith("job-details-") ? (
+                  <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    <Suspense fallback={<GeneralLoading />}>
+                      <JobDetailsLazy
+                        jobId={activeView.replace("job-details-", "")}
+                        userId={user?.uid || ""}
+                        userName={user?.name || "Guest Candidate"}
+                        profile={user}
+                        onBack={() => setActiveView("home")}
+                        onSelectSimilarJob={(simId) => setActiveView(`job-details-${simId}`)}
+                      />
+                    </Suspense>
+                  </div>
                 ) : activeView === "resume-onboarding" ? (
                   <ResumeOnboarding
                     user={user}

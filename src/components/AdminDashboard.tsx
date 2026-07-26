@@ -5,7 +5,8 @@ import {
   Users, ShieldAlert, Sparkles, RefreshCw, Trash2, Settings, 
   Database, CheckCircle, AlertTriangle, Play, HelpCircle, 
   Terminal, CreditCard, Globe, Bell, Briefcase, Brain, Flame,
-  ShieldCheck, Lock, Layers, LogOut, ChevronLeft, ChevronRight, UserX
+  ShieldCheck, Lock, Layers, LogOut, ChevronLeft, ChevronRight, UserX,
+  FileText, BarChart2
 } from "lucide-react";
 import { db, auth } from "../firebase";
 import { collection, getDocs, doc, setDoc, getDoc } from "firebase/firestore";
@@ -39,6 +40,8 @@ import SystemSettings from "./admin/SystemSettings";
 import AuditLogs from "./admin/AuditLogs";
 import AbacControlInspector from "./AbacControlInspector";
 import LeadManagement from "./LeadManagement";
+import ApplicationManagement from "./admin/ApplicationManagement";
+import HiringFunnelAnalytics from "./admin/HiringFunnelAnalytics";
 import ExportActivityCsvButton from "./ExportActivityCsvButton";
 import OfflineSyncBadge from "./OfflineSyncBadge";
 
@@ -403,6 +406,8 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
   // Navigations list with authorization levels
   const navigationItems = [
     { id: "dashboard", label: "Live Dashboard", icon: Layers, authorizedRoles: ["Super Admin", "Support Desk", "Finance Officer", "Moderator", "Read Only"] },
+    { id: "applications", label: "Applications Directory", icon: FileText, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
+    { id: "funnel", label: "Hiring Funnel Analytics", icon: BarChart2, authorizedRoles: ["Super Admin", "Finance Officer", "Moderator", "Read Only"] },
     { id: "users", label: "User Management", icon: Users, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "leads", label: "Lead Sourcing Desk", icon: Users, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "approvals", label: "Approval Center", icon: ShieldCheck, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
@@ -588,6 +593,18 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
                   adminLevel={adminProfile.level}
                   adminStatus={adminProfile.status}
                   userId={currentUserId}
+                />
+              )}
+
+              {activeView === "applications" && (
+                <ApplicationManagement
+                  onRefresh={fetchWorkspaceData}
+                />
+              )}
+
+              {activeView === "funnel" && (
+                <HiringFunnelAnalytics
+                  onRefresh={fetchWorkspaceData}
                 />
               )}
 

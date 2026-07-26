@@ -242,7 +242,7 @@ export default function HiringPerformance({
     const insights = [
       `📊 Instahyre and ${bestSource.source} represent your highest quality talent pipelines, boasting average ATS scores of ${bestSource["Avg ATS Score"]}/100 and a conversion rate of ${bestSource["Conversion %"]}%. We highly suggest transferring 15% of your lower-performing Indeed search budget into targeted posts on these platforms.`,
       `⏱️ Sourcing Velocity is highly optimized for ${selectedDepartment === "All" ? "Technical" : selectedDepartment} roles with average Time to Hire of ${avgTimeToHire} days, which is ${Math.round(28 - avgTimeToHire)} days faster than the local IT ecosystem.`,
-      `🚀 Candidate drops are occurring primarily at the "Shortlisted" stage (conversion down to ${funnelMetrics[3].percentage}%). Recommending recruiters to launch "Quick-Accept SMS/WhatsApp triggers" within 48 hours to secure high-priority profiles before competitors proceed.`
+      `⚡ Candidate drops are occurring primarily at the "Shortlisted" stage (conversion down to ${funnelMetrics[3].percentage}%). Recommending recruiters to launch "Quick-Accept SMS/WhatsApp triggers" within 48 hours to secure high-priority profiles before competitors proceed.`
     ];
 
     return {

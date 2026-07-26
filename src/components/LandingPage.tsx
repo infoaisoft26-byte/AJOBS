@@ -18,13 +18,26 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { doc, updateDoc, setDoc } from "firebase/firestore";
 import { useToast } from "./GlobalToast";
 
+import PublicJobOpenings from "./PublicJobOpenings";
+import { UserProfile } from "../types";
+
 interface LandingPageProps {
   onGetStarted: () => void;
   setActiveView: (view: string) => void;
   onOpenCompanyPage?: (pageType: string) => void;
+  onSelectJob?: (jobId: string) => void;
+  onOpenAuth?: (mode: "signin" | "signup") => void;
+  user?: UserProfile | null;
 }
 
-export default function LandingPage({ onGetStarted, setActiveView, onOpenCompanyPage }: LandingPageProps) {
+export default function LandingPage({ 
+  onGetStarted, 
+  setActiveView, 
+  onOpenCompanyPage,
+  onSelectJob,
+  onOpenAuth,
+  user
+}: LandingPageProps) {
   const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSmartOnboarding, setIsSmartOnboarding] = useState(false);
@@ -61,19 +74,30 @@ export default function LandingPage({ onGetStarted, setActiveView, onOpenCompany
       setOnboardProgress(35);
 
       const tempId = "temp_" + Date.now();
-      const parseRes = await fetch("/api/resume/parse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: tempId,
-          resumeUrl: "https://storage.googleapis.com/temp/resume.pdf",
-          fileName: file.name,
-          fileBase64,
-          fileType: file.type
-        })
-      });
+      let parseJson: any = null;
+      try {
+        const parseRes = await fetch("/api/resume/parse", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: tempId,
+            resumeUrl: "https://storage.googleapis.com/temp/resume.pdf",
+            fileName: file.name,
+            fileBase64,
+            fileType: file.type
+          })
+        });
 
-      const parseJson = await parseRes.json();
+        if (parseRes.ok) {
+          parseJson = await parseRes.json().catch(() => null);
+        } else {
+          const errText = await parseRes.text().catch(() => "");
+          console.warn("Resume parse HTTP error:", parseRes.status, errText);
+        }
+      } catch (pErr) {
+        console.warn("Resume parse request warning:", pErr);
+      }
+
       const parsed = parseJson?.parsed || {};
 
       // Derived clean profile attributes
@@ -132,13 +156,16 @@ export default function LandingPage({ onGetStarted, setActiveView, onOpenCompany
         })
       });
 
-      if (!onboardingResponse.ok) {
-        throw new Error("Smart onboarding registration endpoint failed.");
+      let onboardData: any = null;
+      if (onboardingResponse.ok) {
+        onboardData = await onboardingResponse.json().catch(() => null);
+      } else {
+        const errText = await onboardingResponse.text().catch(() => "");
+        throw new Error(`Smart onboarding failed (${onboardingResponse.status}): ${errText || "Server error"}`);
       }
 
-      const onboardData = await onboardingResponse.json();
-      if (!onboardData.success) {
-        throw new Error(onboardData.error || "Failed to initialize smart onboarding.");
+      if (!onboardData || !onboardData.success) {
+        throw new Error(onboardData?.error || "Failed to initialize smart onboarding.");
       }
 
       setOnboardStep("Opening Twilio SMS OTP Verification Portal...");
@@ -595,6 +622,21 @@ export default function LandingPage({ onGetStarted, setActiveView, onOpenCompany
           </div>
         </div>
       </section>
+
+      {/* 2.5 Homepage Current Job Openings Section */}
+      <PublicJobOpenings
+        onSelectJob={(jobId) => {
+          if (onSelectJob) {
+            onSelectJob(jobId);
+          } else {
+            setActiveView("job-details-" + jobId);
+          }
+        }}
+        onOpenAuth={(mode) => onOpenAuth && onOpenAuth(mode)}
+        onOpenResumeUpload={() => fileInputRef.current?.click()}
+        user={user || null}
+        setActiveView={setActiveView}
+      />
 
       {/* 3. Live Statistics Section */}
       <section className="py-16 relative z-10 border-y border-white/5 bg-black/10 backdrop-blur-xs" id="statistics-section">

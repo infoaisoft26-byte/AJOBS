@@ -97,7 +97,9 @@ export default function PostJobForm({ userId, userRole, userName, onJobPosted, o
         responsibilities: responsibilities.trim(),
         requirements: requirements.trim(),
         description: description.trim(),
-        status: "Draft", // Always defaults to Draft as per prompt instructions
+        status: "pending_approval",
+        approved: false,
+        publishedAt: null,
         createdBy: userId,
         employerId: finalEmployerId,
         createdAt: new Date().toISOString(),
@@ -111,13 +113,16 @@ export default function PostJobForm({ userId, userRole, userName, onJobPosted, o
           await setDoc(doc(db, "company_jobs", jobId), {
             id: jobId,
             userId: userId,
+            companyId: userId,
             title: title.trim(),
             companyName: companyName.trim(),
             location: location.trim(),
             skillsRequired: skillsArray,
             salary: salary,
             experience: experience,
-            status: "Draft",
+            status: "pending_approval",
+            approved: false,
+            publishedAt: null,
             createdAt: new Date().toISOString()
           });
         } else if (userRole === "consultancy" || userRole === "agency") {
@@ -129,12 +134,13 @@ export default function PostJobForm({ userId, userRole, userName, onJobPosted, o
             salaryMin: parseInt(salary.replace(/[^0-9]/g, "")) || 10,
             salaryMax: parseInt(salary.replace(/[^0-9]/g, "")) || 20,
             location: location.trim(),
-            status: "draft",
+            status: "pending_approval",
+            approved: false,
             createdAt: new Date().toISOString()
           });
         }
       } catch (syncErr) {
-        console.warn("Non-blocking role sync error on job draft save:", syncErr);
+        console.warn("Non-blocking role sync error on job save:", syncErr);
       }
 
       // Trigger a notification to current user workspace
@@ -142,16 +148,16 @@ export default function PostJobForm({ userId, userRole, userName, onJobPosted, o
         await NotificationService.triggerEvent({
           userId: userId,
           event: "SYSTEM_BROADCAST",
-          title: "💼 Job Vacancy Draft Saved",
-          message: `Your job posting "${title}" for ${companyName} has been recorded as a Draft. Send to administrative review to publish.`,
+          title: "💼 Job Vacancy Submitted for Approval",
+          message: `Your job posting "${title}" for ${companyName} has been submitted and is pending admin approval.`,
           type: "success",
           link: `jobId=${jobId}`
         });
       } catch (notifErr) {
-        console.warn("Notification trigger failed on job draft save:", notifErr);
+        console.warn("Notification trigger failed on job save:", notifErr);
       }
 
-      setSuccessMsg("🎉 Job vacancy successfully created as a Draft!");
+      setSuccessMsg("🎉 Job vacancy successfully created! Your posting is now pending admin approval before going live.");
       
       setTimeout(() => {
         if (onJobPosted) {
@@ -176,7 +182,7 @@ export default function PostJobForm({ userId, userRole, userName, onJobPosted, o
             <span>Create New Job Vacancy</span>
           </h2>
           <p className="text-xs text-gray-400 mt-1">
-            Fill out the details below to register a vacancy. Newly posted jobs default to <strong className="text-amber-400">Draft</strong> state.
+            Fill out the details below to register a vacancy. Newly posted jobs default to <strong className="text-amber-400">Pending Approval</strong> state.
           </p>
         </div>
         {onCancel && (

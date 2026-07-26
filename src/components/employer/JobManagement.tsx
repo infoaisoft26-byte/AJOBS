@@ -45,7 +45,7 @@ export default function JobManagement({
   const [benefits, setBenefits] = useState("Premium Health, Stock ESOPs, Macbook Pro");
   const [interviewProcess, setInterviewProcess] = useState("Technical Screening, Architecture Round, HR culture fit");
   const [openPositions, setOpenPositions] = useState(1);
-  const [status, setStatus] = useState<"Draft" | "Pending Approval" | "Approved" | "Live" | "Closed" | "Rejected">("Draft");
+  const [status, setStatus] = useState<"Draft" | "Pending Approval" | "Approved" | "Live" | "Closed" | "Rejected">("Pending Approval");
 
   // Extended ATS fields states
   const [consultancy, setConsultancy] = useState("");
@@ -73,7 +73,7 @@ export default function JobManagement({
     setBenefits("Premium Health, Stock ESOPs, Macbook Pro");
     setInterviewProcess("Technical Screening, Architecture Round, HR culture fit");
     setOpenPositions(1);
-    setStatus("Draft");
+    setStatus("Pending Approval");
     setConsultancy("");
     setIndustry("Software / IT");
     setCategory("Software Engineering");
@@ -221,7 +221,7 @@ export default function JobManagement({
         if (!editingJob) {
           // Broadcast to all active candidates about the new job
           await NotificationService.broadcastNotification({
-            title: `New Job Opportunity at ${companyName || "My Company"} 🚀`,
+            title: `New Job Opportunity at ${companyName || "My Company"} ✨`,
             message: `Position: "${title}" is now open. Apply directly from your Candidate Portal.`,
             targetRole: "candidate",
             sentBy: userId

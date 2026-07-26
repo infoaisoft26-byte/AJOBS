@@ -167,7 +167,7 @@ export default function LeadManagement({ userId, userRole, userName }: LeadManag
         await updateDoc(doc(db, "notifications", notifId), {
           id: notifId,
           userId: targetLead.candidateId,
-          title: `Lead Status Updated: ${nextStatus} 🚀`,
+          title: `Lead Status Updated: ${nextStatus} ✨`,
           message: `The recruiting team has moved your profile for "${targetLead.jobTitle}" at ${targetLead.company} to "${nextStatus}".`,
           event: "SHORTLISTED_CANDIDATE",
           read: false,

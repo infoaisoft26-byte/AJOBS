@@ -178,7 +178,7 @@ export async function applyToJob(
       await NotificationService.triggerEvent({
         userId: "admin",
         event: "PENDING_APPROVALS",
-        title: "New Job Application Logged 🚀",
+        title: "New Job Application Logged ✨",
         message: `${userName} has submitted an application for "${job.title}" at ${job.companyName}. Lead Registered.`,
         type: "info"
       });

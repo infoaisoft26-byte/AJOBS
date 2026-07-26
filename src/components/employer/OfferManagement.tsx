@@ -142,7 +142,7 @@ ${companyName}`;
         await NotificationService.triggerEvent({
           userId: "admin",
           event: "PENDING_APPROVALS",
-          title: "Offer Letter Dispatched 🚀",
+          title: "Offer Letter Dispatched ✨",
           message: `Employer "${companyName}" released an offer letter to ${selectedApp.candidateName} for "${selectedApp.jobTitle}" with package ${salaryPackage}.`,
           type: "info"
         });

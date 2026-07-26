@@ -92,7 +92,7 @@ export default function RoleBasedTopbar({
             src={logoImg}
             alt="AIJobs Logo"
             referrerPolicy="no-referrer"
-            className="w-8 h-8 rounded-lg object-cover shadow-md shadow-blue-500/25 transition-transform duration-300 group-hover:scale-105"
+            className="w-8 h-8 rounded-lg object-contain drop-shadow-[0_0_8px_rgba(59,130,246,0.6)] transition-transform duration-300 group-hover:scale-110"
           />
           <span className="font-display font-extrabold text-xl tracking-[0.05em] text-white">
             AI<span className="text-blue-400">JOBS</span>

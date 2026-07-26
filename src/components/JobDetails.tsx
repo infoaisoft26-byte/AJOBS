@@ -2,14 +2,17 @@ import { useState, useEffect } from "react";
 import { 
   Briefcase, MapPin, Calendar, DollarSign, Award, ArrowLeft, 
   CheckCircle2, AlertTriangle, Brain, Heart, Share2, ShieldCheck, 
-  Sparkles, Lock, CheckCircle, ChevronRight, GraduationCap, Users, Clock, Send
+  Sparkles, Lock, CheckCircle, ChevronRight, GraduationCap, Users, Clock, Send,
+  Building2, ArrowRight
 } from "lucide-react";
 import { db, auth } from "../firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, limit } from "firebase/firestore";
 import { JobPosting, JobApplication } from "../types";
-import { getJobById } from "../services/jobService";
+import { getJobById, getLiveJobs } from "../services/jobService";
 import { applyToJob } from "../services/applicationService";
+import { saveJobToBookmarks, removeJobFromBookmarks } from "../services/savedJobsService";
 import { useJobPostingSchema } from "../hooks/useJobPostingSchema";
+import { useToast } from "./GlobalToast";
 
 interface JobDetailsProps {
   jobId: string;
@@ -18,6 +21,7 @@ interface JobDetailsProps {
   profile: any;
   resumeText?: string;
   onBack: () => void;
+  onSelectSimilarJob?: (similarJobId: string) => void;
   onAppliedSuccess?: (newApp: JobApplication) => void;
 }
 
@@ -28,9 +32,12 @@ export default function JobDetails({
   profile,
   resumeText,
   onBack,
+  onSelectSimilarJob,
   onAppliedSuccess
 }: JobDetailsProps) {
+  const { showToast } = useToast();
   const [job, setJob] = useState<JobPosting | null>(null);
+  const [similarJobs, setSimilarJobs] = useState<JobPosting[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isApplying, setIsApplying] = useState(false);
@@ -40,7 +47,7 @@ export default function JobDetails({
   // Invoke SEO structured JobPosting schema & dynamic meta management
   useJobPostingSchema(job);
 
-  // Load job details and check if already applied
+  // Load job details, similar jobs, and check status
   useEffect(() => {
     let active = true;
 
@@ -60,7 +67,16 @@ export default function JobDetails({
         }
         setJob(jobData);
 
-        // 2. Check if already applied
+        // 2. Fetch similar live jobs
+        try {
+          const allLive = await getLiveJobs();
+          const filtered = allLive.filter((j) => j.id !== jobId).slice(0, 3);
+          if (active) setSimilarJobs(filtered);
+        } catch (sErr) {
+          console.warn("Could not fetch similar jobs:", sErr);
+        }
+
+        // 3. Check if already applied
         if (userId) {
           const appsRef = collection(db, "applications");
           const q = query(
@@ -74,7 +90,7 @@ export default function JobDetails({
           }
         }
 
-        // 3. Check if saved in user profile bookmarks
+        // 4. Check if saved in user profile bookmarks
         if (profile?.savedJobIds?.includes(jobId) && active) {
           setIsSaved(true);
         }
@@ -99,6 +115,26 @@ export default function JobDetails({
       active = false;
     };
   }, [jobId, userId, profile]);
+
+  const handleToggleSave = async () => {
+    if (!userId) {
+      showToast("Please sign in to save jobs", "info");
+      return;
+    }
+    try {
+      if (isSaved) {
+        setIsSaved(false);
+        await removeJobFromBookmarks(userId, jobId);
+        showToast("Job removed from saved bookmarks", "info");
+      } else {
+        setIsSaved(true);
+        await saveJobToBookmarks(userId, jobId);
+        showToast("✨ Job saved to candidate bookmarks!", "success");
+      }
+    } catch (err) {
+      console.error("Error toggling bookmark:", err);
+    }
+  };
 
   const handleApply = async () => {
     if (!job) return;
@@ -148,13 +184,13 @@ export default function JobDetails({
         await navigator.share(shareData);
       } else {
         await navigator.clipboard.writeText(shareUrl);
-        alert("🚀 Vacancy link copied to clipboard successfully! Share with your network.");
+        alert("✨ Vacancy link copied to clipboard successfully! Share with your network.");
       }
     } catch (err: any) {
       if (err.name !== "AbortError") {
         try {
           await navigator.clipboard.writeText(shareUrl);
-          alert("🚀 Vacancy link copied to clipboard successfully! Share with your network.");
+          alert("✨ Vacancy link copied to clipboard successfully! Share with your network.");
         } catch (clipErr) {
           alert("Failed to copy link. Feel free to copy your current browser URL!");
         }
@@ -402,6 +438,91 @@ export default function JobDetails({
           <span>Posted: {job.createdAt ? new Date(job.createdAt).toLocaleDateString() : "Recently"}</span>
         </div>
 
+      </div>
+
+      {/* Similar / Recommended Jobs Section */}
+      {similarJobs.length > 0 && (
+        <div className="pt-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-black text-white flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-emerald-400" />
+              <span>Similar Job Opportunities</span>
+            </h3>
+            <span className="text-xs text-gray-400 font-mono">Recommended based on tech stack</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {similarJobs.map((simJob) => (
+              <div
+                key={simJob.id}
+                onClick={() => {
+                  if (onSelectSimilarJob) {
+                    onSelectSimilarJob(simJob.id);
+                  } else {
+                    window.location.href = `/?jobId=${simJob.id}`;
+                  }
+                }}
+                className="p-4 glass rounded-2xl border border-white/10 hover:border-indigo-500/50 bg-black/30 hover:bg-black/50 transition-all cursor-pointer flex flex-col justify-between space-y-3"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono text-indigo-400 font-bold uppercase">{simJob.companyName}</span>
+                    <span className="text-[9px] font-mono px-2 py-0.5 bg-emerald-500/10 text-emerald-300 rounded border border-emerald-500/20">
+                      {simJob.workMode || "Live"}
+                    </span>
+                  </div>
+                  <h4 className="font-bold text-sm text-white mt-1 line-clamp-1">{simJob.title}</h4>
+                  <p className="text-[11px] text-gray-400 mt-0.5 flex items-center gap-1">
+                    <MapPin className="w-3 h-3 text-purple-400" />
+                    <span>{simJob.location || "Bengaluru"}</span>
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[11px]">
+                  <span className="text-emerald-400 font-bold">₹ {simJob.salary || "Competitive"}</span>
+                  <span className="text-indigo-300 font-extrabold flex items-center gap-1 hover:underline">
+                    <span>View</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Sticky Mobile Action Bar */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-[#090d16]/95 backdrop-blur-xl border-t border-white/10 z-40 flex items-center justify-between gap-3 shadow-2xl">
+        <button
+          onClick={handleToggleSave}
+          className={`p-3 rounded-2xl border transition-all cursor-pointer ${
+            isSaved 
+              ? "bg-pink-500/20 border-pink-500/40 text-pink-400" 
+              : "bg-white/5 border-white/10 text-gray-300"
+          }`}
+        >
+          <Heart className={`w-5 h-5 ${isSaved ? "fill-current" : ""}`} />
+        </button>
+
+        {hasApplied ? (
+          <div className="flex-1 py-3.5 bg-green-500/15 border border-green-500/25 text-green-400 font-extrabold text-xs rounded-2xl flex items-center justify-center gap-2">
+            <CheckCircle2 className="w-4 h-4" />
+            <span>Already Applied</span>
+          </div>
+        ) : (
+          <button
+            onClick={handleApply}
+            disabled={isApplying}
+            className="flex-1 py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-extrabold text-xs rounded-2xl shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer"
+          >
+            {isApplying ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Send className="w-4 h-4 text-emerald-300" />
+            )}
+            <span>{isApplying ? "Submitting..." : "Apply Now"}</span>
+          </button>
+        )}
       </div>
 
     </div>

@@ -335,7 +335,7 @@ export async function seedSuperAdminDataIfEmpty(userId: string, userName: string
         {
           id: "tpl_welcome",
           name: "Candidate Welcome Greeting",
-          subject: "Welcome to AIJobs, {{candidate_name}}! 🚀",
+          subject: "Welcome to AIJobs, {{candidate_name}}! ✨",
           body: "Dear {{candidate_name}},\n\nThank you for onboarding on AIJobs. Complete your profile, upload your resume, and let our Career Coach match you to premium enterprise positions automatically.\n\nWarm regards,\nSourcing Desk",
           category: "Welcome",
           variables: ["candidate_name"],
@@ -592,7 +592,7 @@ export const FALLBACK_EMAILS: EmailTemplate[] = [
   {
     id: "tpl_welcome",
     name: "Candidate Welcome Greeting",
-    subject: "Welcome to AIJobs, {{candidate_name}}! 🚀",
+    subject: "Welcome to AIJobs, {{candidate_name}}! ✨",
     body: "Dear {{candidate_name}},\n\nThank you for onboarding on AIJobs.",
     category: "Welcome",
     variables: ["candidate_name"],
