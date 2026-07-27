@@ -1,4 +1,7 @@
 rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
 service cloud.firestore {
   match /databases/{database}/documents {
     
@@ -81,10 +84,10 @@ service cloud.firestore {
       allow write: if isOwner(consultancyId) || (isSignedIn() && resource.data.userId == request.auth.uid) || isConsultancy() || isAdmin();
     }
     
-    // Employers collection
-    match /employers/{employerId} {
-      allow read: if isSignedIn();
-      allow write: if isOwner(employerId) || (isSignedIn() && resource.data.userId == request.auth.uid) || isRecruiter() || isAdmin();
+    allow create: if isOwner(userId)
+  && request.resource.data.uid == request.auth.uid
+  && request.resource.data.role in ['candidate', 'consultancy'];
+   
     }
     
     // Companies collection
