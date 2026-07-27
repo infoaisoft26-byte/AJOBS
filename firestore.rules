@@ -59,22 +59,32 @@ service cloud.firestore {
       allow update, delete: if isOwner(userId) || isAdmin();
     }
     
-    // Candidates collection
+    // Candidates & Candidate Profiles Collection
     match /candidates/{candidateId} {
       allow read: if isSignedIn();
       allow write: if isOwner(candidateId) || isRecruiter() || isConsultancy() || isAdmin();
     }
+    match /candidate_profiles/{profileId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(profileId) || isRecruiter() || isConsultancy() || isAdmin();
+    }
     
+    // Recruiter Profiles Collection
+    match /recruiter_profiles/{profileId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(profileId) || isRecruiter() || isAdmin();
+    }
+
     // Consultancies collection
     match /consultancies/{consultancyId} {
       allow read: if isSignedIn();
-      allow write: if isOwner(consultancyId) || isConsultancy() || isAdmin();
+      allow write: if isOwner(consultancyId) || (isSignedIn() && resource.data.userId == request.auth.uid) || isConsultancy() || isAdmin();
     }
     
     // Employers collection
     match /employers/{employerId} {
       allow read: if isSignedIn();
-      allow write: if isOwner(employerId) || isRecruiter() || isAdmin();
+      allow write: if isOwner(employerId) || (isSignedIn() && resource.data.userId == request.auth.uid) || isRecruiter() || isAdmin();
     }
     
     // Companies collection
@@ -86,19 +96,49 @@ service cloud.firestore {
     // Jobs postings - visible to public/guests, writeable by recruiters/consultancies/admins
     match /jobs/{jobId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow create: if isSignedIn() && (isRecruiter() || isConsultancy() || isAdmin());
+      allow update, delete: if isSignedIn() && (
+        isOwner(resource.data.userId) || 
+        isOwner(resource.data.recruiterId) || 
+        isOwner(resource.data.employerId) || 
+        isAdmin()
+      );
     }
     match /company_jobs/{jobId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if isSignedIn() && (isRecruiter() || isAdmin());
     }
     
     // Applications
     match /applications/{applicationId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && (
+        isOwner(resource.data.candidateId) || 
+        isOwner(resource.data.userId) || 
+        isOwner(resource.data.recruiterId) || 
+        isOwner(resource.data.employerId) || 
+        isRecruiter() || 
+        isConsultancy() || 
+        isAdmin()
+      );
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && (
+        isOwner(resource.data.candidateId) || 
+        isOwner(resource.data.recruiterId) || 
+        isOwner(resource.data.employerId) || 
+        isAdmin()
+      );
     }
     match /company_applications/{applicationId} {
       allow read, write: if isSignedIn();
+    }
+    
+    // Saved Jobs Collection
+    match /saved_jobs/{savedId} {
+      allow read, write: if isSignedIn() && (
+        isOwner(resource.data.userId) || 
+        request.resource.data.userId == request.auth.uid || 
+        isAdmin()
+      );
     }
     
     // Resumes and Resume Versions
@@ -180,19 +220,23 @@ service cloud.firestore {
     }
     
     // Support and settings
+    match /contact_messages/{msgId} {
+      allow create: if true;
+      allow read, update, delete: if isSignedIn();
+    }
     match /support_tickets/{ticketId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if true;
     }
     match /support/{ticketId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if true;
     }
     match /settings/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow read: if true;
+      allow write: if isSignedIn();
     }
     match /system_settings/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow read: if true;
+      allow write: if isSignedIn();
     }
     
     // Admin list
@@ -301,11 +345,11 @@ service cloud.firestore {
     // FAQs & Blogs
     match /faqs/{faqId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isSignedIn();
     }
     match /blogs/{blogId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isSignedIn();
     }
 
     // Chat messages & sessions
@@ -327,11 +371,6 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
     match /job_matches/{matchId} {
-      allow read, write: if isSignedIn();
-    }
-
-    // Catch-all fallback match for any other custom collection
-    match /{document=**} {
       allow read, write: if isSignedIn();
     }
   }

@@ -22,7 +22,7 @@ export interface ApplicationRecord {
   candidateName: string;
   candidateEmail?: string;
   candidatePhone?: string;
-  status: "Applied" | "Screening" | "Shortlisted" | "Interview Scheduled" | "HR Round" | "Final Round" | "Offer" | "Joined" | "Rejected";
+  status: "Applied" | "Screening" | "Shortlisted" | "Interview Scheduled" | "Interview Completed" | "HR Round" | "Final Round" | "Selected" | "Offer" | "Joined" | "Rejected";
   appliedAt: string;
   updatedAt?: string;
   resumeUrl?: string;
@@ -1070,7 +1070,7 @@ export default function RecruiterApplicationTable({
                   {getStatusBadge(selectedApp.status)}
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 border-t border-white/5">
                   <button
                     onClick={() => handleUpdateStatus(selectedApp, "Shortlisted")}
                     className="py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer"
@@ -1081,11 +1081,35 @@ export default function RecruiterApplicationTable({
                     onClick={() => handleOpenSchedule(selectedApp)}
                     className="py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer"
                   >
-                    <Calendar className="w-3.5 h-3.5" /> Interview
+                    <Calendar className="w-3.5 h-3.5" /> Schedule Interview
+                  </button>
+                  <button
+                    onClick={() => handleUpdateStatus(selectedApp, "Interview Completed")}
+                    className="py-2 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <Clock className="w-3.5 h-3.5" /> Interview Done
+                  </button>
+                  <button
+                    onClick={() => handleUpdateStatus(selectedApp, "Selected")}
+                    className="py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" /> Select Candidate
+                  </button>
+                  <button
+                    onClick={() => handleUpdateStatus(selectedApp, "Offer")}
+                    className="py-2 bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <Send className="w-3.5 h-3.5" /> Release Offer
+                  </button>
+                  <button
+                    onClick={() => handleUpdateStatus(selectedApp, "Joined")}
+                    className="py-2 bg-teal-600/20 hover:bg-teal-600/30 text-teal-300 border border-teal-500/30 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <UserCheck className="w-3.5 h-3.5" /> Mark Joined
                   </button>
                   <button
                     onClick={() => handleUpdateStatus(selectedApp, "Rejected")}
-                    className="py-2 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer"
+                    className="col-span-2 sm:col-span-1 py-2 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer"
                   >
                     <XCircle className="w-3.5 h-3.5" /> Reject
                   </button>

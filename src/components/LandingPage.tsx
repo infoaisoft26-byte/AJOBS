@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react";
 import logoImg from "../assets/images/aijobs_logo_1783014982325.jpg";
-import aiLogoImg from "../assets/images/aijobs-ai-logo.png";
 import { 
   Sparkles, ArrowRight, Upload, Play, CheckCircle2, 
   HelpCircle, Star, Send, Bot, MessageSquare, ChevronRight, 
@@ -428,39 +427,31 @@ export default function LandingPage({
           <span className="tracking-wider uppercase">India's First AI Powered Recruitment Platform</span>
         </motion.div>
         
-        {/* Headline with 8D Glassmorphism AI Logo */}
+        {/* Headline with Sparkles Hero Icon */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-6 md:gap-10 mb-8">
-          {/* Logo container with floating animation, neon glow, soft shadow and hover tilt */}
+          {/* Hero Icon with floating animation, soft blue energy glow, hover scale and 3deg rotate */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.85 }}
             animate={{ 
               opacity: 1, 
               scale: 1,
-              y: [0, -10, 0] 
+              y: [0, -12, 0] 
             }}
             transition={{ 
               opacity: { duration: 0.8 },
               scale: { duration: 0.8 },
-              y: { repeat: Infinity, duration: 4, ease: "easeInOut" }
+              y: { repeat: Infinity, duration: 3.5, ease: "easeInOut" }
             }}
-            className="relative group shrink-0"
+            whileHover={{ scale: 1.08, rotate: 3 }}
+            className="relative group shrink-0 cursor-pointer animate-float-bob"
           >
-            {/* Blue/Purple Neon Ambient Glow */}
-            <div className="absolute -inset-4 rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 opacity-60 blur-2xl group-hover:opacity-90 group-hover:blur-3xl animate-pulse transition-all duration-500" />
+            {/* Ambient Outer Blue Glow Effect */}
+            <div className="absolute -inset-4 rounded-3xl bg-gradient-to-r from-cyan-500 via-blue-500 to-violet-600 opacity-60 blur-2xl group-hover:opacity-100 group-hover:blur-3xl animate-pulse transition-all duration-500" />
 
-            {/* 8D Glassmorphism container with tilt effect on hover */}
-            <motion.div
-              whileHover={{ rotateX: 12, rotateY: 12, scale: 1.05 }}
-              transition={{ type: "spring", stiffness: 200, damping: 18 }}
-              className="relative z-10 p-3 sm:p-4 bg-white/5 backdrop-blur-2xl border border-white/15 rounded-3xl shadow-2xl shadow-purple-900/40 hover:shadow-blue-500/50 transition-all duration-300"
-            >
-              <img
-                src={aiLogoImg}
-                alt="AIJOBS AI Logo"
-                referrerPolicy="no-referrer"
-                className="w-[110px] sm:w-[175px] md:w-[245px] h-auto object-contain drop-shadow-[0_0_20px_rgba(168,85,247,0.4)]"
-              />
-            </motion.div>
+            {/* Cyan-to-violet rounded-3xl container with soft blue energy glow & glassmorphic backdrop */}
+            <div className="relative z-10 w-32 h-32 rounded-3xl bg-gradient-to-br from-cyan-500 to-violet-600 flex items-center justify-center border border-white/20 backdrop-blur-xl shadow-2xl shadow-cyan-500/30 animate-blue-glow transition-all duration-300">
+              <Sparkles className="w-16 h-16 text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.8)]" />
+            </div>
           </motion.div>
 
           <motion.h1 

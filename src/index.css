@@ -95,6 +95,29 @@ body {
   animation: holographic-pulse 3s infinite ease-in-out;
 }
 
+/* Floating motion and blue energy glow keyframes */
+@keyframes float-bob {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
+}
+
+.animate-float-bob {
+  animation: float-bob 3.5s ease-in-out infinite;
+}
+
+@keyframes blue-energy-glow {
+  0%, 100% {
+    box-shadow: 0 0 25px rgba(6, 182, 212, 0.4), 0 0 50px rgba(59, 130, 246, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 45px rgba(6, 182, 212, 0.7), 0 0 75px rgba(139, 92, 246, 0.5);
+  }
+}
+
+.animate-blue-glow {
+  animation: blue-energy-glow 3s ease-in-out infinite;
+}
+
 /* Luxury 3D Perspective Card Tilt */
 .perspective-1000 {
   perspective: 1000px;

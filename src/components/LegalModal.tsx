@@ -22,43 +22,117 @@ export default function LegalModal({ docType, onClose }: LegalModalProps) {
           <div className="space-y-4 text-xs sm:text-sm text-gray-300 leading-relaxed font-sans">
             <div className="flex items-center gap-2 text-indigo-400 font-semibold mb-2">
               <ShieldCheck className="w-5 h-5" />
-              <span>Privacy Policy & Consent Agreement</span>
+              <span>Privacy Policy – AIJobs</span>
             </div>
-            <p><strong>Last Updated: July 2026 (Established {establishedYear})</strong></p>
+            <p><strong>Operated by: The Flex Force Services | Last Updated: July 2026</strong></p>
             <p>
-              At <strong>{platformName}</strong> (accessible via <strong>{website}</strong>), owned and operated by <strong>{companyName}</strong>, one of our main priorities is the privacy of our candidates, recruiters, and clients. This Privacy Policy document outlines the types of information collected and recorded by {platformName} and how we use it.
-            </p>
-            <h4 className="text-white font-bold text-sm mt-4 uppercase tracking-wider">1. Information We Collect</h4>
-            <p>
-              We collect personal information that you voluntarily provide when registering on the platform, building or uploading resumes, participating in AI Mock Interviews, or initiating live chats. This includes:
-            </p>
-            <ul className="list-disc pl-5 space-y-1">
-              <li>Contact data (Name, Email Address, Phone Number, Mailing Address)</li>
-              <li>Professional profile details (Resume, employment history, skill sets, certifications)</li>
-              <li>Interactive interview answers (audio responses, transcriptions, performance metrics)</li>
-              <li>Payment details (encrypted transaction tokens processed securely via PayU)</li>
-            </ul>
-
-            <h4 className="text-white font-bold text-sm mt-4 uppercase tracking-wider">2. How We Use Your Information</h4>
-            <p>
-              We utilize advanced Gemini AI models and semantic intelligence to:
-            </p>
-            <ul className="list-disc pl-5 space-y-1">
-              <li>Rank resumes against relevant candidate pipelines</li>
-              <li>Evaluate video/mock interview sessions for ATS scoring</li>
-              <li>Dispatch relevant job alerts and coordinate live chats with approved recruiters</li>
-              <li>Verify transactions and prevent fraudulent subscription upgrades on PayU</li>
-            </ul>
-
-            <h4 className="text-white font-bold text-sm mt-4 uppercase tracking-wider">3. Data Sharing & Security</h4>
-            <p>
-              We do not sell, rent, or trade user profile details to third-party data brokers. Profile data is shared strictly with authorized recruiters and consultancy agents based on your explicit job application preferences. All databases run inside authenticated secure Firebase environments protected by strict firestore rules.
+              Welcome to AIJobs, an AI-powered job search and recruitment platform operated by <strong>The Flex Force Services</strong>.
+              This Privacy Policy explains how AIJobs collects, uses, stores, shares, and protects the personal information of candidates, recruiters, employers, consultancies, and other users who access our website, applications, advertisements, or services.
+              By accessing AIJobs, registering an account, applying for a job, submitting a lead form, uploading a resume, or using our services, you agree to the practices described in this Privacy Policy.
             </p>
 
-            <h4 className="text-white font-bold text-sm mt-4 uppercase tracking-wider">4. Contact Information</h4>
+            <h4 className="text-white font-bold text-sm mt-4 uppercase tracking-wider">1. AIJobs Is Free for Job Seekers</h4>
             <p>
-              If you have any questions or require more information about our Privacy Policy, please feel free to reach out to <strong>{companyName}</strong> at <strong>{supportEmail}</strong>.
+              AIJobs does not charge candidates any registration fee, application fee, interview fee, placement fee, joining fee, security deposit, or other payment for providing job opportunities.
+              Job search, registration, job applications, and placement assistance offered directly by AIJobs are free of cost for candidates.
             </p>
+            <p>
+              AIJobs does not guarantee employment or final selection. A candidate’s selection and placement depend on factors including eligibility and qualifications, skills and experience, resume and profile information, interview performance, background or document verification, employer requirements, availability of suitable job vacancies, and the final approval and decision of the employer or recruiter.
+            </p>
+
+            <h4 className="text-white font-bold text-sm mt-4 uppercase tracking-wider">2. Information We Collect</h4>
+            <p><strong>Personal and Contact Information:</strong> Full name, mobile number, email address, city/state/location, DOB, profile photograph, residential address.</p>
+            <p><strong>Professional Information:</strong> Resume/CV, educational qualifications, work experience, skills/certifications, salary details, preferred job role and location, notice period, interview availability, and application history.</p>
+            <p><strong>Verification Information:</strong> Identity proof, address proof, educational documents, experience documents, salary documents, and other employment records provided voluntarily.</p>
+            <p><strong>Technical Information:</strong> IP address, browser type, device information, OS, usage logs, cookies, and referral campaign source.</p>
+
+            <h4 className="text-white font-bold text-sm mt-4 uppercase tracking-wider">3. How We Use Your Information</h4>
+            <p>
+              AIJobs uses personal information to create and manage accounts, contact candidates regarding job opportunities, match candidate profiles with jobs using AI, process and track applications, schedule interviews, send email/SMS/WhatsApp/in-app notifications, detect fraud and fake profiles, improve platform recommendations, and comply with legal requirements.
+            </p>
+
+            <h4 className="text-white font-bold text-sm mt-4 uppercase tracking-wider">4. Sharing Candidate Information</h4>
+            <p>
+              AIJobs shares candidate information strictly with authorized employers, recruiters, recruitment consultancies, interviewers, background verification providers, and cloud infrastructure partners for job placement purposes. AIJobs does not sell personal information to third parties.
+            </p>
+
+            <h4 className="text-white font-bold text-sm mt-4 uppercase tracking-wider">5. Calls, SMS, WhatsApp, and Email Communication</h4>
+            <p>
+              By registering or applying, users consent to receiving job alerts, application updates, interview schedules, and security notifications via phone calls, SMS, WhatsApp, and email.
+            </p>
+
+            <h4 className="text-white font-bold text-sm mt-4 uppercase tracking-wider">6. Job Selection and Placement Disclaimer</h4>
+            <p>
+              AIJobs acts as a technology-enabled recruitment platform. AIJobs does not promise or guarantee job selection, offer-letter issuance, or specific joining conditions. Final hiring decisions rest solely with the employer.
+            </p>
+
+            <h4 className="text-white font-bold text-sm mt-4 uppercase tracking-wider">7. No Candidate Placement Charges</h4>
+            <p>
+              AIJobs does not charge candidates for job placement. Candidates must never pay money to anyone for guaranteed selection or job processing under the AIJobs name.
+            </p>
+
+            <h4 className="text-white font-bold text-sm mt-4 uppercase tracking-wider">8. Employer and Recruiter Services</h4>
+            <p>
+              AIJobs offers paid plans and subscriptions to employers and consultancies. Any charges paid by employers are business-service charges separate from free candidate services.
+            </p>
+
+            <h4 className="text-white font-bold text-sm mt-4 uppercase tracking-wider">9. Data Accuracy</h4>
+            <p>
+              Users are responsible for providing accurate and truthful information. Accounts containing false or fraudulent credentials may be suspended immediately.
+            </p>
+
+            <h4 className="text-white font-bold text-sm mt-4 uppercase tracking-wider">10. Data Security</h4>
+            <p>
+              AIJobs uses administrative, organizational, and technical safeguards (including Firestore security rules and encrypted transport) to protect personal data against unauthorized access.
+            </p>
+
+            <h4 className="text-white font-bold text-sm mt-4 uppercase tracking-wider">11. Data Retention</h4>
+            <p>
+              AIJobs retains personal information as long as necessary to fulfill recruitment services, process applications, prevent fraud, and comply with legal obligations.
+            </p>
+
+            <h4 className="text-white font-bold text-sm mt-4 uppercase tracking-wider">12. Cookies and Analytics</h4>
+            <p>
+              Cookies are used to maintain user sessions, record theme preferences, understand platform performance, and measure campaign effectiveness.
+            </p>
+
+            <h4 className="text-white font-bold text-sm mt-4 uppercase tracking-wider">13. Third-Party Services and Links</h4>
+            <p>
+              AIJobs integrates with cloud services (Firebase, Google Ads, WhatsApp communication gateways). Third-party providers operate under their respective privacy policies.
+            </p>
+
+            <h4 className="text-white font-bold text-sm mt-4 uppercase tracking-wider">14. User Rights</h4>
+            <p>
+              Users have the right to access, update, correct, or request deletion of their personal information by contacting AIJobs support.
+            </p>
+
+            <h4 className="text-white font-bold text-sm mt-4 uppercase tracking-wider">15. Account and Data Deletion</h4>
+            <p>
+              Account deletion requests can be submitted to info@aijobs.in along with registered contact details for identity verification.
+            </p>
+
+            <h4 className="text-white font-bold text-sm mt-4 uppercase tracking-wider">16. Children’s Privacy</h4>
+            <p>
+              AIJobs is intended for individuals legally eligible for employment. Minors should access the platform only under parental supervision.
+            </p>
+
+            <h4 className="text-white font-bold text-sm mt-4 uppercase tracking-wider">17. Fraud and Safety Warning</h4>
+            <p>
+              Candidates should independently verify employers and never share sensitive credentials (OTPs, PINs, or banking details).
+            </p>
+
+            <h4 className="text-white font-bold text-sm mt-4 uppercase tracking-wider">18. Changes to This Privacy Policy</h4>
+            <p>
+              Updates to this policy will be published on this page with a revised date. Continued platform usage constitutes acceptance of updated terms.
+            </p>
+
+            <h4 className="text-white font-bold text-sm mt-4 uppercase tracking-wider">19. Grievance and Contact Information</h4>
+            <div className="bg-white/5 border border-white/10 p-3 rounded-xl space-y-1 font-mono text-[11px] text-gray-300">
+              <p><strong>Platform:</strong> AIJobs</p>
+              <p><strong>Operated by:</strong> The Flex Force Services</p>
+              <p><strong>Website:</strong> https://aijobs-14.vercel.app/</p>
+              <p><strong>Email:</strong> info@aijobs.in</p>
+            </div>
           </div>
         );
 

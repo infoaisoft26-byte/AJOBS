@@ -190,13 +190,36 @@ export default function CompanyRegistration({
               </div>
 
               <div className="space-y-1 text-xs">
-                <label className="block text-gray-400">Corporate Logo URL</label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-gray-400">Corporate Logo</label>
+                  <label className="text-[10px] text-indigo-400 hover:underline cursor-pointer">
+                    Upload Logo File
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            if (reader.result) {
+                              setLogoUrl(reader.result.toString());
+                              showToast("Company logo uploaded successfully!", "success");
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
                 <input
                   type="text"
                   value={logoUrl}
                   onChange={e => setLogoUrl(e.target.value)}
-                  placeholder="https://images.unsplash.com/photo-..."
-                  className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-2 text-white font-mono"
+                  placeholder="Paste URL or click Upload Logo File above..."
+                  className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-2 text-white font-mono text-[11px]"
                 />
               </div>
             </div>

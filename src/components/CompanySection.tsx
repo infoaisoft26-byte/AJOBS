@@ -66,84 +66,102 @@ export default function CompanySection({ pageType, onClose, setActiveCompanyPage
     setLoading(true);
     try {
       // 1. Fetch Company Settings
-      const settingsSnap = await getDocs(collection(db, "settings"));
-      if (!settingsSnap.empty) {
-        settingsSnap.forEach(d => {
-          if (d.id === "company_info") setCompanySettings(d.data());
-        });
-      } else {
-        await setDoc(doc(db, "settings", "company_info"), companySettings);
+      try {
+        const settingsSnap = await getDocs(collection(db, "settings"));
+        if (!settingsSnap.empty) {
+          settingsSnap.forEach(d => {
+            if (d.id === "company_info") setCompanySettings(d.data());
+          });
+        } else {
+          setDoc(doc(db, "settings", "company_info"), companySettings).catch(() => {});
+        }
+      } catch (err) {
+        console.warn("Notice: Using local company settings fallback", err);
       }
 
       // 2. Fetch Social Links
-      const socialsSnap = await getDocs(collection(db, "social_links"));
-      if (!socialsSnap.empty) {
-        socialsSnap.forEach(d => {
-          if (d.id === "global_socials") setSocialLinks(d.data());
-        });
-      } else {
-        await setDoc(doc(db, "social_links", "global_socials"), socialLinks);
+      try {
+        const socialsSnap = await getDocs(collection(db, "social_links"));
+        if (!socialsSnap.empty) {
+          socialsSnap.forEach(d => {
+            if (d.id === "global_socials") setSocialLinks(d.data());
+          });
+        } else {
+          setDoc(doc(db, "social_links", "global_socials"), socialLinks).catch(() => {});
+        }
+      } catch (err) {
+        console.warn("Notice: Using local social links fallback", err);
       }
 
       // 3. Fetch FAQs
-      const faqsSnap = await getDocs(collection(db, "faqs"));
-      const faqs: any[] = [];
-      faqsSnap.forEach(d => faqs.push({ id: d.id, ...d.data() }));
-      
-      if (faqs.length === 0) {
-        const seedFaqs = [
-          { category: "Candidate", q: "How does the AI Resume Evaluation work?", a: "AIJobs scans your resume using advanced semantic intelligence and matches your skill points with real recruiter parameters to generate an objective ATS score out of 100." },
-          { category: "Candidate", q: "Are the AI Mock Interviews graded?", a: "Yes, our interactive interview emulator records and grades your audio transcriptions, providing immediate constructive feedback and verified performance badges." },
-          { category: "Recruiter", q: "Can I assign candidates to specific consultancies?", a: "Yes, using our CRM module, enterprises can assign candidate queues to certified recruitment consultancy agencies." },
-          { category: "Consultancy", q: "What limits apply to the bulk Excel upload?", a: "You can upload up to 500 candidate rows at once. The validation engine requires a valid email and at least one technical skill per candidate row." },
-          { category: "Payments", q: "How are recurring billing subscriptions canceled?", a: "Subscriptions can be canceled on-demand directly from your billing dashboard. Access remains active until the current billing cycle expires." }
-        ];
-        for (const item of seedFaqs) {
-          const id = "faq_" + Math.random().toString(36).substr(2, 9);
-          await setDoc(doc(db, "faqs", id), { id, ...item });
-          faqs.push({ id, ...item });
+      const seedFaqs = [
+        { category: "Candidate", q: "How does the AI Resume Evaluation work?", a: "AIJobs scans your resume using advanced semantic intelligence and matches your skill points with real recruiter parameters to generate an objective ATS score out of 100." },
+        { category: "Candidate", q: "Are the AI Mock Interviews graded?", a: "Yes, our interactive interview emulator records and grades your audio transcriptions, providing immediate constructive feedback and verified performance badges." },
+        { category: "Recruiter", q: "Can I assign candidates to specific consultancies?", a: "Yes, using our CRM module, enterprises can assign candidate queues to certified recruitment consultancy agencies." },
+        { category: "Consultancy", q: "What limits apply to the bulk Excel upload?", a: "You can upload up to 500 candidate rows at once. The validation engine requires a valid email and at least one technical skill per candidate row." },
+        { category: "Payments", q: "How are recurring billing subscriptions canceled?", a: "Subscriptions can be canceled on-demand directly from your billing dashboard. Access remains active until the current billing cycle expires." }
+      ];
+      try {
+        const faqsSnap = await getDocs(collection(db, "faqs"));
+        const faqs: any[] = [];
+        faqsSnap.forEach(d => faqs.push({ id: d.id, ...d.data() }));
+        
+        if (faqs.length === 0) {
+          for (const item of seedFaqs) {
+            const id = "faq_" + Math.random().toString(36).substr(2, 9);
+            setDoc(doc(db, "faqs", id), { id, ...item }).catch(() => {});
+            faqs.push({ id, ...item });
+          }
         }
+        setFaqList(faqs);
+      } catch (err) {
+        console.warn("Notice: Using local FAQ dataset fallback", err);
+        setFaqList(seedFaqs.map((item, idx) => ({ id: `faq_seed_${idx}`, ...item })));
       }
-      setFaqList(faqs);
 
       // 4. Fetch Blogs
-      const blogsSnap = await getDocs(collection(db, "blogs"));
-      const blogs: any[] = [];
-      blogsSnap.forEach(d => blogs.push({ id: d.id, ...d.data() }));
-
-      if (blogs.length === 0) {
-        const seedBlogs = [
-          {
-            title: "Scaling Engineering Sourcing with Semantic AI Search",
-            category: "AI Hiring",
-            summary: "Explore how deep semantic embedding engines eliminate traditional boolean queries for technical recruiters.",
-            content: "Boolean search is dead. Traditional matching based solely on exact string matches often fails to identify high-potential candidates who use slightly different keywords. Using semantic AI, recruiters can now search for 'Full Stack SDE with cloud scaling experience' and automatically retrieve profiles containing AWS, Kubernetes, and Next.js. This reduces overall screening time by up to 80% while dramatically improving match quality.",
-            createdAt: new Date().toISOString(),
-            author: "Dr. Anirudh Sen, Chief AI Architect",
-            readTime: "5 min read",
-            coverImage: "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=600&q=80"
-          },
-          {
-            title: "Cracking the AI-Led Technical Interview Arena",
-            category: "Career Advice",
-            summary: "A comprehensive developer's guide to passing automated semantic coding assessments.",
-            content: "Automated interviews can feel intimidating, but they follow highly structured evaluation patterns. To excel, candidate developers should focus on: first, explaining their architectural choices clearly; second, describing edge cases for their algorithms; and third, matching the core job skills explicitly in their spoken explanations. Our AI assessment pipeline is designed to look for these conceptual indicators alongside raw code accuracy.",
-            createdAt: new Date().toISOString(),
-            author: "Pragati Verma, Senior HR Tech Lead",
-            readTime: "4 min read",
-            coverImage: "https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?auto=format&fit=crop&w=600&q=80"
-          }
-        ];
-        for (const item of seedBlogs) {
-          const id = "blog_" + Math.random().toString(36).substr(2, 9);
-          await setDoc(doc(db, "blogs", id), { id, ...item });
-          blogs.push({ id, ...item });
+      const seedBlogs = [
+        {
+          title: "Scaling Engineering Sourcing with Semantic AI Search",
+          category: "AI Hiring",
+          summary: "Explore how deep semantic embedding engines eliminate traditional boolean queries for technical recruiters.",
+          content: "Boolean search is dead. Traditional matching based solely on exact string matches often fails to identify high-potential candidates who use slightly different keywords. Using semantic AI, recruiters can now search for 'Full Stack SDE with cloud scaling experience' and automatically retrieve profiles containing AWS, Kubernetes, and Next.js. This reduces overall screening time by up to 80% while dramatically improving match quality.",
+          createdAt: new Date().toISOString(),
+          author: "Dr. Anirudh Sen, Chief AI Architect",
+          readTime: "5 min read",
+          coverImage: "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=600&q=80"
+        },
+        {
+          title: "Cracking the AI-Led Technical Interview Arena",
+          category: "Career Advice",
+          summary: "A comprehensive developer's guide to passing automated semantic coding assessments.",
+          content: "Automated interviews can feel intimidating, but they follow highly structured evaluation patterns. To excel, candidate developers should focus on: first, explaining their architectural choices clearly; second, describing edge cases for their algorithms; and third, matching the core job skills explicitly in their spoken explanations. Our AI assessment pipeline is designed to look for these conceptual indicators alongside raw code accuracy.",
+          createdAt: new Date().toISOString(),
+          author: "Pragati Verma, Senior HR Tech Lead",
+          readTime: "4 min read",
+          coverImage: "https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?auto=format&fit=crop&w=600&q=80"
         }
+      ];
+      try {
+        const blogsSnap = await getDocs(collection(db, "blogs"));
+        const blogs: any[] = [];
+        blogsSnap.forEach(d => blogs.push({ id: d.id, ...d.data() }));
+
+        if (blogs.length === 0) {
+          for (const item of seedBlogs) {
+            const id = "blog_" + Math.random().toString(36).substr(2, 9);
+            setDoc(doc(db, "blogs", id), { id, ...item }).catch(() => {});
+            blogs.push({ id, ...item });
+          }
+        }
+        setBlogList(blogs);
+      } catch (err) {
+        console.warn("Notice: Using local blog dataset fallback", err);
+        setBlogList(seedBlogs.map((item, idx) => ({ id: `blog_seed_${idx}`, ...item })));
       }
-      setBlogList(blogs);
 
     } catch (err) {
-      console.error("Error fetching company section datasets:", err);
+      console.warn("Notice: Exception during company dataset loading:", err);
     } finally {
       setLoading(false);
     }

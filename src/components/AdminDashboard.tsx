@@ -288,21 +288,21 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
     }
 
     setStats({
-      totalCandidates: candidatesCount || 124,
-      totalConsultancies: consultanciesCount || 8,
-      totalEmployers: employersCount || 14,
-      totalJobs: jobs.length || 38,
-      activeJobs: activeJobsCount || 19,
-      applicationsToday: 18 + (telemetryData.aiRequests || 0),
-      interviewsToday: 12,
-      resumesAnalyzedToday: 41 + (telemetryData.aiRequests || 0),
-      revenueToday: 14500 + (telemetryData.paymentsCount * 9999),
-      monthlyRevenue: (totalRevCollected || 113000) + (telemetryData.paymentsCount * 9999),
-      yearlyRevenue: (totalRevCollected ? totalRevCollected * 12 : 1356000) + (telemetryData.paymentsCount * 9999 * 12),
-      pendingApprovals: pendingVerificationCount || 2,
-      supportTickets: openSupportCount || 3,
-      liveOnlineUsers: telemetryData.activeUsers || 4,
-      registrationsToday: 8
+      totalCandidates: candidatesCount,
+      totalConsultancies: consultanciesCount,
+      totalEmployers: employersCount,
+      totalJobs: jobs.length,
+      activeJobs: activeJobsCount,
+      applicationsToday: telemetryData.aiRequests || 0,
+      interviewsToday: 0,
+      resumesAnalyzedToday: telemetryData.aiRequests || 0,
+      revenueToday: telemetryData.paymentsCount * 9999,
+      monthlyRevenue: totalRevCollected,
+      yearlyRevenue: totalRevCollected * 12,
+      pendingApprovals: pendingVerificationCount,
+      supportTickets: openSupportCount,
+      liveOnlineUsers: telemetryData.activeUsers || 1,
+      registrationsToday: candidatesCount + employersCount + consultanciesCount
     });
 
     setLoading(false);

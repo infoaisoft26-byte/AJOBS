@@ -228,6 +228,29 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
     return () => unsubscribe();
   }, [userId]);
 
+  // Real-time listener for candidate applications status updates
+  useEffect(() => {
+    if (!userId) return;
+
+    const q = query(
+      collection(db, "applications"),
+      where("candidateId", "==", userId)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const items: JobApplication[] = [];
+      snapshot.forEach((docSnap) => {
+        items.push({ id: docSnap.id, ...docSnap.data() } as JobApplication);
+      });
+      items.sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime());
+      setApplications(items);
+    }, (error) => {
+      console.warn("Real-time application listener notice:", error);
+    });
+
+    return () => unsubscribe();
+  }, [userId]);
+
   useEffect(() => {
     coachEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [coachHistory, coachLoading]);

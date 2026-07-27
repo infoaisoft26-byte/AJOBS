@@ -415,11 +415,19 @@ export default function CandidateJobsSection({
 
   const filteredList = getFilteredJobs();
 
-  // Handle application status index
+  // Handle application status index for live candidate timeline
   const getStatusIndex = (status: string) => {
-    const stages = ["applied", "under_review", "interviewing", "selected", "rejected", "offered"];
-    const idx = stages.indexOf(status.toLowerCase().replace(" ", "_"));
-    return idx === -1 ? 0 : idx;
+    const s = (status || "").toLowerCase().trim();
+    if (s.includes("reject")) return -1;
+    if (s.includes("join") || s.includes("hired")) return 8;
+    if (s.includes("offer_accepted") || s.includes("accepted")) return 7;
+    if (s.includes("offer") || s.includes("released")) return 6;
+    if (s.includes("select")) return 5;
+    if (s.includes("interview_complete") || s.includes("interview_done") || s.includes("completed")) return 4;
+    if (s.includes("interview")) return 3;
+    if (s.includes("shortlist")) return 2;
+    if (s.includes("view") || s.includes("screen") || s.includes("review")) return 1;
+    return 0; // Applied
   };
 
   if (selectedJobDetails) {
@@ -903,57 +911,102 @@ export default function CandidateJobsSection({
                 </div>
 
                 {/* Timeline graph */}
-                <div className="space-y-4 relative pl-4 border-l border-white/5">
-                  {[
-                    {
-                      label: "Application Received",
-                      desc: "Resume profile logged successfully into ATS filters.",
-                      active: getStatusIndex(selectedApp.status) >= 0,
-                      color: "border-indigo-400 bg-indigo-400"
-                    },
-                    {
-                      label: "Portfolio Under Review",
-                      desc: "Agency partners reviewing skill stacks and timeline matching.",
-                      active: getStatusIndex(selectedApp.status) >= 1,
-                      color: "border-indigo-400 bg-indigo-400"
-                    },
-                    {
-                      label: "Interview Scheduled",
-                      desc: "Direct technical evaluations or simulator challenge initialized.",
-                      active: getStatusIndex(selectedApp.status) >= 2,
-                      color: "border-purple-400 bg-purple-400 animate-pulse"
-                    },
-                    {
-                      label: "Evaluation Selected",
-                      desc: "Completed cycles verified with positive feedback markers.",
-                      active: getStatusIndex(selectedApp.status) >= 3,
-                      color: "border-emerald-400 bg-emerald-400"
-                    },
-                    {
-                      label: "Offer Handover",
-                      desc: "Official offer letter dispatched. Check your inbox.",
-                      active: selectedApp.status === "offered",
-                      color: "border-emerald-500 bg-emerald-500 scale-110"
-                    }
-                  ].map((step, idx) => (
-                    <motion.div 
-                      key={idx} 
-                      className="relative"
-                      initial={{ opacity: 0, x: -12 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: idx * 0.08 }}
-                    >
-                      <div className={`absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full border transition-all duration-300 ${
-                        step.active ? step.color : "bg-black border-white/10"
-                      }`}></div>
-                      <div className="space-y-0.5 pl-2">
-                        <p className={`text-[11px] font-bold transition-colors duration-300 ${step.active ? "text-white" : "text-gray-400"}`}>
-                          {step.label}
-                        </p>
-                        <p className="text-[9px] text-gray-500 leading-normal">{step.desc}</p>
-                      </div>
-                    </motion.div>
-                  ))}
+                <div className="space-y-4 relative pl-4 border-l border-white/10">
+                  {getStatusIndex(selectedApp.status) === -1 ? (
+                    <div className="p-3 bg-rose-950/30 border border-rose-500/30 rounded-xl text-xs space-y-1">
+                      <p className="font-bold text-rose-300 flex items-center gap-1.5">
+                        <X className="w-4 h-4 text-rose-400" /> Application Process Ended
+                      </p>
+                      <p className="text-[11px] text-gray-400">
+                        The employer has decided not to move forward with this application. Keep exploring other verified openings!
+                      </p>
+                    </div>
+                  ) : (
+                    [
+                      {
+                        label: "1. Applied",
+                        desc: "Application submitted and logged into recruiter candidate database.",
+                        stageIdx: 0,
+                        color: "border-indigo-400 bg-indigo-400"
+                      },
+                      {
+                        label: "2. Viewed",
+                        desc: "Recruiter reviewed candidate profile and resume parameters.",
+                        stageIdx: 1,
+                        color: "border-sky-400 bg-sky-400"
+                      },
+                      {
+                        label: "3. Shortlisted",
+                        desc: "Candidate shortlisted for technical evaluation rounds.",
+                        stageIdx: 2,
+                        color: "border-blue-400 bg-blue-400"
+                      },
+                      {
+                        label: "4. Interview Scheduled",
+                        desc: "Interview invite generated with Google Meet link.",
+                        stageIdx: 3,
+                        color: "border-purple-400 bg-purple-400"
+                      },
+                      {
+                        label: "5. Interview Completed",
+                        desc: "Evaluation completed; technical score verified.",
+                        stageIdx: 4,
+                        color: "border-cyan-400 bg-cyan-400"
+                      },
+                      {
+                        label: "6. Selected",
+                        desc: "Selected for hire by employer evaluation panel.",
+                        stageIdx: 5,
+                        color: "border-emerald-400 bg-emerald-400 font-bold"
+                      },
+                      {
+                        label: "7. Offer Released",
+                        desc: "Official employment offer contract issued.",
+                        stageIdx: 6,
+                        color: "border-amber-400 bg-amber-400 font-bold"
+                      },
+                      {
+                        label: "8. Offer Accepted",
+                        desc: "Offer terms accepted and signature recorded.",
+                        stageIdx: 7,
+                        color: "border-emerald-500 bg-emerald-500 font-bold"
+                      },
+                      {
+                        label: "9. Joined",
+                        desc: "Candidate successfully onboarded to company team.",
+                        stageIdx: 8,
+                        color: "border-teal-400 bg-teal-400 font-bold"
+                      }
+                    ].map((step, idx) => {
+                      const currentIdx = getStatusIndex(selectedApp.status);
+                      const isCurrent = currentIdx === step.stageIdx;
+                      const isDone = currentIdx >= step.stageIdx;
+
+                      return (
+                        <motion.div 
+                          key={idx} 
+                          className="relative"
+                          initial={{ opacity: 0, x: -12 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.25, delay: idx * 0.05 }}
+                        >
+                          <div className={`absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full border transition-all duration-300 ${
+                            isCurrent
+                              ? `${step.color} scale-125 ring-4 ring-indigo-500/20`
+                              : isDone
+                              ? step.color
+                              : "bg-black border-white/20"
+                          }`}></div>
+                          <div className="space-y-0.5 pl-2">
+                            <p className={`text-[11px] font-bold transition-colors duration-300 ${isDone ? "text-white" : "text-gray-500"}`}>
+                              {step.label}
+                            </p>
+                            <p className="text-[9px] text-gray-500 leading-normal">{step.desc}</p>
+                          </div>
+                        </motion.div>
+                      );
+                    })
+                  )}
                 </div>
 
                 {/* Withdraw application button */}
