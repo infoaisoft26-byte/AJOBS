@@ -29,6 +29,9 @@ import LiveChatSection from "./LiveChatSection";
 import CandidateRecruiterInterviews from "./CandidateRecruiterInterviews";
 import AbacControlInspector from "./AbacControlInspector";
 import GoogleWorkspaceHub from "./GoogleWorkspaceHub";
+import AiCareerCoachSuite from "./AiCareerCoachSuite";
+import VideoInterviewCenter from "./VideoInterviewCenter";
+import ComplianceGdprCenter from "./ComplianceGdprCenter";
 
 interface CandidateDashboardProps {
   userId: string;
@@ -829,6 +832,27 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
               userName={userName}
               userRole="candidate"
             />
+          )}
+
+          {/* TAB 16: ENTERPRISE AI CAREER COACH SUITE */}
+          {activeTab === "career-coach-suite" && (
+            <div className="animate-in fade-in duration-300">
+              <AiCareerCoachSuite candidateName={userName} />
+            </div>
+          )}
+
+          {/* TAB 17: VIDEO INTERVIEW CENTER */}
+          {activeTab === "video-center" && (
+            <div className="animate-in fade-in duration-300">
+              <VideoInterviewCenter candidateName={userName} />
+            </div>
+          )}
+
+          {/* TAB 18: GDPR & COMPLIANCE CENTER */}
+          {activeTab === "compliance" && (
+            <div className="animate-in fade-in duration-300">
+              <ComplianceGdprCenter />
+            </div>
           )}
 
         </main>

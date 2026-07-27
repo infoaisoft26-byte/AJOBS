@@ -1,7 +1,7 @@
 import { 
   LayoutDashboard, User, GraduationCap, Briefcase, Award, 
   FileText, Heart, Clock, Bell, Settings, Brain, Sparkles, X, Menu, Search,
-  MessageSquare, ShieldCheck, Calendar, CloudLightning
+  MessageSquare, ShieldCheck, Calendar, CloudLightning, Compass, Video, FileCheck, BarChart3
 } from "lucide-react";
 
 interface SidebarProps {
@@ -25,6 +25,7 @@ export default function CandidateSidebar({ activeTab, setActiveTab, isOpen, setI
     { id: "applied-jobs", label: "Applied Jobs", icon: Clock },
     { id: "interviews", label: "Recruiter Interviews", icon: Calendar },
     { id: "notifications", label: "Notifications", icon: Bell, badge: unreadCount > 0 ? unreadCount : undefined },
+    { id: "compliance", label: "GDPR & Privacy", icon: ShieldCheck },
     { id: "abac", label: "ABAC Security Guard", icon: ShieldCheck },
     { id: "chat", label: "Secure Chat", icon: MessageSquare },
     { id: "workspace", label: "Google Workspace", icon: CloudLightning },
@@ -33,8 +34,10 @@ export default function CandidateSidebar({ activeTab, setActiveTab, isOpen, setI
 
   const aiItems = [
     { id: "interview", label: "AI Interview Arena", icon: Brain, premium: true },
+    { id: "video-center", label: "Video Interview Center", icon: Video, premium: true },
+    { id: "career-coach-suite", label: "AI Career Coach", icon: Compass, premium: true },
     { id: "ai-report", label: "AI Evaluation Report", icon: Award, premium: true },
-    { id: "coach", label: "AI Career Center", icon: Sparkles, premium: true },
+    { id: "coach", label: "AI Career Assistant", icon: Sparkles, premium: true },
   ];
 
   return (

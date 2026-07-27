@@ -85,7 +85,7 @@ export class GeminiProvider implements AIProvider {
       ];
     }
 
-    const selectedModel = model || "gemini-3.5-flash";
+    const selectedModel = model || "gemini-3.6-flash";
 
     // Call using correct @google/genai guidelines
     const response = await this.client.models.generateContent({

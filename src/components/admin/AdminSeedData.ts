@@ -46,8 +46,8 @@ export async function seedSuperAdminDataIfEmpty(userId: string, userName: string
         },
         aiConfig: {
           analyzerTemperature: 0.2,
-          analyzerModel: "gemini-2.5-flash",
-          interviewModel: "gemini-2.5-pro",
+          analyzerModel: "gemini-3.6-flash",
+          interviewModel: "gemini-3.6-flash",
           matchingThreshold: 75
         },
         security: {
@@ -473,8 +473,8 @@ export const FALLBACK_SYSTEM_SETTINGS: AdminSystemSettings = {
   },
   aiConfig: {
     analyzerTemperature: 0.2,
-    analyzerModel: "gemini-2.5-flash",
-    interviewModel: "gemini-2.5-pro",
+    analyzerModel: "gemini-3.6-flash",
+    interviewModel: "gemini-3.6-flash",
     matchingThreshold: 75
   },
   security: {

@@ -39,6 +39,14 @@ import HiringPerformance from "./employer/HiringPerformance";
 import EnterpriseDocumentEngine from "./employer/EnterpriseDocumentEngine";
 import RecruiterApplicationTable from "./RecruiterApplicationTable";
 
+// Enterprise AI & Compliance Modules
+import AiHiringAgent from "./AiHiringAgent";
+import AiJobDescriptionGenerator from "./AiJobDescriptionGenerator";
+import DocumentAutomation from "./DocumentAutomation";
+import VideoInterviewCenter from "./VideoInterviewCenter";
+import ExecutiveAnalyticsBi from "./ExecutiveAnalyticsBi";
+import ComplianceGdprCenter from "./ComplianceGdprCenter";
+
 interface EmployerDashboardProps {
   userId: string;
   userName: string;
@@ -335,11 +343,17 @@ export default function EmployerDashboard({ userId, userName, userRole }: Employ
           {[
             { id: "overview", label: "Dashboard", icon: TrendingUp },
             { id: "post-job", label: "Post Job", icon: PlusCircle },
+            { id: "ai-hiring-agent", label: "Autonomous AI Hiring Agent", icon: Brain },
+            { id: "jd-generator", label: "AI Job Spec Generator", icon: FileText },
             { id: "jobs", label: "Manage Jobs", icon: Briefcase },
             { id: "recruiter-table", label: "Applications", icon: Users },
             { id: "discovery", label: "Candidate Database", icon: Brain },
             { id: "interviews", label: "Interviews", icon: Calendar },
+            { id: "video-interview", label: "Video Interview Center", icon: Calendar },
             { id: "reports", label: "Reports", icon: BarChart2 },
+            { id: "executive-analytics", label: "Executive BI Analytics", icon: BarChart2 },
+            { id: "doc-automation", label: "Offer & Document Suite", icon: FileText },
+            { id: "compliance-gdpr", label: "GDPR & Compliance", icon: ShieldCheck },
             { id: "subscription", label: "Payments", icon: CreditCard },
             { id: "registration", label: "Company Registry", icon: Building2 },
             { id: "talent-search", label: "Talent Search", icon: Search },
@@ -531,6 +545,42 @@ export default function EmployerDashboard({ userId, userName, userRole }: Employ
 
           {activeTab === "notifications" && (
             <NotificationCenterView userId={userId} userRole="employer" userName={userName} />
+          )}
+
+          {activeTab === ("ai-hiring-agent" as any) && (
+            <div className="animate-in fade-in duration-300">
+              <AiHiringAgent />
+            </div>
+          )}
+
+          {activeTab === ("jd-generator" as any) && (
+            <div className="animate-in fade-in duration-300">
+              <AiJobDescriptionGenerator onPostGeneratedJob={() => handleSelectTab("post-job")} />
+            </div>
+          )}
+
+          {activeTab === ("video-interview" as any) && (
+            <div className="animate-in fade-in duration-300">
+              <VideoInterviewCenter candidateName={corpName} />
+            </div>
+          )}
+
+          {activeTab === ("executive-analytics" as any) && (
+            <div className="animate-in fade-in duration-300">
+              <ExecutiveAnalyticsBi />
+            </div>
+          )}
+
+          {activeTab === ("doc-automation" as any) && (
+            <div className="animate-in fade-in duration-300">
+              <DocumentAutomation companyName={corpName} />
+            </div>
+          )}
+
+          {activeTab === ("compliance-gdpr" as any) && (
+            <div className="animate-in fade-in duration-300">
+              <ComplianceGdprCenter />
+            </div>
           )}
         </div>
 

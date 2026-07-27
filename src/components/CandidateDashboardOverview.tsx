@@ -488,7 +488,7 @@ export default function CandidateDashboardOverview({
           if (id === "resume") {
             return (
               <div key="resume" {...dragProps} className={containerClassName}>
-                <HolographicCard glowColor="rgba(99, 102, 241, 0.25)" className="p-5 flex flex-col justify-between h-full" onClick={() => onSelectTab("resume")}>
+                <HolographicCard glowColor="rgba(99, 102, 241, 0.25)" className="p-5 flex flex-col justify-between h-full">
                   <div className="flex items-center justify-between">
                     <span className="text-[9px] font-mono tracking-wider font-bold text-gray-400 uppercase flex items-center">
                       <GripVertical className="w-3.5 h-3.5 mr-1 text-gray-500 cursor-grab" />
@@ -496,12 +496,28 @@ export default function CandidateDashboardOverview({
                     </span>
                     <Award className="w-4 h-4 text-indigo-400" />
                   </div>
-                  <div className="mt-4">
+                  <div className="mt-3">
                     <div className="flex items-baseline space-x-1">
                       <span className="text-3xl font-extrabold font-display text-white">{resumeScore}</span>
                       <span className="text-[10px] text-gray-500 font-mono">/100</span>
                     </div>
-                    <p className="text-[10px] text-gray-400 mt-1">Audit status: <span className="text-indigo-400 font-semibold">{resumeScore ? "Active" : "No audit"}</span></p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">Audit status: <span className="text-indigo-400 font-semibold">{resumeScore ? "Active" : "No audit"}</span></p>
+                  </div>
+                  <div className="mt-3 flex items-center gap-1.5 pt-2 border-t border-white/5">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); onSelectTab("resume"); }}
+                      className="flex-1 py-1 px-2 bg-indigo-600/80 hover:bg-indigo-600 text-[10px] font-bold text-white rounded-lg transition-all cursor-pointer text-center"
+                    >
+                      Improve Resume
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); exportDashboardPdf(); }}
+                      className="py-1 px-2 bg-white/10 hover:bg-white/20 text-[10px] font-bold text-gray-200 rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                      title="Download ATS Report"
+                    >
+                      <FileText className="w-3 h-3 text-indigo-300" />
+                      <span>Report</span>
+                    </button>
                   </div>
                 </HolographicCard>
               </div>

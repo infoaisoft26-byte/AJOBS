@@ -12,6 +12,7 @@ import { OfflineSyncBadge } from "../OfflineSyncBadge";
 import soundSynth from "../../utils/audioSynth";
 import ThreeDModeToggle from "../ThreeDModeToggle";
 import { BackgroundMode } from "../ThreeDBackground";
+import { LanguageSelector } from "../GlobalMarketplaceSelector";
 
 export interface RoleBasedTopbarProps {
   user: UserProfile | null;
@@ -280,6 +281,9 @@ export default function RoleBasedTopbar({
               }}
             />
           )}
+
+          {/* LANGUAGE SELECTOR */}
+          <LanguageSelector />
 
           {/* THEME TOGGLE */}
           <button

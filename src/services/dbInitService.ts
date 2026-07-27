@@ -336,7 +336,7 @@ export async function initializeUserCollectionsAndDocs(
       totalBackups: 142,
     },
     aiEngine: {
-      defaultModel: "gemini-3.5-flash",
+      defaultModel: "gemini-3.6-flash",
       temperature: 0.2,
       maxTokens: 2048,
     },

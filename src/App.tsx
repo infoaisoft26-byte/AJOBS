@@ -681,10 +681,17 @@ function MainAppContent() {
   );
 }
 
+import { LanguageProvider } from "@/context/LanguageContext";
+import { GlobalMarketplaceProvider } from "@/context/GlobalMarketplaceContext";
+
 export default function App() {
   return (
-    <ToastProvider>
-      <MainAppContent />
-    </ToastProvider>
+    <LanguageProvider>
+      <GlobalMarketplaceProvider>
+        <ToastProvider>
+          <MainAppContent />
+        </ToastProvider>
+      </GlobalMarketplaceProvider>
+    </LanguageProvider>
   );
 }

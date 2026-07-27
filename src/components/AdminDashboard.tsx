@@ -45,6 +45,12 @@ import HiringFunnelAnalytics from "./admin/HiringFunnelAnalytics";
 import ExportActivityCsvButton from "./ExportActivityCsvButton";
 import OfflineSyncBadge from "./OfflineSyncBadge";
 
+// Enterprise Modules
+import ExecutiveAnalyticsBi from "./ExecutiveAnalyticsBi";
+import AiHiringAgent from "./AiHiringAgent";
+import DocumentAutomation from "./DocumentAutomation";
+import ComplianceGdprCenter from "./ComplianceGdprCenter";
+
 export default function AdminDashboard({ userId, userName }: { userId?: string; userName?: string }) {
   const currentUserId = userId || auth.currentUser?.uid || "system_admin_01";
   const currentUserName = userName || "Super Admin Desk";
@@ -406,6 +412,10 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
   // Navigations list with authorization levels
   const navigationItems = [
     { id: "dashboard", label: "Live Dashboard", icon: Layers, authorizedRoles: ["Super Admin", "Support Desk", "Finance Officer", "Moderator", "Read Only"] },
+    { id: "executive-bi", label: "Executive BI Analytics", icon: BarChart2, authorizedRoles: ["Super Admin", "Finance Officer", "Read Only"] },
+    { id: "ai-agent", label: "Autonomous AI Agent", icon: Brain, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
+    { id: "doc-automation", label: "Document Automation", icon: FileText, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
+    { id: "compliance", label: "GDPR & Compliance", icon: ShieldCheck, authorizedRoles: ["Super Admin", "Support Desk", "Finance Officer", "Moderator", "Read Only"] },
     { id: "applications", label: "Applications Directory", icon: FileText, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "funnel", label: "Hiring Funnel Analytics", icon: BarChart2, authorizedRoles: ["Super Admin", "Finance Officer", "Moderator", "Read Only"] },
     { id: "users", label: "User Management", icon: Users, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
@@ -698,6 +708,30 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
                   logs={auditLogsList}
                   onRefresh={fetchWorkspaceData}
                 />
+              )}
+
+              {activeView === "executive-bi" && (
+                <div className="animate-in fade-in duration-300">
+                  <ExecutiveAnalyticsBi />
+                </div>
+              )}
+
+              {activeView === "ai-agent" && (
+                <div className="animate-in fade-in duration-300">
+                  <AiHiringAgent />
+                </div>
+              )}
+
+              {activeView === "doc-automation" && (
+                <div className="animate-in fade-in duration-300">
+                  <DocumentAutomation companyName="AIJobs Global Admin" />
+                </div>
+              )}
+
+              {activeView === "compliance" && (
+                <div className="animate-in fade-in duration-300">
+                  <ComplianceGdprCenter />
+                </div>
               )}
             </div>
           )}
