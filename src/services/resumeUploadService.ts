@@ -1,5 +1,5 @@
 import { ref, uploadBytesResumable, getDownloadURL, UploadTaskSnapshot, deleteObject } from "firebase/storage";
-import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { storage, db } from "../firebase";
 import { ResumeAIService } from "./ai/resume.service";
 
@@ -21,18 +21,6 @@ export interface ResumeUploadResult {
   uploadedAt: string;
   error?: string;
   parsedProfile?: any;
-}
-
-/**
- * Converts a File object to base64 data URL for fallback persistence
- */
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (error) => reject(error);
-  });
 }
 
 /**
@@ -58,7 +46,7 @@ async function uploadSingleAttempt(
   const storageRef = ref(storage, storagePath);
 
   return new Promise((resolve, reject) => {
-    let timer: NodeJS.Timeout | null = null;
+ let timer: ReturnType<typeof setTimeout> | null = null;
     let isCanceled = false;
 
     const isDocx = file.name.endsWith(".docx") || file.name.endsWith(".doc");
@@ -178,29 +166,38 @@ export async function uploadResumeService(
   }
 
   // Fallback to Base64 data URI if storage bucket is offline/restricted
-  if (!uploadData) {
-    console.warn("[ResumeUploadService] Storage upload failed/bypassed. Activating resilient base64 fallback data URL.");
-    try {
-      if (onProgress) onProgress(50);
-      const base64Url = await fileToBase64(file);
-      uploadData = {
-        downloadUrl: base64Url,
-        storagePath: `firestore_embedded/${uid}/${file.name}`,
-      };
-      if (onProgress) onProgress(100);
-    } catch (bErr: any) {
-      return {
-        success: false,
-        downloadUrl: "",
-        storagePath: "",
-        fileName: file.name,
-        fileSize: file.size,
-        uploadedAt: new Date().toISOString(),
-        error: lastError?.message || bErr.message || "Failed to process resume file.",
-      };
+ if (!uploadData) {
+  return {
+    success: false,
+    downloadUrl: "",
+    storagePath: "",
+    fileName: file.name,
+    fileSize: file.size,
+    uploadedAt: new Date().toISOString(),
+    error:
+      lastError?.message ||
+      "Resume upload failed. Please check Firebase Storage permissions and try again.",
+  };
+}
+try {
+  const existingResumeSnap = await getDoc(doc(db, "resumes", uid));
+
+  if (existingResumeSnap.exists()) {
+    const oldStoragePath = existingResumeSnap.data()?.resumeStoragePath;
+
+    if (
+      oldStoragePath &&
+      oldStoragePath !== uploadData.storagePath &&
+      !oldStoragePath.startsWith("firestore_embedded/")
+    ) {
+      await deleteObject(ref(storage, oldStoragePath)).catch((error) => {
+        console.warn("Old resume could not be deleted:", error);
+      });
     }
   }
-
+} catch (error) {
+  console.warn("Could not check previous resume:", error);
+}
   const uploadedAt = new Date().toISOString();
 
   // Save metadata to Firestore instantly without waiting for AI analysis
@@ -213,8 +210,9 @@ export async function uploadResumeService(
         resumeFileName: file.name,
         fileSize: file.size,
         mimeType: file.type || "application/pdf",
-        uploadedAt,
-        updatedAt: uploadedAt,
+        uploadedAt: serverTimestamp(),
+updatedAt: serverTimestamp(),
+uploadedAtIso: uploadedAt,
         status: "active",
         resumeAnalysisStatus: "pending",
         ...additionalMetadata,
@@ -230,7 +228,7 @@ export async function uploadResumeService(
         resumeFileName: file.name,
         resumeStoragePath: uploadData.storagePath,
         resumeAnalysisStatus: "pending",
-        updatedAt: uploadedAt,
+        updatedAt: serverTimestamp(),
       }, { merge: true });
 
       // 3. users/{uid}
@@ -239,13 +237,28 @@ export async function uploadResumeService(
         resumeFileName: file.name,
         resumeStoragePath: uploadData.storagePath,
         resumeAnalysisStatus: "pending",
-        updatedAt: uploadedAt,
+        updatedAt: serverTimestamp(),
       }, { merge: true });
     }
-  } catch (dbErr: any) {
-    console.warn(`[ResumeUploadService] Warning saving metadata to Firestore:`, dbErr?.message || dbErr);
+ } catch (dbErr: any) {
+  try {
+    await deleteObject(ref(storage, uploadData.storagePath));
+  } catch {
+    // Ignore cleanup error
   }
 
+  return {
+    success: false,
+    downloadUrl: "",
+    storagePath: "",
+    fileName: file.name,
+    fileSize: file.size,
+    uploadedAt,
+    error:
+      dbErr?.message ||
+      "Resume uploaded, but candidate profile could not be saved.",
+  };
+}
   // NON-BLOCKING BACKGROUND GEMINI AI ANALYSIS
   setTimeout(async () => {
     try {
