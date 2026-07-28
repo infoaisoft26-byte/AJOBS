@@ -131,6 +131,7 @@ async function uploadSingleAttempt(
    );
   });
   }
+/**
  * Uploads a resume file with exponential retry logic, progress reporting,
  * fallback data URL support, non-blocking AI parsing, and Firestore persistence.
  */
