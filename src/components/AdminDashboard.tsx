@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import logoImg from "../assets/images/aijobs_logo_1783014982325.jpg";
+import AIJobsLogo from "./AIJobsLogo";
 import { 
   Users, ShieldAlert, Sparkles, RefreshCw, Trash2, Settings, 
   Database, CheckCircle, AlertTriangle, Play, HelpCircle, 
@@ -466,12 +466,7 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
           <div className="flex justify-between items-center">
             {!isSidebarCollapsed && (
               <div className="flex items-center gap-2">
-                <img
-                  src={logoImg}
-                  alt="AIJobs Logo"
-                  referrerPolicy="no-referrer"
-                  className="w-8 h-8 rounded-lg object-cover shadow-lg shadow-indigo-600/35"
-                />
+                <AIJobsLogo variant="icon" size="sm" />
                 <div>
                   <h1 className="font-extrabold text-sm tracking-wider text-white">AIJOBS CONSOLE</h1>
                   <span className="text-[8px] text-gray-500 font-mono tracking-wider uppercase">ENTERPRISE OS</span>
@@ -481,12 +476,7 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
 
             {isSidebarCollapsed && (
               <div className="w-10 h-10 flex items-center justify-center mx-auto">
-                <img
-                  src={logoImg}
-                  alt="AIJobs Logo"
-                  referrerPolicy="no-referrer"
-                  className="w-8 h-8 rounded-lg object-cover"
-                />
+                <AIJobsLogo variant="icon" size="sm" />
               </div>
             )}
 

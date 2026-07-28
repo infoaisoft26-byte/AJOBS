@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import confetti from "canvas-confetti";
 import soundSynth from "../utils/audioSynth";
-import logoImg from "../assets/images/aijobs_logo_1783014982325.jpg";
+import AIJobsLogo from "./AIJobsLogo";
 import { 
   X, User, Shield, Briefcase, Mail, Lock, UserPlus, Sparkles, 
   Building2, Phone, Key, ArrowLeft, Send, CheckCircle2, AlertCircle,

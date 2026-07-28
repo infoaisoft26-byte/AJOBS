@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import logoImg from "../assets/images/aijobs_logo_1783014982325.jpg";
+import AIJobsLogo from "./AIJobsLogo";
 import { Sparkles, Cpu, Globe, Database, Radio, Compass, ArrowUpRight } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -457,12 +457,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
                   transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                   className="relative w-28 h-28 rounded-2xl overflow-hidden border border-white/10 shadow-[0_15px_35px_rgba(0,0,0,0.8)] bg-black/40 flex items-center justify-center z-10"
                 >
-                  <img
-                    src={logoImg}
-                    alt="AIJobs Metallic Core"
-                    referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-all duration-700"
-                  />
+                  <AIJobsLogo variant="icon" size="xl" animated />
                   {/* Glass Gloss Overlay Reflection */}
                   <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.08] to-transparent rotate-45 transform translate-y-[-50%]" />
                 </motion.div>

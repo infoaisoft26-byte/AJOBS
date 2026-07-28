@@ -5,7 +5,7 @@ import {
   Search, PlusCircle, RefreshCw
 } from "lucide-react";
 import { UserProfile } from "../../types";
-import logoImg from "../../assets/images/aijobs-ai-logo.png";
+import AIJobsLogo from "../AIJobsLogo";
 import { NotificationBellAndDrawer } from "../NotificationCenter";
 import { ExportActivityCsvButton } from "../ExportActivityCsvButton";
 import { OfflineSyncBadge } from "../OfflineSyncBadge";
@@ -81,23 +81,15 @@ export default function RoleBasedTopbar({
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         
         {/* Brand Logo */}
-        <div 
-          onClick={() => {
-            soundSynth.playClick();
-            setActiveView("home");
-          }} 
-          className="flex items-center space-x-2.5 cursor-pointer group"
-          id="topbar-logo"
-        >
-          <img
-            src={logoImg}
-            alt="AIJobs Logo"
-            referrerPolicy="no-referrer"
-            className="w-8 h-8 rounded-lg object-contain drop-shadow-[0_0_8px_rgba(59,130,246,0.6)] transition-transform duration-300 group-hover:scale-110"
+        <div id="topbar-logo">
+          <AIJobsLogo
+            variant="compact"
+            size="sm"
+            onClick={() => {
+              soundSynth.playClick();
+              setActiveView("home");
+            }}
           />
-          <span className="font-display font-extrabold text-xl tracking-[0.05em] text-white">
-            AI<span className="text-blue-400">JOBS</span>
-          </span>
         </div>
 
         {/* ROLE-BASED CENTER NAVIGATION */}

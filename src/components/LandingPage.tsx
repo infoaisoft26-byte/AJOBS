@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import logoImg from "../assets/images/aijobs_logo_1783014982325.jpg";
+import AIJobsLogo from "./AIJobsLogo";
 import { 
   Sparkles, ArrowRight, Upload, Play, CheckCircle2, 
   HelpCircle, Star, Send, Bot, MessageSquare, ChevronRight, 
@@ -1383,17 +1383,7 @@ export default function LandingPage({
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-10 mb-12">
           {/* Logo & Info column */}
           <div className="md:col-span-4 space-y-4 text-left">
-            <div className="flex items-center space-x-2.5">
-              <img
-                src={logoImg}
-                alt="AIJobs Logo"
-                referrerPolicy="no-referrer"
-                className="w-8 h-8 rounded-lg object-cover shadow-md shadow-indigo-500/25"
-              />
-              <span className="font-display font-bold text-xl tracking-tight text-white">
-                AI<span className="text-blue-400">Jobs</span>
-              </span>
-            </div>
+            <AIJobsLogo variant="full" size="md" />
             <p className="text-xs text-gray-400 leading-relaxed">
               India's first autonomous AI-driven tech recruiting platform. We bridge the gap between ambitious engineers and active corporate managers via high-fidelity, verified talent clusters.
             </p>

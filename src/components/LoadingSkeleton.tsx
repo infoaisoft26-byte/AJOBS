@@ -1,5 +1,5 @@
 import { Search, Loader2 } from "lucide-react";
-import logoImg from "../assets/images/aijobs_logo_1783014982325.jpg";
+import AIJobsLogo from "./AIJobsLogo";
 
 export function SkeletonPulse() {
   return <div className="animate-pulse bg-gray-800 rounded" />;
@@ -85,13 +85,8 @@ export function GeneralLoading() {
         {/* Glowing aura */}
         <div className="absolute inset-0 w-16 h-16 rounded-xl bg-blue-500/10 blur-xl animate-pulse" />
         
-        {/* Logo Image */}
-        <img
-          src={logoImg}
-          alt="Loading..."
-          referrerPolicy="no-referrer"
-          className="w-16 h-16 rounded-xl object-cover border border-white/10 shadow-[0_0_15px_rgba(59,130,246,0.25)] animate-pulse"
-        />
+        {/* Logo Icon */}
+        <AIJobsLogo variant="icon" size="lg" animated />
         
         {/* Little loader spinner overlay around it */}
         <div className="absolute -inset-1.5 rounded-2xl border border-dashed border-blue-500/40 animate-[spin_10s_linear_infinite]" />

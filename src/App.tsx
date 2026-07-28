@@ -11,6 +11,7 @@ import ResumeOnboarding from "@/components/ResumeOnboarding";
 import { GlobalChatbot } from "@/components/GlobalChatbot";
 import CompanySection from "@/components/CompanySection";
 import SplashScreen from "@/components/SplashScreen";
+import AIJobs3DIntro from "@/components/AIJobs3DIntro";
 import CinematicBackground from "@/components/CinematicBackground";
 import ThreeDBackground, { BackgroundMode } from "@/components/ThreeDBackground";
 import CustomCursor from "@/components/CustomCursor";
@@ -670,9 +671,9 @@ function MainAppContent() {
         />
       )}
 
-      {/* Premium SplashScreen Overlay */}
+      {/* Premium 3D Opening Animation Intro Overlay */}
       {showSplash && (
-        <SplashScreen onComplete={() => setShowSplash(false)} />
+        <AIJobs3DIntro onComplete={() => setShowSplash(false)} />
       )}
 
       {/* Globally Floating AI Career Assistant */}
