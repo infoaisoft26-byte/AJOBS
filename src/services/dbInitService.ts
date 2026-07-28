@@ -30,7 +30,7 @@ export async function initializeUserCollectionsAndDocs(
 ): Promise<UserProfile> {
   const userId = fbUser.uid;
   const email = fbUser.email || "";
-  const name = displayName || fbUser.displayName || "Aryan Sharma";
+  const name = displayName || fbUser.displayName || (fbUser.email ? fbUser.email.split("@")[0] : "Candidate");
   const isoDate = new Date().toISOString();
 
   // 1. Prepare User Profile
@@ -117,21 +117,47 @@ export async function initializeUserCollectionsAndDocs(
     });
   }
 
-  // Legacy candidates table
+  // Fresh Candidate Profile (No fake demo data)
   if (role === "candidate") {
+    const candidateProfile = {
+      uid: userId,
+      email,
+      name,
+      phone: fbUser.phoneNumber || "",
+      role: "candidate",
+      profileCompleted: false,
+      profileCompletionPercentage: 0,
+      resumeUrl: null,
+      resumeFileName: null,
+      resumeStoragePath: null,
+      education: [],
+      experience: [],
+      skills: [],
+      certifications: [],
+      preferredLocations: [],
+      savedJobs: [],
+      createdAt: isoDate,
+      updatedAt: isoDate,
+    };
+    await safeSetDoc("users", userId, candidateProfile);
     await safeSetDoc("candidates", userId, {
       userId,
-      resumeUrl: "https://demo.pdf",
-      resumeFileName: "Aryan_Sharma_Resume.pdf",
-      resumeScore: 82,
-      skills: ["React", "TypeScript", "Tailwind CSS", "Node.js", "Firebase", "Gemini SDK"],
-      experience: "3+ Years Web Developer",
-      aiInterviewScore: 88,
-      resumeText: "Aryan Sharma\nWeb Engineer\nReact Developer with experience building responsive cloud applications.",
-      summary: "Skilled Software Engineer focused on interactive user dashboards and generative AI API systems.",
-      careerCoachChat: [
-        { id: "init_coach", sender: "ai", text: `Hi ${name}! I'm your AI Career Coach. Let's optimize your technical journey and interview pipeline today!`, timestamp: isoDate }
-      ],
+      name,
+      email,
+      phone: fbUser.phoneNumber || "",
+      resumeUrl: null,
+      resumeFileName: null,
+      resumeStoragePath: null,
+      resumeScore: 0,
+      aiInterviewScore: 0,
+      skills: [],
+      education: [],
+      experience: [],
+      certifications: [],
+      preferredLocations: [],
+      savedJobIds: [],
+      createdAt: isoDate,
+      updatedAt: isoDate,
     });
   }
 
@@ -421,20 +447,21 @@ export async function getOrCreateUserProfile(
 
   // 4. Automatically create the profile and seed all collections
   try {
-    const displayName = fbUser.displayName || fbUser.email?.split("@")[0] || "Aryan Sharma";
+    const displayName = fbUser.displayName || fbUser.email?.split("@")[0] || "Candidate";
     const profile = await initializeUserCollectionsAndDocs(fbUser, deducedRole, displayName);
     return profile;
   } catch (initErr) {
     console.error("[getOrCreateUserProfile] Failed to auto-initialize profile document:", initErr);
     // 5. Hard fallback: Return a fully compliant client-side profile so login never fails
+    const defaultName = fbUser.displayName || fbUser.email?.split("@")[0] || "Candidate";
     return {
       uid: userId,
-      name: fbUser.displayName || "Aryan Sharma",
+      name: defaultName,
       email: fbUser.email || "",
       phone: fbUser.phoneNumber || "",
       role: deducedRole,
-      profileImage: fbUser.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(fbUser.displayName || "Aryan Sharma")}`,
-      photoURL: fbUser.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(fbUser.displayName || "Aryan Sharma")}`,
+      profileImage: fbUser.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(defaultName)}`,
+      photoURL: fbUser.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(defaultName)}`,
       createdAt: new Date().toISOString(),
       lastLogin: new Date().toISOString(),
       status: "active",

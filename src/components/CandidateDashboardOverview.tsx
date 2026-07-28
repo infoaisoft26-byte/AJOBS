@@ -9,6 +9,7 @@ import { CandidateProfile, JobApplication, NotificationRecord } from "../types";
 import { db } from "../firebase";
 import { doc, setDoc } from "firebase/firestore";
 import HolographicCard from "./HolographicCard";
+import AccountVerificationModal from "./AccountVerificationModal";
 
 interface OverviewProps {
   userName: string;
@@ -28,6 +29,7 @@ export default function CandidateDashboardOverview({
   onSelectTab
 }: OverviewProps) {
   const [profileCompletion, setProfileCompletion] = useState(0);
+  const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
 
   // Calculate Profile Completion Percentage
   useEffect(() => {
@@ -411,7 +413,24 @@ export default function CandidateDashboardOverview({
               ></div>
             </div>
             <div className="flex items-center justify-between text-[10px] text-gray-500 pt-0.5">
-              <span>Setup qualifications, past roles, and ATS text keywords.</span>
+              <div className="flex items-center space-x-2">
+                <span>Setup qualifications & ATS text keywords.</span>
+                <button
+                  onClick={() => setIsVerificationModalOpen(true)}
+                  className={`px-2 py-0.5 rounded-md text-[10px] font-bold border flex items-center space-x-1 cursor-pointer transition-all ${
+                    profile?.verified || (profile?.isEmailVerified && profile?.isMobileVerified)
+                      ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                      : "bg-indigo-600/20 hover:bg-indigo-600/30 border-indigo-500/40 text-indigo-300"
+                  }`}
+                >
+                  <ShieldCheck className="w-3 h-3 text-indigo-400" />
+                  <span>
+                    {profile?.verified || (profile?.isEmailVerified && profile?.isMobileVerified)
+                      ? "Account Verified"
+                      : "Verify OTP & Account"}
+                  </span>
+                </button>
+              </div>
               <button 
                 onClick={() => onSelectTab("profile")}
                 className="text-indigo-400 hover:text-indigo-300 font-semibold flex items-center space-x-0.5 cursor-pointer"
@@ -666,6 +685,17 @@ export default function CandidateDashboardOverview({
           </div>
         </div>
       </div>
+
+      {/* Account Verification Modal */}
+      <AccountVerificationModal
+        isOpen={isVerificationModalOpen}
+        onClose={() => setIsVerificationModalOpen(false)}
+        userId={profile?.userId || profile?.id || ""}
+        userEmail={profile?.email || profile?.profileDetails?.email || "candidate@aijobs.io"}
+        userPhone={profile?.profileDetails?.mobileNumber || profile?.phone || ""}
+        isEmailVerified={profile?.isEmailVerified || false}
+        isMobileVerified={profile?.isMobileVerified || false}
+      />
     </div>
   );
 }

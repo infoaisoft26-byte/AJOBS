@@ -51,6 +51,18 @@ import AiHiringAgent from "./AiHiringAgent";
 import DocumentAutomation from "./DocumentAutomation";
 import ComplianceGdprCenter from "./ComplianceGdprCenter";
 
+import AiAgentMarketplace from "./AiAgentMarketplace";
+import AiVoiceRecruiter from "./AiVoiceRecruiter";
+import SkillAssessmentPlatform from "./SkillAssessmentPlatform";
+import LearningPlatform from "./LearningPlatform";
+import VerifiedProfiles from "./VerifiedProfiles";
+import ReferralEcosystem from "./ReferralEcosystem";
+import GigMarketplace from "./GigMarketplace";
+import MobileBackendHub from "./MobileBackendHub";
+import EnterpriseSecurityCenter from "./EnterpriseSecurityCenter";
+import ObservabilityHub from "./ObservabilityHub";
+import PlatformCertificationSuite from "./PlatformCertificationSuite";
+
 export default function AdminDashboard({ userId, userName }: { userId?: string; userName?: string }) {
   const currentUserId = userId || auth.currentUser?.uid || "system_admin_01";
   const currentUserName = userName || "Super Admin Desk";
@@ -429,7 +441,18 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
     { id: "notifications", label: "Broadcasts", icon: Bell, authorizedRoles: ["Super Admin", "Read Only"] },
     { id: "abac", label: "ABAC Security Guard", icon: ShieldAlert, authorizedRoles: ["Super Admin", "Support Desk", "Finance Officer", "Moderator", "Read Only"] },
     { id: "settings", label: "System Settings", icon: Settings, authorizedRoles: ["Super Admin", "Read Only"] },
-    { id: "audit", label: "Audit Trails", icon: Terminal, authorizedRoles: ["Super Admin", "Finance Officer", "Read Only"] }
+    { id: "audit", label: "Audit Trails", icon: Terminal, authorizedRoles: ["Super Admin", "Finance Officer", "Read Only"] },
+    { id: "agent-store", label: "AI Agent Store", icon: Brain, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
+    { id: "voice-recruiter", label: "AI Voice Recruiter", icon: Brain, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
+    { id: "skill-assessments", label: "Skill Assessments", icon: ShieldCheck, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
+    { id: "learning-center", label: "Learning Center", icon: Globe, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
+    { id: "verified-profile", label: "Verified Profiles", icon: ShieldCheck, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
+    { id: "referrals", label: "Referral Ecosystem", icon: CreditCard, authorizedRoles: ["Super Admin", "Finance Officer", "Read Only"] },
+    { id: "gig-marketplace", label: "Gig & Freelance Jobs", icon: Briefcase, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
+    { id: "mobile-backend", label: "Mobile Backend Hub", icon: Terminal, authorizedRoles: ["Super Admin", "Read Only"] },
+    { id: "security-center", label: "Enterprise Security", icon: Lock, authorizedRoles: ["Super Admin", "Read Only"] },
+    { id: "observability", label: "System Observability", icon: BarChart2, authorizedRoles: ["Super Admin", "Read Only"] },
+    { id: "platform-cert", label: "QA Platform Cert", icon: CheckCircle, authorizedRoles: ["Super Admin", "Read Only"] }
   ];
 
   // Check if current simulated role is authorized to view tab
@@ -721,6 +744,72 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
               {activeView === "compliance" && (
                 <div className="animate-in fade-in duration-300">
                   <ComplianceGdprCenter />
+                </div>
+              )}
+
+              {activeView === "agent-store" && (
+                <div className="animate-in fade-in duration-300">
+                  <AiAgentMarketplace userRole="admin" />
+                </div>
+              )}
+
+              {activeView === "voice-recruiter" && (
+                <div className="animate-in fade-in duration-300">
+                  <AiVoiceRecruiter candidateName="Admin Testing Account" />
+                </div>
+              )}
+
+              {activeView === "skill-assessments" && (
+                <div className="animate-in fade-in duration-300">
+                  <SkillAssessmentPlatform />
+                </div>
+              )}
+
+              {activeView === "learning-center" && (
+                <div className="animate-in fade-in duration-300">
+                  <LearningPlatform />
+                </div>
+              )}
+
+              {activeView === "verified-profile" && (
+                <div className="animate-in fade-in duration-300">
+                  <VerifiedProfiles />
+                </div>
+              )}
+
+              {activeView === "referrals" && (
+                <div className="animate-in fade-in duration-300">
+                  <ReferralEcosystem />
+                </div>
+              )}
+
+              {activeView === "gig-marketplace" && (
+                <div className="animate-in fade-in duration-300">
+                  <GigMarketplace />
+                </div>
+              )}
+
+              {activeView === "mobile-backend" && (
+                <div className="animate-in fade-in duration-300">
+                  <MobileBackendHub />
+                </div>
+              )}
+
+              {activeView === "security-center" && (
+                <div className="animate-in fade-in duration-300">
+                  <EnterpriseSecurityCenter />
+                </div>
+              )}
+
+              {activeView === "observability" && (
+                <div className="animate-in fade-in duration-300">
+                  <ObservabilityHub />
+                </div>
+              )}
+
+              {activeView === "platform-cert" && (
+                <div className="animate-in fade-in duration-300">
+                  <PlatformCertificationSuite />
                 </div>
               )}
             </div>

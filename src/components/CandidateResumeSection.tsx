@@ -15,6 +15,7 @@ import {
   getWorkspaceAccessToken, 
   workspaceSignIn 
 } from "../services/workspaceService";
+import { useToast } from "./GlobalToast";
 import ResumeRadarChart from "./ResumeRadarChart";
 
 declare const google: any;
@@ -164,7 +165,7 @@ export default function CandidateResumeSection({
   const handleIncomingFile = async (file: File, source: string = "Local") => {
     // 1. Audit file size
     if (file.size > 5 * 1024 * 1024) {
-      alert("Maximum file size is 5MB. Please upload a smaller file.");
+      showToast("Maximum file size is 5MB. Please upload a smaller file.", "warning");
       setIsUploading(false);
       setUploadProgress(0);
       return;
@@ -183,14 +184,14 @@ export default function CandidateResumeSection({
     const fileExtension = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
 
     if (!allowedMimeTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
-      alert(`Unsupported file type: "${file.name}". Please upload a PDF, DOC, DOCX, TXT, PNG, or JPG file.`);
+      showToast(`Unsupported file type: "${file.name}". Please upload a PDF, DOC, DOCX, TXT, PNG, or JPG file.`, "error");
       setIsUploading(false);
       setUploadProgress(0);
       return;
     }
 
     if (!userId) {
-      alert("Please log in to upload a resume file.");
+      showToast("Please log in to upload a resume file.", "warning");
       setIsUploading(false);
       setUploadProgress(0);
       return;
@@ -202,28 +203,22 @@ export default function CandidateResumeSection({
     try {
       // 1. Upload to Firebase Storage using uploadResumeService
       let storageUrl = "";
-      try {
-        setUploadProgress(25);
-        const res = await uploadResumeService({
-          uid: userId,
-          file,
-          onProgress: (pct) => setUploadProgress(25 + Math.round(pct * 0.5)),
-        });
-        if (res.success && res.downloadUrl) {
-          storageUrl = res.downloadUrl;
-          setUploadedFileUrl(storageUrl);
-          console.log(`[Storage] File uploaded successfully from ${source} to Firebase Storage. URL:`, storageUrl);
-        }
-      } catch (storageErr) {
-        console.warn("[Storage] Storage upload notice:", storageErr);
+      const res = await uploadResumeService({
+        uid: userId,
+        file,
+        onProgress: (pct) => setUploadProgress(Math.min(99, Math.max(10, pct))),
+      });
+
+      if (res.success && res.downloadUrl) {
+        storageUrl = res.downloadUrl;
+        setUploadedFileUrl(storageUrl);
+        console.log(`[Storage] File uploaded successfully from ${source} to Firebase Storage. URL:`, storageUrl);
       }
 
-      setUploadProgress(90);
-
-      // 2. Extract content
+      setUploadProgress(100);
       setUploadedFileName(file.name);
 
-      // Read the file if it's an image, text, or simulate doc/pdf extraction
+      // 2. Extract content for local preview if needed
       if (file.type.startsWith("image/")) {
         const reader = new FileReader();
         await new Promise<void>((resolve, reject) => {
@@ -232,7 +227,7 @@ export default function CandidateResumeSection({
             const base64Data = dataUrl.split(",")[1];
             setResumeImageBase64(base64Data);
             setResumeImageMime(file.type);
-            setResumeText(""); // Clear plain text to use image instead
+            setResumeText("");
             resolve();
           };
           reader.onerror = (err) => reject(err);
@@ -254,58 +249,31 @@ export default function CandidateResumeSection({
       } else {
         setResumeImageBase64(null);
         setResumeImageMime(null);
-        // High-fidelity structured prompt text generator based on standard filenames
-        const baseName = file.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
-        
-        const simulatedTranscript = `${baseName}
-Email: candidate.parsed@aijobs.com
-Phone: +91 91234 56789
-Location: Bangalore, India
-Portfolio: https://candidate-portfolio.dev
-LinkedIn: https://linkedin.com/in/parsed-candidate
-
-Objective:
-Highly dedicated Software Engineer specialized in delivering enterprise web applications using modern typescript architectures and full-stack modules.
-
-Professional Experience:
-- Senior Software Engineer, TechCorp Solutions (2024 - Present)
-  Developed and scaled critical system dashboards, optimizing client-side state hooks which resulted in 35% faster page rendering.
-  Integrated secure payment pipelines and cloud storage components.
-- Frontend Engineer, InnovateLabs India (2022 - 2024)
-  Collaborated in modular responsive page structuring using Tailwind utility classes and modern state containers.
-
-Education:
-- B.Tech in Computer Science Engineering, National Institute of Technology (NIT) (CGPA: 8.9/10)
-- 12th Board, CBSE (93% Score)
-
-Core Skills:
-React, TypeScript, Node.js, Express, Tailwind CSS, Git, REST APIs, Google Cloud Platform, Firebase Firestore.
-
-Certifications:
-- Professional Cloud Architect (Google)
-- Advanced React Development Suite (Meta)`;
-
-        setResumeText(simulatedTranscript);
       }
-      setUploadProgress(100);
       
+      showToast("Resume uploaded successfully! AI profile analysis in progress...", "success");
+
       // Write to activity logs
-      await setDoc(doc(db, "activity_logs", `act_res_${Date.now()}`), {
-        id: `act_res_${Date.now()}`,
-        userId,
-        userName: profile?.name || "Candidate",
-        role: "candidate",
-        action: "upload_resume",
-        details: `Uploaded resume "${file.name}" via ${source}.`,
-        createdAt: new Date().toISOString()
-      });
+      try {
+        await setDoc(doc(db, "activity_logs", `act_res_${Date.now()}`), {
+          id: `act_res_${Date.now()}`,
+          userId,
+          userName: profile?.name || "Candidate",
+          role: "candidate",
+          action: "upload_resume",
+          details: `Uploaded resume "${file.name}" via ${source}.`,
+          createdAt: new Date().toISOString()
+        });
+      } catch (logErr) {
+        console.warn("[CandidateResumeSection] Non-blocking log warning:", logErr);
+      }
 
     } catch (err: any) {
       console.error("Resume file processing error:", err);
-      alert(`An error occurred while uploading your resume: ${err.message}`);
+      showToast(`An error occurred while uploading your resume: ${err.message || err}`, "error");
     } finally {
       setIsUploading(false);
-      setUploadProgress(0);
+      setTimeout(() => setUploadProgress(0), 500);
     }
   };
 

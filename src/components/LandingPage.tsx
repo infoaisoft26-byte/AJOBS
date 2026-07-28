@@ -202,7 +202,7 @@ export default function LandingPage({
   const [activeLegalDoc, setActiveLegalDoc] = useState<LegalDocType | null>(null);
   const [demoOpen, setDemoOpen] = useState(false);
   const [pricingTab, setPricingTab] = useState<"candidate" | "consultancy" | "employer">("candidate");
-  const [faqOpen, setFaqOpen] = useState<number | null>(null);
+  const [faqOpen, setFaqOpen] = useState<number | null>(0);
   
   // Newsletter State
   const [emailInput, setEmailInput] = useState("");
@@ -1329,24 +1329,24 @@ export default function LandingPage({
         <div className="space-y-4">
           {[
             {
-              q: "Is Candidate usage really Free?",
-              a: "Yes, completely. High-fidelity resume scoring, coding interview simulations, and job matching apply interfaces are free of charge for individual software developers."
+              q: "1. Is AIJobs free for candidates?",
+              a: "Yes. AIJobs does not charge candidates any registration, job application, interview, or placement fee."
             },
             {
-              q: "How accurate is the AI Resume Optimizer?",
-              a: "We leverage advanced Gemini models to conduct multi-vector audits checking technical keyword distributions, structural phrasing, and standard ATS layout alignment. Results align closely with premium corporate ATS filter settings."
+              q: "2. Does AIJobs guarantee employment?",
+              a: "No. Job selection depends entirely on the candidate’s qualifications, experience, skills, interview performance, and the employer’s requirements."
             },
             {
-              q: "How does the PayU subscription billing operate?",
-              a: "For Consultancy agencies, the checkout triggers PayU's secure transaction flow. Completing payment instantly activates premium recruiting features inside your account."
+              q: "3. Are employers and job listings verified?",
+              a: "AIJobs may conduct basic verification; however, candidates should independently verify the employer, job details, and offer before sharing sensitive information or accepting employment."
             },
             {
-              q: "Are the corporate job matching metrics reliable?",
-              a: "Yes. Our systems use semantic correlation matrices rather than raw keyword matches to compute candidate suitability, reducing filtering fatigue for employers by 92%."
+              q: "4. How does AIJobs protect user information?",
+              a: "Personal information is handled according to our Privacy Policy and applicable data-protection laws. Information may be shared with relevant employers or recruiters for recruitment purposes."
             },
             {
-              q: "How does the 24/7 AI Career Coach protect my personal profile data?",
-              a: "Your conversation history is securely encrypted in our Firestore database, linked to your verified account. We never sell profile details or resumes to third-party ad brokers."
+              q: "5. What should candidates do if someone asks for money?",
+              a: "Candidates should never pay anyone for a job, interview, offer letter, or placement. Any suspicious payment request should be reported immediately through the AIJobs “Contact Us” or “Help & Support” section."
             }
           ].map((item, idx) => (
             <div 

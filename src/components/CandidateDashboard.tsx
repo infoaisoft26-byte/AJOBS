@@ -32,6 +32,17 @@ import GoogleWorkspaceHub from "./GoogleWorkspaceHub";
 import AiCareerCoachSuite from "./AiCareerCoachSuite";
 import VideoInterviewCenter from "./VideoInterviewCenter";
 import ComplianceGdprCenter from "./ComplianceGdprCenter";
+import AiAgentMarketplace from "./AiAgentMarketplace";
+import AiVoiceRecruiter from "./AiVoiceRecruiter";
+import SkillAssessmentPlatform from "./SkillAssessmentPlatform";
+import LearningPlatform from "./LearningPlatform";
+import VerifiedProfiles from "./VerifiedProfiles";
+import ReferralEcosystem from "./ReferralEcosystem";
+import GigMarketplace from "./GigMarketplace";
+import MobileBackendHub from "./MobileBackendHub";
+import EnterpriseSecurityCenter from "./EnterpriseSecurityCenter";
+import ObservabilityHub from "./ObservabilityHub";
+import PlatformCertificationSuite from "./PlatformCertificationSuite";
 
 interface CandidateDashboardProps {
   userId: string;
@@ -149,18 +160,20 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
         const bootstrap = {
           userId,
           name: userName,
+          email: userEmail || "",
           resumeText: "",
           resumeScore: 0,
           aiInterviewScore: 0,
           savedJobIds: savedFromBookmarks,
-          skills: { technical: ["React", "TypeScript", "Node.js"], soft: ["Team Collaboration"], languages: ["English"], level: "Mid" },
+          skills: { technical: [], soft: [], languages: [], level: "Entry" },
           education: {
-            tenth: { board: "CBSE", school: "St. Mary School", score: "92%", year: "2020" },
-            twelfth: { board: "CBSE", school: "DPS High School", score: "95%", year: "2022" },
-            graduation: { degree: "B.Tech Computer Science", college: "BITS Pilani", score: "9.1/10", year: "2026" },
+            tenth: { board: "", school: "", score: "", year: "" },
+            twelfth: { board: "", school: "", score: "", year: "" },
+            graduation: { degree: "", college: "", score: "", year: "" },
             certifications: []
           },
-          workExperience: []
+          workExperience: [],
+          createdAt: new Date().toISOString()
         };
         await setDoc(docRef, bootstrap);
         setProfile(bootstrap);
@@ -852,6 +865,83 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
           {activeTab === "compliance" && (
             <div className="animate-in fade-in duration-300">
               <ComplianceGdprCenter />
+            </div>
+          )}
+
+          {/* ECOSYSTEM MODULE 1: AI AGENT MARKETPLACE */}
+          {activeTab === "agent-store" && (
+            <div className="animate-in fade-in duration-300">
+              <AiAgentMarketplace userRole="candidate" />
+            </div>
+          )}
+
+          {/* ECOSYSTEM MODULE 2: AI VOICE RECRUITER */}
+          {activeTab === "voice-recruiter" && (
+            <div className="animate-in fade-in duration-300">
+              <AiVoiceRecruiter candidateName={userName} />
+            </div>
+          )}
+
+          {/* ECOSYSTEM MODULE 4: SKILL ASSESSMENT PLATFORM */}
+          {activeTab === "skill-assessments" && (
+            <div className="animate-in fade-in duration-300">
+              <SkillAssessmentPlatform />
+            </div>
+          )}
+
+          {/* ECOSYSTEM MODULE 5: CANDIDATE LEARNING CENTER */}
+          {activeTab === "learning-center" && (
+            <div className="animate-in fade-in duration-300">
+              <LearningPlatform />
+            </div>
+          )}
+
+          {/* ECOSYSTEM MODULE 6: VERIFIED PROFILES */}
+          {activeTab === "verified-profile" && (
+            <div className="animate-in fade-in duration-300">
+              <VerifiedProfiles />
+            </div>
+          )}
+
+          {/* ECOSYSTEM MODULE 7: REFERRAL ECOSYSTEM */}
+          {activeTab === "referrals" && (
+            <div className="animate-in fade-in duration-300">
+              <ReferralEcosystem />
+            </div>
+          )}
+
+          {/* ECOSYSTEM MODULE 8: GIG MARKETPLACE */}
+          {activeTab === "gig-marketplace" && (
+            <div className="animate-in fade-in duration-300">
+              <GigMarketplace />
+            </div>
+          )}
+
+          {/* ECOSYSTEM MODULE 9: MOBILE BACKEND HUB */}
+          {activeTab === "mobile-backend" && (
+            <div className="animate-in fade-in duration-300">
+              <MobileBackendHub />
+            </div>
+          )}
+
+          {/* ECOSYSTEM MODULE 10: ENTERPRISE SECURITY CENTER */}
+          {activeTab === "security-center" && (
+            <div className="animate-in fade-in duration-300">
+              <EnterpriseSecurityCenter />
+            </div>
+          )}
+
+          {/* ECOSYSTEM MODULE 11: OBSERVABILITY HUB */}
+          {activeTab === "observability" && (
+            <div className="animate-in fade-in duration-300">
+              <ObservabilityHub />
+            </div>
+          )}
+
+          {/* ECOSYSTEM MODULE 12: PLATFORM CERTIFICATION SUITE */}
+          {activeTab === "platform-cert" && (
+            <div className="animate-in fade-in duration-300">
+              <PlatformCertificationSuite />
             </div>
           )}
 

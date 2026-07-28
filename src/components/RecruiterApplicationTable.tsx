@@ -12,6 +12,8 @@ import {
   query, where, addDoc 
 } from "firebase/firestore";
 import { NotificationService } from "../services/notificationService";
+import OfferReleaseModal from "./OfferReleaseModal";
+import RejectionReasonModal from "./RejectionReasonModal";
 
 export interface ApplicationRecord {
   id: string;
@@ -72,6 +74,12 @@ export default function RecruiterApplicationTable({
   const [selectedApp, setSelectedApp] = useState<ApplicationRecord | null>(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [appToSchedule, setAppToSchedule] = useState<ApplicationRecord | null>(null);
+
+  // Offer & Rejection Modals state
+  const [showOfferModal, setShowOfferModal] = useState(false);
+  const [appToOffer, setAppToOffer] = useState<ApplicationRecord | null>(null);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [appToReject, setAppToReject] = useState<ApplicationRecord | null>(null);
 
   // Interview Schedule Form State
   const [interviewForm, setInterviewForm] = useState({
@@ -289,10 +297,36 @@ export default function RecruiterApplicationTable({
 
   // Action: Single Application Status Update (Shortlist / Reject)
   const handleUpdateStatus = async (app: ApplicationRecord, newStatus: ApplicationRecord["status"]) => {
+    if (newStatus === "Offer" || newStatus === "Selected") {
+      setAppToOffer(app);
+      setShowOfferModal(true);
+      return;
+    }
+    if (newStatus === "Rejected") {
+      setAppToReject(app);
+      setShowRejectModal(true);
+      return;
+    }
+
     try {
       const nowIso = new Date().toISOString();
 
-      // 1. Update in 'applications'
+      // 1. Send Notification to candidate FIRST (always create notification before update)
+      try {
+        await NotificationService.createNotification({
+          userId: app.candidateId,
+          type: newStatus === "Shortlisted" ? "shortlist" : newStatus === "Rejected" ? "rejection" : "application_update",
+          title: `Application Update: ${app.jobTitle}`,
+          message: `Your application for "${app.jobTitle}" at ${app.companyName} has been updated to "${newStatus}".`,
+          link: "/candidate/dashboard",
+          read: false,
+          createdAt: nowIso
+        });
+      } catch (nErr) {
+        console.warn("Notification dispatch notice:", nErr);
+      }
+
+      // 2. Update in 'applications'
       try {
         await updateDoc(doc(db, "applications", app.id), {
           status: newStatus,
@@ -306,7 +340,7 @@ export default function RecruiterApplicationTable({
         }, { merge: true });
       }
 
-      // 2. Update in 'company_applications'
+      // 3. Update in 'company_applications'
       try {
         await updateDoc(doc(db, "company_applications", app.id), {
           status: newStatus,
@@ -316,7 +350,7 @@ export default function RecruiterApplicationTable({
         // non-blocking
       }
 
-      // 3. Update matching lead in 'leads'
+      // 4. Update matching lead in 'leads'
       try {
         const leadsSnap = await getDocs(
           query(
@@ -333,21 +367,6 @@ export default function RecruiterApplicationTable({
         });
       } catch (e) {
         // non-blocking
-      }
-
-      // 4. Send Notification to candidate
-      try {
-        await NotificationService.createNotification({
-          userId: app.candidateId,
-          type: newStatus === "Shortlisted" ? "shortlist" : newStatus === "Rejected" ? "rejection" : "application_update",
-          title: `Application Update: ${app.jobTitle}`,
-          message: `Your application for "${app.jobTitle}" at ${app.companyName} has been updated to "${newStatus}".`,
-          link: "/candidate/dashboard",
-          read: false,
-          createdAt: nowIso
-        });
-      } catch (nErr) {
-        console.warn("Notification dispatch notice:", nErr);
       }
 
       // Update local state
@@ -1204,6 +1223,35 @@ export default function RecruiterApplicationTable({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Offer Release Modal */}
+      <OfferReleaseModal
+        isOpen={showOfferModal}
+        onClose={() => {
+          setShowOfferModal(false);
+          setAppToOffer(null);
+        }}
+        application={appToOffer}
+        recruiterName={currentUserName}
+        onSuccess={() => {
+          fetchApplications(true);
+          showToast("Offer letter generated and released to candidate.");
+        }}
+      />
+
+      {/* Rejection Feedback Modal */}
+      <RejectionReasonModal
+        isOpen={showRejectModal}
+        onClose={() => {
+          setShowRejectModal(false);
+          setAppToReject(null);
+        }}
+        application={appToReject}
+        onSuccess={() => {
+          fetchApplications(true);
+          showToast("Rejection reason saved and notification sent.");
+        }}
+      />
     </div>
   );
 }

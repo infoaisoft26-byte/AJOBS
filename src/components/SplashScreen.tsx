@@ -13,19 +13,19 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Auto-complete splash after 5.5 seconds (cinematic duration)
+  // Auto-complete splash after 2.4 seconds (responsive speed)
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsVisible(false);
-      setTimeout(onComplete, 800); // Wait for luxury fade-out
-    }, 5500);
+      setTimeout(onComplete, 400); // Quick fade-out
+    }, 2400);
 
     return () => clearTimeout(timer);
   }, [onComplete]);
 
-  // Cinematic load phase simulation
+  // Phase intervals
   useEffect(() => {
-    const intervals = [800, 1800, 2800, 4200];
+    const intervals = [400, 900, 1500, 2100];
     const timers = intervals.map((ms, idx) => 
       setTimeout(() => setLoadingStep(idx + 1), ms)
     );
@@ -275,7 +275,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
           initial={{ opacity: 1 }}
           exit={{ opacity: 0, scale: 1.05, filter: "blur(15px)" }}
           transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-          className="fixed inset-0 z-[9999] flex flex-col items-center justify-between bg-black text-white overflow-hidden select-none"
+          className="fixed inset-0 w-full h-[100dvh] min-h-[100dvh] z-[9999] flex flex-col items-center justify-between bg-black text-white overflow-hidden select-none"
         >
           {/* Base Atmospheric Canvas Rendering */}
           <canvas ref={canvasRef} className="absolute inset-0 z-0 pointer-events-none" />

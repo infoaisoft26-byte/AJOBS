@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
-  User, GraduationCap, Briefcase, Award, Save, Plus, Trash2, Edit3, Check, X, Sparkles, AlertCircle, ShieldCheck, ShieldAlert 
+  User, GraduationCap, Briefcase, Award, Save, Plus, Trash2, Edit3, Check, X, Sparkles, AlertCircle, ShieldCheck, ShieldAlert,
+  Camera, Upload, RefreshCw
 } from "lucide-react";
 import { db } from "../firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { recordActivityLog } from "../services/activityLogService";
 
 interface SectionProps {
@@ -179,8 +180,112 @@ export default function CandidateProfileSection({
       languages: details.languages || "",
       linkedinProfile: details.linkedinProfile || profile?.linkedin || "",
       portfolioUrl: details.portfolioUrl || profile?.github || "",
-      profilePhoto: details.profilePhoto || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop"
+      profilePhoto: details.profilePhoto || profile?.photoUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop"
     });
+
+    const [isCameraActive, setIsCameraActive] = useState(false);
+    const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const photoFileInputRef = useRef<HTMLInputElement | null>(null);
+
+    // Auto image compression function
+    const compressAndSaveImage = async (dataUrlOrFile: string | File) => {
+      try {
+        let rawDataUrl = "";
+        if (typeof dataUrlOrFile === "string") {
+          rawDataUrl = dataUrlOrFile;
+        } else {
+          rawDataUrl = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(dataUrlOrFile);
+            reader.onload = (e) => resolve(e.target?.result as string);
+          });
+        }
+
+        const img = new Image();
+        img.src = rawDataUrl;
+        await new Promise((res) => { img.onload = res; });
+
+        const canvas = document.createElement("canvas");
+        const MAX_DIM = 300;
+        let w = img.width;
+        let h = img.height;
+        if (w > h) {
+          if (w > MAX_DIM) { h *= MAX_DIM / w; w = MAX_DIM; }
+        } else {
+          if (h > MAX_DIM) { w *= MAX_DIM / h; h = MAX_DIM; }
+        }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, w, h);
+        const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.82);
+
+        setForm(prev => ({ ...prev, profilePhoto: compressedDataUrl }));
+
+        if (userId && db) {
+          await setDoc(doc(db, "candidates", userId), {
+            photoUrl: compressedDataUrl,
+            profileDetails: { ...(profile?.profileDetails || {}), profilePhoto: compressedDataUrl }
+          }, { merge: true });
+
+          await setDoc(doc(db, "users", userId), {
+            photoUrl: compressedDataUrl,
+            profilePhoto: compressedDataUrl
+          }, { merge: true });
+
+          setProfile({ ...profile, photoUrl: compressedDataUrl, profileDetails: { ...profile?.profileDetails, profilePhoto: compressedDataUrl } });
+          triggerNotification("📸 Profile Photo Updated", "Your profile photo was compressed and saved to your profile.");
+        }
+      } catch (err: any) {
+        console.error("Photo compression error:", err);
+      }
+    };
+
+    const handlePhotoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        compressAndSaveImage(file);
+      }
+    };
+
+    const startLiveCamera = async () => {
+      try {
+        setIsCameraActive(true);
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: 400, height: 400 } });
+        setCameraStream(stream);
+        setTimeout(() => {
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        }, 100);
+      } catch (err: any) {
+        console.warn("Camera access error:", err);
+        setIsCameraActive(false);
+      }
+    };
+
+    const stopLiveCamera = () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+        setCameraStream(null);
+      }
+      setIsCameraActive(false);
+    };
+
+    const captureCameraSnap = () => {
+      if (videoRef.current) {
+        const video = videoRef.current;
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth || 300;
+        canvas.height = video.videoHeight || 300;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const snapUrl = canvas.toDataURL("image/jpeg", 0.85);
+        stopLiveCamera();
+        compressAndSaveImage(snapUrl);
+      }
+    };
 
     const handleSave = () => {
       handleSaveWithBiometricGuard({ profileDetails: form, name: form.fullName }, "General profile contact cards updated successfully!");
@@ -206,25 +311,122 @@ export default function CandidateProfileSection({
           </button>
         </div>
 
-        {/* Profile Avatar / Photo URL */}
+        {/* Profile Avatar / Photo Upload / Camera Capture */}
         <div className="glass p-5 rounded-2xl flex flex-col sm:flex-row items-center gap-5">
-          <img 
-            src={form.profilePhoto} 
-            alt="Candidate" 
-            className="w-16 h-16 rounded-full border border-indigo-500/30 object-cover shadow-lg shadow-indigo-500/10"
-            referrerPolicy="no-referrer"
+          <div className="relative group">
+            <img 
+              src={form.profilePhoto} 
+              alt="Candidate Profile" 
+              className="w-20 h-20 rounded-2xl border-2 border-indigo-500/40 object-cover shadow-lg shadow-indigo-500/20"
+              referrerPolicy="no-referrer"
+            />
+            <div className="absolute inset-0 bg-black/50 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => photoFileInputRef.current?.click()}
+                className="p-1.5 bg-indigo-600 rounded-lg text-white hover:bg-indigo-500 transition-colors cursor-pointer"
+                title="Upload Photo"
+              >
+                <Upload className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={startLiveCamera}
+                className="p-1.5 bg-blue-600 rounded-lg text-white hover:bg-blue-500 transition-colors cursor-pointer"
+                title="Capture with Camera"
+              >
+                <Camera className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          <input
+            type="file"
+            ref={photoFileInputRef}
+            onChange={handlePhotoFileUpload}
+            accept="image/png, image/jpeg, image/webp"
+            className="hidden"
           />
-          <div className="space-y-1.5 flex-1 w-full">
-            <label className="block text-xs font-semibold text-gray-300">Profile Photo Avatar URL</label>
+
+          <div className="space-y-2 flex-1 w-full">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-semibold text-gray-300">Profile Photo</label>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => photoFileInputRef.current?.click()}
+                  className="px-3 py-1 bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 text-[11px] font-medium rounded-lg transition-all flex items-center space-x-1 cursor-pointer"
+                >
+                  <Upload className="w-3 h-3 text-indigo-400" />
+                  <span>Upload Image</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={startLiveCamera}
+                  className="px-3 py-1 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-[11px] font-medium rounded-lg transition-all flex items-center space-x-1 cursor-pointer"
+                >
+                  <Camera className="w-3 h-3 text-indigo-400" />
+                  <span>Take Photo</span>
+                </button>
+              </div>
+            </div>
+
             <input
               type="text"
               value={form.profilePhoto}
               onChange={(e) => setForm({ ...form, profilePhoto: e.target.value })}
-              placeholder="Paste custom image link (https://...)"
+              placeholder="Or paste custom photo URL..."
               className="w-full px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 text-white font-mono"
             />
           </div>
         </div>
+
+        {/* Live Camera Modal */}
+        {isCameraActive && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-gray-900 border border-white/10 rounded-2xl p-5 max-w-md w-full space-y-4 shadow-2xl">
+              <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                  <Camera className="w-4 h-4 text-indigo-400" />
+                  <span>Live Photo Capture</span>
+                </h4>
+                <button
+                  onClick={stopLiveCamera}
+                  className="text-gray-400 hover:text-white p-1 rounded-lg cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="relative rounded-xl overflow-hidden bg-black aspect-square flex items-center justify-center border border-white/10">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={stopLiveCamera}
+                  className="flex-1 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold rounded-xl transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={captureCameraSnap}
+                  className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>Capture Photo</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Details Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

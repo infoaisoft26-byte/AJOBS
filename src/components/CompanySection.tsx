@@ -95,11 +95,11 @@ export default function CompanySection({ pageType, onClose, setActiveCompanyPage
 
       // 3. Fetch FAQs
       const seedFaqs = [
-        { category: "Candidate", q: "How does the AI Resume Evaluation work?", a: "AIJobs scans your resume using advanced semantic intelligence and matches your skill points with real recruiter parameters to generate an objective ATS score out of 100." },
-        { category: "Candidate", q: "Are the AI Mock Interviews graded?", a: "Yes, our interactive interview emulator records and grades your audio transcriptions, providing immediate constructive feedback and verified performance badges." },
-        { category: "Recruiter", q: "Can I assign candidates to specific consultancies?", a: "Yes, using our CRM module, enterprises can assign candidate queues to certified recruitment consultancy agencies." },
-        { category: "Consultancy", q: "What limits apply to the bulk Excel upload?", a: "You can upload up to 500 candidate rows at once. The validation engine requires a valid email and at least one technical skill per candidate row." },
-        { category: "Payments", q: "How are recurring billing subscriptions canceled?", a: "Subscriptions can be canceled on-demand directly from your billing dashboard. Access remains active until the current billing cycle expires." }
+        { category: "Candidate", q: "1. Is AIJobs free for candidates?", a: "Yes. AIJobs does not charge candidates any registration, job application, interview, or placement fee." },
+        { category: "General", q: "2. Does AIJobs guarantee employment?", a: "No. Job selection depends entirely on the candidate’s qualifications, experience, skills, interview performance, and the employer’s requirements." },
+        { category: "Verification", q: "3. Are employers and job listings verified?", a: "AIJobs may conduct basic verification; however, candidates should independently verify the employer, job details, and offer before sharing sensitive information or accepting employment." },
+        { category: "Privacy", q: "4. How does AIJobs protect user information?", a: "Personal information is handled according to our Privacy Policy and applicable data-protection laws. Information may be shared with relevant employers or recruiters for recruitment purposes." },
+        { category: "Safety", q: "5. What should candidates do if someone asks for money?", a: "Candidates should never pay anyone for a job, interview, offer letter, or placement. Any suspicious payment request should be reported immediately through the AIJobs “Contact Us” or “Help & Support” section." }
       ];
       try {
         const faqsSnap = await getDocs(collection(db, "faqs"));

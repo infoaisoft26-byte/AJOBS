@@ -126,7 +126,7 @@ export function NotificationBellAndDrawer({ userId, userRole, onSelectTab }: Not
 
   const handleMarkRead = async (id: string) => {
     try {
-      await updateDoc(doc(db, "notifications", id), { read: true });
+      await setDoc(doc(db, "notifications", id), { read: true }, { merge: true });
     } catch (err) {
       console.error(err);
     }
@@ -135,7 +135,7 @@ export function NotificationBellAndDrawer({ userId, userRole, onSelectTab }: Not
   const handleMarkAllRead = async () => {
     try {
       const unreadList = notifications.filter(n => !n.read);
-      const promises = unreadList.map(n => updateDoc(doc(db, "notifications", n.id), { read: true }));
+      const promises = unreadList.map(n => setDoc(doc(db, "notifications", n.id), { read: true }, { merge: true }));
       await Promise.all(promises);
     } catch (err) {
       console.error(err);
@@ -144,7 +144,7 @@ export function NotificationBellAndDrawer({ userId, userRole, onSelectTab }: Not
 
   const handleArchive = async (id: string) => {
     try {
-      await updateDoc(doc(db, "notifications", id), { archived: true });
+      await setDoc(doc(db, "notifications", id), { archived: true }, { merge: true });
     } catch (err) {
       console.error(err);
     }
@@ -413,7 +413,7 @@ export function NotificationCenterView({ userId, userRole, userName }: Notificat
   // Handle Mark Read, Mark All Read, Delete, Archive
   const handleMarkRead = async (id: string) => {
     try {
-      await updateDoc(doc(db, "notifications", id), { read: true });
+      await setDoc(doc(db, "notifications", id), { read: true }, { merge: true });
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     } catch (err) {
       console.error(err);
@@ -423,7 +423,7 @@ export function NotificationCenterView({ userId, userRole, userName }: Notificat
   const handleMarkAllRead = async () => {
     try {
       const unreadList = notifications.filter(n => !n.read);
-      const promises = unreadList.map(n => updateDoc(doc(db, "notifications", n.id), { read: true }));
+      const promises = unreadList.map(n => setDoc(doc(db, "notifications", n.id), { read: true }, { merge: true }));
       await Promise.all(promises);
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       triggerAlert("All notification events checked off as read!");
@@ -434,7 +434,7 @@ export function NotificationCenterView({ userId, userRole, userName }: Notificat
 
   const handleArchive = async (id: string) => {
     try {
-      await updateDoc(doc(db, "notifications", id), { archived: true });
+      await setDoc(doc(db, "notifications", id), { archived: true }, { merge: true });
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, archived: true } : n));
     } catch (err) {
       console.error(err);

@@ -1,7 +1,8 @@
 import { 
   LayoutDashboard, User, GraduationCap, Briefcase, Award, 
   FileText, Heart, Clock, Bell, Settings, Brain, Sparkles, X, Menu, Search,
-  MessageSquare, ShieldCheck, Calendar, CloudLightning, Compass, Video, FileCheck, BarChart3
+  MessageSquare, ShieldCheck, Calendar, CloudLightning, Compass, Video, FileCheck, BarChart3,
+  Bot, Mic, BookOpen, Gift, Smartphone, Activity, CheckCircle2
 } from "lucide-react";
 
 interface SidebarProps {
@@ -33,11 +34,25 @@ export default function CandidateSidebar({ activeTab, setActiveTab, isOpen, setI
   ];
 
   const aiItems = [
+    { id: "agent-store", label: "AI Agent Store", icon: Bot, premium: true },
+    { id: "voice-recruiter", label: "AI Voice Recruiter", icon: Mic, premium: true },
     { id: "interview", label: "AI Interview Arena", icon: Brain, premium: true },
     { id: "video-center", label: "Video Interview Center", icon: Video, premium: true },
+    { id: "skill-assessments", label: "Skill Assessments", icon: Award, premium: true },
+    { id: "learning-center", label: "Learning Center", icon: BookOpen, premium: true },
     { id: "career-coach-suite", label: "AI Career Coach", icon: Compass, premium: true },
     { id: "ai-report", label: "AI Evaluation Report", icon: Award, premium: true },
     { id: "coach", label: "AI Career Assistant", icon: Sparkles, premium: true },
+  ];
+
+  const ecosystemItems = [
+    { id: "verified-profile", label: "Verified Profile", icon: ShieldCheck },
+    { id: "referrals", label: "Referral Ecosystem", icon: Gift },
+    { id: "gig-marketplace", label: "Gig & Freelance Jobs", icon: Briefcase },
+    { id: "mobile-backend", label: "Mobile Backend Hub", icon: Smartphone },
+    { id: "security-center", label: "Enterprise Security", icon: ShieldCheck },
+    { id: "observability", label: "System Observability", icon: Activity },
+    { id: "platform-cert", label: "Platform Certification", icon: CheckCircle2 },
   ];
 
   return (
@@ -131,6 +146,37 @@ export default function CandidateSidebar({ activeTab, setActiveTab, isOpen, setI
                     <span className="px-1.5 py-0.2 bg-gradient-to-r from-indigo-500 to-purple-500 text-[8px] font-bold uppercase text-white rounded tracking-wider">
                       AI
                     </span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          <div>
+            <span className="text-[10px] font-mono font-bold tracking-widest text-gray-500 uppercase px-3 block mb-2">
+              Hiring Ecosystem
+            </span>
+            <nav className="space-y-1">
+              {ecosystemItems.map((item) => {
+                const Icon = item.icon;
+                const isSel = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setActiveTab(item.id);
+                      setIsOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-300 cursor-pointer ${
+                      isSel 
+                        ? "bg-emerald-600/20 text-emerald-300 border border-emerald-500/35 shadow-md shadow-emerald-600/5" 
+                        : "text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2.5">
+                      <Icon className={`w-4 h-4 ${isSel ? "text-emerald-400" : "text-gray-400"}`} />
+                      <span>{item.label}</span>
+                    </div>
                   </button>
                 );
               })}

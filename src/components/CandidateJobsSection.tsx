@@ -910,7 +910,57 @@ export default function CandidateJobsSection({
                   <span className="text-[10px] text-gray-400">Resume score during submit: {selectedApp.resumeScore || 70}%</span>
                 </div>
 
-                {/* Timeline graph */}
+                {/* Timeline graph & Special Status Cards */}
+                {(selectedApp as any).rejectionReason && (
+                  <div className="p-3.5 bg-rose-950/40 border border-rose-500/40 rounded-xl text-xs space-y-1.5">
+                    <p className="font-bold text-rose-300 flex items-center gap-1.5">
+                      <AlertTriangle className="w-4 h-4 text-rose-400" /> Hiring Feedback / Rejection Reason
+                    </p>
+                    <p className="text-[11px] text-gray-200 leading-relaxed font-mono bg-black/40 p-2.5 rounded-lg border border-rose-500/20">
+                      "{(selectedApp as any).rejectionReason}"
+                    </p>
+                  </div>
+                )}
+
+                {(selectedApp.status.includes("Offer") || (selectedApp as any).offerDetails) && (
+                  <div className="p-4 bg-emerald-950/40 border border-emerald-500/40 rounded-xl text-xs space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="text-[10px] font-mono text-emerald-400 font-bold uppercase tracking-wider block">Official Employment Offer</span>
+                        <h4 className="font-bold text-white text-sm">Offer Released by {selectedApp.companyName}</h4>
+                      </div>
+                      <span className="px-2.5 py-0.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[10px] font-bold rounded-full">
+                        Offer Active
+                      </span>
+                    </div>
+
+                    {(selectedApp as any).offerDetails && (
+                      <div className="grid grid-cols-2 gap-2 text-[11px] bg-black/40 p-2.5 rounded-lg border border-emerald-500/20 font-mono text-gray-300">
+                        <div>CTC: <span className="text-emerald-400 font-bold">{(selectedApp as any).offerDetails.annualCtc}</span></div>
+                        <div>Joining: <span className="text-white">{(selectedApp as any).offerDetails.joiningDate}</span></div>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        const offerPdfData = (selectedApp as any).offerPdfDataUri || (selectedApp as any).offerDetails?.pdfDataUri;
+                        if (offerPdfData) {
+                          const link = document.createElement("a");
+                          link.href = offerPdfData;
+                          link.download = `Offer_Letter_${selectedApp.companyName.replace(/\s+/g, "_")}.pdf`;
+                          link.click();
+                        } else {
+                          showToast("Offer letter document generated. Downloading copy...", "info");
+                        }
+                      }}
+                      className="w-full py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center space-x-2 shadow-lg shadow-emerald-950/50 cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download Official Offer Letter (PDF)</span>
+                    </button>
+                  </div>
+                )}
+
                 <div className="space-y-4 relative pl-4 border-l border-white/10">
                   {getStatusIndex(selectedApp.status) === -1 ? (
                     <div className="p-3 bg-rose-950/30 border border-rose-500/30 rounded-xl text-xs space-y-1">

@@ -149,7 +149,19 @@ function MainAppContent() {
   const [authMode, setAuthMode] = useState<"signin" | "signup" | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [authLoading, setAuthLoading] = useState(true);
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const navEntry = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+    const isReload = navEntry?.type === "reload" || (performance.navigation && performance.navigation.type === 1);
+    if (isReload) {
+      return true;
+    }
+    const viewedInSession = sessionStorage.getItem("aijobs_3d_intro_played");
+    if (viewedInSession === "true") {
+      return false;
+    }
+    return true;
+  });
   const [threeDMode, setThreeDMode] = useState<BackgroundMode>(() => {
     if (typeof localStorage !== "undefined") {
       return (localStorage.getItem("aijobs_3d_mode") as BackgroundMode) || "neural";
@@ -673,7 +685,14 @@ function MainAppContent() {
 
       {/* Premium 3D Opening Animation Intro Overlay */}
       {showSplash && (
-        <AIJobs3DIntro onComplete={() => setShowSplash(false)} />
+        <AIJobs3DIntro onComplete={() => {
+          setShowSplash(false);
+          try {
+            sessionStorage.setItem("aijobs_3d_intro_played", "true");
+          } catch (e) {
+            // ignore
+          }
+        }} />
       )}
 
       {/* Globally Floating AI Career Assistant */}
