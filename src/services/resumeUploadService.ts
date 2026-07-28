@@ -87,17 +87,30 @@ async function uploadSingleAttempt(
         }
         reject(new Error(errorMsg));
       },
-      async () => {
-        if (timer) clearTimeout(timer);
-        try {
-          const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-          resolve({ downloadUrl, storagePath });
-        } catch (urlErr: any) {
-          reject(new Error(`Failed to retrieve download URL: ${urlErr?.message || urlErr}`));
-        }
-      }
+     async () => {
+  if (timer) clearTimeout(timer);
+
+  try {
+    const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+
+    if (onProgress) {
+      onProgress(100);
+    }
+
+    resolve({
+      downloadUrl,
+      storagePath,
+    });
+  } catch (urlErr: any) {
+    reject(
+      new Error(
+        `Failed to retrieve download URL: ${
+          urlErr?.message || urlErr
+        }`
+      )
     );
-  });
+  }
+}
 }
 
 /**
@@ -312,7 +325,9 @@ uploadedAtIso: uploadedAt,
       }
     }
   }, 10);
-
+if (onProgress) {
+  onProgress(100);
+}
   return {
     success: true,
     downloadUrl: uploadData.downloadUrl,
