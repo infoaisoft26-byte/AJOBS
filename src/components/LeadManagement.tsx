@@ -3,15 +3,19 @@ import { motion } from "motion/react";
 import { 
   Users, Search, ShieldCheck, Mail, Phone, Calendar, Briefcase, 
   Filter, ArrowUpRight, CheckCircle, AlertCircle, RefreshCw, 
-  Trash2, UserCheck, Eye, Building, Award, Sliders
+  Trash2, UserCheck, Eye, Building, Award, Sliders, Loader2, X
 } from "lucide-react";
 import { db, auth } from "../firebase";
-import { collection, doc, getDocs, updateDoc, deleteDoc, query, where, onSnapshot } from "firebase/firestore";
+import { 
+  collection, doc, getDoc, getDocs, updateDoc, setDoc, deleteDoc, 
+  query, where, onSnapshot, arrayUnion 
+} from "firebase/firestore";
 import ExportActivityCsvButton from "./ExportActivityCsvButton";
 import OfflineSyncBadge from "./OfflineSyncBadge";
 
 interface Lead {
   id: string;
+  leadId?: string;
   candidateId: string;
   candidateName: string;
   email: string;
@@ -23,6 +27,9 @@ interface Lead {
   recruiter: string; // Recruiter userId or "Direct Employer"
   consultancy: string; // Consultancy userId or "Direct"
   currentStatus: string; // Applied, Shortlisted, Interviewing, Offered, Placed, Rejected
+  status?: string;
+  pipelineStage?: string;
+  source?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -40,7 +47,9 @@ export default function LeadManagement({ userId, userRole, userName }: LeadManag
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [successMsg, setSuccessMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
 
   // Normalize userRole (recruiter vs employer)
   const normalizedRole = userRole === "employer" ? "recruiter" : userRole;
@@ -90,9 +99,26 @@ export default function LeadManagement({ userId, userRole, userName }: LeadManag
       const items: Lead[] = [];
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
+        const leadStatus = data.currentStatus || data.status || data.pipelineStage || "Applied";
         items.push({
           id: docSnap.id,
-          ...data
+          leadId: docSnap.id,
+          candidateId: data.candidateId || "",
+          candidateName: data.candidateName || data.name || "Candidate",
+          email: data.email || "",
+          phone: data.phone || "",
+          resume: data.resume || "",
+          jobId: data.jobId || "",
+          jobTitle: data.jobTitle || "Target Position",
+          company: data.company || "Company",
+          recruiter: data.recruiter || "Direct",
+          consultancy: data.consultancy || "Direct",
+          currentStatus: leadStatus,
+          status: leadStatus,
+          pipelineStage: leadStatus,
+          source: data.source || (data.consultancy && data.consultancy !== "Direct" ? "AGENCY" : "DIRECT"),
+          createdAt: data.createdAt || new Date().toISOString(),
+          updatedAt: data.updatedAt || new Date().toISOString()
         } as Lead);
       });
 
@@ -141,7 +167,7 @@ export default function LeadManagement({ userId, userRole, userName }: LeadManag
     }
 
     if (statusFilter !== "All") {
-      result = result.filter((lead) => lead.currentStatus === statusFilter);
+      result = result.filter((lead) => lead.currentStatus === statusFilter || lead.status === statusFilter);
     }
 
     setFilteredLeads(result);
@@ -149,40 +175,93 @@ export default function LeadManagement({ userId, userRole, userName }: LeadManag
 
   const triggerSuccess = (msg: string) => {
     setSuccessMsg(msg);
+    setErrorMsg("");
     setTimeout(() => setSuccessMsg(""), 3500);
   };
 
-  const handleUpdateStatus = async (leadId: string, nextStatus: string) => {
-    try {
-      const leadRef = doc(db, "leads", leadId);
-      await updateDoc(leadRef, {
-        currentStatus: nextStatus,
-        updatedAt: new Date().toISOString()
-      });
+  const triggerError = (msg: string) => {
+    setErrorMsg(msg);
+    setSuccessMsg("");
+    setTimeout(() => setErrorMsg(""), 5000);
+  };
 
-      // Also trigger a notification in notifications collection to Candidate
-      const targetLead = leads.find(l => l.id === leadId);
-      if (targetLead && targetLead.candidateId) {
-        const notifId = "notif_" + Math.random().toString(36).substr(2, 9);
-        await updateDoc(doc(db, "notifications", notifId), {
-          id: notifId,
-          userId: targetLead.candidateId,
-          title: `Lead Status Updated: ${nextStatus} ✨`,
-          message: `The recruiting team has moved your profile for "${targetLead.jobTitle}" at ${targetLead.company} to "${nextStatus}".`,
-          event: "SHORTLISTED_CANDIDATE",
-          read: false,
-          type: "info",
-          createdAt: new Date().toISOString()
-        });
+  const handleUpdateStatus = async (leadId: string, nextStatus: string) => {
+    if (updatingStatus) return;
+    setUpdatingStatus(nextStatus);
+    setErrorMsg("");
+
+    const currentUser = auth.currentUser;
+    const adminUid = currentUser?.uid || userId || "system_admin";
+    const nowIso = new Date().toISOString();
+
+    try {
+      // 1. Verify lead document existence first
+      const leadRef = doc(db, "leads", leadId);
+      const leadSnap = await getDoc(leadRef);
+
+      if (!leadSnap.exists()) {
+        triggerError("Lead record was not found. Please refresh the sourcing list.");
+        setUpdatingStatus(null);
+        return;
       }
 
-      triggerSuccess(`Lead status advanced to "${nextStatus}" successfully.`);
+      const existingData = leadSnap.data();
+
+      // 2. Update lead status in Firestore 'leads' collection
+      await updateDoc(leadRef, {
+        status: nextStatus,
+        currentStatus: nextStatus,
+        pipelineStage: nextStatus,
+        updatedAt: nowIso,
+        updatedBy: adminUid,
+        statusHistory: arrayUnion({
+          status: nextStatus,
+          changedBy: adminUid,
+          changedAt: nowIso
+        })
+      });
+
+      // 3. Update UI state immediately
+      setLeeds((prev) =>
+        prev.map((l) =>
+          l.id === leadId
+            ? { ...l, currentStatus: nextStatus, status: nextStatus, pipelineStage: nextStatus, updatedAt: nowIso }
+            : l
+        )
+      );
       if (selectedLead?.id === leadId) {
-        setSelectedLead(prev => prev ? { ...prev, currentStatus: nextStatus } : null);
+        setSelectedLead((prev) =>
+          prev ? { ...prev, currentStatus: nextStatus, status: nextStatus, pipelineStage: nextStatus, updatedAt: nowIso } : null
+        );
+      }
+
+      triggerSuccess(`Lead status updated to "${nextStatus}" successfully.`);
+
+      // 4. Attempt notification creation separately without rolling back lead status
+      const candidateUid = existingData?.candidateId || selectedLead?.candidateId;
+      if (candidateUid) {
+        try {
+          const notifRef = doc(collection(db, "notifications"));
+          await setDoc(notifRef, {
+            id: notifRef.id,
+            userId: candidateUid,
+            title: `Lead Status Updated: ${nextStatus} ✨`,
+            message: `The recruiting team has moved your profile for "${existingData?.jobTitle || selectedLead?.jobTitle || 'Role'}" at ${existingData?.company || selectedLead?.company || 'Company'} to "${nextStatus}".`,
+            event: "SHORTLISTED_CANDIDATE",
+            read: false,
+            type: "info",
+            leadId: leadId,
+            createdAt: nowIso
+          }, { merge: true });
+        } catch (notifErr) {
+          console.error("Lead status updated, but notification creation failed:", notifErr);
+        }
       }
     } catch (err: any) {
       console.error("Error updating lead status:", err);
-      alert(`Could not update lead status: ${err.message || err}`);
+      triggerError(`Could not update lead status: ${err.message || err}`);
+    } finally {
+      setUpdatingStatus(null);
     }
   };
 
@@ -196,7 +275,7 @@ export default function LeadManagement({ userId, userRole, userName }: LeadManag
       }
     } catch (err: any) {
       console.error("Error deleting lead:", err);
-      alert(`Could not delete lead: ${err.message || err}`);
+      triggerError(`Could not delete lead: ${err.message || err}`);
     }
   };
 
@@ -232,9 +311,26 @@ export default function LeadManagement({ userId, userRole, userName }: LeadManag
       </div>
 
       {successMsg && (
-        <div className="p-3 bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 flex items-center gap-2 animate-in fade-in">
-          <CheckCircle className="w-4 h-4 text-emerald-400" />
-          <span className="font-bold">{successMsg}</span>
+        <div className="p-3 bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 flex items-center justify-between gap-2 animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 text-emerald-400" />
+            <span className="font-bold">{successMsg}</span>
+          </div>
+          <button onClick={() => setSuccessMsg("")} className="text-emerald-400 hover:text-white">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {errorMsg && (
+        <div className="p-3 bg-rose-500/15 border border-rose-500/30 rounded-xl text-xs text-rose-300 flex items-center justify-between gap-2 animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-400" />
+            <span className="font-bold">{errorMsg}</span>
+          </div>
+          <button onClick={() => setErrorMsg("")} className="text-rose-400 hover:text-white">
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
 
@@ -409,6 +505,7 @@ export default function LeadManagement({ userId, userRole, userName }: LeadManag
                 <p className="text-[10px] font-mono text-gray-400 font-bold uppercase">Transition Lead Pipeline State</p>
                 <div className="grid grid-cols-2 gap-1.5 font-mono text-[9px]">
                   {[
+                    { id: "Applied", label: "Set Applied" },
                     { id: "Shortlisted", label: "Shortlist Profile" },
                     { id: "Interviewing", label: "Set Interviewing" },
                     { id: "Offered", label: "Release Offer" },
@@ -418,14 +515,20 @@ export default function LeadManagement({ userId, userRole, userName }: LeadManag
                     <button
                       key={act.id}
                       onClick={() => handleUpdateStatus(selectedLead.id, act.id)}
-                      disabled={selectedLead.currentStatus === act.id}
-                      className={`px-2 py-2 rounded-xl font-bold cursor-pointer transition-all ${
+                      disabled={selectedLead.currentStatus === act.id || updatingStatus !== null}
+                      className={`px-2 py-2 rounded-xl font-bold cursor-pointer transition-all flex items-center justify-center gap-1 ${
                         selectedLead.currentStatus === act.id
                           ? "bg-indigo-600 text-white cursor-not-allowed opacity-50"
+                          : updatingStatus === act.id
+                          ? "bg-indigo-500/30 text-indigo-200 cursor-wait"
                           : "bg-white/5 text-gray-400 hover:text-white hover:bg-indigo-600/20"
                       }`}
                     >
-                      {act.label}
+                      {updatingStatus === act.id ? (
+                        <Loader2 className="w-3 h-3 animate-spin text-indigo-300" />
+                      ) : (
+                        act.label
+                      )}
                     </button>
                   ))}
                 </div>
