@@ -66,53 +66,67 @@ async function uploadSingleAttempt(
         reject(new Error(`Upload timed out after ${Math.round(timeoutMs / 1000)} seconds.`));
       }, timeoutMs);
     }
+uploadTask.on(
+  "state_changed",
 
-    uploadTask.on(
-      "state_changed",
-      (snapshot: UploadTaskSnapshot) => {
-        if (snapshot.totalBytes > 0 && onProgress) {
-          const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-          onProgress(progress);
-        }
-      },
-      (error: any) => {
-        if (timer) clearTimeout(timer);
-        if (isCanceled) return;
+  (snapshot: UploadTaskSnapshot) => {
+    if (snapshot.totalBytes > 0 && onProgress) {
+      const progress = Math.round(
+        (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+      );
 
-        let errorMsg = error.message || "Resume upload failed.";
-        if (error.code === "storage/unauthorized") {
-          errorMsg = "Unauthorized: You do not have permission to upload to storage.";
-        } else if (error.code === "storage/canceled") {
-          errorMsg = "Upload attempt was canceled or timed out.";
-        }
-        reject(new Error(errorMsg));
-      },
-     async () => {
-  if (timer) clearTimeout(timer);
+      onProgress(progress);
+    }
+  },
 
-  try {
-    const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-
-    if (onProgress) {
-      onProgress(100);
+  (error: any) => {
+    if (timer) {
+      clearTimeout(timer);
     }
 
-    resolve({
-      downloadUrl,
-      storagePath,
-    });
-  } catch (urlErr: any) {
-    reject(
-      new Error(
-        `Failed to retrieve download URL: ${
-          urlErr?.message || urlErr
-        }`
-      )
-    );
-  }
-}
-}
+    if (isCanceled) {
+      return;
+    }
 
+    let errorMsg = error.message || "Resume upload failed.";
+
+    if (error.code === "storage/unauthorized") {
+      errorMsg =
+        "Unauthorized: You do not have permission to upload to storage.";
+    } else if (error.code === "storage/canceled") {
+      errorMsg = "Upload attempt was canceled or timed out.";
+    }
+
+    reject(new Error(errorMsg));
+  },
+
+  async () => {
+    if (timer) {
+      clearTimeout(timer);
+    }
+
+    try {
+      const downloadUrl = await getDownloadURL(
+        uploadTask.snapshot.ref
+      );
+
+      if (onProgress) {
+        onProgress(100);
+      }
+
+      resolve({
+        downloadUrl,
+        storagePath,
+      });
+    } catch (urlErr: any) {
+      reject(
+        new Error(
+          `Failed to retrieve download URL: ${
+            urlErr?.message || urlErr
+          }`
+        )
+      );
+    }
 /**
  * Uploads a resume file with exponential retry logic, progress reporting,
  * fallback data URL support, non-blocking AI parsing, and Firestore persistence.
