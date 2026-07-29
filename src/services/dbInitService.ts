@@ -81,25 +81,19 @@ export async function initializeUserCollectionsAndDocs(
     });
   }
 
-  // --- Collection 3: companies (and legacy employers) ---
+  // --- Collection 3: companies ---
   if (role === "employer" || role === "recruiter") {
     const companyPayload = {
       companyId: userId,
       companyName: name,
       email,
-      size: "50-200",
-      industry: "Artificial Intelligence & Technology",
-      website: "https://google.com",
-      description: "Building next-generation search and intelligence platforms.",
-      logoUrl: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=80&q=80",
       createdAt: isoDate,
     };
     await safeSetDoc("companies", userId, companyPayload);
     await safeSetDoc("employers", userId, {
       userId,
       companyName: name,
-      industry: "Artificial Intelligence",
-      size: "501-1000",
+      createdAt: isoDate,
     });
   }
 
@@ -109,10 +103,10 @@ export async function initializeUserCollectionsAndDocs(
       userId,
       agencyName: name,
       email,
-      subscriptionStatus: "active",
+      subscriptionStatus: "pending",
       pricingPlan: "Pro Agency",
-      clientsCount: 18,
-      revenue: 45000,
+      clientsCount: 0,
+      revenue: 0,
       createdAt: isoDate,
     });
   }
@@ -161,146 +155,7 @@ export async function initializeUserCollectionsAndDocs(
     });
   }
 
-  // --- Collection 5: jobs (and legacy company_jobs) ---
-  const jobDemoId = `job_demo_${userId.substring(0, 5)}`;
-  const sampleJob = {
-    id: jobDemoId,
-    employerId: role === "employer" ? userId : "demo_employer_uid",
-    companyName: role === "employer" ? name : "Google AI Labs",
-    title: "Senior Full-Stack Engineer",
-    description: "Join us to build state-of-the-art interactive portals. Requires React, TypeScript, and Generative AI knowledge.",
-    location: "Bengaluru, India (Hybrid)",
-    type: "Full-time",
-    salary: "₹24,00,000 - ₹34,00,000 PA",
-    skillsRequired: ["React", "TypeScript", "Node.js", "Firebase"],
-    status: "open",
-    createdAt: isoDate,
-  };
-  await safeSetDoc("jobs", jobDemoId, sampleJob);
-  await safeSetDoc("company_jobs", jobDemoId, sampleJob);
-
-  // --- Collection 6: applications (and legacy company_applications) ---
-  const appDemoId = `app_demo_${userId}`;
-  const sampleApp = {
-    id: appDemoId,
-    userId: role === "candidate" ? userId : "demo_candidate_uid",
-    candidateName: role === "candidate" ? name : "Aryan Sharma",
-    jobId: jobDemoId,
-    jobTitle: sampleJob.title,
-    companyName: sampleJob.companyName,
-    status: "applied",
-    appliedAt: isoDate,
-    createdAt: isoDate,
-  };
-  await safeSetDoc("applications", appDemoId, sampleApp);
-  await safeSetDoc("company_applications", appDemoId, sampleApp);
-
-  // --- Collection 7: interviews (and legacy company_interviews) ---
-  const interviewDemoId = `int_demo_${userId}`;
-  const sampleInterview = {
-    id: interviewDemoId,
-    userId: role === "candidate" ? userId : "demo_candidate_uid",
-    candidateName: role === "candidate" ? name : "Aryan Sharma",
-    jobId: jobDemoId,
-    jobTitle: sampleJob.title,
-    dateTime: new Date(Date.now() + 86400000 * 2).toISOString(), // 2 days in future
-    status: "scheduled",
-    type: "AI Screen Test",
-    createdAt: isoDate,
-  };
-  await safeSetDoc("interviews", interviewDemoId, sampleInterview);
-  await safeSetDoc("company_interviews", interviewDemoId, sampleInterview);
-
-  // --- Collection 8: resumes ---
-  const resumePayload = {
-    id: userId,
-    userId,
-    fileName: role === "candidate" ? "Aryan_Sharma_Resume.pdf" : "Default_Template.pdf",
-    fileUrl: "https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&w=120&q=80",
-    text: "Interactive System Architect & Developer. Specialized in real-time interfaces, databases, and AI model orchestration.",
-    score: 85,
-    parsedSkills: ["React", "TypeScript", "Tailwind CSS", "Cloud Solutions"],
-    createdAt: isoDate,
-  };
-  await safeSetDoc("resumes", userId, resumePayload);
-
-  // --- Collection 9: notifications ---
-  const notifId = `notif_welcome_${userId}`;
-  const sampleNotif = {
-    id: notifId,
-    userId,
-    title: "System Initialized Successfully!",
-    message: `Welcome to AIJobs, ${name}! Your sandbox is pre-populated with active analytics, smart ATS pipelines, and sample resumes.`,
-    read: false,
-    archived: false,
-    createdAt: isoDate,
-  };
-  await safeSetDoc("notifications", notifId, sampleNotif);
-
-  // --- Collection 10: subscriptions ---
-  const subId = `sub_${userId}`;
-  await safeSetDoc("subscriptions", subId, {
-    id: subId,
-    userId,
-    status: "active",
-    plan: role === "consultancy" ? "Pro Agency" : "Enterprise Access",
-    expiresAt: "2030-12-31T23:59:59.000Z",
-    price: role === "consultancy" ? 45000 : 0,
-    billingCycle: "yearly",
-    createdAt: isoDate,
-  });
-
-  // --- Collection 11: payments ---
-  const payId = `pay_init_${userId}`;
-  await safeSetDoc("payments", payId, {
-    id: payId,
-    userId,
-    amount: role === "consultancy" ? 45000 : 0,
-    currency: "INR",
-    status: "completed",
-    gateway: "Stripe",
-    reference: `TXN_${userId.substring(0, 8).toUpperCase()}`,
-    createdAt: isoDate,
-  });
-
-  // --- Collection 12: plans ---
-  const plansToSeed = [
-    { id: "plan_free", name: "Free Tier", price: 0, cycle: "monthly", features: ["1 ATS Match", "Basic CV Score"] },
-    { id: "plan_starter", name: "Starter Suite", price: 4999, cycle: "monthly", features: ["15 ATS Matches", "Generative Interview Screening"] },
-    { id: "plan_pro", name: "Pro Agency", price: 14999, cycle: "monthly", features: ["Unlimited Pipeline Matching", "Custom Candidate Portals"] }
-  ];
-  for (const plan of plansToSeed) {
-    await safeSetDoc("plans", plan.id, plan);
-  }
-
-  // --- Collection 13: ai_reports ---
-  const reportId = `rep_wel_${userId}`;
-  await safeSetDoc("ai_reports", reportId, {
-    id: reportId,
-    userId,
-    score: 88,
-    grade: "Excellent",
-    breakdown: { technical: 92, communication: 84, experience: 88 },
-    analysisText: "Strong competency in modern web interfaces, React rendering strategies, and state isolation.",
-    sharedWithConsultancies: [],
-    sharedWithEmployers: [],
-    isPublic: true,
-    createdAt: isoDate,
-  });
-
-  // --- Collection 14: interview_results ---
-  const intResultId = `res_wel_${userId}`;
-  await safeSetDoc("interview_results", intResultId, {
-    id: intResultId,
-    userId,
-    candidateName: name,
-    score: 91,
-    status: "passed",
-    feedback: "Exhibited highly logical layout mapping, fast system updates, and clear architecture breakdown.",
-    createdAt: isoDate,
-  });
-
-  // --- Collection 15: activity_logs (and company_activity_logs) ---
+  // --- Collection 15: activity_logs ---
   const activityId = `act_${userId}_${Math.random().toString(36).substring(2, 6)}`;
   const activityPayload = {
     id: activityId,

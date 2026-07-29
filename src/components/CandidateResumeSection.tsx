@@ -6,9 +6,9 @@ import {
   MapPin, Landmark, TrendingUp, Compass, ArrowUpRight, CheckCircle, ChevronRight,
   BookOpen, Trophy, FolderOpen, CloudLightning
 } from "lucide-react";
-import { db, storage } from "../firebase";
+import { db } from "../firebase";
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs, query, where, deleteDoc, orderBy } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { uploadToCloudinary } from "../services/cloudinaryService";
 import { uploadResumeService } from "../services/resumeUploadService";
 import { 
   loadGooglePickerApi, 
@@ -201,7 +201,7 @@ export default function CandidateResumeSection({
     setUploadProgress(10);
 
     try {
-      // 1. Upload to Firebase Storage using uploadResumeService
+      // 1. Upload to Cloudinary Storage using uploadResumeService
       let storageUrl = "";
       const res = await uploadResumeService({
         uid: userId,
@@ -212,7 +212,7 @@ export default function CandidateResumeSection({
       if (res.success && res.downloadUrl) {
         storageUrl = res.downloadUrl;
         setUploadedFileUrl(storageUrl);
-        console.log(`[Storage] File uploaded successfully from ${source} to Firebase Storage. URL:`, storageUrl);
+        console.log(`[Storage] File uploaded successfully from ${source} to Cloudinary Storage. URL:`, storageUrl);
       }
 
       setUploadProgress(100);
@@ -397,13 +397,9 @@ export default function CandidateResumeSection({
     setUploadProgress(15);
 
     try {
-      setUploadProgress(35);
-      const storagePath = `documents/${userId}/${Date.now()}_${file.name}`;
-      const storageRef = ref(storage, storagePath);
-      setUploadProgress(65);
-      const uploadResult = await uploadBytes(storageRef, file);
-      setUploadProgress(85);
-      const storageUrl = await getDownloadURL(uploadResult.ref);
+      setUploadProgress(20);
+      const cloudinaryRes = await uploadToCloudinary(file, (pct) => setUploadProgress(pct));
+      const storageUrl = cloudinaryRes.secure_url;
       
       const docId = `doc_${Math.random().toString(36).substr(2, 9)}`;
       const newDocRecord = {
@@ -1036,7 +1032,7 @@ export default function CandidateResumeSection({
           {isUploading && (
             <div className="absolute inset-0 bg-[#030305]/95 rounded-2xl flex flex-col items-center justify-center p-4 z-20 animate-in fade-in duration-200">
               <RefreshCw className="w-7 h-7 text-indigo-400 animate-spin mb-2" />
-              <p className="text-xs font-bold text-white font-mono">Parsing File structure...</p>
+              <p className="text-xs font-bold text-white font-mono">Uploading Resume Securely...</p>
               <div className="w-48 h-1.5 bg-white/5 rounded-full mt-3 overflow-hidden border border-white/5">
                 <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }}></div>
               </div>

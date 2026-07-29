@@ -25,7 +25,7 @@ export default function CompanySection({ pageType, onClose, setActiveCompanyPage
     brandName: "AIJobs",
     address: "AIJobs, Juhi Corp Park, Vasai West, Mumbai, Maharashtra – 401202, India",
     supportEmail: "infoaisoft26@gmail.com",
-    salesEmail: "sales@aijobs.in",
+    salesEmail: "sales@aijobs1.vercel.app",
     phone: "+91 9324773994",
     whatsapp: "+91 9324773994",
     businessHours: "Monday – Friday: 09:00 AM – 06:00 PM IST",

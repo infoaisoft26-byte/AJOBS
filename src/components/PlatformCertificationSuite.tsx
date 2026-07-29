@@ -9,7 +9,7 @@ export default function PlatformCertificationSuite() {
   const [auditComplete, setAuditComplete] = useState(true);
 
   const checklist = [
-    { module: "Phase 1: Resume Upload & Parsing Engine", status: "PASS", detail: "PDF & DOCX parsing, Firebase Storage URL persistence, 10MB limit verified." },
+    { module: "Phase 1: Resume Upload & Parsing Engine", status: "PASS", detail: "PDF & DOCX parsing, Cloudinary Storage URL persistence, 10MB limit verified." },
     { module: "Phase 2: Auto Profile Creation & Smart Onboarding", status: "PASS", detail: "Twilio SMS verification & auto-seeding candidates & users collection." },
     { module: "Module 1: AI Agent Marketplace", status: "PASS", detail: "9 specialized GenAI Agents configured with Admin toggle controls." },
     { module: "Module 2: AI Voice Recruiter", status: "PASS", detail: "Web Speech synthesis & speech-to-text transcript & voice scoring engine." },

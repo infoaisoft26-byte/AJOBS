@@ -11,9 +11,9 @@ import { motion, AnimatePresence } from "motion/react";
 import LegalModal, { LegalDocType } from "./LegalModal";
 import HolographicCard from "./HolographicCard";
 import SmartResumeOtpModal, { CandidateParsedData } from "./SmartResumeOtpModal";
-import { auth, storage, db } from "../firebase";
+import { auth, db } from "../firebase";
 import { signInWithCustomToken } from "firebase/auth";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { uploadToCloudinary } from "../services/cloudinaryService";
 import { doc, updateDoc, setDoc } from "firebase/firestore";
 import { useToast } from "./GlobalToast";
 
@@ -117,19 +117,19 @@ export default function LandingPage({
         ? parsed.skills
         : ["React", "TypeScript", "Node.js", "Firebase", "Tailwind CSS"];
 
-      // 3. Upload resume document to Firebase Storage
-      setOnboardStep("Uploading resume document to Firebase Storage...");
-      setOnboardProgress(65);
+      // 3. Upload resume document to Cloudinary
+      setOnboardStep("Uploading Resume Securely...");
+      setOnboardProgress(50);
 
       let downloadURL = "";
       try {
-        const storagePath = `resumes/${tempId}/${Date.now()}_${file.name}`;
-        const storageRef = ref(storage, storagePath);
-        const uploadResult = await uploadBytes(storageRef, file);
-        downloadURL = await getDownloadURL(uploadResult.ref);
+        const cloudinaryRes = await uploadToCloudinary(file, (pct) => {
+          setOnboardProgress(50 + Math.round((pct / 100) * 30));
+        });
+        downloadURL = cloudinaryRes.secure_url;
       } catch (stErr) {
-        console.warn("Storage upload fallback:", stErr);
-        downloadURL = `https://firebasestorage.googleapis.com/v0/b/aijobs/resumes/${file.name}`;
+        console.warn("Cloudinary upload error fallback:", stErr);
+        downloadURL = "";
       }
 
       // 4. Create Firebase Account & Seed Firestore Profile + Dispatch Twilio SMS OTP

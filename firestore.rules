@@ -357,12 +357,26 @@ service cloud.firestore {
       allow write: if isSignedIn();
     }
 
+    // Fraud Alerts
+    match /fraud_alerts/{alertId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Verification Requests
+    match /verification_requests/{requestId} {
+      allow read, write: if isSignedIn();
+    }
+
     // Chat messages & sessions
     match /chat_messages/{messageId} {
       allow read, write: if isSignedIn();
     }
     match /chat_sessions/{sessionId} {
       allow read, write: if isSignedIn();
+      
+      match /messages/{messageId} {
+        allow read, write: if isSignedIn();
+      }
     }
     match /ai_logs/{logId} {
       allow read, write: if isSignedIn();

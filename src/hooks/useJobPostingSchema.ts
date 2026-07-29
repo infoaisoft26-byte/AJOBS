@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { JobPosting } from "../types";
 import { generateJobPostingSchema } from "../utils/schemaGenerator";
+import { getPublicJobUrl } from "../config/site";
 
 /**
  * A custom React hook to dynamically manage the SEO lifecycle for a Job Page.
@@ -44,7 +45,7 @@ export function useJobPostingSchema(job: JobPosting | null | undefined): void {
     }
 
     // 3. Update or create the canonical URL for Google Jobs search indexing engines
-    const jobUrl = `${window.location.origin}/?jobId=${job.id}`;
+    const jobUrl = getPublicJobUrl(job);
     if (canonicalLink) {
       canonicalLink.setAttribute("href", jobUrl);
     } else {

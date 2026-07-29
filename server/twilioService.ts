@@ -63,8 +63,13 @@ export async function getTwilioConfig(): Promise<TwilioConfig> {
           whatsAppNumber = whatsAppNumber || data.twilio.whatsAppNumber;
         }
       }
-    } catch (err) {
-      console.warn("[TwilioService] Resilient Config Load: Could not retrieve settings from Firestore, using environment variables:", err);
+    } catch (err: any) {
+      const msg = String(err?.message || err);
+      if (msg.includes("PERMISSION_DENIED") || msg.includes("Missing or insufficient permissions") || err?.code === 7) {
+        // Silently preserve environment variable fallback under sandbox permissions
+      } else {
+        console.log("[TwilioService] Resilient Config Load: Using environment variables.");
+      }
     }
   }
 
@@ -100,8 +105,11 @@ export async function logSms(
     };
     await firestoreDb.collection("sms_logs").doc(logId).set(docData);
     console.log(`[TwilioService] SMS Log recorded under Firestore document ID: ${logId}`);
-  } catch (err) {
-    console.error("[TwilioService] Error writing to sms_logs:", err);
+  } catch (err: any) {
+    const msg = String(err?.message || err);
+    if (!msg.includes("PERMISSION_DENIED") && !msg.includes("Missing or insufficient permissions")) {
+      console.log("[TwilioService] sms_logs write notice:", msg);
+    }
   }
 }
 
@@ -150,7 +158,8 @@ export async function sendOTP(phone: string): Promise<{ success: boolean; messag
       } catch (err: any) {
         lastError = err;
         attempts++;
-        console.warn(`[TwilioService] sendOTP attempt ${attempts} failed. Retrying...`, err);
+        const errStr = err?.message || String(err);
+        console.warn(`[TwilioService] sendOTP attempt ${attempts} notice: ${errStr}`);
         if (attempts <= maxRetries) {
           await new Promise((resolve) => setTimeout(resolve, 1000 * attempts));
         }
@@ -158,8 +167,12 @@ export async function sendOTP(phone: string): Promise<{ success: boolean; messag
     }
     throw lastError || new Error("Failed to dispatch OTP after retries.");
   } catch (error: any) {
-    console.error("[TwilioService] sendOTP error:", error);
-    await logSms(formattedPhone, `Failed: ${error.message}`, "FAILED", "OTP", error.message);
+    const errMsg = error?.message || String(error);
+    console.warn("[TwilioService] sendOTP notice:", errMsg);
+    await logSms(formattedPhone, `Failed: ${errMsg}`, "FAILED", "OTP", errMsg);
+    if (errMsg.includes("60200") || errMsg.includes("Invalid parameter")) {
+      throw new Error("Phone number format or unverified Twilio recipient error. Please ensure the phone number is valid (+1... / +91...).");
+    }
     throw error;
   }
 }
@@ -334,7 +347,8 @@ async function sendSmsMessage(phone: string, text: string, type: any): Promise<b
       } catch (err: any) {
         lastError = err;
         attempts++;
-        console.warn(`[TwilioService] SMS dispatch attempt ${attempts} failed. Retrying...`, err);
+        const errStr = err?.message || String(err);
+        console.warn(`[TwilioService] SMS dispatch attempt ${attempts} notice: ${errStr}`);
         if (attempts <= maxRetries) {
           await new Promise((resolve) => setTimeout(resolve, 1000 * attempts)); // exponential backoff
         }
@@ -343,8 +357,9 @@ async function sendSmsMessage(phone: string, text: string, type: any): Promise<b
 
     throw lastError || new Error("Failed to send SMS message after retries.");
   } catch (error: any) {
-    console.error(`[TwilioService] sendSmsMessage error (${type}):`, error);
-    await logSms(formattedPhone, `Failed: ${error.message}. Payload: ${text}`, "FAILED", type, error.message);
+    const errMsg = error?.message || String(error);
+    console.warn(`[TwilioService] sendSmsMessage notice (${type}):`, errMsg);
+    await logSms(formattedPhone, `Failed: ${errMsg}. Payload: ${text}`, "FAILED", type, errMsg);
     return false;
   }
 }

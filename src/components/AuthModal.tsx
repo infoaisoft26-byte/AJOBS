@@ -836,9 +836,7 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
                 <div className="grid grid-cols-2 gap-2.5">
                   {[
                     { id: "candidate", title: "Candidate", icon: User, desc: "Search jobs & AI prep", color: "hover:border-indigo-500 hover:text-indigo-300" },
-                    { id: "consultancy", title: "Consultancy", icon: Shield, desc: "Staffing & agency tools", color: "hover:border-purple-500 hover:text-purple-300" },
-                    { id: "employer", title: "Employer", icon: Briefcase, desc: "Corporate recruiter dashboard", color: "hover:border-pink-500 hover:text-pink-300" },
-                    { id: "admin", title: "Admin Portal", icon: ShieldCheck, desc: "System stats & seed database", color: "hover:border-emerald-500 hover:text-emerald-300" }
+                    { id: "consultancy", title: "Consultancy Application", icon: Shield, desc: "Staffing & agency tools", color: "hover:border-purple-500 hover:text-purple-300" }
                   ].map((item) => {
                     const Icon = item.icon;
                     const isSel = role === item.id;
@@ -1153,11 +1151,7 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
                   <div className="grid grid-cols-2 gap-2.5">
                     {[
                       { id: "candidate", title: "Candidate", icon: User, desc: "Search jobs & AI prep", color: "hover:border-indigo-500 hover:text-indigo-300" },
-                      { id: "consultancy", title: "Consultancy", icon: Shield, desc: "Staffing & agency tools", color: "hover:border-purple-500 hover:text-purple-300" },
-                      { id: "employer", title: "Employer", icon: Briefcase, desc: "Corporate dashboard", color: "hover:border-pink-500 hover:text-pink-300" },
-                      { id: "recruiter", title: "Recruiter", icon: Sparkles, desc: "Post & manage jobs", color: "hover:border-amber-500 hover:text-amber-300" },
-                      { id: "admin", title: "Admin Portal", icon: ShieldCheck, desc: "Access DB controls", color: "hover:border-emerald-500 hover:text-emerald-300" },
-                      { id: "superadmin", title: "Super Admin", icon: ShieldAlert, desc: "All console systems", color: "hover:border-red-500 hover:text-red-300" }
+                      { id: "consultancy", title: "Consultancy Application", icon: Shield, desc: "Staffing & agency portal", color: "hover:border-purple-500 hover:text-purple-300" }
                     ].map((item) => {
                       const Icon = item.icon;
                       const isSel = role === item.id;

@@ -112,7 +112,7 @@ export default function ResumeOnboarding({ user, setUser, setActiveView }: Resum
     setIsProcessing(true);
     setError(null);
     setProgress(0);
-    setStep("Uploading resume to secure storage...");
+    setStep("Uploading Resume Securely...");
 
     try {
       const uid = user?.uid || auth.currentUser?.uid;
@@ -324,7 +324,7 @@ export default function ResumeOnboarding({ user, setUser, setActiveView }: Resum
               </div>
               <div className="flex items-center space-x-1.5 text-emerald-400">
                 <CheckCircle2 className="w-4 h-4" />
-                <span>Firebase Storage Active</span>
+                <span>Cloudinary Storage Active</span>
               </div>
             </div>
           </div>

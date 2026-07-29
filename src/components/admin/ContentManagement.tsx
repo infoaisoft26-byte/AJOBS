@@ -27,7 +27,7 @@ export default function ContentManagement({
   const [compBrand, setCompBrand] = useState("AIJobs");
   const [compAddress, setCompAddress] = useState("AIJobs\nJuhi Corp Park, Vasai West, Mumbai, Maharashtra – 401202, India");
   const [compEmail, setCompEmail] = useState("infoaisoft26@gmail.com");
-  const [compSalesEmail, setCompSalesEmail] = useState("sales@aijobs.in");
+  const [compSalesEmail, setCompSalesEmail] = useState("sales@aijobs1.vercel.app");
   const [compPhone, setCompPhone] = useState("+91 9324773994");
   const [compWhatsapp, setCompWhatsapp] = useState("+91 9324773994");
   const [compHours, setCompHours] = useState("Monday – Friday: 09:00 AM – 06:00 PM IST");
@@ -465,7 +465,7 @@ export default function ContentManagement({
                     required
                     value={compSalesEmail}
                     onChange={e => setCompSalesEmail(e.target.value)}
-                    placeholder="sales@aijobs.in"
+                    placeholder="sales@aijobs1.vercel.app"
                     className="w-full bg-neutral-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-white"
                   />
                 </div>

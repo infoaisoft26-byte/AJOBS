@@ -22,6 +22,7 @@ const CandidateDashboard = lazy(() => import("@/components/CandidateDashboard"))
 const ConsultancyDashboard = lazy(() => import("@/components/ConsultancyDashboard"));
 const EmployerDashboard = lazy(() => import("@/components/EmployerDashboard"));
 const AdminDashboard = lazy(() => import("@/components/AdminDashboard"));
+const VerificationOnboardingView = lazy(() => import("@/components/VerificationOnboardingView"));
 const JobDetailsLazy = lazy(() => import("@/components/JobDetails"));
 const NotificationCenterViewLazy = lazy(() =>
   import("@/components/NotificationCenter").then((m) => ({ default: m.NotificationCenterView }))
@@ -463,6 +464,17 @@ function MainAppContent() {
         );
       case "consultancy":
       case "agency":
+        if (user.accountStatus === "pending_verification" || user.isApproved === false || user.accountStatus === "suspended_for_review" || user.accountStatus === "resubmission_required") {
+          return (
+            <VerificationOnboardingView 
+              user={user} 
+              onLogout={handleLogout} 
+              onStatusUpdate={() => {
+                auth.currentUser && getOrCreateUserProfile(auth.currentUser).then(setUser);
+              }} 
+            />
+          );
+        }
         return (
           <ProtectedRoute 
             user={user} 
@@ -477,6 +489,17 @@ function MainAppContent() {
       case "employer":
       case "recruiter":
       case "corporate":
+        if (user.accountStatus === "pending_verification" || user.isApproved === false || user.accountStatus === "suspended_for_review" || user.accountStatus === "resubmission_required") {
+          return (
+            <VerificationOnboardingView 
+              user={user} 
+              onLogout={handleLogout} 
+              onStatusUpdate={() => {
+                auth.currentUser && getOrCreateUserProfile(auth.currentUser).then(setUser);
+              }} 
+            />
+          );
+        }
         return (
           <ProtectedRoute 
             user={user} 

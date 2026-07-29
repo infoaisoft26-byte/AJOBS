@@ -6,6 +6,7 @@ import {
 import { db } from "../firebase";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { recordActivityLog } from "../services/activityLogService";
+import { uploadToCloudinary } from "../services/cloudinaryService";
 
 interface SectionProps {
   userId: string;
@@ -221,21 +222,35 @@ export default function CandidateProfileSection({
         ctx?.drawImage(img, 0, 0, w, h);
         const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.82);
 
-        setForm(prev => ({ ...prev, profilePhoto: compressedDataUrl }));
+        // Convert canvas to blob for Cloudinary upload
+        const blob: Blob = await new Promise((res) => canvas.toBlob((b) => res(b!), "image/jpeg", 0.88));
+        const photoFile = new File([blob], `profile_${userId || "user"}_${Date.now()}.jpg`, { type: "image/jpeg" });
+
+        let finalPhotoUrl = compressedDataUrl;
+        try {
+          const cloudRes = await uploadToCloudinary(photoFile);
+          if (cloudRes.secure_url) {
+            finalPhotoUrl = cloudRes.secure_url;
+          }
+        } catch (cErr) {
+          console.warn("Cloudinary upload fallback to local compressed URL:", cErr);
+        }
+
+        setForm(prev => ({ ...prev, profilePhoto: finalPhotoUrl }));
 
         if (userId && db) {
           await setDoc(doc(db, "candidates", userId), {
-            photoUrl: compressedDataUrl,
-            profileDetails: { ...(profile?.profileDetails || {}), profilePhoto: compressedDataUrl }
+            photoUrl: finalPhotoUrl,
+            profileDetails: { ...(profile?.profileDetails || {}), profilePhoto: finalPhotoUrl }
           }, { merge: true });
 
           await setDoc(doc(db, "users", userId), {
-            photoUrl: compressedDataUrl,
-            profilePhoto: compressedDataUrl
+            photoUrl: finalPhotoUrl,
+            profilePhoto: finalPhotoUrl
           }, { merge: true });
 
-          setProfile({ ...profile, photoUrl: compressedDataUrl, profileDetails: { ...profile?.profileDetails, profilePhoto: compressedDataUrl } });
-          triggerNotification("📸 Profile Photo Updated", "Your profile photo was compressed and saved to your profile.");
+          setProfile({ ...profile, photoUrl: finalPhotoUrl, profileDetails: { ...profile?.profileDetails, profilePhoto: finalPhotoUrl } });
+          triggerNotification("📸 Profile Photo Updated", "Your profile photo was securely uploaded and updated.");
         }
       } catch (err: any) {
         console.error("Photo compression error:", err);

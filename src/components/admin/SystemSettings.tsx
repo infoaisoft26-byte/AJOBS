@@ -161,7 +161,7 @@ export default function SystemSettings({
   const [adsenseClient, setAdsenseClient] = useState("ca-pub-4518002691129999");
   const [referralReward, setReferralReward] = useState(2500);
   const [freePostings, setFreePostings] = useState(1);
-  const [deepLinkHost, setDeepLinkHost] = useState("www.aijobs.in");
+  const [deepLinkHost, setDeepLinkHost] = useState("aijobs1.vercel.app");
   const [androidPkg, setAndroidPkg] = useState("com.theflexforce.aijobs");
 
   // General settings state form

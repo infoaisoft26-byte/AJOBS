@@ -9,6 +9,7 @@ import {
   query, where, orderBy, onSnapshot, addDoc, limit, getDocs, arrayUnion 
 } from "firebase/firestore";
 import { motion, AnimatePresence } from "motion/react";
+import { detectPaymentRequest, ANTI_FRAUD_CANDIDATE_WARNING } from "../utils/fraudDetection";
 
 interface LiveChatSectionProps {
   currentUserId: string;
@@ -262,15 +263,23 @@ export default function LiveChatSection({
     const msgId = `msg_${Math.random().toString(36).substr(2, 9)}`;
     const timestamp = new Date().toISOString();
 
-    const payload: ChatMessage = {
+    // Payment & Fee Fraud Detection
+    const isPaymentDemand = detectPaymentRequest(messageContent);
+    const displayContent = isPaymentDemand ? ANTI_FRAUD_CANDIDATE_WARNING : messageContent;
+
+    const payload: ChatMessage & { originalMessage?: string; riskFlags?: string[] } = {
       id: msgId,
       chatId: activeChat.id,
       senderId: currentUserId,
       senderName: currentUserName,
       senderRole: currentUserRole,
-      content: messageContent,
+      content: displayContent,
       read: false,
-      createdAt: timestamp
+      createdAt: timestamp,
+      ...(isPaymentDemand && {
+        originalMessage: messageContent,
+        riskFlags: ["payment_request_detected"]
+      })
     };
 
     if (attachment) {
@@ -279,15 +288,76 @@ export default function LiveChatSection({
 
     try {
       // 1. Write message to messages subcollection
-      await setDoc(doc(db, "chats", activeChat.id, "messages", msgId), payload);
+      await setDoc(doc(doc(db, "chats", activeChat.id), "messages", msgId), payload);
+
+      // Extract candidate, recruiter, consultancy IDs from participant roles
+      let candidateIdVal: string | undefined = undefined;
+      let recruiterIdVal: string | undefined = undefined;
+      let consultancyIdVal: string | undefined = undefined;
+      if (activeChat.participantRoles) {
+        Object.entries(activeChat.participantRoles).forEach(([pId, pRole]) => {
+          if (pRole === "candidate") candidateIdVal = pId;
+          if (["employer", "recruiter", "corporate"].includes(pRole)) recruiterIdVal = pId;
+          if (["consultancy", "agency"].includes(pRole)) consultancyIdVal = pId;
+        });
+      }
+
+      // Log to chat_sessions/{sessionId}/messages/{messageId} service for centralized monitoring
+      fetch("/api/chat/log-message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: activeChat.id,
+          userId: currentUserId,
+          senderName: currentUserName,
+          senderRole: currentUserRole,
+          candidateId: candidateIdVal,
+          recruiterId: recruiterIdVal,
+          consultancyId: consultancyIdVal,
+          userMessage: messageContent
+        })
+      }).catch(err => console.warn("Centralized chat logging notice:", err));
 
       // 2. Update parent chat metadata
       await updateDoc(doc(db, "chats", activeChat.id), {
-        lastMessage: attachment ? `📎 Attached ${attachment.name}` : messageContent,
+        lastMessage: isPaymentDemand ? "⚠️ Security Warning Issued" : attachment ? `📎 Attached ${attachment.name}` : messageContent,
         lastMessageAt: timestamp,
         lastMessageSenderId: currentUserId,
-        [`typingStates.${currentUserId}`]: false
+        [`typingStates.${currentUserId}`]: false,
+        ...(isPaymentDemand && {
+          riskLevel: "high_risk",
+          chatPermissions: "frozen"
+        })
       });
+
+      // 3. If fraud detected, log alert & freeze sender account across collections
+      if (isPaymentDemand) {
+        const alertId = `alert_${Math.random().toString(36).substr(2, 9)}`;
+        await setDoc(doc(db, "fraud_alerts", alertId), {
+          id: alertId,
+          chatId: activeChat.id,
+          senderId: currentUserId,
+          senderName: currentUserName,
+          senderRole: currentUserRole,
+          originalMessage: messageContent,
+          createdAt: timestamp,
+          status: "pending_review"
+        });
+
+        const freezePayload = {
+          accountStatus: "suspended_for_review",
+          isApproved: false,
+          isActive: false,
+          chatPermissions: "frozen",
+          updatedAt: timestamp
+        };
+
+        await setDoc(doc(db, "users", currentUserId), freezePayload, { merge: true });
+        await setDoc(doc(db, "recruiters", currentUserId), freezePayload, { merge: true });
+        await setDoc(doc(db, "consultancies", currentUserId), freezePayload, { merge: true });
+
+        alert("⚠️ AIJobs Security Alert: Payment/Fee demands are strictly forbidden under AIJobs Regulations. Your message has been masked and account frozen pending Admin review.");
+      }
 
       // Reset input bar
       setNewMessage("");

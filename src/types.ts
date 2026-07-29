@@ -61,30 +61,63 @@ export interface EmployerProfile {
 
 export interface JobPosting {
   id: string;
+  slug?: string;
   employerId: string;
   companyName: string;
+  hiringOrganizationName?: string;
+  companyWebsite?: string;
+  companyLogo?: string;
   title: string;
   description: string;
   location: string;
   type: string;
+  employmentType?: string;
   salary: string;
   skillsRequired: string[];
-  status: "Draft" | "Pending Approval" | "Approved" | "Live" | "Closed" | "Rejected";
+  status: "Draft" | "Pending Approval" | "Approved" | "Live" | "Published" | "Closed" | "Expired" | "Rejected";
   createdAt: string;
+  datePosted?: string;
+  validThrough?: string;
   
-  // Step 1 - Job Management Module fields
+  // Job Posting Details & Schema Fields
   department?: string;
+  industry?: string;
   consultancy?: string; // assigned agency name/ID
+  consultancyId?: string;
+  recruiterId?: string;
   experience?: "Fresher" | "Junior" | "Mid-Level" | "Senior" | string;
+  minimumExperience?: number;
+  maximumExperience?: number;
   education?: string;
+  qualification?: string;
   benefits?: string;
   openings?: number;
+  numberOfOpenings?: number;
   expiryDate?: string;
-  industry?: string;
-  workMode?: string;
+  applyDeadline?: string;
+  streetAddress?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+  workMode?: "On-site" | "Remote" | "Hybrid" | string;
+  minimumSalary?: number;
+  maximumSalary?: number;
+  salaryCurrency?: string;
+  salaryPeriod?: "Hourly" | "Daily" | "Weekly" | "Monthly" | "Yearly" | string;
+  applyUrl?: string;
+  recruiterEmail?: string;
+  recruiterPhone?: string;
   responsibilities?: string;
   createdBy?: string;
+  createdByRole?: string;
+  approvedBy?: string;
+  approvedAt?: string;
   isFeatured?: boolean;
+  canonicalUrl?: string;
+  indexingStatus?: "PENDING" | "SUCCESS" | "FAILED" | "SKIPPED_MISSING_CREDENTIALS";
+  lastIndexedAt?: string;
+  isPotentialDuplicate?: boolean;
 }
 
 export interface JobApplication {
@@ -94,9 +127,14 @@ export interface JobApplication {
   candidateName: string;
   jobTitle: string;
   companyName: string;
-  status: "Applied" | "Screening" | "Shortlisted" | "Interview Scheduled" | "Interview Completed" | "Selected" | "Offer Released" | "Joined" | "Rejected" | "Withdrawn";
+  recruiterId?: string;
+  consultancyId?: string;
+  resumeUrl?: string;
+  status: "Applied" | "Application Submitted" | "Resume Under Review" | "Screening" | "Shortlisted" | "Interview Scheduled" | "Interview Completed" | "Selected" | "Offer Released" | "On Hold" | "Joined" | "Rejected" | "Withdrawn";
   appliedAt: string;
+  updatedAt?: string;
   resumeScore?: number;
+  trackingSource?: string;
 }
 
 export interface Lead {

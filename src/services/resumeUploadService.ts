@@ -1,7 +1,9 @@
-import { ref, uploadBytesResumable, getDownloadURL, UploadTaskSnapshot, deleteObject } from "firebase/storage";
-import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
-import { storage, db } from "../firebase";
-import { ResumeAIService } from "./ai/resume.service";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "../firebase";
+import { uploadToCloudinary, CloudinaryUploadResult } from "./cloudinaryService";
+import { parseResumeData } from "./aiParser";
+
+export { parseResumeData };
 
 export interface ResumeUploadOptions {
   uid: string;
@@ -16,6 +18,7 @@ export interface ResumeUploadResult {
   success: boolean;
   downloadUrl: string;
   storagePath: string;
+  publicId?: string;
   fileName: string;
   fileSize: number;
   uploadedAt: string;
@@ -24,116 +27,9 @@ export interface ResumeUploadResult {
 }
 
 /**
- * Performs a single upload attempt for a resume using uploadBytesResumable.
- * Targets path: resumes/{uid}/resume.pdf
- */
-/**
- * Performs a single upload attempt for a resume using uploadBytesResumable.
- * Targets path: resumes/{uid}/{timestamp}_{sanitizedFileName}
- */
-async function uploadSingleAttempt(
-  uid: string,
-  file: File,
-  timeoutMs: number = 120000,
-  onProgress?: (progress: number) => void
-): Promise<{ downloadUrl: string; storagePath: string }> {
-  if (!storage) {
-    throw new Error("Firebase Storage is not initialized.");
-  }
-
-  const sanitizedName = file.name.replace(/[^a-zA-Z0-9_.-]/g, "_");
-  const storagePath = `resumes/${uid}/${Date.now()}_${sanitizedName}`;
-  const storageRef = ref(storage, storagePath);
-
-  return new Promise((resolve, reject) => {
- let timer: ReturnType<typeof setTimeout> | null = null;
-    let isCanceled = false;
-
-    const isDocx = file.name.endsWith(".docx") || file.name.endsWith(".doc");
-
-    const uploadTask = uploadBytesResumable(storageRef, file, {
-      contentType: file.type || (isDocx ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : "application/pdf"),
-      customMetadata: {
-        originalName: file.name,
-        uploadedBy: uid,
-      },
-    });
-
-    if (timeoutMs > 0) {
-      timer = setTimeout(() => {
-        isCanceled = true;
-        uploadTask.cancel();
-        reject(new Error(`Upload timed out after ${Math.round(timeoutMs / 1000)} seconds.`));
-      }, timeoutMs);
-    }
-  uploadTask.on(
-    "state_changed",
-
-    (snapshot: UploadTaskSnapshot) => {
-      if (snapshot.totalBytes > 0 && onProgress) {
-        const progress = Math.round(
-          (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-        );
-
-        onProgress(progress);
-      }
-    },
-
-    (error: any) => {
-      if (timer) {
-        clearTimeout(timer);
-      }
-
-      if (isCanceled) {
-        return;
-      }
-
-      let errorMsg = error.message || "Resume upload failed.";
-
-      if (error.code === "storage/unauthorized") {
-        errorMsg =
-          "Unauthorized: You do not have permission to upload to storage.";
-      } else if (error.code === "storage/canceled") {
-        errorMsg = "Upload attempt was canceled or timed out.";
-      }
-
-      reject(new Error(errorMsg));
-    },
-
-    async () => {
-      if (timer) {
-        clearTimeout(timer);
-      }
-
-      try {
-        const downloadUrl = await getDownloadURL(
-          uploadTask.snapshot.ref
-        );
-
-        if (onProgress) {
-          onProgress(100);
-        }
-
-        resolve({
-          downloadUrl,
-          storagePath,
-        });
-      } catch (urlErr: any) {
-        reject(
-          new Error(
-            `Failed to retrieve download URL: ${
-              urlErr?.message || urlErr
-            }`
-          )
-        );
-      }
-    }
-   );
-  });
-  }
-/**
- * Uploads a resume file with exponential retry logic, progress reporting,
- * fallback data URL support, non-blocking AI parsing, and Firestore persistence.
+ * Uploads a resume to Cloudinary with real progress reporting (0% -> 100%),
+ * automatically saves metadata to users/{uid}, candidates/{uid}, and resumes/{uid},
+ * and performs non-blocking AI parsing to auto-populate the profile in Firestore.
  */
 export async function uploadResumeService(
   options: ResumeUploadOptions
@@ -141,8 +37,6 @@ export async function uploadResumeService(
   const {
     uid,
     file,
-    maxRetries = 2,
-    timeoutMs = 120000,
     onProgress,
     additionalMetadata = {},
   } = options;
@@ -156,94 +50,52 @@ export async function uploadResumeService(
   }
 
   // 1. File type validation
-  const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-  const isDocx = file.type.includes("wordprocessingml") || file.type.includes("msword") || file.name.toLowerCase().endsWith(".docx") || file.name.toLowerCase().endsWith(".doc");
-  const isTxt = file.type === "text/plain" || file.name.toLowerCase().endsWith(".txt");
-  const isImg = file.type.startsWith("image/");
+  const fileNameLower = file.name.toLowerCase();
+  const isPdf = file.type === "application/pdf" || fileNameLower.endsWith(".pdf");
+  const isDoc = file.type.includes("wordprocessingml") || file.type.includes("msword") || fileNameLower.endsWith(".docx") || fileNameLower.endsWith(".doc");
+  const isTxt = file.type === "text/plain" || fileNameLower.endsWith(".txt");
 
-  if (!isPdf && !isDocx && !isTxt && !isImg) {
-    throw new Error("Invalid file format. Only PDF, DOCX, TXT, and Image files are supported.");
+  if (!isPdf && !isDoc && !isTxt) {
+    throw new Error("Invalid file format. Please upload a PDF, DOC, DOCX, or TXT file.");
   }
 
   // 2. File size validation (Max 10MB)
   const MAX_SIZE_MB = 10;
   if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-    throw new Error(`File size exceeds the ${MAX_SIZE_MB}MB limit.`);
+    throw new Error(`File size (${(file.size / (1024 * 1024)).toFixed(1)}MB) exceeds the maximum limit of ${MAX_SIZE_MB}MB.`);
   }
 
-  if (onProgress) onProgress(10);
+  if (onProgress) onProgress(0);
 
-  let lastError: Error | null = null;
-  let uploadData: { downloadUrl: string; storagePath: string } | null = null;
-
-  // Try Firebase Storage upload
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(`[ResumeUploadService] Executing upload attempt ${attempt}/${maxRetries} for uid: ${uid}`);
-      uploadData = await uploadSingleAttempt(uid, file, timeoutMs, onProgress);
-      break;
-    } catch (err: any) {
-      lastError = err;
-      console.warn(`[ResumeUploadService] Storage attempt ${attempt} notice: ${err.message}`);
-
-      if (err.message.includes("Unauthorized") || err.message.includes("exceeds")) {
-        break;
-      }
-
-      if (attempt < maxRetries) {
-        await new Promise((res) => setTimeout(res, 500));
-      }
-    }
+  // 3. Upload file directly to Cloudinary
+  let cloudinaryRes: CloudinaryUploadResult;
+  try {
+    console.log(`[ResumeUploadService] Uploading file "${file.name}" via Cloudinary for user: ${uid}`);
+    cloudinaryRes = await uploadToCloudinary(file, (percent) => {
+      if (onProgress) onProgress(percent);
+    });
+  } catch (err: any) {
+    console.error("[ResumeUploadService] Cloudinary upload error:", err);
+    throw new Error(err.message || "Failed to upload resume to Cloudinary. Please check your network and try again.");
   }
 
-  // Fallback to Base64 data URI if storage bucket is offline/restricted
- if (!uploadData) {
-  return {
-    success: false,
-    downloadUrl: "",
-    storagePath: "",
-    fileName: file.name,
-    fileSize: file.size,
-    uploadedAt: new Date().toISOString(),
-    error:
-      lastError?.message ||
-      "Resume upload failed. Please check Firebase Storage permissions and try again.",
-  };
-}
-try {
-  const existingResumeSnap = await getDoc(doc(db, "resumes", uid));
-
-  if (existingResumeSnap.exists()) {
-    const oldStoragePath = existingResumeSnap.data()?.resumeStoragePath;
-
-    if (
-      oldStoragePath &&
-      oldStoragePath !== uploadData.storagePath &&
-      !oldStoragePath.startsWith("firestore_embedded/")
-    ) {
-      await deleteObject(ref(storage, oldStoragePath)).catch((error) => {
-        console.warn("Old resume could not be deleted:", error);
-      });
-    }
-  }
-} catch (error) {
-  console.warn("Could not check previous resume:", error);
-}
   const uploadedAt = new Date().toISOString();
+  const downloadUrl = cloudinaryRes.secure_url;
+  const publicId = cloudinaryRes.public_id;
 
-  // Save metadata to Firestore instantly without waiting for AI analysis
+  // 4. Save metadata to Firestore across users/{uid}, candidates/{uid}, and resumes/{uid}
   try {
     if (db) {
       const resumeMetadata = {
         userId: uid,
-        resumeUrl: uploadData.downloadUrl,
-        resumeStoragePath: uploadData.storagePath,
+        resumeUrl: downloadUrl,
+        resumePublicId: publicId,
+        resumeStoragePath: publicId,
         resumeFileName: file.name,
         fileSize: file.size,
         mimeType: file.type || "application/pdf",
-        uploadedAt: serverTimestamp(),
-updatedAt: serverTimestamp(),
-uploadedAtIso: uploadedAt,
+        uploadedAt,
+        updatedAt: uploadedAt,
         status: "active",
         resumeAnalysisStatus: "pending",
         ...additionalMetadata,
@@ -255,101 +107,45 @@ uploadedAtIso: uploadedAt,
       // 2. candidates/{uid}
       await setDoc(doc(db, "candidates", uid), {
         userId: uid,
-        resumeUrl: uploadData.downloadUrl,
+        resumeUrl: downloadUrl,
+        resumePublicId: publicId,
         resumeFileName: file.name,
-        resumeStoragePath: uploadData.storagePath,
+        resumeStoragePath: publicId,
         resumeAnalysisStatus: "pending",
-        updatedAt: serverTimestamp(),
+        updatedAt: uploadedAt,
       }, { merge: true });
 
       // 3. users/{uid}
       await setDoc(doc(db, "users", uid), {
-        resumeUrl: uploadData.downloadUrl,
+        resumeUrl: downloadUrl,
+        resumePublicId: publicId,
         resumeFileName: file.name,
-        resumeStoragePath: uploadData.storagePath,
+        resumeStoragePath: publicId,
+        resumeUploaded: true,
         resumeAnalysisStatus: "pending",
-        updatedAt: serverTimestamp(),
+        updatedAt: uploadedAt,
       }, { merge: true });
     }
- } catch (dbErr: any) {
-  try {
-    await deleteObject(ref(storage, uploadData.storagePath));
-  } catch {
-    // Ignore cleanup error
+  } catch (dbErr: any) {
+    console.warn(`[ResumeUploadService] Warning saving metadata to Firestore:`, dbErr?.message || dbErr);
   }
 
-  return {
-    success: false,
-    downloadUrl: "",
-    storagePath: "",
-    fileName: file.name,
-    fileSize: file.size,
-    uploadedAt,
-    error:
-      dbErr?.message ||
-      "Resume uploaded, but candidate profile could not be saved.",
-  };
-}
-  // NON-BLOCKING BACKGROUND GEMINI AI ANALYSIS
+  // 5. Trigger automatic AI Parsing and update Firestore
   setTimeout(async () => {
     try {
-      console.log("[ResumeUploadService] Starting background AI analysis for:", file.name);
-      const rawTextSample = `Candidate Name: ${file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ")}\nFile: ${file.name}`;
-      const aiResult = await ResumeAIService.analyzeResume(rawTextSample, file.name.replace(/\.[^/.]+$/, ""));
-      const p = aiResult.parsed;
-
-      const parsedProfile = {
-        fullName: p.fullName || "Candidate",
-        email: p.email || "",
-        mobileNumber: p.phone || "",
-        address: p.preferredLocation || "",
-        skills: p.skills || [],
-        education: p.education?.length ? `${p.education[0].degree} - ${p.education[0].school}` : "",
-        experience: p.experience?.length ? `${p.experience[0].role} at ${p.experience[0].company}` : "",
-        currentCompany: p.currentCompany || "",
-        currentDesignation: p.designation || "",
-        languages: p.languages?.join(", ") || "",
-        certifications: p.missingSkills?.certifications?.join(", ") || "",
-        parsedAt: new Date().toISOString(),
-      };
-
-      if (db) {
-        const aiUpdate = {
-          parsedProfile,
-          resumeAnalysisStatus: "completed",
-          resumeScore: p.score || 85,
-          updatedAt: new Date().toISOString(),
-        };
-
-        await setDoc(doc(db, "resumes", uid), aiUpdate, { merge: true });
-        await setDoc(doc(db, "candidates", uid), {
-          ...aiUpdate,
-          skills: p.skills || [],
-          experience: p.experience?.length ? p.experience[0].role : "",
-        }, { merge: true });
-        await setDoc(doc(db, "users", uid), {
-          resumeAnalysisStatus: "completed",
-          skills: p.skills || [],
-          updatedAt: new Date().toISOString(),
-        }, { merge: true });
-      }
-      console.log("[ResumeUploadService] Background AI analysis completed successfully.");
-    } catch (bgErr) {
-      console.warn("[ResumeUploadService] Background AI analysis non-fatal warning:", bgErr);
-      if (db) {
-        await setDoc(doc(db, "resumes", uid), { resumeAnalysisStatus: "failed" }, { merge: true }).catch(() => {});
-        await setDoc(doc(db, "candidates", uid), { resumeAnalysisStatus: "failed" }, { merge: true }).catch(() => {});
-        await setDoc(doc(db, "users", uid), { resumeAnalysisStatus: "failed" }, { merge: true }).catch(() => {});
-      }
+      console.log("[ResumeUploadService] Triggering parseResumeData automatically upon successful Cloudinary upload...");
+      await parseResumeData(downloadUrl, uid, file.name, file.type);
+      console.log("[ResumeUploadService] Automatic parseResumeData completed successfully.");
+    } catch (parseErr) {
+      console.warn("[ResumeUploadService] Non-fatal background AI parsing notice:", parseErr);
     }
   }, 10);
-if (onProgress) {
-  onProgress(100);
-}
+
   return {
     success: true,
-    downloadUrl: uploadData.downloadUrl,
-    storagePath: uploadData.storagePath,
+    downloadUrl,
+    storagePath: publicId,
+    publicId,
     fileName: file.name,
     fileSize: file.size,
     uploadedAt,

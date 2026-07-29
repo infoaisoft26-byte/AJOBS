@@ -2,7 +2,6 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore, enableMultiTabIndexedDbPersistence, setLogLevel } from "firebase/firestore";
 import { initializeAppCheck, ReCaptchaV3Provider, ReCaptchaEnterpriseProvider } from "firebase/app-check";
-import { getStorage } from "firebase/storage";
 import config from "../firebase-applet-config.json";
 
 // Safe helper to extract all text from any log argument, including nested objects with circular references
@@ -211,7 +210,6 @@ try {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
     authInstance = getAuth(app);
     dbInstance = getFirestore(app, (config as any).firestoreDatabaseId);
-    storageInstance = getStorage(app, "gs://planning-with-ai-1ea1c.firebasestorage.app");
 
     // Initialize App Check safely (Intentionally bypassed to prevent App Check HTTP 403 fetch errors in sandbox/preview domains)
     if (typeof window !== "undefined") {
@@ -249,4 +247,4 @@ try {
 
 export const auth = authInstance;
 export const db = dbInstance;
-export const storage = storageInstance;
+export const storage = null;

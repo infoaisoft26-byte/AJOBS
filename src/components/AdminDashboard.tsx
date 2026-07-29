@@ -38,6 +38,7 @@ import SupportSystem from "./admin/SupportSystem";
 import NotificationCenter from "./admin/NotificationCenter";
 import SystemSettings from "./admin/SystemSettings";
 import AuditLogs from "./admin/AuditLogs";
+import ChatMonitoringView from "./admin/ChatMonitoringView";
 import AbacControlInspector from "./AbacControlInspector";
 import LeadManagement from "./LeadManagement";
 import ApplicationManagement from "./admin/ApplicationManagement";
@@ -127,6 +128,8 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
     
     let users: any[] = [];
     let jobs: any[] = [];
+    let applications: any[] = [];
+    let resumes: any[] = [];
     let approvals: ApprovalRequest[] = [];
     let support: SupportTicket[] = [];
     let cms: CMSContent[] = [];
@@ -145,10 +148,30 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
       });
       setUserList(users);
     } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve users from Firestore, falling back to local seed data:", err.message);
+      console.warn("Resilient Fetch: Failed to retrieve users from Firestore:", err.message);
       syncErrorsList.push("users");
-      users = FALLBACK_USERS;
-      setUserList(FALLBACK_USERS);
+      users = [];
+      setUserList([]);
+    }
+
+    // 1b. Fetch Applications
+    try {
+      const appsSnap = await getDocs(collection(db, "applications"));
+      appsSnap.forEach(doc => {
+        applications.push({ id: doc.id, ...doc.data() });
+      });
+    } catch (err: any) {
+      console.warn("Resilient Fetch: Failed to retrieve applications from Firestore:", err.message);
+    }
+
+    // 1c. Fetch Resumes
+    try {
+      const resumesSnap = await getDocs(collection(db, "resumes"));
+      resumesSnap.forEach(doc => {
+        resumes.push({ id: doc.id, ...doc.data() });
+      });
+    } catch (err: any) {
+      console.warn("Resilient Fetch: Failed to retrieve resumes from Firestore:", err.message);
     }
 
     // 2. Fetch Jobs
@@ -281,28 +304,33 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
       setGlobalConfig(FALLBACK_SYSTEM_SETTINGS);
     }
 
-    // Calculate aggregated Live Stats safely with fallbacks
+    // Calculate aggregated Live Stats safely from real Firestore collections
     const candidatesCount = users.filter(u => u.role === "candidate").length;
     const employersCount = users.filter(u => u.role === "employer").length;
     const consultanciesCount = users.filter(u => u.role === "consultancy").length;
 
-    const activeJobsCount = jobs.filter(j => j.status === "open").length;
+    const activeJobsCount = jobs.filter(j => j.status === "open" || j.status === "Active" || !j.status).length;
     const pendingVerificationCount = approvals.filter(a => a.status === "PENDING").length;
     const openSupportCount = support.filter(s => s.status === "OPEN" || s.status === "ESCALATED").length;
+
+    const todayIsoStr = new Date().toISOString().split("T")[0];
+    const todayRegsCount = users.filter(u => u.createdAt && typeof u.createdAt === "string" && u.createdAt.startsWith(todayIsoStr)).length;
+    const totalResumesCount = resumes.length || users.filter(u => u.resumeUrl || u.resumeFileName).length;
+    const totalAppsCount = applications.length;
 
     // Billing aggregations
     const successPayments = payments.filter(p => p.status === "SUCCESS");
     const totalRevCollected = successPayments.reduce((sum, current) => sum + (current.totalPaid || 0), 0);
 
     // Fetch live telemetry from Express server
-    let telemetryData = { activeUsers: 4, aiRequests: 0, failedAiRequests: 0, paymentsCount: 0, errorsCount: 0, averageLatencyMs: 820 };
+    let telemetryData = { activeUsers: 1, aiRequests: 0, failedAiRequests: 0, paymentsCount: 0, errorsCount: 0, averageLatencyMs: 120 };
     try {
       const telRes = await fetch("/api/telemetry");
       if (telRes.ok) {
         telemetryData = await telRes.json();
       }
     } catch (telErr) {
-      console.warn("Failed to fetch live API telemetry, using fallback defaults:", telErr);
+      console.warn("Failed to fetch live API telemetry:", telErr);
     }
 
     setStats({
@@ -311,16 +339,16 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
       totalEmployers: employersCount,
       totalJobs: jobs.length,
       activeJobs: activeJobsCount,
-      applicationsToday: telemetryData.aiRequests || 0,
+      applicationsToday: totalAppsCount,
       interviewsToday: 0,
-      resumesAnalyzedToday: telemetryData.aiRequests || 0,
+      resumesAnalyzedToday: totalResumesCount,
       revenueToday: telemetryData.paymentsCount * 9999,
       monthlyRevenue: totalRevCollected,
       yearlyRevenue: totalRevCollected * 12,
       pendingApprovals: pendingVerificationCount,
       supportTickets: openSupportCount,
       liveOnlineUsers: telemetryData.activeUsers || 1,
-      registrationsToday: candidatesCount + employersCount + consultanciesCount
+      registrationsToday: todayRegsCount
     });
 
     setLoading(false);
@@ -433,6 +461,7 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
     { id: "users", label: "User Management", icon: Users, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "leads", label: "Lead Sourcing Desk", icon: Users, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "approvals", label: "Approval Center", icon: ShieldCheck, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
+    { id: "chat-monitoring", label: "Chat & Anti-Fraud Center", icon: MessageSquare, authorizedRoles: ["Super Admin", "Support Desk", "Moderator", "Read Only"] },
     { id: "jobs", label: "Job Postings", icon: Briefcase, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "ai", label: "AI Control Center", icon: Brain, authorizedRoles: ["Super Admin", "Read Only"] },
     { id: "payments", label: "Payments & Billings", icon: CreditCard, authorizedRoles: ["Super Admin", "Finance Officer", "Read Only"] },
@@ -652,6 +681,10 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
                   onRefresh={fetchWorkspaceData}
                   userName="Super Admin Desk"
                 />
+              )}
+
+              {activeView === "chat-monitoring" && (
+                <ChatMonitoringView />
               )}
 
               {activeView === "jobs" && (

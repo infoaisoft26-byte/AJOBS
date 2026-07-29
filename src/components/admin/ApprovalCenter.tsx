@@ -53,6 +53,20 @@ export default function ApprovalCenter({
         timeline: updatedTimeline
       }, { merge: true });
 
+      // Call server backend review endpoint for atomic state synchronization across collections
+      await fetch("/api/verification/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requestId: req.id,
+          targetUserId: req.targetId,
+          decision: nextStatus === "APPROVED" ? "APPROVED" : nextStatus === "CHANGES_REQUESTED" ? "RESUBMISSION_REQUIRED" : "REJECTED",
+          rejectionReason: adminComments,
+          adminNotes: adminComments,
+          reviewedBy: userName
+        })
+      }).catch(err => console.warn("Verification review API call warning:", err));
+
       // 2. Synchronize to destination collection (make verified if APPROVED)
       if (nextStatus === "APPROVED") {
         if (req.targetType === "employer") {
