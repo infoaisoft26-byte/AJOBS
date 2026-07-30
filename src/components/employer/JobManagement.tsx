@@ -2,7 +2,7 @@ import { useState } from "react";
 import { 
   Plus, Edit, Trash2, Copy, ToggleLeft, ToggleRight, Archive, CheckCircle, 
   Search, X, Briefcase, PlusCircle, Building, Users, Clock, HelpCircle, Save,
-  Pause, Play, Eye
+  Pause, Play, Eye, RefreshCw
 } from "lucide-react";
 import { CompanyJob } from "./EmployerTypes";
 import { doc, setDoc, deleteDoc } from "firebase/firestore";

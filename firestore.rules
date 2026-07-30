@@ -439,8 +439,5 @@ service cloud.firestore {
     match /referrals/{referralId} {
       allow read, write: if isSignedIn();
     }
-    match /chat_attachments/{attachmentId} {
-      allow read, write: if isSignedIn();
-    }
   }
 }

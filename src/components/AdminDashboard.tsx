@@ -6,7 +6,7 @@ import {
   Database, CheckCircle, AlertTriangle, Play, HelpCircle, 
   Terminal, CreditCard, Globe, Bell, Briefcase, Brain, Flame,
   ShieldCheck, Lock, Layers, LogOut, ChevronLeft, ChevronRight, UserX,
-  FileText, BarChart2
+  FileText, BarChart2, MessageSquare
 } from "lucide-react";
 import { db, auth } from "../firebase";
 import { collection, getDocs, doc, setDoc, getDoc } from "firebase/firestore";

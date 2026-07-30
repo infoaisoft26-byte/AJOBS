@@ -5,7 +5,7 @@ import AIJobsLogo from "./AIJobsLogo";
 import { 
   X, User, Shield, Briefcase, Mail, Lock, UserPlus, Sparkles, 
   Building2, Phone, Key, ArrowLeft, Send, CheckCircle2, AlertCircle,
-  HelpCircle, Eye, EyeOff, ShieldCheck, Fingerprint, ShieldAlert
+  HelpCircle, Eye, EyeOff, ShieldCheck, Fingerprint, ShieldAlert, CheckSquare
 } from "lucide-react";
 import { motion } from "motion/react";
 import { auth, db, isFirebaseConfigured, firebaseConfigError } from "../firebase";

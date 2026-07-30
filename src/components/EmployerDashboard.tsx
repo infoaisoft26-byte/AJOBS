@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { 
   Building2, TrendingUp, Briefcase, Brain, Users, 
   Calendar, Award, BarChart2, ShieldAlert, ShieldCheck, RefreshCw, LogOut, CreditCard, Bell,
-  MessageSquare, FileText, Search, CloudLightning, Plus, PlusCircle
+  MessageSquare, FileText, Search, CloudLightning, Plus, PlusCircle, AlertTriangle
 } from "lucide-react";
 import { db } from "../firebase";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
