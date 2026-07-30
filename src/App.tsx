@@ -37,6 +37,17 @@ import { ToastProvider, useToast } from "@/components/GlobalToast";
 import { initGA, trackPageView, trackInteraction } from "@/utils/analytics";
 import { validateEnvironment } from "@/utils/envValidation";
 
+// Pre-Launch Components & Route Guards
+import CandidatePreLaunchLogin from "@/components/CandidatePreLaunchLogin";
+import CandidateRegister from "@/components/CandidateRegister";
+import CandidatePreLaunchProfile from "@/components/CandidatePreLaunchProfile";
+import InternalPlatformLogin from "@/components/InternalPlatformLogin";
+import AdminLogin from "@/components/AdminLogin";
+
+import CandidatePreLaunchGuard from "@/components/guards/CandidatePreLaunchGuard";
+import InternalAccessGuard from "@/components/guards/InternalAccessGuard";
+import AdminGuard from "@/components/guards/AdminGuard";
+
 function PageTransitionParticles({ triggerKey }: { triggerKey: string }) {
   const [particles, setParticles] = useState<Array<{ id: number; left: number; top: number; size: number; delay: number }>>([]);
 
@@ -341,26 +352,31 @@ function MainAppContent() {
     const searchParams = new URLSearchParams(window.location.search);
     const searchJobId = searchParams.get("jobId");
 
-    if (searchJobId) {
-      setActiveView(`job-details-${searchJobId}`);
-    } else if (path.startsWith("/jobs/")) {
-      const parts = path.split("-");
-      const jId = parts[parts.length - 1];
-      if (jId) setActiveView(`job-details-${jId}`);
-    } else if (path === "/resume/onboarding") {
-      setActiveView("resume-onboarding");
-    } else if (path === "/candidate/profile" || path === "/candidate/dashboard") {
-      setActiveView("dashboard");
-    } else if (path.startsWith("/recruiter/") || path.startsWith("/employer/") || path === "/recruiter" || path === "/employer") {
-      setActiveView("dashboard");
-    }
-
-    const handlePopState = () => {
-      const p = window.location.pathname;
-      if (p.startsWith("/jobs/")) {
+    const routePath = (p: string) => {
+      if (searchJobId) {
+        setActiveView(`job-details-${searchJobId}`);
+      } else if (p.startsWith("/jobs/")) {
         const parts = p.split("-");
         const jId = parts[parts.length - 1];
         if (jId) setActiveView(`job-details-${jId}`);
+      } else if (p === "/candidate-login") {
+        setActiveView("candidate-login");
+      } else if (p === "/candidate-register") {
+        setActiveView("candidate-register");
+      } else if (p === "/candidate/pre-launch-profile") {
+        setActiveView("pre-launch-profile");
+      } else if (p === "/internal-login") {
+        setActiveView("internal-login");
+      } else if (p === "/admin-login") {
+        setActiveView("admin-login");
+      } else if (p === "/admin/dashboard" || p.startsWith("/admin")) {
+        setActiveView("admin-dashboard");
+      } else if (p === "/internal/candidate") {
+        setActiveView("internal-candidate");
+      } else if (p === "/internal/employer") {
+        setActiveView("internal-employer");
+      } else if (p === "/internal/consultancy") {
+        setActiveView("internal-consultancy");
       } else if (p === "/resume/onboarding") {
         setActiveView("resume-onboarding");
       } else if (p === "/candidate/profile" || p === "/candidate/dashboard") {
@@ -370,6 +386,12 @@ function MainAppContent() {
       } else if (p === "/") {
         setActiveView("home");
       }
+    };
+
+    routePath(path);
+
+    const handlePopState = () => {
+      routePath(window.location.pathname);
     };
 
     window.addEventListener("popstate", handlePopState);
@@ -632,9 +654,9 @@ function MainAppContent() {
                   <LandingPage
                     onGetStarted={() => {
                       if (user) {
-                        setActiveView("dashboard");
+                        setActiveView("pre-launch-profile");
                       } else {
-                        setAuthMode("signup");
+                        setActiveView("candidate-register");
                       }
                     }}
                     setActiveView={setActiveView}
@@ -643,6 +665,105 @@ function MainAppContent() {
                     onOpenAuth={(mode) => setAuthMode(mode)}
                     user={user}
                   />
+                ) : activeView === "candidate-login" ? (
+                  <CandidatePreLaunchLogin
+                    onLoginSuccess={(profile) => {
+                      setUser(profile);
+                      setActiveView("pre-launch-profile");
+                    }}
+                    onNavigateToRegister={() => setActiveView("candidate-register")}
+                  />
+                ) : activeView === "candidate-register" ? (
+                  <CandidateRegister
+                    onRegisterSuccess={(profile) => {
+                      setUser(profile);
+                      setActiveView("pre-launch-profile");
+                    }}
+                    onNavigateToLogin={() => setActiveView("candidate-login")}
+                  />
+                ) : activeView === "pre-launch-profile" ? (
+                  <CandidatePreLaunchGuard
+                    user={user}
+                    onNavigateToLogin={() => setActiveView("candidate-login")}
+                  >
+                    <CandidatePreLaunchProfile
+                      user={user}
+                      onEditProfile={() => setActiveView("resume-onboarding")}
+                    />
+                  </CandidatePreLaunchGuard>
+                ) : activeView === "internal-login" ? (
+                  <InternalPlatformLogin
+                    onAuthorizedSuccess={(profile, targetRoute) => {
+                      setUser(profile);
+                      if (targetRoute === "/admin/dashboard") setActiveView("admin-dashboard");
+                      else if (targetRoute === "/internal/employer") setActiveView("internal-employer");
+                      else if (targetRoute === "/internal/consultancy") setActiveView("internal-consultancy");
+                      else setActiveView("internal-candidate");
+                    }}
+                    onCandidateRedirect={() => setActiveView("pre-launch-profile")}
+                  />
+                ) : activeView === "admin-login" ? (
+                  <AdminLogin
+                    onAdminLoginSuccess={(profile) => {
+                      setUser(profile);
+                      setActiveView("admin-dashboard");
+                    }}
+                  />
+                ) : activeView === "admin-dashboard" ? (
+                  <AdminGuard
+                    user={user}
+                    onNavigateToAdminLogin={() => setActiveView("admin-login")}
+                  >
+                    <Suspense fallback={<DashboardSkeleton />}>
+                      <AdminDashboard
+                        userId={user?.uid}
+                        userName={user?.name}
+                      />
+                    </Suspense>
+                  </AdminGuard>
+                ) : activeView === "internal-candidate" ? (
+                  <InternalAccessGuard
+                    user={user}
+                    onCandidateRedirect={() => setActiveView("pre-launch-profile")}
+                    onNavigateToInternalLogin={() => setActiveView("internal-login")}
+                  >
+                    <Suspense fallback={<DashboardSkeleton />}>
+                      <CandidateDashboard
+                        userId={user?.uid || ""}
+                        userName={user?.name || "Candidate"}
+                        userEmail={user?.email}
+                        onResumeUploadSuccess={() => {}}
+                        onFindJobsClick={() => setActiveView("home")}
+                        onNavigateToOnboarding={() => setActiveView("resume-onboarding")}
+                      />
+                    </Suspense>
+                  </InternalAccessGuard>
+                ) : activeView === "internal-employer" ? (
+                  <InternalAccessGuard
+                    user={user}
+                    onCandidateRedirect={() => setActiveView("pre-launch-profile")}
+                    onNavigateToInternalLogin={() => setActiveView("internal-login")}
+                  >
+                    <Suspense fallback={<DashboardSkeleton />}>
+                      <EmployerDashboard
+                        userId={user?.uid || ""}
+                        companyName={user?.name || "Company"}
+                      />
+                    </Suspense>
+                  </InternalAccessGuard>
+                ) : activeView === "internal-consultancy" ? (
+                  <InternalAccessGuard
+                    user={user}
+                    onCandidateRedirect={() => setActiveView("pre-launch-profile")}
+                    onNavigateToInternalLogin={() => setActiveView("internal-login")}
+                  >
+                    <Suspense fallback={<DashboardSkeleton />}>
+                      <ConsultancyDashboard
+                        userId={user?.uid || ""}
+                        consultancyName={user?.name || "Consultancy"}
+                      />
+                    </Suspense>
+                  </InternalAccessGuard>
                 ) : activeView.startsWith("job-details-") ? (
                   <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
                     <Suspense fallback={<GeneralLoading />}>

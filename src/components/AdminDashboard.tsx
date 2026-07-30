@@ -13,6 +13,7 @@ import { collection, getDocs, doc, setDoc, getDoc } from "firebase/firestore";
 import { recordActivityLog } from "../services/activityLogService";
 
 // Sub-components
+import AdminInternalAccessManager from "./AdminInternalAccessManager";
 import { LiveStats, SystemAuditLog, SupportTicket, ApprovalRequest, CMSContent, EmailTemplate, AdminSystemSettings, PaymentTransaction } from "./admin/AdminTypes";
 import { 
   seedSuperAdminDataIfEmpty
@@ -449,6 +450,7 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
     { id: "applications", label: "Applications Directory", icon: FileText, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "funnel", label: "Hiring Funnel Analytics", icon: BarChart2, authorizedRoles: ["Super Admin", "Finance Officer", "Moderator", "Read Only"] },
     { id: "users", label: "User Management", icon: Users, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
+    { id: "internal-access", label: "Internal Access Management", icon: ShieldCheck, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "leads", label: "Lead Sourcing Desk", icon: Users, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "approvals", label: "Approval Center", icon: ShieldCheck, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "chat-monitoring", label: "Chat & Anti-Fraud Center", icon: MessageSquare, authorizedRoles: ["Super Admin", "Support Desk", "Moderator", "Read Only"] },
@@ -655,6 +657,10 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
                   users={userList}
                   onRefresh={fetchWorkspaceData}
                 />
+              )}
+
+              {activeView === "internal-access" && (
+                <AdminInternalAccessManager />
               )}
 
               {activeView === "leads" && (

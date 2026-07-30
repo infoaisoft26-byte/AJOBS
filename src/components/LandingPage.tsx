@@ -500,12 +500,21 @@ export default function LandingPage({
           className="flex flex-col sm:flex-row justify-center items-center gap-4 max-w-xl mx-auto"
         >
           <button 
-            onClick={onGetStarted}
-            className="w-full sm:w-auto px-8 py-4.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-bold rounded-2xl shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center space-x-2 text-base shrink-0"
-            id="hero-take-interview-btn"
+            onClick={() => setActiveView("candidate-register")}
+            className="w-full sm:w-auto px-8 py-4.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-2xl shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center space-x-2 text-base shrink-0"
+            id="hero-register-candidate-btn"
           >
-            <Sparkles className="w-5 h-5 text-emerald-300" />
-            <span>Take Free AI Interview</span>
+            <Sparkles className="w-5 h-5 text-blue-200" />
+            <span>Register as a Candidate</span>
+          </button>
+          
+          <button 
+            onClick={() => setActiveView("candidate-login")}
+            className="w-full sm:w-auto px-7 py-4.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-2xl transition-all border border-white/15 active:scale-[0.98] cursor-pointer flex items-center justify-center space-x-2 text-base shrink-0"
+            id="hero-candidate-login-btn"
+          >
+            <UserCheck className="w-5 h-5 text-blue-400" />
+            <span>Already Registered? Login</span>
           </button>
           
           <input 

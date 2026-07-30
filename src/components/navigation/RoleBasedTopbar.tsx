@@ -307,16 +307,16 @@ export default function RoleBasedTopbar({
           ) : (
             <div className="flex items-center space-x-2">
               <button
-                onClick={() => { soundSynth.playClick(); onShowAuth("signin"); }}
+                onClick={() => { soundSynth.playClick(); setActiveView("candidate-login"); }}
                 className="px-3.5 py-1.5 text-xs font-bold text-gray-300 hover:text-white transition-all cursor-pointer"
               >
-                Login
+                Already Registered? Login
               </button>
               <button
-                onClick={() => { soundSynth.playClick(); onShowAuth("signup"); }}
+                onClick={() => { soundSynth.playClick(); setActiveView("candidate-register"); }}
                 className="px-4 py-1.5 rounded-xl border border-blue-500/30 bg-gradient-to-r from-blue-600 to-indigo-600 text-xs font-bold text-white shadow-lg shadow-blue-600/20 hover:scale-105 transition-all cursor-pointer"
               >
-                Register
+                Register as a Candidate
               </button>
             </div>
           )}

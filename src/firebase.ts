@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
+import { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore, enableMultiTabIndexedDbPersistence, setLogLevel } from "firebase/firestore";
 import { initializeAppCheck, ReCaptchaV3Provider, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 import config from "../firebase-applet-config.json";
@@ -248,3 +248,4 @@ try {
 export const auth = authInstance;
 export const db = dbInstance;
 export const storage = null;
+export const googleProvider = new GoogleAuthProvider();
