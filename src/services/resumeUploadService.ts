@@ -1,5 +1,5 @@
 import { doc, setDoc } from "firebase/firestore";
-import { db } from "../firebase";
+import { auth, db } from "../firebase";
 import { uploadToCloudinary, CloudinaryUploadResult } from "./cloudinaryService";
 import { parseResumeData } from "./aiParser";
 
@@ -19,6 +19,7 @@ export interface ResumeUploadResult {
   downloadUrl: string;
   storagePath: string;
   publicId?: string;
+  assetId?: string;
   fileName: string;
   fileSize: number;
   uploadedAt: string;
@@ -38,6 +39,8 @@ export async function uploadResumeService(
     uid,
     file,
     onProgress,
+    maxRetries = 3,
+    timeoutMs = 60000,
     additionalMetadata = {},
   } = options;
 
@@ -67,12 +70,18 @@ export async function uploadResumeService(
 
   if (onProgress) onProgress(0);
 
-  // 3. Upload file directly to Cloudinary
+  // 3. Upload file directly to Cloudinary with folder structure: aijobs/candidates/{uid}/resumes
   let cloudinaryRes: CloudinaryUploadResult;
   try {
     console.log(`[ResumeUploadService] Uploading file "${file.name}" via Cloudinary for user: ${uid}`);
-    cloudinaryRes = await uploadToCloudinary(file, (percent) => {
-      if (onProgress) onProgress(percent);
+    cloudinaryRes = await uploadToCloudinary(file, {
+      userId: uid,
+      assetType: "resumes",
+      maxRetries,
+      timeoutMs,
+      onProgress: (percent) => {
+        if (onProgress) onProgress(percent);
+      }
     });
   } catch (err: any) {
     console.error("[ResumeUploadService] Cloudinary upload error:", err);
@@ -82,20 +91,40 @@ export async function uploadResumeService(
   const uploadedAt = new Date().toISOString();
   const downloadUrl = cloudinaryRes.secure_url;
   const publicId = cloudinaryRes.public_id;
+  const assetId = cloudinaryRes.asset_id || "";
 
-  // 4. Save metadata to Firestore across users/{uid}, candidates/{uid}, and resumes/{uid}
+  const currentUser = auth.currentUser;
+  const verifiedEmail = currentUser?.email || additionalMetadata.accountEmail || "";
+  const isEmailVerified = currentUser?.emailVerified ?? true;
+
+  // 4. Save metadata to Firestore across resumes/{uid}, candidates/{uid}, and users/{uid}
   try {
     if (db) {
       const resumeMetadata = {
+        resumeId: uid,
+        candidateId: uid,
+        ownerUid: uid,
         userId: uid,
-        resumeUrl: downloadUrl,
-        resumePublicId: publicId,
-        resumeStoragePath: publicId,
-        resumeFileName: file.name,
+        accountEmail: verifiedEmail,
+        emailVerified: isEmailVerified,
+        cloudinaryPublicId: publicId,
+        cloudinaryAssetId: assetId,
+        cloudinaryResourceType: cloudinaryRes.resource_type || "auto",
+        cloudinaryFormat: cloudinaryRes.format || (isPdf ? "pdf" : "doc"),
+        cloudinaryFolder: cloudinaryRes.folder || `aijobs/candidates/${uid}/resumes`,
+        originalFileName: file.name,
         fileSize: file.size,
         mimeType: file.type || "application/pdf",
         uploadedAt,
         updatedAt: uploadedAt,
+        parseStatus: "pending",
+        parsedData: {},
+        parseConfidence: 0.9,
+        candidateConfirmed: false,
+        resumeUrl: downloadUrl,
+        resumePublicId: publicId,
+        resumeStoragePath: publicId,
+        resumeFileName: file.name,
         status: "active",
         resumeAnalysisStatus: "pending",
         ...additionalMetadata,
@@ -107,6 +136,8 @@ export async function uploadResumeService(
       // 2. candidates/{uid}
       await setDoc(doc(db, "candidates", uid), {
         userId: uid,
+        ownerUid: uid,
+        accountEmail: verifiedEmail,
         resumeUrl: downloadUrl,
         resumePublicId: publicId,
         resumeFileName: file.name,
@@ -146,6 +177,7 @@ export async function uploadResumeService(
     downloadUrl,
     storagePath: publicId,
     publicId,
+    assetId,
     fileName: file.name,
     fileSize: file.size,
     uploadedAt,

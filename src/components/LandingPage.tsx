@@ -123,8 +123,12 @@ export default function LandingPage({
 
       let downloadURL = "";
       try {
-        const cloudinaryRes = await uploadToCloudinary(file, (pct) => {
-          setOnboardProgress(50 + Math.round((pct / 100) * 30));
+        const cloudinaryRes = await uploadToCloudinary(file, {
+          userId: "anonymous_onboarding",
+          assetType: "resumes",
+          onProgress: (pct) => {
+            setOnboardProgress(50 + Math.round((pct / 100) * 30));
+          }
         });
         downloadURL = cloudinaryRes.secure_url;
       } catch (stErr) {

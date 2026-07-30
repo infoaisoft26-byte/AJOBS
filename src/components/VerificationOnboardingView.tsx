@@ -104,8 +104,9 @@ export default function VerificationOnboardingView({ user, onLogout, onStatusUpd
     setDocState({ file, status: "uploading" });
 
     try {
-      const result = await uploadToCloudinary(file, (percent) => {
-        // progress callback
+      const result = await uploadToCloudinary(file, {
+        userId: user?.uid || "anonymous",
+        assetType: "documents"
       });
 
       setDocState({

@@ -386,10 +386,60 @@ service cloud.firestore {
     match /interview_scores/{scoreId} {
       allow read, write: if isSignedIn();
     }
+    match /talent_scores/{scoreId} {
+      allow read, write: if isSignedIn();
+    }
     match /ai_recommendations/{recId} {
       allow read, write: if isSignedIn();
     }
     match /job_matches/{matchId} {
+      allow read, write: if isSignedIn();
+    }
+    match /candidate_selfies/{selfieId} {
+      allow read, write: if isSignedIn();
+    }
+    match /admin_logs/{logId} {
+      allow read, write: if isSignedIn();
+    }
+    match /indexing_logs/{logId} {
+      allow read, write: if isSignedIn();
+    }
+    match /billing_profiles/{profileId} {
+      allow read, write: if isSignedIn();
+    }
+    match /bookmarks/{bookmarkId} {
+      allow read, write: if isSignedIn();
+    }
+    match /career_applications/{appId} {
+      allow read, write: if isSignedIn();
+    }
+    match /career_guidance/{guidanceId} {
+      allow read, write: if isSignedIn();
+    }
+    match /company_info/{infoId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+    match /global_config/{configId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+    match /global_socials/{socialId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+    match /prompt_templates/{templateId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /recruiters/{recruiterId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(recruiterId) || isRecruiter() || isAdmin();
+    }
+    match /referrals/{referralId} {
+      allow read, write: if isSignedIn();
+    }
+    match /chat_attachments/{attachmentId} {
       allow read, write: if isSignedIn();
     }
   }

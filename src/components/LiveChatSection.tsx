@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { motion, AnimatePresence } from "motion/react";
 import { detectPaymentRequest, ANTI_FRAUD_CANDIDATE_WARNING } from "../utils/fraudDetection";
+import { uploadToCloudinary } from "../services/cloudinaryService";
 
 interface LiveChatSectionProps {
   currentUserId: string;
@@ -22,6 +23,7 @@ interface ChatConversation {
   participantIds: string[];
   participantNames: Record<string, string>;
   participantRoles: Record<string, string>;
+  applicationId?: string;
   lastMessage?: string;
   lastMessageAt?: string;
   lastMessageSenderId?: string;
@@ -42,6 +44,7 @@ interface ChatMessage {
     type: string;
     size: string;
     url: string; // Base64 or standard asset url
+    publicId?: string;
   };
 }
 
@@ -225,32 +228,41 @@ export default function LiveChatSection({
     }, 2000);
   };
 
-  // Trigger file attachment selection
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Trigger file attachment selection via Cloudinary
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (file.size > 10 * 1024 * 1024) {
+      alert("Attachment size exceeds 10MB limit.");
+      return;
+    }
+
     setIsUploading(true);
 
-    const reader = new FileReader();
-    reader.onload = () => {
+    try {
       const sizeStr = file.size > 1024 * 1024 
         ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` 
         : `${(file.size / 1024).toFixed(0)} KB`;
-      
+
+      const cRes = await uploadToCloudinary(file, {
+        userId: currentUserId,
+        assetType: "chat-attachments"
+      });
+
       setAttachment({
         name: file.name,
-        type: file.type,
+        type: file.type || "application/octet-stream",
         size: sizeStr,
-        url: reader.result as string
+        url: cRes.secure_url,
+        publicId: cRes.public_id
       });
+    } catch (err: any) {
+      console.error("[LiveChatSection] Attachment upload failed:", err);
+      alert(`Failed to upload chat attachment: ${err.message || err}`);
+    } finally {
       setIsUploading(false);
-    };
-    reader.onerror = () => {
-      alert("Failed to parse local file.");
-      setIsUploading(false);
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   // Dispatch Chat Message
@@ -299,6 +311,26 @@ export default function LiveChatSection({
           if (pRole === "candidate") candidateIdVal = pId;
           if (["employer", "recruiter", "corporate"].includes(pRole)) recruiterIdVal = pId;
           if (["consultancy", "agency"].includes(pRole)) consultancyIdVal = pId;
+        });
+      }
+
+      // Save structured Cloudinary chat attachment record for Admin visibility
+      if (attachment) {
+        const receiverId = activeChat.participantIds?.find((id: string) => id !== currentUserId) || "";
+        const attId = `att_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+        await setDoc(doc(db, "chat_attachments", attId), {
+          id: attId,
+          senderId: currentUserId,
+          receiverId,
+          candidateId: candidateIdVal || currentUserId,
+          applicationId: activeChat.applicationId || "",
+          conversationId: activeChat.id,
+          chatId: activeChat.id,
+          cloudinaryPublicId: attachment.publicId || "",
+          fileType: attachment.type,
+          fileName: attachment.name,
+          uploadedAt: timestamp,
+          fileUrl: attachment.url
         });
       }
 

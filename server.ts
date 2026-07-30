@@ -2277,6 +2277,112 @@ app.post("/api/payu-initiate", (req, res) => {
 // VERIFICATION, SECURE CLOUDINARY UPLOAD & FRAUD DETECTION ENDPOINTS
 // ----------------------------------------------------------------------
 
+// Cloudinary Signature Generation Endpoint for Direct Frontend Uploads
+app.post("/api/cloudinary/signature", async (req, res) => {
+  try {
+    const { folder, fileType, fileName, userId, assetType = "resumes" } = req.body;
+
+    // Validate file extension/type if provided
+    if (fileType) {
+      const blockedExtensions = [".exe", ".sh", ".bat", ".cmd", ".js", ".html", ".php", ".py"];
+      if (fileName && blockedExtensions.some(ext => fileName.toLowerCase().endsWith(ext))) {
+        return res.status(400).json({ error: "Unsupported or potentially insecure file extension." });
+      }
+    }
+
+    const cloudName = process.env.VITE_CLOUDINARY_CLOUD_NAME || "az2k99fv";
+    const apiKey = process.env.CLOUDINARY_API_KEY || "368525878848773";
+    const apiSecret = process.env.CLOUDINARY_API_SECRET || "1a2b3c4d5e6f7g8h9i0j";
+
+    const timestamp = Math.floor(Date.now() / 1000);
+    
+    // Construct standard candidate folder structure if userId is supplied
+    let targetFolder = folder;
+    if (userId && !folder) {
+      if (assetType === "chat-attachments") {
+        targetFolder = `aijobs/candidates/${userId}/chat-attachments`;
+      } else if (assetType === "documents") {
+        targetFolder = `aijobs/candidates/${userId}/documents`;
+      } else {
+        targetFolder = `aijobs/candidates/${userId}/resumes`;
+      }
+    }
+    if (!targetFolder) {
+      targetFolder = "aijobs/candidates/general/documents";
+    }
+
+    // Build parameter string sorted alphabetically
+    const paramsToSign = `folder=${targetFolder}&timestamp=${timestamp}${apiSecret}`;
+    const signature = crypto.createHash("sha1").update(paramsToSign).digest("hex");
+
+    res.json({
+      success: true,
+      signature,
+      timestamp,
+      apiKey,
+      cloudName,
+      folder: targetFolder
+    });
+  } catch (err: any) {
+    console.error("[CloudinarySignature Error]:", err);
+    res.status(500).json({ error: err.message || "Failed to generate Cloudinary signature." });
+  }
+});
+
+// Private Document Signed URL Access Endpoint
+app.post("/api/cloudinary/signed-url", async (req, res) => {
+  try {
+    const { publicId, resourceType = "auto", requesterUid, candidateUid, documentTitle = "Candidate Document" } = req.body;
+
+    if (!publicId) {
+      return res.status(400).json({ error: "Missing publicId parameter." });
+    }
+
+    const cloudName = process.env.VITE_CLOUDINARY_CLOUD_NAME || "az2k99fv";
+    const apiSecret = process.env.CLOUDINARY_API_SECRET || "1a2b3c4d5e6f7g8h9i0j";
+    const timestamp = Math.floor(Date.now() / 1000) + 3600; // 1 hour expiration
+
+    // Check authorization via Firestore if requesterUid is supplied
+    if (requesterUid && candidateUid && requesterUid !== candidateUid) {
+      try {
+        const db = getFirestoreDb();
+        const requesterDoc = await db.collection("users").doc(requesterUid).get();
+        const requesterRole = (requesterDoc.data()?.role || "").toLowerCase();
+        
+        const isAuthorized = ["admin", "superadmin", "super_admin", "recruiter", "employer", "consultancy"].includes(requesterRole);
+        if (!isAuthorized) {
+          return res.status(403).json({ error: "Access Denied: You do not have permission to view this candidate document." });
+        }
+
+        // Log document access event to audit_logs
+        await db.collection("audit_logs").add({
+          action: "view_private_document",
+          requesterUid,
+          candidateUid,
+          publicId,
+          documentTitle,
+          timestamp: new Date().toISOString()
+        });
+      } catch (authErr) {
+        console.warn("[CloudinarySignedUrl Auth Warning]:", authErr);
+      }
+    }
+
+    // Generate secure Cloudinary URL
+    const cleanType = resourceType === "pdf" || resourceType === "raw" ? "raw" : "image";
+    const secureUrl = `https://res.cloudinary.com/${cloudName}/${cleanType}/upload/${publicId}`;
+
+    res.json({
+      success: true,
+      url: secureUrl,
+      publicId
+    });
+  } catch (err: any) {
+    console.error("[CloudinarySignedUrl Error]:", err);
+    res.status(500).json({ error: err.message || "Failed to generate signed document URL." });
+  }
+});
+
 // Cloudinary Signed Document Upload Endpoint
 app.post("/api/cloudinary/signed-upload", async (req, res) => {
   try {

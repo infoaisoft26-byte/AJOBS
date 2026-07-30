@@ -398,18 +398,29 @@ export default function CandidateResumeSection({
 
     try {
       setUploadProgress(20);
-      const cloudinaryRes = await uploadToCloudinary(file, (pct) => setUploadProgress(pct));
+      const cloudinaryRes = await uploadToCloudinary(file, {
+        userId,
+        assetType: "documents",
+        onProgress: (pct) => setUploadProgress(pct)
+      });
       const storageUrl = cloudinaryRes.secure_url;
       
       const docId = `doc_${Math.random().toString(36).substr(2, 9)}`;
+      const userEmail = profile?.email || auth.currentUser?.email || "";
       const newDocRecord = {
         id: docId,
         userId,
+        ownerUid: userId,
+        accountEmail: userEmail,
         fileName: file.name,
         fileUrl: storageUrl,
         fileSize: file.size,
         mimeType: file.type || "application/octet-stream",
         uploadedAt: new Date().toISOString(),
+        cloudinaryPublicId: cloudinaryRes.public_id,
+        cloudinaryAssetId: cloudinaryRes.asset_id || "",
+        cloudinaryResourceType: cloudinaryRes.resource_type || "auto",
+        cloudinaryFolder: cloudinaryRes.folder || `aijobs/candidates/${userId}/documents`,
         source: source
       };
 

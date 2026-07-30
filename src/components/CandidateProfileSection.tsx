@@ -228,7 +228,10 @@ export default function CandidateProfileSection({
 
         let finalPhotoUrl = compressedDataUrl;
         try {
-          const cloudRes = await uploadToCloudinary(photoFile);
+          const cloudRes = await uploadToCloudinary(photoFile, {
+            userId: userId || "anonymous",
+            assetType: "documents"
+          });
           if (cloudRes.secure_url) {
             finalPhotoUrl = cloudRes.secure_url;
           }

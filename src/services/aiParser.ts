@@ -1,5 +1,5 @@
 import { doc, runTransaction, setDoc } from "firebase/firestore";
-import { db } from "../firebase";
+import { auth, db } from "../firebase";
 import { ResumeAIService } from "./ai/resume.service";
 
 export interface ParsedResumeMetadata {
@@ -33,6 +33,7 @@ export interface ParseResumeResponse {
 /**
  * Parses resume details using the Gemini API and atomically updates Firestore collections
  * ('users/{uid}', 'candidates/{uid}', 'resumes/{uid}') using a Firestore transaction.
+ * NEVER overwrites verified account email or mobile number with parser output.
  */
 export async function parseResumeData(
   resumeUrl: string,
@@ -153,87 +154,100 @@ export async function parseResumeData(
       const candidateDocRef = doc(db, "candidates", uid);
       const resumeDocRef = doc(db, "resumes", uid);
 
-      const userPayload = {
-        name: parsed.fullName,
-        fullName: parsed.fullName,
-        email: parsed.email,
-        phone: parsed.phone,
-        skills: parsed.skills,
-        totalExperience: parsed.totalExperience,
-        currentCompany: parsed.currentCompany,
-        currentDesignation: parsed.currentDesignation,
-        education: parsed.education,
-        location: parsed.location,
-        city: parsed.city,
-        state: parsed.state,
-        languages: parsed.languages,
-        certificates: parsed.certificates,
-        profileComplete: true,
-        profileCompleted: true,
-        resumeUploaded: true,
-        resumeUrl: resumeUrl,
-        resumeURL: resumeUrl,
-        updatedAt: isoDate
-      };
-
-      const candidatePayload = {
-        uid: uid,
-        userId: uid,
-        name: parsed.fullName,
-        fullName: parsed.fullName,
-        email: parsed.email,
-        phone: parsed.phone,
-        skills: parsed.skills,
-        totalExperience: parsed.totalExperience,
-        experience: parsed.experience,
-        currentCompany: parsed.currentCompany,
-        currentDesignation: parsed.currentDesignation,
-        designation: parsed.designation,
-        education: parsed.education,
-        location: parsed.location,
-        city: parsed.city,
-        state: parsed.state,
-        languages: parsed.languages,
-        certificates: parsed.certificates,
-        linkedin: parsed.linkedin || "",
-        github: parsed.github || "",
-        resumeUrl: resumeUrl,
-        resumeFileName: fileName || "uploaded_resume.pdf",
-        resumeUploadedAt: isoDate,
-        profileComplete: true,
-        profileCompleted: true,
-        updatedAt: isoDate
-      };
-
-      const resumePayload = {
-        id: uid,
-        userId: uid,
-        name: parsed.fullName,
-        fullName: parsed.fullName,
-        email: parsed.email,
-        phone: parsed.phone,
-        skills: parsed.skills,
-        totalExperience: parsed.totalExperience,
-        experience: parsed.experience,
-        currentCompany: parsed.currentCompany,
-        currentDesignation: parsed.currentDesignation,
-        designation: parsed.designation,
-        education: parsed.education,
-        location: parsed.location,
-        city: parsed.city,
-        state: parsed.state,
-        languages: parsed.languages,
-        certificates: parsed.certificates,
-        resumeUrl: resumeUrl,
-        resumeFileName: fileName || "uploaded_resume.pdf",
-        parsedData: parsed,
-        status: "active",
-        resumeAnalysisStatus: "completed",
-        parsedAt: isoDate,
-        updatedAt: isoDate
-      };
-
       await runTransaction(db, async (transaction) => {
+        const userSnap = await transaction.get(userDocRef);
+        const existingUserData = userSnap.data() || {};
+
+        // Preserve verified primary email and mobile number. Do not overwrite with parser data!
+        const verifiedEmail = auth.currentUser?.email || existingUserData.email || existingUserData.accountEmail || "";
+        const verifiedPhone = existingUserData.phone || existingUserData.mobile || "";
+
+        const userPayload: Record<string, any> = {
+          skills: parsed.skills,
+          totalExperience: parsed.totalExperience,
+          currentCompany: parsed.currentCompany,
+          currentDesignation: parsed.currentDesignation,
+          education: parsed.education,
+          location: parsed.location,
+          city: parsed.city,
+          state: parsed.state,
+          languages: parsed.languages,
+          certificates: parsed.certificates,
+          profileComplete: true,
+          profileCompleted: true,
+          resumeUploaded: true,
+          resumeUrl: resumeUrl,
+          resumeURL: resumeUrl,
+          updatedAt: isoDate
+        };
+
+        // Only update name if existing user name is generic or missing
+        if (!existingUserData.name || existingUserData.name === "Candidate" || existingUserData.name === "User") {
+          userPayload.name = parsed.fullName;
+          userPayload.fullName = parsed.fullName;
+        }
+
+        // Only set email if not already present
+        if (!existingUserData.email && verifiedEmail) {
+          userPayload.email = verifiedEmail;
+        }
+        if (!existingUserData.phone && verifiedPhone) {
+          userPayload.phone = verifiedPhone;
+        }
+
+        const candidatePayload: Record<string, any> = {
+          uid: uid,
+          userId: uid,
+          ownerUid: uid,
+          accountEmail: verifiedEmail,
+          skills: parsed.skills,
+          totalExperience: parsed.totalExperience,
+          experience: parsed.experience,
+          currentCompany: parsed.currentCompany,
+          currentDesignation: parsed.currentDesignation,
+          designation: parsed.designation,
+          education: parsed.education,
+          location: parsed.location,
+          city: parsed.city,
+          state: parsed.state,
+          languages: parsed.languages,
+          certificates: parsed.certificates,
+          linkedin: parsed.linkedin || "",
+          github: parsed.github || "",
+          resumeUrl: resumeUrl,
+          resumeFileName: fileName || "uploaded_resume.pdf",
+          resumeUploadedAt: isoDate,
+          profileComplete: true,
+          profileCompleted: true,
+          updatedAt: isoDate
+        };
+
+        if (verifiedEmail) candidatePayload.email = verifiedEmail;
+        if (verifiedPhone) candidatePayload.phone = verifiedPhone;
+
+        const resumePayload = {
+          resumeId: uid,
+          candidateId: uid,
+          ownerUid: uid,
+          accountEmail: verifiedEmail,
+          emailVerified: auth.currentUser?.emailVerified ?? true,
+          originalFileName: fileName || "uploaded_resume.pdf",
+          resumeUrl: resumeUrl,
+          resumeFileName: fileName || "uploaded_resume.pdf",
+          parsedData: {
+            ...parsed,
+            suggestedEmail: parsed.email,
+            suggestedPhone: parsed.phone
+          },
+          status: "active",
+          parseStatus: "completed",
+          parseConfidence: 0.95,
+          candidateConfirmed: false,
+          resumeAnalysisStatus: "completed",
+          parsedAt: isoDate,
+          updatedAt: isoDate
+        };
+
         transaction.set(userDocRef, userPayload, { merge: true });
         transaction.set(candidateDocRef, candidatePayload, { merge: true });
         transaction.set(resumeDocRef, resumePayload, { merge: true });
@@ -244,12 +258,11 @@ export async function parseResumeData(
       console.warn("[aiParser] Firestore transaction notice, attempting atomic setDoc fallback:", txErr);
       try {
         const isoDate = new Date().toISOString();
+        const verifiedEmail = auth.currentUser?.email || "";
         const basePayload = {
           userId: uid,
-          name: parsed.fullName,
-          fullName: parsed.fullName,
-          email: parsed.email,
-          phone: parsed.phone,
+          ownerUid: uid,
+          accountEmail: verifiedEmail,
           skills: parsed.skills,
           totalExperience: parsed.totalExperience,
           currentCompany: parsed.currentCompany,
@@ -259,7 +272,13 @@ export async function parseResumeData(
           certificates: parsed.certificates,
           resumeUrl,
           resumeFileName: fileName || "uploaded_resume.pdf",
-          parsedData: parsed,
+          parsedData: {
+            ...parsed,
+            suggestedEmail: parsed.email,
+            suggestedPhone: parsed.phone
+          },
+          parseStatus: "completed",
+          candidateConfirmed: false,
           updatedAt: isoDate
         };
         await setDoc(doc(db, "users", uid), basePayload, { merge: true });

@@ -1,6 +1,8 @@
 export interface CloudinaryUploadResult {
   secure_url: string;
   public_id: string;
+  asset_id?: string;
+  folder?: string;
   original_filename: string;
   format?: string;
   bytes?: number;
@@ -12,6 +14,9 @@ export interface CloudinaryUploadOptions {
   onProgress?: (percent: number) => void;
   maxRetries?: number;
   timeoutMs?: number;
+  userId?: string;
+  folder?: string;
+  assetType?: "resumes" | "documents" | "chat-attachments";
 }
 
 export function getCloudinaryConfig() {
@@ -31,10 +36,12 @@ export async function uploadToCloudinary(
   let onProgress: ((percent: number) => void) | undefined;
   let maxRetries = 3;
   let timeoutMs = 60000;
+  let options: CloudinaryUploadOptions | undefined;
 
   if (typeof onProgressOrOptions === "function") {
     onProgress = onProgressOrOptions;
   } else if (onProgressOrOptions) {
+    options = onProgressOrOptions;
     onProgress = onProgressOrOptions.onProgress;
     if (onProgressOrOptions.maxRetries !== undefined) maxRetries = onProgressOrOptions.maxRetries;
     if (onProgressOrOptions.timeoutMs !== undefined) timeoutMs = onProgressOrOptions.timeoutMs;
@@ -48,7 +55,7 @@ export async function uploadToCloudinary(
     try {
       if (onProgress) onProgress(attempt === 1 ? 5 : Math.min(30, 10 * attempt));
 
-      const result = await attemptSingleUpload(file, onProgress, timeoutMs, attempt);
+      const result = await attemptSingleUpload(file, onProgress, timeoutMs, attempt, options);
       if (onProgress) onProgress(100);
       return result;
     } catch (err: any) {
@@ -73,24 +80,64 @@ export async function uploadToCloudinary(
   throw new Error(userFriendlyMessage);
 }
 
-function attemptSingleUpload(
+async function attemptSingleUpload(
   file: File,
   onProgress?: (percent: number) => void,
   timeoutMs: number = 60000,
-  attemptNumber: number = 1
+  attemptNumber: number = 1,
+  options?: CloudinaryUploadOptions
 ): Promise<CloudinaryUploadResult> {
+  // Fetch signed signature parameters from backend if possible
+  let signedParams: { signature: string; timestamp: number; apiKey: string; cloudName: string; folder: string } | null = null;
+  try {
+    const sigRes = await fetch("/api/cloudinary/signature", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: options?.userId,
+        folder: options?.folder,
+        assetType: options?.assetType || "resumes",
+        fileName: file.name,
+        fileType: file.type
+      })
+    });
+    if (sigRes.ok) {
+      const data = await sigRes.json();
+      if (data.signature) {
+        signedParams = data;
+      }
+    }
+  } catch (sigErr) {
+    console.warn("[CloudinaryService] Signed signature endpoint notice:", sigErr);
+  }
+
   return new Promise((resolve, reject) => {
     const { cloudName, uploadPreset } = getCloudinaryConfig();
-    if (!cloudName || !uploadPreset) {
-      return reject(new Error("Cloudinary configuration missing. Please verify cloudName and uploadPreset in environment variables."));
+    const effectiveCloudName = signedParams?.cloudName || cloudName;
+    if (!effectiveCloudName) {
+      return reject(new Error("Cloudinary configuration missing. Please verify cloudName in environment variables."));
     }
 
-    const url = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`;
+    const url = `https://api.cloudinary.com/v1_1/${effectiveCloudName}/auto/upload`;
     const xhr = new XMLHttpRequest();
     const formData = new FormData();
 
     formData.append("file", file);
-    formData.append("upload_preset", uploadPreset);
+
+    if (signedParams) {
+      formData.append("api_key", signedParams.apiKey);
+      formData.append("timestamp", String(signedParams.timestamp));
+      formData.append("folder", signedParams.folder);
+      formData.append("signature", signedParams.signature);
+    } else {
+      formData.append("upload_preset", uploadPreset);
+      if (options?.folder) {
+        formData.append("folder", options.folder);
+      } else if (options?.userId) {
+        const typeFolder = options.assetType || "resumes";
+        formData.append("folder", `aijobs/candidates/${options.userId}/${typeFolder}`);
+      }
+    }
 
     let currentProgress = attemptNumber > 1 ? 15 : 5;
     let timer: any = null;
@@ -134,6 +181,8 @@ function attemptSingleUpload(
             resolve({
               secure_url: res.secure_url,
               public_id: res.public_id || "",
+              asset_id: res.asset_id || "",
+              folder: res.folder || (signedParams ? signedParams.folder : ""),
               original_filename: res.original_filename || file.name,
               format: res.format || "",
               bytes: res.bytes || file.size,

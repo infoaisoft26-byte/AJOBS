@@ -381,6 +381,23 @@
         "createdAt": { "type": "string" }
       },
       "required": ["id", "userId", "milestones"]
+    },
+    "talent_score": {
+      "title": "Talent Score",
+      "description": "AI-calculated candidate talent score",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "overallScore": { "type": "number" },
+        "grade": { "type": "string" },
+        "resumeScore": { "type": "number" },
+        "interviewScore": { "type": "number" },
+        "profileCompletionScore": { "type": "number" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId", "overallScore"]
     }
   },
   "firestore": {
@@ -475,6 +492,10 @@
     "message_logs/{logId}": {
       "schema": "message_log",
       "description": "History of dispatched alerts"
+    },
+    "talent_scores/{scoreId}": {
+      "schema": "talent_score",
+      "description": "AI talent scores collection"
     }
   }
 }
