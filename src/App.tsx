@@ -163,6 +163,7 @@ function MainAppContent() {
   const [activeView, setActiveView] = useState<string>("home");
   const [activeCompanyPage, setActiveCompanyPage] = useState<string | null>(null);
   const [authMode, setAuthMode] = useState<"signin" | "signup" | null>(null);
+  const [authRole, setAuthRole] = useState<"candidate" | "consultancy" | "employer" | "recruiter" | undefined>(undefined);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [authLoading, setAuthLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(() => {
@@ -662,7 +663,10 @@ function MainAppContent() {
                     setActiveView={setActiveView}
                     onOpenCompanyPage={(page) => setActiveCompanyPage(page)}
                     onSelectJob={(jobId) => setActiveView(`job-details-${jobId}`)}
-                    onOpenAuth={(mode) => setAuthMode(mode)}
+                    onOpenAuth={(mode, role) => {
+                      setAuthRole(role);
+                      setAuthMode(mode);
+                    }}
                     user={user}
                   />
                 ) : activeView === "candidate-login" ? (
@@ -814,7 +818,11 @@ function MainAppContent() {
       {authMode && (
         <AuthModal
           initialMode={authMode}
-          onClose={() => setAuthMode(null)}
+          initialRole={authRole}
+          onClose={() => {
+            setAuthMode(null);
+            setAuthRole(undefined);
+          }}
           onAuthSuccess={handleAuthSuccess}
         />
       )}

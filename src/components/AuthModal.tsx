@@ -32,6 +32,7 @@ interface AuthModalProps {
   onClose: () => void;
   onAuthSuccess: (user: UserProfile) => void;
   initialMode?: "signin" | "signup";
+  initialRole?: "candidate" | "consultancy" | "employer" | "recruiter" | "admin" | "superadmin";
 }
 
 type AuthMode = "signin" | "signup" | "forgot-password" | "complete-profile" | "phone-otp";
@@ -48,11 +49,11 @@ const COUNTRY_CODES = [
   { code: "+81", label: "🇯🇵 Japan (+81)" }
 ];
 
-export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signin" }: AuthModalProps) {
+export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signin", initialRole }: AuthModalProps) {
   const { showToast } = useToast();
   const [mode, setMode] = useState<AuthMode>(initialMode === "signup" ? "signup" : "signin");
   const [authMethod, setAuthMethod] = useState<"email" | "phone">("email");
-  const [role, setRole] = useState<"candidate" | "consultancy" | "employer" | "recruiter" | "admin" | "superadmin">("candidate");
+  const [role, setRole] = useState<"candidate" | "consultancy" | "employer" | "recruiter" | "admin" | "superadmin">(initialRole || "candidate");
   
   // Inputs
   const [name, setName] = useState("");
