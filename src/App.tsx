@@ -4,6 +4,7 @@ import { AlertTriangle, UserCheck } from "lucide-react";
 import { doc, getDoc } from "firebase/firestore";
 import { UserProfile } from "@/types";
 import { initializeUserCollectionsAndDocs, getOrCreateUserProfile } from "@/services/dbInitService";
+import { normalizeRole } from "@/utils/roleUtils";
 import Header from "@/components/Header";
 import AuthModal from "@/components/AuthModal";
 import LandingPage from "@/components/LandingPage";
@@ -99,14 +100,17 @@ function ProtectedRoute({
   setAuthMode, 
   children 
 }: ProtectedRouteProps) {
+  const normRole = normalizeRole(user?.role);
+  const normalizedAllowed = allowedRoles.map(r => normalizeRole(r));
+
   useEffect(() => {
     if (!user) {
       setAuthMode("signin");
       setActiveView(fallbackView);
-    } else if (user && !allowedRoles.includes(user.role || "")) {
+    } else if (user && !normalizedAllowed.includes(normRole) && !allowedRoles.includes(user.role || "")) {
       setActiveView(fallbackView);
     }
-  }, [user, allowedRoles, fallbackView, setActiveView, setAuthMode]);
+  }, [user, allowedRoles, fallbackView, setActiveView, setAuthMode, normRole, normalizedAllowed]);
 
   if (!user) {
     return (
@@ -124,7 +128,7 @@ function ProtectedRoute({
     );
   }
 
-  if (user && !allowedRoles.includes(user.role || "")) {
+  if (user && !normalizedAllowed.includes(normRole) && !allowedRoles.includes(user.role || "")) {
     return (
       <div className="p-8 max-w-md mx-auto text-center space-y-4 glass rounded-2xl border border-white/10 my-12 bg-gray-900/40">
         <AlertTriangle className="w-12 h-12 text-red-400 mx-auto" />
@@ -447,14 +451,14 @@ function MainAppContent() {
       );
     }
 
-    const normalizedRole = (user.role || "").toLowerCase();
+    const normRole = normalizeRole(user.role);
 
-    switch (normalizedRole) {
+    switch (normRole) {
       case "candidate":
         return (
           <ProtectedRoute 
             user={user} 
-            allowedRoles={["candidate"]} 
+            allowedRoles={["candidate", "admin", "super_admin"]} 
             fallbackView="home" 
             setActiveView={setActiveView} 
             setAuthMode={setAuthMode}
@@ -463,7 +467,6 @@ function MainAppContent() {
           </ProtectedRoute>
         );
       case "consultancy":
-      case "agency":
         if (user.accountStatus === "pending_verification" || user.isApproved === false || user.accountStatus === "suspended_for_review" || user.accountStatus === "resubmission_required") {
           return (
             <VerificationOnboardingView 
@@ -478,7 +481,7 @@ function MainAppContent() {
         return (
           <ProtectedRoute 
             user={user} 
-            allowedRoles={["consultancy", "agency"]} 
+            allowedRoles={["consultancy", "admin", "super_admin"]} 
             fallbackView="home" 
             setActiveView={setActiveView} 
             setAuthMode={setAuthMode}
@@ -488,7 +491,6 @@ function MainAppContent() {
         );
       case "employer":
       case "recruiter":
-      case "corporate":
         if (user.accountStatus === "pending_verification" || user.isApproved === false || user.accountStatus === "suspended_for_review" || user.accountStatus === "resubmission_required") {
           return (
             <VerificationOnboardingView 
@@ -503,7 +505,7 @@ function MainAppContent() {
         return (
           <ProtectedRoute 
             user={user} 
-            allowedRoles={["employer", "recruiter", "corporate"]} 
+            allowedRoles={["employer", "recruiter", "admin", "super_admin"]} 
             fallbackView="home" 
             setActiveView={setActiveView} 
             setAuthMode={setAuthMode}
@@ -512,11 +514,11 @@ function MainAppContent() {
           </ProtectedRoute>
         );
       case "admin":
-      case "superadmin":
+      case "super_admin":
         return (
           <ProtectedRoute 
             user={user} 
-            allowedRoles={["admin", "superadmin"]} 
+            allowedRoles={["admin", "super_admin", "superadmin"]} 
             fallbackView="home" 
             setActiveView={setActiveView} 
             setAuthMode={setAuthMode}

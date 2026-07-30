@@ -6,7 +6,7 @@ import {
   Database, CheckCircle, AlertTriangle, Play, HelpCircle, 
   Terminal, CreditCard, Globe, Bell, Briefcase, Brain, Flame,
   ShieldCheck, Lock, Layers, LogOut, ChevronLeft, ChevronRight, UserX,
-  FileText, BarChart2, MessageSquare
+  FileText, BarChart2
 } from "lucide-react";
 import { db, auth } from "../firebase";
 import { collection, getDocs, doc, setDoc, getDoc } from "firebase/firestore";
@@ -15,17 +15,7 @@ import { recordActivityLog } from "../services/activityLogService";
 // Sub-components
 import { LiveStats, SystemAuditLog, SupportTicket, ApprovalRequest, CMSContent, EmailTemplate, AdminSystemSettings, PaymentTransaction } from "./admin/AdminTypes";
 import { 
-  seedSuperAdminDataIfEmpty,
-  FALLBACK_SYSTEM_SETTINGS,
-  FALLBACK_AUDIT_LOGS,
-  FALLBACK_SUPPORT_TICKETS,
-  FALLBACK_APPROVALS,
-  FALLBACK_CMS,
-  FALLBACK_NOTIFICATIONS,
-  FALLBACK_EMAILS,
-  FALLBACK_PAYMENTS,
-  FALLBACK_USERS,
-  FALLBACK_JOBS
+  seedSuperAdminDataIfEmpty
 } from "./admin/AdminSeedData";
 import LiveDashboard from "./admin/LiveDashboard";
 import UserManagement from "./admin/UserManagement";
@@ -182,10 +172,10 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
       });
       setJobsList(jobs);
     } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve jobs from Firestore, falling back to local seed data:", err.message);
+      console.warn("Resilient Fetch: Failed to retrieve jobs from Firestore:", err.message);
       syncErrorsList.push("jobs");
-      jobs = FALLBACK_JOBS;
-      setJobsList(FALLBACK_JOBS);
+      jobs = [];
+      setJobsList([]);
     }
 
     // 3. Fetch Approvals
@@ -196,10 +186,10 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
       });
       setApprovalsList(approvals);
     } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve approvals from Firestore, falling back to local seed data:", err.message);
+      console.warn("Resilient Fetch: Failed to retrieve approvals from Firestore:", err.message);
       syncErrorsList.push("approvals");
-      approvals = FALLBACK_APPROVALS;
-      setApprovalsList(FALLBACK_APPROVALS);
+      approvals = [];
+      setApprovalsList([]);
     }
 
     // 4. Fetch Support Tickets
@@ -210,10 +200,10 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
       });
       setSupportTickets(support);
     } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve support from Firestore, falling back to local seed data:", err.message);
+      console.warn("Resilient Fetch: Failed to retrieve support from Firestore:", err.message);
       syncErrorsList.push("support");
-      support = FALLBACK_SUPPORT_TICKETS;
-      setSupportTickets(FALLBACK_SUPPORT_TICKETS);
+      support = [];
+      setSupportTickets([]);
     }
 
     // 5. Fetch CMS
@@ -224,10 +214,10 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
       });
       setCmsList(cms);
     } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve cms from Firestore, falling back to local seed data:", err.message);
+      console.warn("Resilient Fetch: Failed to retrieve cms from Firestore:", err.message);
       syncErrorsList.push("cms");
-      cms = FALLBACK_CMS;
-      setCmsList(FALLBACK_CMS);
+      cms = [];
+      setCmsList([]);
     }
 
     // 6. Fetch Email templates
@@ -238,10 +228,10 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
       });
       setEmailTemplates(emails);
     } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve email_templates from Firestore, falling back to local seed data:", err.message);
+      console.warn("Resilient Fetch: Failed to retrieve email_templates from Firestore:", err.message);
       syncErrorsList.push("email_templates");
-      emails = FALLBACK_EMAILS;
-      setEmailTemplates(FALLBACK_EMAILS);
+      emails = [];
+      setEmailTemplates([]);
     }
 
     // 7. Fetch Notifications / Broadcasts
@@ -252,10 +242,10 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
       });
       setNotificationsList(notifs);
     } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve notifications from Firestore, falling back to local seed data:", err.message);
+      console.warn("Resilient Fetch: Failed to retrieve notifications from Firestore:", err.message);
       syncErrorsList.push("notifications");
-      notifs = FALLBACK_NOTIFICATIONS;
-      setNotificationsList(FALLBACK_NOTIFICATIONS);
+      notifs = [];
+      setNotificationsList([]);
     }
 
     // 8. Fetch Payments
@@ -266,10 +256,10 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
       });
       setPaymentsList(payments);
     } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve payments from Firestore, falling back to local seed data:", err.message);
+      console.warn("Resilient Fetch: Failed to retrieve payments from Firestore:", err.message);
       syncErrorsList.push("payments");
-      payments = FALLBACK_PAYMENTS;
-      setPaymentsList(FALLBACK_PAYMENTS);
+      payments = [];
+      setPaymentsList([]);
     }
 
     // 9. Fetch Audit logs
@@ -282,10 +272,10 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
       audit.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setAuditLogsList(audit);
     } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve audit_logs from Firestore, falling back to local seed data:", err.message);
+      console.warn("Resilient Fetch: Failed to retrieve audit_logs from Firestore:", err.message);
       syncErrorsList.push("audit_logs");
-      audit = FALLBACK_AUDIT_LOGS;
-      setAuditLogsList(FALLBACK_AUDIT_LOGS);
+      audit = [];
+      setAuditLogsList([]);
     }
 
     // 10. Fetch Global Config settings
@@ -298,10 +288,10 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
       });
       setGlobalConfig(config);
     } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve system_settings from Firestore, falling back to local seed data:", err.message);
+      console.warn("Resilient Fetch: Failed to retrieve system_settings from Firestore:", err.message);
       syncErrorsList.push("system_settings");
-      config = FALLBACK_SYSTEM_SETTINGS;
-      setGlobalConfig(FALLBACK_SYSTEM_SETTINGS);
+      config = null;
+      setGlobalConfig(null);
     }
 
     // Calculate aggregated Live Stats safely from real Firestore collections
