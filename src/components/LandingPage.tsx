@@ -268,17 +268,6 @@ export default function LandingPage({
               </p>
             </div>
 
-            {/* Launch Badge */}
-            <motion.div
-              initial={{ opacity: 0, y: -15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-cyan-500/10 border border-cyan-400/30 text-cyan-300 text-xs sm:text-sm font-mono font-bold uppercase tracking-widest backdrop-blur-md shadow-[0_0_20px_rgba(6,182,212,0.2)]"
-            >
-              <Calendar className="w-4 h-4 text-cyan-400 animate-pulse" />
-              <span>Official Launch: 19 August 2026</span>
-            </motion.div>
-
             {/* Main Hero Headline */}
             <motion.h1
               initial={{ opacity: 0, y: 20 }}

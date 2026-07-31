@@ -25,6 +25,7 @@ export default function CandidateRegister({
   const [phone, setPhone] = useState("");
   const [targetRole, setTargetRole] = useState("");
   const [location, setLocation] = useState("");
+  const [emailConsent, setEmailConsent] = useState(false); // Unchecked by default
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -62,11 +63,42 @@ export default function CandidateRegister({
       status: "pre_registered",
       skills: [],
       experience: "Entry / Mid Level",
+      emailMarketingConsent: emailConsent,
+      emailMarketingConsentAt: isoDate,
+      emailMarketingConsentSource: "registration_form",
       createdAt: isoDate,
       updatedAt: isoDate
     };
 
     await setDoc(doc(db, "candidates", uid), candidateData, { merge: true });
+
+    // 3. Save Email Preferences
+    try {
+      await fetch(`/api/email/preferences/${uid}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jobAlerts: emailConsent,
+          promotionalEmails: emailConsent,
+          weeklyDigest: emailConsent,
+          preferredJobRoles: targetRole ? [targetRole.trim()] : [],
+          preferredLocations: location ? [location.trim()] : []
+        })
+      });
+
+      // Dispatch Candidate Welcome Email
+      await fetch("/api/email/send-test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: userEmail,
+          templateName: "candidate-registration",
+          data: { candidateName: nameToSave }
+        })
+      });
+    } catch (e) {
+      console.warn("Notice: Candidate registration email preferences sync handled gracefully", e);
+    }
 
     return userProfile;
   };
@@ -277,6 +309,21 @@ export default function CandidateRegister({
               </div>
             </div>
 
+          </div>
+
+          {/* Email Marketing Consent Checkbox (Optional, Unchecked by default) */}
+          <div className="pt-2 text-left">
+            <label className="flex items-start gap-2.5 cursor-pointer text-xs text-gray-300 hover:text-white transition-colors group">
+              <input
+                type="checkbox"
+                checked={emailConsent}
+                onChange={(e) => setEmailConsent(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-gray-700 bg-gray-900 text-blue-600 focus:ring-blue-500/40 cursor-pointer"
+              />
+              <span className="leading-snug text-[11px]">
+                Send me relevant job alerts, tailored weekly career recommendations, and AIJobs platform updates by email.
+              </span>
+            </label>
           </div>
 
           <button

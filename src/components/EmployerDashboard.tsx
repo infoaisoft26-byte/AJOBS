@@ -16,6 +16,7 @@ import GoogleWorkspaceHub from "./GoogleWorkspaceHub";
 import ExportActivityCsvButton from "./ExportActivityCsvButton";
 import OfflineSyncBadge from "./OfflineSyncBadge";
 import PostJobForm from "./PostJobForm";
+import AgreementsView from "./agreements/AgreementsView";
 
 // Types
 import { 
@@ -56,7 +57,7 @@ interface EmployerDashboardProps {
 export default function EmployerDashboard({ userId, userName, userRole }: EmployerDashboardProps) {
   // Navigation active tab routing
   const [activeTab, setActiveTab] = useState<
-    "overview" | "post-job" | "registration" | "jobs" | "discovery" | "pipeline" | "recruiter-table" | "leads" | "interviews" | "offers" | "reports" | "subscription" | "notifications" | "documents" | "chat" | "talent-search" | "performance" | "workspace"
+    "overview" | "post-job" | "registration" | "jobs" | "discovery" | "pipeline" | "recruiter-table" | "leads" | "interviews" | "offers" | "reports" | "subscription" | "agreements" | "notifications" | "documents" | "chat" | "talent-search" | "performance" | "workspace"
   >(() => {
     const p = typeof window !== "undefined" ? window.location.pathname : "";
     if (p === "/employer/post-job" || p === "/recruiter/post-job") return "post-job";
@@ -66,6 +67,7 @@ export default function EmployerDashboard({ userId, userName, userRole }: Employ
     if (p === "/employer/interviews" || p === "/recruiter/interviews") return "interviews";
     if (p === "/employer/reports" || p === "/recruiter/reports") return "reports";
     if (p === "/employer/payments" || p === "/recruiter/payments") return "subscription";
+    if (p === "/employer/agreements" || p === "/recruiter/agreements") return "agreements";
     return "overview";
   });
 
@@ -80,6 +82,7 @@ export default function EmployerDashboard({ userId, userName, userRole }: Employ
     else if (tabId === "interviews") targetPath = `${prefix}/interviews`;
     else if (tabId === "reports") targetPath = `${prefix}/reports`;
     else if (tabId === "subscription") targetPath = `${prefix}/payments`;
+    else if (tabId === "agreements") targetPath = `${prefix}/agreements`;
     
     if (typeof window !== "undefined" && window.location.pathname !== targetPath) {
       window.history.pushState({}, "", targetPath);
@@ -355,6 +358,7 @@ export default function EmployerDashboard({ userId, userName, userRole }: Employ
             { id: "doc-automation", label: "Offer & Document Suite", icon: FileText },
             { id: "compliance-gdpr", label: "GDPR & Compliance", icon: ShieldCheck },
             { id: "subscription", label: "Payments", icon: CreditCard },
+            { id: "agreements", label: "Legal Agreements", icon: FileText },
             { id: "registration", label: "Company Registry", icon: Building2 },
             { id: "talent-search", label: "Talent Search", icon: Search },
             { id: "pipeline", label: "Hiring Pipeline", icon: Users },
@@ -520,6 +524,14 @@ export default function EmployerDashboard({ userId, userName, userRole }: Employ
               userName={userName}
               userRole="employer"
               onRefresh={synchronizeVault}
+            />
+          )}
+
+          {activeTab === "agreements" && (
+            <AgreementsView
+              userId={userId}
+              userRole={userRole || "employer"}
+              userName={userName}
             />
           )}
 

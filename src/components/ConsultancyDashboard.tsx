@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { 
   LayoutDashboard, Building, Briefcase, Users, Sparkles, Layers, 
   Calendar, CheckCircle2, ShieldCheck, TrendingUp, DollarSign, 
-  Settings, LogOut, ShieldAlert, Sparkle, RefreshCw, Bell, Plus
+  Settings, LogOut, ShieldAlert, Sparkle, RefreshCw, Bell, Plus, FileText
 } from "lucide-react";
 import { db } from "../firebase";
 import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
@@ -11,6 +11,7 @@ import { NotificationCenterView } from "./NotificationCenter";
 import AbacControlInspector from "./AbacControlInspector";
 import LeadManagement from "./LeadManagement";
 import PostJobForm from "./PostJobForm";
+import AgreementsView from "./agreements/AgreementsView";
 
 // Import Shared Types
 import { 
@@ -55,7 +56,7 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
   // Sidebar Selection Tab
   const [activeTab, setActiveTab] = useState<
     "dashboard" | "clients" | "jobs" | "candidates" | "leads" | "matching" | 
-    "interviews" | "placements" | "team" | "reports" | "subscription" | "registration" | "notifications" | "abac"
+    "interviews" | "placements" | "team" | "reports" | "subscription" | "agreements" | "registration" | "notifications" | "abac"
   >("dashboard");
 
   // Listen to dashboard navigation event (e.g. from global shortcut Ctrl+D / Cmd+D)
@@ -227,6 +228,7 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
             { id: "team", label: "Recruitment Team", icon: ShieldCheck },
             { id: "reports", label: "Analytics Reports", icon: TrendingUp },
             { id: "subscription", label: "Billing & Payment", icon: DollarSign },
+            { id: "agreements", label: "Legal Agreements", icon: FileText },
             { id: "notifications", label: "Notification Hub", icon: Bell },
             { id: "abac", label: "ABAC Security Guard", icon: ShieldAlert },
             { id: "registration", label: "Agency Registration", icon: Settings }
@@ -387,6 +389,14 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
                 userName={userName}
                 userRole="consultancy"
                 onRefresh={fetchCrmData}
+              />
+            )}
+
+            {activeTab === "agreements" && (
+              <AgreementsView
+                userId={userId}
+                userRole="consultancy"
+                userName={userName || profile?.agencyName || "Agency Partner"}
               />
             )}
 

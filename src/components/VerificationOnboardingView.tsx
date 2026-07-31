@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { 
   ShieldCheck, Upload, FileText, CheckCircle2, AlertCircle, Clock, 
-  CreditCard, Lock, Building, User, FileCheck, ExternalLink, ArrowRight, X, LogOut, Phone, Mail
+  CreditCard, Lock, Building, User, FileCheck, ExternalLink, ArrowRight, X, LogOut, Phone, Mail, Camera, KeyRound
 } from "lucide-react";
 import { uploadToCloudinary } from "../services/cloudinaryService";
+import LiveSelfieCaptureModal from "./LiveSelfieCaptureModal";
+import AadhaarOfflineModal from "./AadhaarOfflineModal";
+import AgreementAndCheckoutModal from "./AgreementAndCheckoutModal";
 
 interface VerificationOnboardingViewProps {
   user: any;
@@ -44,8 +47,13 @@ export default function VerificationOnboardingView({ user, onLogout, onStatusUpd
   const [docAddress, setDocAddress] = useState<DocUploadState>({ file: null, status: "idle" });
   const [docBusinessProof, setDocBusinessProof] = useState<DocUploadState>({ file: null, status: "idle" });
 
+  // Interactive KYC & Agreement Modals State
+  const [showSelfieModal, setShowSelfieModal] = useState(false);
+  const [showAadhaarModal, setShowAadhaarModal] = useState(false);
+  const [showAgreementModal, setShowAgreementModal] = useState(false);
+
   // Plan Selection State
-  const [selectedPlan, setSelectedPlan] = useState<"starter" | "professional" | "enterprise">("professional");
+  const [selectedPlan, setSelectedPlan] = useState<string>("plan_default_499");
   const [paymentDone, setPaymentDone] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -403,6 +411,27 @@ export default function VerificationOnboardingView({ user, onLogout, onStatusUpd
                 Accepted formats: PDF, JPG, PNG, WEBP. Maximum file size: 10MB per document.
               </p>
 
+              {/* Instant Verification Quick Action Badges */}
+              <div className="flex flex-wrap items-center gap-3 py-2 border-y border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setShowSelfieModal(true)}
+                  className="py-2 px-3 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <Camera className="w-4 h-4 text-indigo-400" />
+                  <span>Take Live Webcam Liveness Selfie</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowAadhaarModal(true)}
+                  className="py-2 px-3 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <KeyRound className="w-4 h-4 text-purple-400" />
+                  <span>UIDAI Aadhaar Offline e-KYC (Zip)</span>
+                </button>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                 
                 {/* Gov ID */}
@@ -516,94 +545,51 @@ export default function VerificationOnboardingView({ user, onLogout, onStatusUpd
             <div className="bg-slate-950/80 border border-white/10 rounded-2xl p-6 space-y-4">
               <h3 className="text-sm font-bold text-white uppercase font-mono tracking-wider flex items-center space-x-2">
                 <CreditCard className="w-4 h-4 text-purple-400" />
-                <span>3. Select Subscription Plan</span>
+                <span>3. Select Database Access Plan</span>
               </h3>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              <div className="p-4 rounded-xl border border-indigo-500/40 bg-indigo-500/10 space-y-3 relative overflow-hidden">
+                <span className="absolute top-0 right-0 bg-indigo-600 text-white font-mono text-[9px] font-bold px-2 py-0.5 rounded-bl">RECOMMENDED BASE PLAN</span>
                 
-                {/* Starter Plan */}
-                <div 
-                  onClick={() => setSelectedPlan("starter")}
-                  className={`p-4 rounded-xl border transition-all cursor-pointer space-y-3 ${
-                    selectedPlan === "starter" ? "border-indigo-500 bg-indigo-500/10" : "border-white/10 bg-white/5"
-                  }`}
-                >
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-white uppercase font-mono">Starter Plan</span>
-                    {selectedPlan === "starter" && <CheckCircle2 className="w-4 h-4 text-indigo-400" />}
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="font-bold text-white text-base">AIJOBS Database Access Plan</h4>
+                    <p className="text-xs text-gray-300 mt-0.5">30 Days Full Candidate Search, Profiles & Resume Access</p>
                   </div>
-                  <p className="text-xl font-extrabold text-white">₹2,999 <span className="text-xs font-normal text-gray-400">/mo</span></p>
-                  <ul className="space-y-1.5 text-gray-300 text-[11px]">
-                    <li>• Post up to 5 Jobs</li>
-                    <li>• Basic AI Match Scoring</li>
-                    <li>• Direct Candidate Live Chat</li>
-                  </ul>
+                  <div className="text-right">
+                    <p className="text-2xl font-extrabold text-emerald-400">₹588.82 <span className="text-xs font-normal text-gray-300">Total</span></p>
+                    <p className="text-[10px] text-gray-400 font-mono">₹499 Base + ₹89.82 GST (18%)</p>
+                  </div>
                 </div>
 
-                {/* Professional Plan */}
-                <div 
-                  onClick={() => setSelectedPlan("professional")}
-                  className={`p-4 rounded-xl border transition-all cursor-pointer space-y-3 relative overflow-hidden ${
-                    selectedPlan === "professional" ? "border-purple-500 bg-purple-500/10 shadow-lg shadow-purple-500/10" : "border-white/10 bg-white/5"
-                  }`}
-                >
-                  <span className="absolute top-0 right-0 bg-purple-600 text-white font-mono text-[9px] font-bold px-2 py-0.5 rounded-bl">RECOMMENDED</span>
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-white uppercase font-mono">Professional Plan</span>
-                    {selectedPlan === "professional" && <CheckCircle2 className="w-4 h-4 text-purple-400" />}
-                  </div>
-                  <p className="text-xl font-extrabold text-white">₹7,999 <span className="text-xs font-normal text-gray-400">/mo</span></p>
-                  <ul className="space-y-1.5 text-gray-300 text-[11px]">
-                    <li>• Post up to 25 Jobs</li>
-                    <li>• Full ATS Resume Parsing</li>
-                    <li>• Automated AI Interviewing</li>
-                    <li>• Priority Candidate Pipeline</li>
-                  </ul>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs font-mono pt-2 border-t border-indigo-500/20">
+                  <div className="bg-black/30 p-2 rounded">Candidate Views: <strong>500 Profiles</strong></div>
+                  <div className="bg-black/30 p-2 rounded">Resume Downloads: <strong>50 PDFs</strong></div>
+                  <div className="bg-black/30 p-2 rounded">Contact Unlocks: <strong>10 Phone/Email</strong></div>
+                  <div className="bg-black/30 p-2 rounded">Recruiter Seats: <strong>3 Seats</strong></div>
                 </div>
-
-                {/* Enterprise Plan */}
-                <div 
-                  onClick={() => setSelectedPlan("enterprise")}
-                  className={`p-4 rounded-xl border transition-all cursor-pointer space-y-3 ${
-                    selectedPlan === "enterprise" ? "border-emerald-500 bg-emerald-500/10" : "border-white/10 bg-white/5"
-                  }`}
-                >
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-white uppercase font-mono">Enterprise Plan</span>
-                    {selectedPlan === "enterprise" && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
-                  </div>
-                  <p className="text-xl font-extrabold text-white">₹19,999 <span className="text-xs font-normal text-gray-400">/mo</span></p>
-                  <ul className="space-y-1.5 text-gray-300 text-[11px]">
-                    <li>• Unlimited Job Postings</li>
-                    <li>• Dedicated Account Manager</li>
-                    <li>• Custom AI Agents & API Access</li>
-                    <li>• Fraud & Risk Protection Guarantee</li>
-                  </ul>
-                </div>
-
               </div>
 
               {/* Payment Verification Trigger */}
               <div className="pt-2 flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-white/5 border border-white/5 rounded-xl">
                 <div>
-                  <h4 className="font-bold text-white text-xs">Payment Authorization Status</h4>
-                  <p className="text-[11px] text-gray-400">Plan purchase verification is required prior to Admin account clearance.</p>
+                  <h4 className="font-bold text-white text-xs">Sign Agreement & Authorize Subscription</h4>
+                  <p className="text-[11px] text-gray-400">Digital OTP eSign agreement and payment authorization are mandatory under compliance guidelines.</p>
                 </div>
 
                 {!paymentDone ? (
                   <button
                     type="button"
-                    onClick={handleProcessPayment}
-                    disabled={isSubmitting}
-                    className="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center space-x-2 shrink-0"
+                    onClick={() => setShowAgreementModal(true)}
+                    className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center space-x-2 shrink-0 shadow-lg"
                   >
-                    <CreditCard className="w-4 h-4" />
-                    <span>Pay & Authorize ({selectedPlan === "starter" ? "₹2,999" : selectedPlan === "professional" ? "₹7,999" : "₹19,999"})</span>
+                    <FileText className="w-4 h-4" />
+                    <span>Sign Agreement & Pay ₹588.82</span>
                   </button>
                 ) : (
                   <span className="px-4 py-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl font-mono text-xs font-bold flex items-center gap-1.5">
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>Payment Verified</span>
+                    <span>Agreement Signed & Paid</span>
                   </span>
                 )}
               </div>
@@ -630,6 +616,50 @@ export default function VerificationOnboardingView({ user, onLogout, onStatusUpd
 
           </form>
         )}
+
+        {/* Live Webcam Selfie Capture Modal */}
+        <LiveSelfieCaptureModal
+          isOpen={showSelfieModal}
+          onClose={() => setShowSelfieModal(false)}
+          userId={user?.uid || "anonymous"}
+          userRole={user?.role || "candidate"}
+          onSelfieVerified={(publicId, url) => {
+            setDocPhoto({
+              file: null,
+              publicId,
+              secureUrl: url,
+              status: "success"
+            });
+          }}
+        />
+
+        {/* UIDAI Aadhaar Paperless Offline e-KYC Modal */}
+        <AadhaarOfflineModal
+          isOpen={showAadhaarModal}
+          onClose={() => setShowAadhaarModal(false)}
+          userId={user?.uid || "anonymous"}
+          userRole={user?.role || "candidate"}
+          onAadhaarVerified={(parsedData) => {
+            setDocGovId({
+              file: null,
+              publicId: `aadhaar_ekyc_${user?.uid}`,
+              secureUrl: parsedData.secureVaultUrl || "vault_aadhaar_verified",
+              status: "success"
+            });
+          }}
+        />
+
+        {/* Legal Agreement & Razorpay/PayU Checkout Modal */}
+        <AgreementAndCheckoutModal
+          isOpen={showAgreementModal}
+          onClose={() => setShowAgreementModal(false)}
+          user={user}
+          planId={selectedPlan}
+          onSuccess={(invoiceId) => {
+            setPaymentDone(true);
+            setShowAgreementModal(false);
+          }}
+        />
 
       </div>
     </div>

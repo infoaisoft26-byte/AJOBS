@@ -25,6 +25,11 @@ import {
 } from "./server/twilioService.js";
 import { parsePaymentThreat, logChatSessionAndMessage } from "./server/chatService";
 import { sendGoogleIndexingNotification } from "./server/googleIndexingService";
+import emailRoutes from "./server/emailRoutes";
+import kycRoutes from "./server/kycRoutes";
+import leadRoutes from "./server/leadRoutes";
+import applicationRoutes from "./server/applicationRoutes";
+import subscriptionRoutes from "./server/subscriptionRoutes";
 
 dotenv.config();
 
@@ -87,6 +92,18 @@ const csrfMitigator = (req: any, res: any, next: any) => {
 
 app.use("/api/", apiRateLimiter);
 app.use("/api/", csrfMitigator);
+app.use("/api/email", emailRoutes);
+app.use("/api/kyc", kycRoutes);
+app.use("/api/leads", leadRoutes);
+app.use("/api/applications", applicationRoutes);
+app.use("/api/candidates", applicationRoutes);
+app.use("/api/consultancy", applicationRoutes);
+app.use("/api/plans", subscriptionRoutes);
+app.use("/api/agreements", subscriptionRoutes);
+app.use("/api/payments", subscriptionRoutes);
+app.use("/api/subscriptions", subscriptionRoutes);
+app.use("/api/data-access", subscriptionRoutes);
+app.use("/api/invoices", subscriptionRoutes);
 
 // Track unique active users and errors
 app.use((req, res, next) => {

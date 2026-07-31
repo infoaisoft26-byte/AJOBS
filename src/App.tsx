@@ -47,6 +47,7 @@ import AdminLogin from "@/components/AdminLogin";
 import CandidatePreLaunchGuard from "@/components/guards/CandidatePreLaunchGuard";
 import InternalAccessGuard from "@/components/guards/InternalAccessGuard";
 import AdminGuard from "@/components/guards/AdminGuard";
+import UnsubscribeView from "@/components/UnsubscribeView";
 
 function PageTransitionParticles({ triggerKey }: { triggerKey: string }) {
   const [particles, setParticles] = useState<Array<{ id: number; left: number; top: number; size: number; delay: number }>>([]);
@@ -160,7 +161,12 @@ function ProtectedRoute({
 
 function MainAppContent() {
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [activeView, setActiveView] = useState<string>("home");
+  const [activeView, setActiveView] = useState<string>(() => {
+    if (typeof window !== "undefined" && window.location.pathname === "/unsubscribe") {
+      return "unsubscribe";
+    }
+    return "home";
+  });
   const [activeCompanyPage, setActiveCompanyPage] = useState<string | null>(null);
   const [authMode, setAuthMode] = useState<"signin" | "signup" | null>(null);
   const [authRole, setAuthRole] = useState<"candidate" | "consultancy" | "employer" | "recruiter" | undefined>(undefined);
@@ -490,52 +496,58 @@ function MainAppContent() {
           </ProtectedRoute>
         );
       case "consultancy":
-        if (user.accountStatus === "pending_verification" || user.isApproved === false || user.accountStatus === "suspended_for_review" || user.accountStatus === "resubmission_required") {
+        {
+          const isVerified = user.isApproved === true && user.status === "active" && user.kycStatus === "verified";
+          if (!isVerified || user.accountStatus === "pending_verification" || user.accountStatus === "suspended_for_review" || user.accountStatus === "resubmission_required") {
+            return (
+              <VerificationOnboardingView 
+                user={user} 
+                onLogout={handleLogout} 
+                onStatusUpdate={() => {
+                  auth.currentUser && getOrCreateUserProfile(auth.currentUser).then(setUser);
+                }} 
+              />
+            );
+          }
           return (
-            <VerificationOnboardingView 
+            <ProtectedRoute 
               user={user} 
-              onLogout={handleLogout} 
-              onStatusUpdate={() => {
-                auth.currentUser && getOrCreateUserProfile(auth.currentUser).then(setUser);
-              }} 
-            />
+              allowedRoles={["consultancy", "admin", "super_admin"]} 
+              fallbackView="home" 
+              setActiveView={setActiveView} 
+              setAuthMode={setAuthMode}
+            >
+              <ConsultancyDashboard userId={user.uid} userName={user.name} />
+            </ProtectedRoute>
           );
         }
-        return (
-          <ProtectedRoute 
-            user={user} 
-            allowedRoles={["consultancy", "admin", "super_admin"]} 
-            fallbackView="home" 
-            setActiveView={setActiveView} 
-            setAuthMode={setAuthMode}
-          >
-            <ConsultancyDashboard userId={user.uid} userName={user.name} />
-          </ProtectedRoute>
-        );
       case "employer":
       case "recruiter":
-        if (user.accountStatus === "pending_verification" || user.isApproved === false || user.accountStatus === "suspended_for_review" || user.accountStatus === "resubmission_required") {
+        {
+          const isVerified = user.isApproved === true && user.status === "active" && user.kycStatus === "verified";
+          if (!isVerified || user.accountStatus === "pending_verification" || user.accountStatus === "suspended_for_review" || user.accountStatus === "resubmission_required") {
+            return (
+              <VerificationOnboardingView 
+                user={user} 
+                onLogout={handleLogout} 
+                onStatusUpdate={() => {
+                  auth.currentUser && getOrCreateUserProfile(auth.currentUser).then(setUser);
+                }} 
+              />
+            );
+          }
           return (
-            <VerificationOnboardingView 
+            <ProtectedRoute 
               user={user} 
-              onLogout={handleLogout} 
-              onStatusUpdate={() => {
-                auth.currentUser && getOrCreateUserProfile(auth.currentUser).then(setUser);
-              }} 
-            />
+              allowedRoles={["employer", "recruiter", "admin", "super_admin"]} 
+              fallbackView="home" 
+              setActiveView={setActiveView} 
+              setAuthMode={setAuthMode}
+            >
+              <EmployerDashboard userId={user.uid} userName={user.name} userRole={user.role} />
+            </ProtectedRoute>
           );
         }
-        return (
-          <ProtectedRoute 
-            user={user} 
-            allowedRoles={["employer", "recruiter", "admin", "super_admin"]} 
-            fallbackView="home" 
-            setActiveView={setActiveView} 
-            setAuthMode={setAuthMode}
-          >
-            <EmployerDashboard userId={user.uid} userName={user.name} userRole={user.role} />
-          </ProtectedRoute>
-        );
       case "admin":
       case "super_admin":
         return (
@@ -651,7 +663,9 @@ function MainAppContent() {
                 transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
                 className="w-full min-h-full"
               >
-                {activeView === "home" ? (
+                {activeView === "unsubscribe" ? (
+                  <UnsubscribeView />
+                ) : activeView === "home" ? (
                   <LandingPage
                     onGetStarted={() => {
                       if (user) {

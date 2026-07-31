@@ -26,6 +26,7 @@ import {
 import { doc, setDoc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { UserProfile } from "../types";
 import { initializeUserCollectionsAndDocs, getOrCreateUserProfile } from "../services/dbInitService";
+import { trackLeadSubmission } from "../utils/leadAttribution";
 import { useToast } from "./GlobalToast";
 
 interface AuthModalProps {
@@ -680,6 +681,18 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
 
         console.log("Initializing user Firestore collections & profile for role:", role);
         const userProfile = await initializeUserCollectionsAndDocs(fbUser, role, displayName);
+
+        // Track Lead Attribution and create CRM lead entry
+        try {
+          await trackLeadSubmission({
+            uid: fbUser.uid,
+            name: displayName,
+            email: email.trim(),
+            role: role
+          });
+        } catch (leadErr) {
+          console.warn("[AuthModal] Lead attribution capture warning:", leadErr);
+        }
 
         console.log("Registration successfully finalized. User Profile:", userProfile);
         setSuccess("Account provisioned successfully!");

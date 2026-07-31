@@ -3,7 +3,7 @@ export interface UserProfile {
   name: string;
   email: string;
   phone?: string;
-  role: "candidate" | "consultancy" | "employer" | "recruiter" | "admin" | "superadmin";
+  role: "candidate" | "consultancy" | "recruiter" | "admin" | "superadmin";
   profileImage?: string;
   photoURL?: string;
   createdAt: string;
@@ -13,7 +13,143 @@ export interface UserProfile {
   profileCompleted?: boolean;
   resumeURL?: string;
   companyId?: string;
+  consultancyId?: string;
   subscriptionPlan?: string;
+  accountStatus?: "pending_kyc" | "pending_admin_approval" | "active" | "rejected" | "suspended";
+  kycStatus?: "not_started" | "pending" | "pending_admin_approval" | "verified" | "rejected" | "resubmit_required";
+  isApproved?: boolean;
+  isActive?: boolean;
+  onboardingCompleted?: boolean;
+}
+
+export interface KycDocument {
+  documentId: string;
+  documentType: string;
+  provider: string;
+  publicId: string;
+  maskedNumber?: string;
+  verificationStatus: "pending" | "verified" | "mismatch" | "rejected";
+  uploadedAt: string;
+  verifiedAt?: string;
+  verifiedBy?: string;
+  mismatchReason?: string;
+  isSensitive?: boolean;
+}
+
+export interface KycProfile {
+  userId: string;
+  role: "recruiter" | "consultancy" | "candidate";
+  kycStatus: "not_started" | "pending_admin_approval" | "verified" | "rejected" | "resubmit_required" | "manual_review";
+  identityMethod?: "aadhaar_offline" | "digilocker" | "manual_upload";
+  emailVerified: boolean;
+  mobileVerified: boolean;
+  selfieVerified: boolean;
+  businessVerified: boolean;
+  identityVerified: boolean;
+  riskScore: number;
+  riskLevel: "low" | "medium" | "high" | "critical";
+  riskFlags: string[];
+  submittedAt?: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  rejectionReason?: string;
+  adminNotes?: string;
+  selectedPlan?: string;
+  paymentStatus?: "pending" | "paid";
+  personalDetails?: {
+    fullName: string;
+    email: string;
+    mobile: string;
+    maskedGovId?: string;
+  };
+  employmentDetails?: {
+    companyName?: string;
+    designation?: string;
+    officeAddress?: string;
+    companyWebsite?: string;
+    linkedInProfile?: string;
+    consultancyId?: string;
+    proofType?: string;
+  };
+  businessDetails?: {
+    legalName?: string;
+    tradeName?: string;
+    maskedGstin?: string;
+    maskedPan?: string;
+    registrationNumber?: string;
+    officialEmail?: string;
+    website?: string;
+  };
+  selfieData?: {
+    selfieUrl: string;
+    livenessStatus: "passed" | "failed" | "manual_review";
+    faceMatchScore: number;
+    capturedAt: string;
+  };
+}
+
+export interface VerificationRequest {
+  requestId: string;
+  userId: string;
+  role: string;
+  selectedPlan: string;
+  paymentStatus: "pending" | "paid";
+  kycStatus: string;
+  accountStatus: string;
+  riskFlags: string[];
+  riskLevel?: string;
+  submittedAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  adminDecision?: "APPROVED" | "REJECTED" | "RESUBMIT";
+  rejectionReason?: string;
+}
+
+export interface CrmLead {
+  leadId: string;
+  userId?: string;
+  role: string;
+  fullName: string;
+  email: string;
+  mobile: string;
+  city: string;
+  source: string;
+  medium?: string;
+  campaign: string;
+  status: "new" | "contacted" | "interested" | "documents_pending" | "interview_scheduled" | "selected" | "not_interested" | "no_response" | "converted" | "closed";
+  assignedTo?: string;
+  assignedRecruiterId?: string;
+  assignedConsultancyId?: string;
+  nextFollowUpAt?: string;
+  adminNotes?: string;
+  createdAt: string;
+  updatedAt: string;
+  resumeStatus?: string;
+  kycStatus?: string;
+}
+
+export interface AssignmentRecord {
+  assignmentId: string;
+  candidateId: string;
+  consultancyId?: string;
+  recruiterId?: string;
+  jobId?: string;
+  assignedBy: string;
+  assignedAt: string;
+  status: "active" | "reassigned" | "completed";
+  previousRecruiterId?: string;
+  reassignmentReason?: string;
+}
+
+export interface ApplicationTimelineEntry {
+  id: string;
+  applicationId: string;
+  changedBy: string;
+  changedByRole: string;
+  previousStatus: string;
+  newStatus: string;
+  remarks?: string;
+  createdAt: string;
 }
 
 export interface CandidateProfile {

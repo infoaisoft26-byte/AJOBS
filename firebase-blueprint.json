@@ -398,9 +398,165 @@
         "updatedAt": { "type": "string" }
       },
       "required": ["userId", "overallScore"]
+    },
+    "email_campaign_delivery": {
+      "title": "Email Campaign Delivery",
+      "description": "Log of automated job alert or campaign delivery",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "campaignId": { "type": "string" },
+        "jobId": { "type": "string" },
+        "candidateId": { "type": "string" },
+        "email": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDING", "PROCESSING", "SUCCESS", "ERROR", "RETRY"] },
+        "queuedAt": { "type": "string" },
+        "sentAt": { "type": "string" },
+        "failedAt": { "type": "string" },
+        "error": { "type": "string" },
+        "unsubscribeStatus": { "type": "boolean" }
+      },
+      "required": ["email", "status"]
+    },
+    "mail_trigger": {
+      "title": "Mail Trigger",
+      "description": "Firebase trigger email document",
+      "type": "object",
+      "properties": {
+        "to": { "type": "array" },
+        "template": { "type": "object" },
+        "category": { "type": "string" },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["to"]
+    },
+    "user_email_preferences": {
+      "title": "User Email Preferences",
+      "description": "Candidate email settings and consent state",
+      "type": "object",
+      "properties": {
+        "transactionalEmails": { "type": "boolean" },
+        "jobAlerts": { "type": "boolean" },
+        "promotionalEmails": { "type": "boolean" },
+        "weeklyDigest": { "type": "boolean" },
+        "preferredJobRoles": { "type": "array" },
+        "preferredLocations": { "type": "array" },
+        "preferredSkills": { "type": "array" },
+        "unsubscribeToken": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["transactionalEmails", "unsubscribeToken"]
+    },
+    "plan": {
+      "title": "Plan",
+      "description": "AIJOBS database access pricing plan",
+      "type": "object",
+      "properties": {
+        "planId": { "type": "string" },
+        "planName": { "type": "string" },
+        "applicableRoles": { "type": "array" },
+        "baseAmount": { "type": "number" },
+        "gstPercentage": { "type": "number" },
+        "gstAmount": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "validityDays": { "type": "number" },
+        "candidateViewLimit": { "type": "number" },
+        "resumeDownloadLimit": { "type": "number" },
+        "contactUnlockLimit": { "type": "number" },
+        "jobPostLimit": { "type": "number" },
+        "recruiterSeatLimit": { "type": "number" },
+        "refundPolicy": { "type": "string" },
+        "agreementVersion": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["planId", "planName", "baseAmount", "gstPercentage", "totalAmount"]
+    },
+    "agreement": {
+      "title": "Agreement",
+      "description": "Signed AIJOBS Database Access Agreement",
+      "type": "object",
+      "properties": {
+        "agreementId": { "type": "string" },
+        "agreementNumber": { "type": "string" },
+        "userId": { "type": "string" },
+        "role": { "type": "string" },
+        "agreementOwnerType": { "type": "string" },
+        "agreementOwnerId": { "type": "string" },
+        "planId": { "type": "string" },
+        "agreementVersion": { "type": "string" },
+        "baseAmount": { "type": "number" },
+        "gstPercentage": { "type": "number" },
+        "gstAmount": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "status": { "type": "string" },
+        "acceptedAt": { "type": "string" },
+        "acceptedIp": { "type": "string" },
+        "acceptedUserAgent": { "type": "string" },
+        "consentOtpVerified": { "type": "boolean" },
+        "effectiveAt": { "type": "string" },
+        "expiresAt": { "type": "string" }
+      },
+      "required": ["agreementId", "agreementNumber", "userId", "planId", "status"]
+    },
+    "invoice": {
+      "title": "Invoice",
+      "description": "Official Tax Invoice for plan subscription",
+      "type": "object",
+      "properties": {
+        "invoiceId": { "type": "string" },
+        "invoiceNumber": { "type": "string" },
+        "paymentId": { "type": "string" },
+        "userId": { "type": "string" },
+        "agreementNumber": { "type": "string" },
+        "baseAmount": { "type": "number" },
+        "gstPercentage": { "type": "number" },
+        "cgst": { "type": "number" },
+        "sgst": { "type": "number" },
+        "igst": { "type": "number" },
+        "gstAmount": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["invoiceId", "invoiceNumber", "paymentId", "userId", "totalAmount"]
+    },
+    "data_access_log": {
+      "title": "Data Access Log",
+      "description": "Audit trail for candidate data access",
+      "type": "object",
+      "properties": {
+        "actorUserId": { "type": "string" },
+        "actorRole": { "type": "string" },
+        "consultancyId": { "type": "string" },
+        "candidateId": { "type": "string" },
+        "actionType": { "type": "string" },
+        "subscriptionId": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "allowed": { "type": "boolean" }
+      },
+      "required": ["actorUserId", "candidateId", "actionType", "allowed"]
     }
   },
   "firestore": {
+    "plans/{planId}": {
+      "schema": "plan",
+      "description": "Database access plans configuration"
+    },
+    "agreements/{agreementId}": {
+      "schema": "agreement",
+      "description": "Generated and accepted database access agreements"
+    },
+    "invoices/{invoiceId}": {
+      "schema": "invoice",
+      "description": "Tax invoices for payments"
+    },
+    "data_access_logs/{logId}": {
+      "schema": "data_access_log",
+      "description": "Candidate data access and export logs"
+    },
     "users/{userId}": {
       "schema": "user",
       "description": "User profile collection"
@@ -492,6 +648,18 @@
     "message_logs/{logId}": {
       "schema": "message_log",
       "description": "History of dispatched alerts"
+    },
+    "email_campaign_deliveries/{deliveryId}": {
+      "schema": "email_campaign_delivery",
+      "description": "Delivery logs for job alerts and promotional campaigns"
+    },
+    "mail/{mailId}": {
+      "schema": "mail_trigger",
+      "description": "Firebase Trigger Email Extension mail queue collection"
+    },
+    "users/{userId}/email_preferences/settings": {
+      "schema": "user_email_preferences",
+      "description": "Detailed email preferences for candidate account"
     },
     "talent_scores/{scoreId}": {
       "schema": "talent_score",

@@ -32,6 +32,8 @@ import AuditLogs from "./admin/AuditLogs";
 import ChatMonitoringView from "./admin/ChatMonitoringView";
 import AbacControlInspector from "./AbacControlInspector";
 import LeadManagement from "./LeadManagement";
+import LiveLeadsCRM from "./admin/LiveLeadsCRM";
+import KycVerificationCenter from "./admin/KycVerificationCenter";
 import ApplicationManagement from "./admin/ApplicationManagement";
 import HiringFunnelAnalytics from "./admin/HiringFunnelAnalytics";
 import ExportActivityCsvButton from "./ExportActivityCsvButton";
@@ -54,6 +56,7 @@ import MobileBackendHub from "./MobileBackendHub";
 import EnterpriseSecurityCenter from "./EnterpriseSecurityCenter";
 import ObservabilityHub from "./ObservabilityHub";
 import PlatformCertificationSuite from "./PlatformCertificationSuite";
+import AdminEmailCenter from "./AdminEmailCenter";
 
 export default function AdminDashboard({ userId, userName }: { userId?: string; userName?: string }) {
   const currentUserId = userId || auth.currentUser?.uid || "system_admin_01";
@@ -451,7 +454,8 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
     { id: "funnel", label: "Hiring Funnel Analytics", icon: BarChart2, authorizedRoles: ["Super Admin", "Finance Officer", "Moderator", "Read Only"] },
     { id: "users", label: "User Management", icon: Users, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "internal-access", label: "Internal Access Management", icon: ShieldCheck, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
-    { id: "leads", label: "Lead Sourcing Desk", icon: Users, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
+    { id: "leads", label: "Live Leads CRM", icon: Users, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
+    { id: "kyc-verification", label: "KYC Verification Center", icon: ShieldCheck, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "approvals", label: "Approval Center", icon: ShieldCheck, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "chat-monitoring", label: "Chat & Anti-Fraud Center", icon: MessageSquare, authorizedRoles: ["Super Admin", "Support Desk", "Moderator", "Read Only"] },
     { id: "jobs", label: "Job Postings", icon: Briefcase, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
@@ -460,6 +464,7 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
     { id: "cms", label: "Content (CMS)", icon: Globe, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "support", label: "Support Desk", icon: HelpCircle, authorizedRoles: ["Super Admin", "Support Desk", "Read Only"] },
     { id: "notifications", label: "Broadcasts", icon: Bell, authorizedRoles: ["Super Admin", "Read Only"] },
+    { id: "email-center", label: "Email & Campaigns", icon: Mail, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "abac", label: "ABAC Security Guard", icon: ShieldAlert, authorizedRoles: ["Super Admin", "Support Desk", "Finance Officer", "Moderator", "Read Only"] },
     { id: "settings", label: "System Settings", icon: Settings, authorizedRoles: ["Super Admin", "Read Only"] },
     { id: "audit", label: "Audit Trails", icon: Terminal, authorizedRoles: ["Super Admin", "Finance Officer", "Read Only"] },
@@ -664,11 +669,11 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
               )}
 
               {activeView === "leads" && (
-                <LeadManagement
-                  userId={currentUserId}
-                  userRole="admin"
-                  userName={currentUserName}
-                />
+                <LiveLeadsCRM />
+              )}
+
+              {activeView === "kyc-verification" && (
+                <KycVerificationCenter />
               )}
 
               {activeView === "approvals" && (
@@ -725,6 +730,10 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
                   onRefresh={fetchWorkspaceData}
                   userName="Super Admin Desk"
                 />
+              )}
+
+              {activeView === "email-center" && (
+                <AdminEmailCenter />
               )}
 
               {activeView === "settings" && globalConfig && (

@@ -53,8 +53,8 @@ export default function LaunchCountdown3D() {
         {/* Section Title */}
         <div className="space-y-3">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono font-bold uppercase tracking-widest">
-            <Calendar className="w-4 h-4 text-cyan-400" />
-            <span>Official Launch Date • 19 August 2026</span>
+            <Clock className="w-4 h-4 text-cyan-400" />
+            <span>Platform Launch Timer</span>
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white">
             Countdown to Launch
