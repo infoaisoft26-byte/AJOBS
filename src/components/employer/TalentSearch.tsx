@@ -1,9 +1,23 @@
-import { useState, useEffect } from "react";
-import { 
-  Search, SlidersHorizontal, MapPin, Briefcase, Award, MessageSquare, 
-  UserCheck, RefreshCw, X, ShieldCheck, Mail, CreditCard, ChevronRight,
-  TrendingUp, Star, Filter, Code2, ArrowUpRight, Plus, Trash2, Tag
+import {
+  Briefcase,
+  Check,
+  Cloud,
+  Figma,
+  Framer,
+  Mail,
+  MapPin,
+  MessageSquare,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  Tag,
+  Trash2,
+  User,
+  UserCheck,
+  X
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { db, auth } from "../../firebase";
 import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
 

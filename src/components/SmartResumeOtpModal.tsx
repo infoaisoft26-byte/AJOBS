@@ -1,9 +1,19 @@
-import React, { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { 
-  ShieldCheck, Smartphone, CheckCircle2, AlertCircle, Loader2, 
-  Sparkles, RefreshCw, X, FileText, Award, User, Mail, ArrowRight, Edit2
+import {
+  AlertCircle,
+  ArrowRight,
+  CheckCircle2,
+  Code,
+  Edit2,
+  Mail,
+  RefreshCw,
+  Save,
+  ShieldCheck,
+  Smartphone,
+  Sparkles,
+  X
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
 import { auth } from "../firebase";
 import { signInWithCustomToken } from "firebase/auth";
 

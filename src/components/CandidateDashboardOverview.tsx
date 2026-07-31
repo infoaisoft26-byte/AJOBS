@@ -1,9 +1,22 @@
-import { useState, useEffect } from "react";
-import { 
-  Award, Brain, Briefcase, Heart, Bell, Star, TrendingUp, Sparkles, CheckCircle2, 
-  ArrowRight, ShieldCheck, Lock, Lightbulb, Activity, ChevronRight, CheckCircle,
-  GripVertical, FileText
+import {
+  Activity,
+  Award,
+  Brain,
+  Briefcase,
+  CheckCircle,
+  ChevronRight,
+  Download,
+  Edit,
+  FileText,
+  Heart,
+  Lock,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  Upload
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { jsPDF } from "jspdf";
 import { CandidateProfile, JobApplication, NotificationRecord } from "../types";
 import { db } from "../firebase";

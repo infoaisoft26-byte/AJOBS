@@ -1,8 +1,21 @@
-import { useState, useEffect } from "react";
-import { 
-  FileText, Search, Filter, Plus, Edit, Trash2, CheckCircle, 
-  Eye, Mail, Globe, Settings, FileSpreadsheet, Sparkles, Save
+import {
+  Chrome,
+  Delete,
+  Edit,
+  Facebook,
+  Globe,
+  Info,
+  Instagram,
+  Link,
+  Mail,
+  Phone,
+  Plus,
+  Save,
+  Twitter,
+  X
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { CMSContent, EmailTemplate } from "./AdminTypes";
 import { doc, setDoc, deleteDoc, collection, getDocs } from "firebase/firestore";
 import { db } from "../../firebase";

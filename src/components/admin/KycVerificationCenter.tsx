@@ -1,8 +1,14 @@
-import React, { useState, useEffect } from "react";
 import {
-  ShieldCheck, FileText, CheckCircle2, AlertTriangle, XCircle, 
-  Eye, Lock, ExternalLink, Clock, RefreshCw, Filter, Search, User
+  CheckCircle2,
+  ExternalLink,
+  Eye,
+  List,
+  Search,
+  ShieldCheck,
+  User
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { VerificationRequest, KycDocument } from "../../types";
 
 export default function KycVerificationCenter() {

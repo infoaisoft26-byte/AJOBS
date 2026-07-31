@@ -1,8 +1,15 @@
-import { useState } from "react";
-import { 
-  CheckCircle2, DollarSign, Users, Briefcase, Plus, Save, X, Trash2, 
-  ChevronRight, Calendar, ArrowUpRight, TrendingUp, Sparkles, Building
+import {
+  Building,
+  CheckCircle2,
+  Delete,
+  Plus,
+  Save,
+  Trash2,
+  TrendingUp,
+  X
 } from "lucide-react";
+import { useState } from "react";
+
 import { doc, setDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { PlacementModel, ClientModel } from "./CrmTypes";

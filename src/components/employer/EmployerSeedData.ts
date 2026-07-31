@@ -1,3 +1,9 @@
+import {
+  Figma,
+  Framer,
+  Package,
+  User
+} from "lucide-react";
 import { db } from "../../firebase";
 import { doc, getDoc, setDoc, collection, getDocs, writeBatch } from "firebase/firestore";
 import { CompanyProfile, CompanyJob, CompanyApplication, CompanyInterview, CompanyOffer, CompanyActivityLog } from "./EmployerTypes";

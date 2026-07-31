@@ -1,8 +1,19 @@
-import { useState, useEffect } from "react";
-import { 
-  Award, Brain, Sparkles, AlertTriangle, ShieldCheck, CheckCircle2, ChevronRight, 
-  RefreshCw, Play, Star, BookOpen, LineChart, Cpu, Zap, Bookmark, Map, ExternalLink 
+import {
+  AlertTriangle,
+  Award,
+  BookOpen,
+  Brain,
+  CheckCircle2,
+  Cpu,
+  Database,
+  Key,
+  Map,
+  RefreshCw,
+  ShieldCheck,
+  Zap
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { motion, AnimatePresence } from "motion/react";
 import { db } from "../firebase";
 import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";

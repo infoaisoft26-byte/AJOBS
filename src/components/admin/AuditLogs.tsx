@@ -1,9 +1,21 @@
-import { useState, useEffect } from "react";
-import { 
-  FileText, Search, Filter, ShieldAlert, Download, Trash2, 
-  RefreshCw, CheckCircle, Clock, Globe, Terminal, ChevronRight,
-  ChevronLeft, DoubleCw, Sparkles, Layers
+import {
+  Activity,
+  ChevronLeft,
+  ChevronRight,
+  Chrome,
+  Clock,
+  Download,
+  Flag,
+  Grid,
+  Layers,
+  RefreshCw,
+  Search,
+  ShieldAlert,
+  Terminal,
+  User
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { collection, getDocs, deleteDoc, doc, query, orderBy } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useToast } from "../GlobalToast";

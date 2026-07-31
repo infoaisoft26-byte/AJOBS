@@ -1,8 +1,14 @@
-import React, { useState, useEffect, useRef } from "react";
-import { 
-  Mic, MicOff, Volume2, VolumeX, Sparkles, Award, FileText, CheckCircle2,
-  AlertCircle, Play, Square, RefreshCw, ChevronRight, UserCheck, BarChart2, ShieldCheck
+import {
+  Award,
+  ChevronRight,
+  FileText,
+  Mic,
+  MicOff,
+  Sparkles,
+  Volume2
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
 
 interface AiVoiceRecruiterProps {
   candidateName?: string;

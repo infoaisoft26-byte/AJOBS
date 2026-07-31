@@ -1,3 +1,7 @@
+import {
+  Cloud,
+  Type
+} from "lucide-react";
 import { ResumeAnalysis } from "../../types";
 
 export interface AIResumeAnalysisResult {

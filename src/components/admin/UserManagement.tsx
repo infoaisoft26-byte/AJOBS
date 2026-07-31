@@ -1,8 +1,19 @@
-import { useState } from "react";
-import { 
-  Users, Search, Filter, ShieldAlert, CheckCircle, Trash2, 
-  Key, Clock, ShieldCheck, Mail, Briefcase, Eye, Ban, CheckSquare, XCircle
+import {
+  Chrome,
+  Clock,
+  Code,
+  Delete,
+  Eye,
+  Filter,
+  Key,
+  Search,
+  ShieldCheck,
+  Trash2,
+  User,
+  Users
 } from "lucide-react";
+import { useState } from "react";
+
 import { UserProfile } from "../../types";
 import { doc, setDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../../firebase";

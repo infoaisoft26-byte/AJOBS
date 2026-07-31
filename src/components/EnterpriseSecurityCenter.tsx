@@ -1,8 +1,17 @@
-import React, { useState } from "react";
-import { 
-  ShieldCheck, Lock, Key, Server, Database, AlertTriangle, FileText,
-  Search, RefreshCw, CheckCircle2, Shield, Eye, Cpu, Zap, Sparkles
+import {
+  Database,
+  FileText,
+  Filter,
+  Lock,
+  Search,
+  Shield,
+  ShieldCheck,
+  Sparkles,
+  User,
+  Zap
 } from "lucide-react";
+import { useState } from "react";
+
 
 export default function EnterpriseSecurityCenter() {
   const [searchLog, setSearchLog] = useState("");

@@ -1,12 +1,21 @@
-import { useState, useEffect } from "react";
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  ScatterChart, Scatter, LineChart, Line, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
-} from "recharts";
-import { 
-  Brain, Sparkles, TrendingUp, Award, UserCheck, RefreshCw, Database, 
-  Activity, Flame, ListOrdered, CheckCircle, Info
+import {
+  Activity,
+  Award,
+  BarChart,
+  Brain,
+  CheckCircle,
+  Figma,
+  Framer,
+  Info,
+  RefreshCw,
+  Sparkles,
+  Target,
+  User,
+  UserCheck,
+  X
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { db } from "../firebase";
 import { collection, getDocs, doc, setDoc, query } from "firebase/firestore";
 

@@ -1,4 +1,10 @@
-import { ArrowLeft, Home, Compass, Terminal } from "lucide-react";
+import {
+  ArrowLeft,
+  Compass,
+  Grid,
+  Home,
+  Terminal
+} from "lucide-react";
 
 interface ErrorViewProps {
   onBackToHome: () => void;

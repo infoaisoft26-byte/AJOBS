@@ -1,3 +1,6 @@
+import {
+  Upload
+} from "lucide-react";
 export interface CloudinaryUploadResult {
   secure_url: string;
   public_id: string;

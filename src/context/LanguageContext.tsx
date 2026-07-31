@@ -1,3 +1,9 @@
+import {
+  Filter,
+  Home,
+  Search,
+  Video
+} from "lucide-react";
 import React, { createContext, useContext, useState, useEffect } from "react";
 
 export type SupportedLanguage = "en" | "hi" | "ar" | "fr" | "de" | "es";

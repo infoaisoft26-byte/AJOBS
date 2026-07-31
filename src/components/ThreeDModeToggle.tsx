@@ -1,5 +1,10 @@
-import React, { useState, useEffect } from "react";
-import { Brain, Globe2, Sparkles, Layers } from "lucide-react";
+import {
+  Brain,
+  Layers,
+  Sparkles
+} from "lucide-react";
+import { useState, useEffect } from "react";
+
 import { BackgroundMode } from "./ThreeDBackground";
 import soundSynth from "../utils/audioSynth";
 

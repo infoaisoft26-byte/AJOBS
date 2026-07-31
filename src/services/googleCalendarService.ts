@@ -1,3 +1,7 @@
+import {
+  Calendar,
+  Type
+} from "lucide-react";
 import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "../firebase";
 

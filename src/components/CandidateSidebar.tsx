@@ -1,8 +1,35 @@
-import { 
-  LayoutDashboard, User, GraduationCap, Briefcase, Award, 
-  FileText, Heart, Clock, Bell, Settings, Brain, Sparkles, X, Menu, Search,
-  MessageSquare, ShieldCheck, Calendar, CloudLightning, Compass, Video, FileCheck, BarChart3,
-  Bot, Mic, BookOpen, Gift, Smartphone, Activity, CheckCircle2
+import {
+  Activity,
+  Award,
+  BarChart3,
+  Bell,
+  BookOpen,
+  Bot,
+  Brain,
+  Briefcase,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  CloudLightning,
+  Compass,
+  Database,
+  FileCheck,
+  FileText,
+  Gift,
+  GraduationCap,
+  Heart,
+  LayoutDashboard,
+  Menu,
+  MessageSquare,
+  Mic,
+  Search,
+  Settings,
+  ShieldCheck,
+  Smartphone,
+  Sparkles,
+  User,
+  Video,
+  X
 } from "lucide-react";
 
 interface SidebarProps {

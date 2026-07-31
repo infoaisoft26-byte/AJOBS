@@ -1,8 +1,18 @@
-import { useState } from "react";
-import { 
-  Search, Bell, MessageSquare, Sun, Moon, Menu, ShieldCheck, 
-  CheckCircle, LogOut, ExternalLink, X, Settings
+import {
+  Bell,
+  Cloud,
+  LogOut,
+  Menu,
+  MessageSquare,
+  Moon,
+  Search,
+  Settings,
+  ShieldCheck,
+  Sun,
+  X
 } from "lucide-react";
+import { useState } from "react";
+
 import { NotificationRecord } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import { ExportActivityCsvButton } from "./ExportActivityCsvButton";

@@ -1,7 +1,15 @@
-import { useState } from "react";
-import { 
-  DollarSign, Check, ShieldCheck, Sparkles, RefreshCw, Star, ArrowRight 
+import {
+  ArrowRight,
+  Calendar,
+  Check,
+  Database,
+  DollarSign,
+  RefreshCw,
+  ShieldCheck,
+  Sparkles
 } from "lucide-react";
+import { useState } from "react";
+
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { ConsultancyProfile } from "../../types";

@@ -1,8 +1,18 @@
-import { useState, useEffect } from "react";
-import { 
-  FileText, Download, Printer, Award, FileCheck, Bookmark, Briefcase, Calendar, 
-  User, DollarSign, PenTool, CheckSquare, Sparkles 
+import {
+  Award,
+  Bookmark,
+  Briefcase,
+  Cloud,
+  FileCheck,
+  FileText,
+  Package,
+  Printer,
+  Save,
+  Sparkles,
+  User
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { motion } from "motion/react";
 
 interface EnterpriseDocumentEngineProps {

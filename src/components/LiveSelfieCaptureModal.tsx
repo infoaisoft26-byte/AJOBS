@@ -1,5 +1,15 @@
-import React, { useState, useRef, useEffect } from "react";
-import { Camera, RefreshCw, CheckCircle2, AlertCircle, ShieldCheck, X, Eye, Sparkles } from "lucide-react";
+import {
+  AlertCircle,
+  Camera,
+  Check,
+  CheckCircle2,
+  Save,
+  ShieldCheck,
+  Sparkles,
+  X
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
 
 interface LiveSelfieCaptureModalProps {
   isOpen: boolean;

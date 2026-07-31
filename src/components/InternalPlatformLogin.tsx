@@ -1,8 +1,18 @@
-import React, { useState } from "react";
-import { auth, db } from "../firebase";
-import { signInWithEmailAndPassword, signInWithPopup, sendPasswordResetEmail, GoogleAuthProvider } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { Shield, Key, Mail, Lock, LogIn, AlertCircle, RefreshCw, KeyRound, CheckCircle2, ShieldCheck, LockKeyhole } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  KeyRound,
+  Link,
+  Lock,
+  LockKeyhole,
+  LogIn,
+  Mail,
+  RefreshCw,
+  Send,
+  User
+} from "lucide-react";
+import { useState } from "react";
+
 import { UserProfile } from "../types";
 import { useToast } from "./GlobalToast";
 import { normalizeRole } from "../utils/roleUtils";

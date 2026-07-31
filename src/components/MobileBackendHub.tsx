@@ -1,8 +1,15 @@
-import React, { useState } from "react";
-import { 
-  Smartphone, Bell, WifiOff, CheckCircle2, Send, RefreshCw,
-  ShieldCheck, Activity, Cpu, Cloud, Database, Sparkles
+import {
+  Activity,
+  Bell,
+  CheckCircle2,
+  Monitor,
+  Send,
+  Smartphone,
+  Sparkles,
+  Target
 } from "lucide-react";
+import { useState } from "react";
+
 
 export default function MobileBackendHub() {
   const [pushTitle, setPushTitle] = useState("");

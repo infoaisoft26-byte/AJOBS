@@ -1,10 +1,17 @@
-import { useState, useEffect, useMemo } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { 
-  FileText, Search, Filter, Download, RefreshCw, Eye, 
-  CheckCircle, XCircle, Calendar, ShieldCheck, Trash2, 
-  Clock, ArrowUpDown, UserCheck, Sparkles, Building2, User
+import {
+  CheckCircle,
+  Cloud,
+  Delete,
+  Download,
+  FileText,
+  Phone,
+  RefreshCw,
+  Search,
+  Target,
+  Trash2
 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+
 import { db } from "../../firebase";
 import { collection, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
 

@@ -1,5 +1,14 @@
-import React, { useState } from "react";
-import { FileCheck, Download, Printer, Copy, Sparkles, Building, User, Calendar, DollarSign, CheckSquare, RefreshCw } from "lucide-react";
+import {
+  Cloud,
+  Code,
+  Copy,
+  FileCheck,
+  Printer,
+  RefreshCw,
+  Sparkles
+} from "lucide-react";
+import { useState } from "react";
+
 import { useGlobalMarketplace } from "../context/GlobalMarketplaceContext";
 
 export default function DocumentAutomation() {

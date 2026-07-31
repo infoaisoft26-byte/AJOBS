@@ -1,8 +1,25 @@
-import { useState, useEffect, useRef } from "react";
-import { 
-  User, GraduationCap, Briefcase, Award, Save, Plus, Trash2, Edit3, Check, X, Sparkles, AlertCircle, ShieldCheck, ShieldAlert,
-  Camera, Upload, RefreshCw
+import {
+  Award,
+  Briefcase,
+  Camera,
+  Check,
+  Edit,
+  Edit3,
+  Framer,
+  Image,
+  Plus,
+  Save,
+  ShieldAlert,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  Trash2,
+  Upload,
+  User,
+  X
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
 import { db } from "../firebase";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { recordActivityLog } from "../services/activityLogService";

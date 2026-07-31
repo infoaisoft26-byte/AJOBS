@@ -1,6 +1,9 @@
+import {
+  Cpu,
+  Globe
+} from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import AIJobsLogo from "./AIJobsLogo";
-import { Sparkles, Cpu, Globe, Database, Radio, Compass, ArrowUpRight } from "lucide-react";
+
 import { motion, AnimatePresence } from "motion/react";
 
 interface SplashScreenProps {

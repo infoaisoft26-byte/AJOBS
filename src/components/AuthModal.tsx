@@ -1,12 +1,27 @@
-import { useState, useEffect, useRef } from "react";
-import confetti from "canvas-confetti";
-import soundSynth from "../utils/audioSynth";
-import AIJobsLogo from "./AIJobsLogo";
-import { 
-  X, User, Shield, Briefcase, Mail, Lock, UserPlus, Sparkles, 
-  Building2, Phone, Key, ArrowLeft, Send, CheckCircle2, AlertCircle,
-  HelpCircle, Eye, EyeOff, ShieldCheck, Fingerprint, ShieldAlert, CheckSquare
+import {
+  AlertCircle,
+  ArrowLeft,
+  Briefcase,
+  Building2,
+  CheckCircle2,
+  CheckSquare,
+  Code,
+  Eye,
+  EyeOff,
+  Link,
+  Lock,
+  Mail,
+  Phone,
+  Search,
+  Send,
+  Shield,
+  ShieldCheck,
+  User,
+  UserPlus,
+  X
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
 import { motion } from "motion/react";
 import { auth, db, isFirebaseConfigured, firebaseConfigError } from "../firebase";
 import { 

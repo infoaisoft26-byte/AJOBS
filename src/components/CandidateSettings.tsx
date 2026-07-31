@@ -1,7 +1,18 @@
-import { useState } from "react";
-import { 
-  Settings, Lock, Bell, Eye, Trash2, ShieldAlert, Check, X 
+import {
+  Bell,
+  Check,
+  Delete,
+  Eye,
+  Lock,
+  Save,
+  Settings,
+  ShieldAlert,
+  Trash2,
+  User,
+  X
 } from "lucide-react";
+import { useState } from "react";
+
 import { auth, db } from "../firebase";
 import { updatePassword, deleteUser } from "firebase/auth";
 import { doc, deleteDoc } from "firebase/firestore";

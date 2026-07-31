@@ -1,13 +1,30 @@
-import { useState, useEffect } from "react";
-import { motion } from "motion/react";
-import AIJobsLogo from "./AIJobsLogo";
-import { 
-  Users, ShieldAlert, Sparkles, RefreshCw, Trash2, Settings, 
-  Database, CheckCircle, AlertTriangle, Play, HelpCircle, 
-  Terminal, CreditCard, Globe, Bell, Briefcase, Brain, Flame,
-  ShieldCheck, Lock, Layers, LogOut, ChevronLeft, ChevronRight, UserX,
-  FileText, BarChart2, MessageSquare
+import {
+  BarChart2,
+  Bell,
+  Brain,
+  Briefcase,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  CreditCard,
+  Database,
+  FileText,
+  Globe,
+  HelpCircle,
+  Layers,
+  Lock,
+  Mail,
+  MessageSquare,
+  RefreshCw,
+  Settings,
+  ShieldAlert,
+  ShieldCheck,
+  Terminal,
+  User,
+  Users
 } from "lucide-react";
+import { useState, useEffect } from "react";
+
 import { db, auth } from "../firebase";
 import { collection, getDocs, doc, setDoc, getDoc } from "firebase/firestore";
 import { recordActivityLog } from "../services/activityLogService";

@@ -1,9 +1,16 @@
-import React from "react";
-import { motion } from "motion/react";
-import { 
-  UserCheck, Building2, CheckCircle2, ArrowRight, LogIn, 
-  Sparkles, ShieldCheck, Briefcase, Users, Zap 
+import {
+  ArrowRight,
+  Briefcase,
+  Building2,
+  CheckCircle2,
+  LogIn,
+  ShieldCheck,
+  Sparkles,
+  UserCheck,
+  Users,
+  Zap
 } from "lucide-react";
+import { motion } from "motion/react";
 
 interface CardsProps {
   onCandidateRegister: () => void;

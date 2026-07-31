@@ -1,8 +1,15 @@
-import React, { useState, useEffect } from "react";
-import { 
-  Activity, Server, Cpu, Database, Wifi, AlertTriangle, CheckCircle2,
-  BarChart3, RefreshCw, Zap, Clock, Sparkles
+import {
+  Activity,
+  CheckCircle2,
+  Cpu,
+  RefreshCw,
+  Server,
+  Sparkles,
+  Users,
+  Zap
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 
 export default function ObservabilityHub() {
   const [telemetry, setTelemetry] = useState<any>({

@@ -1,8 +1,17 @@
-import React, { useState } from "react";
-import { 
-  BookOpen, Play, CheckCircle2, Award, Clock, Sparkles, BarChart2,
-  Video, Code, HelpCircle, ChevronRight, Lock, Trophy, Zap, FileText
+import {
+  BookOpen,
+  Building,
+  CheckCircle2,
+  Database,
+  Key,
+  Play,
+  Server,
+  Sparkles,
+  Video,
+  Zap
 } from "lucide-react";
+import { useState } from "react";
+
 
 export interface Course {
   id: string;

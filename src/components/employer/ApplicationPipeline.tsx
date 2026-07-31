@@ -1,9 +1,20 @@
-import { useState, useEffect } from "react";
-import { 
-  Users, ChevronRight, Check, X, ShieldCheck, 
-  MapPin, Clock, Brain, FileText, ArrowRightLeft, CalendarClock, Award, Download, FileDown,
-  Plus, Trash2, Tag, MessageSquare
+import {
+  Award,
+  Delete,
+  Download,
+  FileDown,
+  FileText,
+  Filter,
+  MessageSquare,
+  Plus,
+  ShieldCheck,
+  Tag,
+  Target,
+  Trash2,
+  Users
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { CompanyApplication, CompanyJob } from "./EmployerTypes";
 import { doc, setDoc, collection, getDocs, addDoc, deleteDoc } from "firebase/firestore";
 import { db, auth } from "../../firebase";

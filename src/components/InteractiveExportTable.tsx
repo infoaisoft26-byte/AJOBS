@@ -1,7 +1,17 @@
-import React, { useState, useMemo } from "react";
-import { 
-  ArrowUpDown, ArrowUp, ArrowDown, Download, EyeOff, Check, RefreshCw, Layers, ExternalLink, FileSpreadsheet
+import {
+  ArrowDown,
+  ArrowUp,
+  Check,
+  Columns,
+  Download,
+  ExternalLink,
+  EyeOff,
+  FileSpreadsheet,
+  Layers,
+  RefreshCw
 } from "lucide-react";
+import { useMemo, useState } from "react";
+
 import * as XLSX from "xlsx";
 import { connectGoogleSheets, exportToGoogleSheets } from "../services/googleSheetsService";
 

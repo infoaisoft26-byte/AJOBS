@@ -1,5 +1,18 @@
-import React, { useState } from "react";
-import { Sparkles, FileText, Compass, MessageSquare, TrendingUp, DollarSign, Target, BookOpen, CheckCircle, ArrowRight, Brain } from "lucide-react";
+import {
+  ArrowRight,
+  Brain,
+  CheckCircle,
+  Cloud,
+  Compass,
+  DollarSign,
+  FileText,
+  MessageSquare,
+  Server,
+  Target,
+  TrendingUp
+} from "lucide-react";
+import { useState } from "react";
+
 import { CandidateProfile } from "../types";
 import { useGlobalMarketplace } from "../context/GlobalMarketplaceContext";
 

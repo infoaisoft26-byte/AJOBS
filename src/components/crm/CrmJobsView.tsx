@@ -1,8 +1,18 @@
-import { useState } from "react";
-import { 
-  Briefcase, Plus, Edit, Trash2, Copy, Save, X, 
-  MapPin, DollarSign, Calendar, Clock, CheckCircle
+import {
+  Briefcase,
+  Copy,
+  Delete,
+  DollarSign,
+  Edit,
+  MapPin,
+  Plus,
+  Save,
+  Target,
+  Trash2,
+  X
 } from "lucide-react";
+import { useState } from "react";
+
 import { doc, setDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { ConsultancyJobModel, ClientModel } from "./CrmTypes";

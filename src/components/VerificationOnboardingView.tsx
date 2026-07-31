@@ -1,8 +1,24 @@
-import React, { useState, useEffect } from "react";
-import { 
-  ShieldCheck, Upload, FileText, CheckCircle2, AlertCircle, Clock, 
-  CreditCard, Lock, Building, User, FileCheck, ExternalLink, ArrowRight, X, LogOut, Phone, Mail, Camera, KeyRound
+import {
+  AlertCircle,
+  Building,
+  Camera,
+  CheckCircle2,
+  Clock,
+  Code,
+  CreditCard,
+  Database,
+  FileCheck,
+  FileText,
+  KeyRound,
+  Lock,
+  LogOut,
+  Phone,
+  Search,
+  ShieldCheck,
+  Upload
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { uploadToCloudinary } from "../services/cloudinaryService";
 import LiveSelfieCaptureModal from "./LiveSelfieCaptureModal";
 import AadhaarOfflineModal from "./AadhaarOfflineModal";

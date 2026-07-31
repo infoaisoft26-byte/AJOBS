@@ -1,9 +1,23 @@
-import { useState, useEffect } from "react";
-import { 
-  LayoutDashboard, Building, Briefcase, Users, Sparkles, Layers, 
-  Calendar, CheckCircle2, ShieldCheck, TrendingUp, DollarSign, 
-  Settings, LogOut, ShieldAlert, Sparkle, RefreshCw, Bell, Plus, FileText
+import {
+  Bell,
+  Briefcase,
+  Building,
+  Calendar,
+  CheckCircle2,
+  DollarSign,
+  FileText,
+  LayoutDashboard,
+  Plus,
+  RefreshCw,
+  Settings,
+  ShieldAlert,
+  ShieldCheck,
+  Sparkles,
+  TrendingUp,
+  Users
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { db } from "../firebase";
 import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { ConsultancyProfile } from "../types";

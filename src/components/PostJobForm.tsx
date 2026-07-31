@@ -1,7 +1,19 @@
-import { useState } from "react";
-import { 
-  Briefcase, Save, X, Calendar, MapPin, DollarSign, ListTodo, Award, Gift, Clock, AlertCircle, Building2, CheckCircle, ShieldAlert
+import {
+  AlertCircle,
+  Briefcase,
+  Building2,
+  Calendar,
+  CheckCircle,
+  DollarSign,
+  Key,
+  MapPin,
+  Save,
+  ShieldAlert,
+  Target,
+  X
 } from "lucide-react";
+import { useState } from "react";
+
 import { db, auth } from "../firebase";
 import { doc, setDoc, collection, updateDoc } from "firebase/firestore";
 import { NotificationService } from "../services/notificationService";

@@ -1,8 +1,27 @@
-import { useState, useEffect, useRef } from "react";
-import { 
-  Bell, X, Check, Trash2, Archive, Search, Sliders, Mail, Smartphone, MessageSquare, 
-  Settings, CheckSquare, RefreshCw, AlertTriangle, FileText, CheckCircle2, Volume2, Info
+import {
+  Activity,
+  Archive,
+  Bell,
+  Check,
+  CheckCircle2,
+  CheckSquare,
+  Delete,
+  Edit,
+  Inbox,
+  Mail,
+  MessageSquare,
+  RefreshCw,
+  Save,
+  Search,
+  Server,
+  Sliders,
+  Smartphone,
+  Trash2,
+  Volume2,
+  X
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
 import { motion, AnimatePresence } from "motion/react";
 import { db, auth } from "../firebase";
 import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, query, where, orderBy, onSnapshot } from "firebase/firestore";

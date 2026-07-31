@@ -1,8 +1,20 @@
-import React, { useState, useEffect } from "react";
-import { 
-  MessageSquare, ShieldAlert, AlertTriangle, CheckCircle, XCircle, 
-  Search, Filter, Lock, RefreshCw, UserCheck, Eye, ShieldCheck, Flag
+import {
+  AlertTriangle,
+  CheckCircle,
+  Eye,
+  Filter,
+  Lock,
+  MessageSquare,
+  RefreshCw,
+  Search,
+  ShieldAlert,
+  ShieldCheck,
+  Target,
+  User,
+  XCircle
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { collection, getDocs, query, orderBy, limit, doc, getDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 

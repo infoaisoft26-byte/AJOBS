@@ -1,11 +1,32 @@
-import { useState, useEffect } from "react";
-import { jsPDF } from "jspdf";
-import { 
-  Sparkles, FileText, Upload, AlertTriangle, CheckCircle2, Download, RefreshCw, 
-  Trash2, Calendar, Award, Briefcase, GraduationCap, Code2, Globe, FileCheck, 
-  MapPin, Landmark, TrendingUp, Compass, ArrowUpRight, CheckCircle, ChevronRight,
-  BookOpen, Trophy, FolderOpen, CloudLightning
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  Award,
+  BookOpen,
+  Briefcase,
+  Calendar,
+  Check,
+  CheckCircle,
+  CheckCircle2,
+  ChevronRight,
+  Cloud,
+  CloudLightning,
+  Compass,
+  Delete,
+  Download,
+  FileCheck,
+  FileText,
+  Globe,
+  Layout,
+  MapPin,
+  RefreshCw,
+  Sparkles,
+  Trash2,
+  TrendingUp,
+  Upload
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { db } from "../firebase";
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs, query, where, deleteDoc, orderBy } from "firebase/firestore";
 import { uploadToCloudinary } from "../services/cloudinaryService";

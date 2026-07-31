@@ -1,6 +1,17 @@
-import React from "react";
-import { 
-  Heart, Share2, MapPin, DollarSign, Lock, AlertTriangle, CheckCircle, Briefcase, ExternalLink, Award, Sparkles 
+import {
+  AlertTriangle,
+  Award,
+  Briefcase,
+  CheckCircle,
+  DollarSign,
+  ExternalLink,
+  Heart,
+  Lock,
+  MapPin,
+  Save,
+  Share,
+  Share2,
+  Sparkles
 } from "lucide-react";
 import { JobPosting } from "../types";
 

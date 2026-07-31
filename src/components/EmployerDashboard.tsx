@@ -1,10 +1,29 @@
-import { useState, useEffect } from "react";
-import { motion } from "motion/react";
-import { 
-  Building2, TrendingUp, Briefcase, Brain, Users, 
-  Calendar, Award, BarChart2, ShieldAlert, ShieldCheck, RefreshCw, LogOut, CreditCard, Bell,
-  MessageSquare, FileText, Search, CloudLightning, Plus, PlusCircle, AlertTriangle
+import {
+  AlertTriangle,
+  Award,
+  BarChart2,
+  Bell,
+  Brain,
+  Briefcase,
+  Building2,
+  Calendar,
+  CloudLightning,
+  CreditCard,
+  Database,
+  FileText,
+  MessageSquare,
+  Navigation,
+  Plus,
+  PlusCircle,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  TrendingUp,
+  Users,
+  Video
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { db } from "../firebase";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import SubscriptionBillingHub from "./SubscriptionBillingHub";

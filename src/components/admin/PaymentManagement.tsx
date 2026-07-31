@@ -1,8 +1,15 @@
-import { useState } from "react";
-import { 
-  CreditCard, Search, Filter, ShieldAlert, CheckCircle, FileText, 
-  Download, Printer, DollarSign, IndianRupee, Tag, AlertCircle, RefreshCw 
+import {
+  Chrome,
+  Code,
+  CreditCard,
+  FileText,
+  Printer,
+  RefreshCw,
+  Search,
+  Tag
 } from "lucide-react";
+import { useState } from "react";
+
 import { PaymentTransaction } from "./AdminTypes";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../../firebase";

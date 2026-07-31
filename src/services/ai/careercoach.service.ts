@@ -1,3 +1,14 @@
+import {
+  Building,
+  Cloud,
+  Database,
+  Figma,
+  Framer,
+  Server,
+  Star,
+  Type,
+  User
+} from "lucide-react";
 export interface AICareerCoachResponse {
   responseText: string;
   careerSuggestions: string[];

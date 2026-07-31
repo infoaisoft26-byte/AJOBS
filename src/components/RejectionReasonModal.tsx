@@ -1,5 +1,10 @@
-import React, { useState } from "react";
-import { AlertCircle, X, Send, FileText } from "lucide-react";
+import {
+  AlertCircle,
+  Send,
+  X
+} from "lucide-react";
+import { useState } from "react";
+
 import { doc, updateDoc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { NotificationService } from "../services/notificationService";

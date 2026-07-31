@@ -1,5 +1,17 @@
-import React, { useEffect, useState } from "react";
-import { RefreshCw, Search, CheckCircle2, AlertCircle, Clock, ExternalLink, Globe, Send } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  Code,
+  ExternalLink,
+  Globe,
+  Monitor,
+  RefreshCw,
+  Search,
+  Send
+} from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { IndexingLogRecord } from "../../../server/googleIndexingService";
 
 export function GoogleIndexingLogView() {

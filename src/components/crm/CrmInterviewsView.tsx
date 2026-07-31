@@ -1,8 +1,20 @@
-import { useState } from "react";
-import { 
-  Calendar, Clock, User, Briefcase, Plus, Save, X, Trash2, 
-  CheckCircle, MessageSquare, Star, ChevronLeft, ChevronRight, Edit3
+import {
+  Calendar,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Edit3,
+  Grid,
+  MessageSquare,
+  Plus,
+  Save,
+  Sun,
+  Target,
+  X
 } from "lucide-react";
+import { useState } from "react";
+
 import { doc, setDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { InterviewModel, ConsultancyJobModel, ConsultancyCandidateModel } from "./CrmTypes";

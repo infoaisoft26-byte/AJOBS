@@ -1,8 +1,18 @@
-import { useState } from "react";
-import { 
-  Award, FileText, Send, CheckCircle, XCircle, Clock, 
-  DollarSign, Calendar, Plus, Download, ChevronRight, Bookmark
+import {
+  Award,
+  CheckCircle,
+  DollarSign,
+  Download,
+  FileText,
+  Package,
+  Plus,
+  Send,
+  Target,
+  X,
+  XCircle
 } from "lucide-react";
+import { useState } from "react";
+
 import { CompanyOffer, CompanyApplication, CompanyJob } from "./EmployerTypes";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../../firebase";

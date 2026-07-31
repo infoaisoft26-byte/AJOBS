@@ -1,9 +1,16 @@
-import React, { useState, useEffect } from "react";
-import { 
-  Sparkles, FileText, Database, Plus, RefreshCw, ExternalLink, 
-  Layers, CheckCircle, FolderOpen, AlertCircle, FileSpreadsheet, 
-  FileUp, Link2, Info, Loader2, Check, CloudLightning
+import {
+  CloudLightning,
+  Database,
+  ExternalLink,
+  FileSpreadsheet,
+  Layers,
+  Plus,
+  RefreshCw,
+  Share,
+  Sparkles
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { motion } from "motion/react";
 import { 
   workspaceSignIn, 

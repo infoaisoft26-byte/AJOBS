@@ -1,10 +1,23 @@
-import { useState, useEffect } from "react";
-import { motion } from "motion/react";
-import { 
-  Users, Search, ShieldCheck, Mail, Phone, Calendar, Briefcase, 
-  Filter, ArrowUpRight, CheckCircle, AlertCircle, RefreshCw, 
-  Trash2, UserCheck, Eye, Building, Award, Sliders, Loader2, X
+import {
+  AlertCircle,
+  Briefcase,
+  Building,
+  CheckCircle,
+  Eye,
+  Filter,
+  Mail,
+  Phone,
+  RefreshCw,
+  Search,
+  Sliders,
+  Target,
+  Trash2,
+  UserCheck,
+  Users,
+  X
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { db, auth } from "../firebase";
 import { 
   collection, doc, getDoc, getDocs, updateDoc, setDoc, deleteDoc, 

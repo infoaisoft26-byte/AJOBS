@@ -1,5 +1,12 @@
-import React, { useState } from "react";
-import { Trash2, AlertTriangle, ShieldCheck, CheckCircle2, RefreshCw, Layers } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Layers,
+  RefreshCw,
+  Trash2
+} from "lucide-react";
+import { useState } from "react";
+
 
 export default function DemoDataCleanupTool({ adminUserId }: { adminUserId: string }) {
   const [loading, setLoading] = useState(false);

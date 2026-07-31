@@ -1,9 +1,16 @@
-import React, { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { 
-  FileText, Cpu, Sparkles, Building, CheckCircle2, 
-  Search, ShieldCheck, Zap, ArrowRight, UserCheck, Play, Pause, RefreshCw 
+import {
+  Building,
+  Cpu,
+  FileText,
+  Pause,
+  Play,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Upload
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
 
 const SKILL_NODES = [
   { id: "tech", label: "Technology & AI", score: "98% Match", color: "#06B6D4" },

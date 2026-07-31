@@ -1,10 +1,28 @@
-import { useState, useEffect } from "react";
-import { 
-  X, ShieldCheck, Mail, Phone, Clock, MessageSquare, AlertCircle, HelpCircle, 
-  MapPin, Heart, Compass, Eye, Shield, Users, Trophy, Award, Landmark, 
-  Share2, ArrowRight, Star, FileText, Send, Download, BookOpen, Sparkles, 
-  Search, CheckCircle, Flame, DollarSign, Upload, Plus, Play, ExternalLink
+import {
+  AlertCircle,
+  Award,
+  BookOpen,
+  CheckCircle,
+  Clock,
+  Cloud,
+  Database,
+  Download,
+  FileText,
+  Mail,
+  Map,
+  MapPin,
+  Phone,
+  Play,
+  Search,
+  Send,
+  Shield,
+  Sparkles,
+  Target,
+  Video,
+  X
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { db, auth } from "../firebase";
 import { collection, getDocs, setDoc, doc, addDoc } from "firebase/firestore";
 

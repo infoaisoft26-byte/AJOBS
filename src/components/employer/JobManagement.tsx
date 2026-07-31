@@ -1,9 +1,28 @@
-import { useState } from "react";
-import { 
-  Plus, Edit, Trash2, Copy, ToggleLeft, ToggleRight, Archive, CheckCircle, 
-  Search, X, Briefcase, PlusCircle, Building, Users, Clock, HelpCircle, Save,
-  Pause, Play, Eye, RefreshCw
+import {
+  Briefcase,
+  CheckCircle,
+  Clock,
+  Copy,
+  Delete,
+  Edit,
+  Eye,
+  Figma,
+  Key,
+  List,
+  Package,
+  Pause,
+  Play,
+  Plus,
+  PlusCircle,
+  RefreshCw,
+  Save,
+  Search,
+  Target,
+  Trash2,
+  X
 } from "lucide-react";
+import { useState } from "react";
+
 import { CompanyJob } from "./EmployerTypes";
 import { doc, setDoc, deleteDoc } from "firebase/firestore";
 import { db, auth } from "../../firebase";

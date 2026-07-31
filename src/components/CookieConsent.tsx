@@ -1,5 +1,9 @@
+import {
+  ShieldCheck,
+  X
+} from "lucide-react";
 import { useState, useEffect } from "react";
-import { ShieldCheck, X } from "lucide-react";
+
 
 export function CookieConsent() {
   const [visible, setVisible] = useState(false);

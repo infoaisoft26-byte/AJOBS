@@ -1,8 +1,11 @@
-import { useState } from "react";
-import { 
-  TrendingUp, FileSpreadsheet, Download, FileText, BarChart3, 
-  ChevronRight, Sparkles, Building, Users, Printer 
+import {
+  BarChart3,
+  FileSpreadsheet,
+  Printer,
+  TrendingUp
 } from "lucide-react";
+import { useState } from "react";
+
 import { PlacementModel, ClientModel, ConsultancyJobModel } from "./CrmTypes";
 
 interface CrmReportsViewProps {

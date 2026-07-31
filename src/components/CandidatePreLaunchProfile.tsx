@@ -1,13 +1,25 @@
-import React, { useState, useEffect } from "react";
-import { UserProfile } from "../types";
-import { db, auth } from "../firebase";
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
-import { uploadToCloudinary } from "../services/cloudinaryService";
-import { 
-  Sparkles, User, Mail, Phone, Briefcase, MapPin, FileText, Upload, 
-  CheckCircle2, Clock, Edit3, LogOut, ShieldCheck, AlertCircle, RefreshCw, 
-  Award, ExternalLink, Save, X, Download
+import {
+  Award,
+  Briefcase,
+  CheckCircle2,
+  Download,
+  Edit,
+  Edit3,
+  ExternalLink,
+  FileText,
+  Key,
+  LogOut,
+  MapPin,
+  Phone,
+  RefreshCw,
+  Save,
+  Sparkles,
+  Target,
+  Upload,
+  X
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { useToast } from "./GlobalToast";
 
 interface CandidatePreLaunchProfileProps {

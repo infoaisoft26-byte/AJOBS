@@ -1,8 +1,15 @@
-import { useState } from "react";
-import { 
-  Sparkles, CheckCircle2, AlertTriangle, ShieldCheck, 
-  HelpCircle, ChevronRight, Star, FileText, Search, RefreshCw
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Figma,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Star
 } from "lucide-react";
+import { useState } from "react";
+
 import { ConsultancyJobModel, ConsultancyCandidateModel } from "./CrmTypes";
 
 interface CrmAiShortlistViewProps {

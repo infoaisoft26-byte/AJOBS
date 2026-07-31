@@ -1,5 +1,12 @@
-import { createContext, useContext, useState, ReactNode } from "react";
-import { CheckCircle, AlertTriangle, Info, X, XCircle } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle,
+  Info,
+  X,
+  XCircle
+} from "lucide-react";
+import { useContext, useState, ReactNode, createContext } from "react";
+
 import { motion, AnimatePresence } from "motion/react";
 
 export type ToastType = "success" | "error" | "info" | "warning";

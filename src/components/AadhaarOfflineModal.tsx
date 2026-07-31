@@ -1,5 +1,18 @@
-import React, { useState } from "react";
-import { ShieldCheck, FileCode, CheckCircle2, AlertCircle, X, Key, Upload, Lock } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Code,
+  File,
+  FileCode,
+  Key,
+  Lock,
+  Share,
+  ShieldCheck,
+  Upload,
+  X
+} from "lucide-react";
+import { useState } from "react";
+
 
 interface AadhaarOfflineModalProps {
   isOpen: boolean;

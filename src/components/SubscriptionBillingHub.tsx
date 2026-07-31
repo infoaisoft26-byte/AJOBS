@@ -1,10 +1,30 @@
-import { useState, useEffect } from "react";
-import { 
-  CreditCard, Search, Filter, ShieldCheck, CheckCircle2, FileText, 
-  Download, Printer, DollarSign, IndianRupee, Tag, AlertCircle, RefreshCw, 
-  Gift, Users, ArrowRight, Check, Sparkles, Building, Briefcase, HelpCircle, 
-  Copy, CheckSquare, Plus, Trash2, Calendar
+import {
+  AlertCircle,
+  ArrowRight,
+  Briefcase,
+  Building,
+  Check,
+  CheckCircle2,
+  CheckSquare,
+  Code,
+  Copy,
+  CreditCard,
+  Disc,
+  FileText,
+  Gift,
+  Hash,
+  Key,
+  Phone,
+  Printer,
+  RefreshCw,
+  Save,
+  ShieldCheck,
+  Sparkles,
+  Tag,
+  Unlock
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { db } from "../firebase";
 import { 
   doc, setDoc, getDoc, collection, getDocs, query, where, addDoc 

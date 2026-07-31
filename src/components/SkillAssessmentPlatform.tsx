@@ -1,8 +1,12 @@
-import React, { useState } from "react";
-import { 
-  Award, Code, FileText, CheckCircle2, Clock, Trophy, ShieldCheck, Download,
-  Play, Sparkles, Filter, Search, BarChart2, BookOpen, ExternalLink, RefreshCw
+import {
+  Award,
+  Clock,
+  Play,
+  ShieldCheck,
+  Sparkles
 } from "lucide-react";
+import { useState } from "react";
+
 
 export interface SkillTest {
   id: string;

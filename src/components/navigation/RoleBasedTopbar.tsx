@@ -1,9 +1,19 @@
-import React, { useState } from "react";
-import { 
-  Sparkles, LogOut, Sun, Moon, LayoutDashboard, Volume2, VolumeX, RotateCcw,
-  Briefcase, FileText, User, Bell, Users, BarChart3, Database, Shield, MessageSquare,
-  Search, PlusCircle, RefreshCw
+import {
+  Database,
+  Home,
+  LayoutDashboard,
+  LogOut,
+  Moon,
+  PlusCircle,
+  RotateCcw,
+  Shield,
+  Sun,
+  User,
+  Volume2,
+  VolumeX
 } from "lucide-react";
+import { useState } from "react";
+
 import { UserProfile } from "../../types";
 import AIJobsLogo from "../AIJobsLogo";
 import { NotificationBellAndDrawer } from "../NotificationCenter";

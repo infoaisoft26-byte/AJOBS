@@ -1,5 +1,11 @@
-import React, { useState } from "react";
-import { Award, FileText, Send, CheckCircle2, X, Download, ShieldCheck, DollarSign, Calendar, MapPin, Building } from "lucide-react";
+import {
+  Award,
+  Package,
+  Send,
+  X
+} from "lucide-react";
+import { useState } from "react";
+
 import { jsPDF } from "jspdf";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";

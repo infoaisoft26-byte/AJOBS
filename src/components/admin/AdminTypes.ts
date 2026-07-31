@@ -1,3 +1,6 @@
+import {
+  User
+} from "lucide-react";
 export interface SystemAuditLog {
   id: string;
   userId: string;

@@ -1,10 +1,27 @@
-import { useState, useEffect } from "react";
-import { 
-  Users, Building, Briefcase, FileText, Calendar, Award, 
-  TrendingUp, IndianRupee, Clock, ShieldAlert, Sparkles, RefreshCw,
-  Layers, ArrowUpRight, ShieldCheck, HelpCircle, CheckCircle, Flame,
-  BellRing, UserCheck, AlertCircle, Trash2, ArrowRight
+import {
+  Activity,
+  ArrowRight,
+  ArrowUpRight,
+  Briefcase,
+  Building,
+  Clock,
+  FileText,
+  Flame,
+  HelpCircle,
+  Layers,
+  Phone,
+  RefreshCw,
+  ShieldAlert,
+  Sparkles,
+  Sun,
+  Target,
+  TrendingUp,
+  User,
+  Users,
+  Volume
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { collection, getDocs, query, limit, orderBy, where } from "firebase/firestore";
 import { db } from "../../firebase";
 import { LiveStats, SystemAuditLog } from "./AdminTypes";

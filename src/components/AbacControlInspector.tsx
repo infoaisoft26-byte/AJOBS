@@ -1,9 +1,17 @@
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { 
-  ShieldCheck, ShieldAlert, Key, Database, Eye, Settings, 
-  User, Sliders, Play, RefreshCw, CheckCircle2, AlertCircle, Info, Sparkles, AlertTriangle
+import {
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle2,
+  Database,
+  Play,
+  RefreshCw,
+  ShieldAlert,
+  ShieldCheck,
+  Sliders,
+  Tag
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { db } from "../firebase";
 import { doc, getDoc, updateDoc, setDoc } from "firebase/firestore";
 import { 

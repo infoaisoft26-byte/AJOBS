@@ -1,5 +1,13 @@
-import React, { useState, useEffect } from "react";
-import { Mail, ShieldCheck, CheckCircle2, AlertCircle, RefreshCw, Sparkles, BellOff } from "lucide-react";
+import {
+  AlertCircle,
+  BellOff,
+  CheckCircle2,
+  RefreshCw,
+  Save,
+  ShieldCheck
+} from "lucide-react";
+import { useEffect, useState } from "react";
+
 import AIJobsLogo from "./AIJobsLogo";
 
 export default function UnsubscribeView() {

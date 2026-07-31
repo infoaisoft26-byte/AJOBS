@@ -1,3 +1,7 @@
+import {
+  Chrome,
+  User
+} from "lucide-react";
 import { db } from "../../firebase";
 import { doc, setDoc, getDoc, collection, getDocs } from "firebase/firestore";
 import { 

@@ -1,8 +1,20 @@
-import React, { useState, useEffect } from "react";
 import {
-  Mail, Send, Eye, CheckCircle2, XCircle, AlertTriangle, RefreshCw, Sparkles,
-  Inbox, Layers, Settings, FileText, Play, RotateCw, Filter, Users, ShieldAlert, Check
+  CheckCircle2,
+  FileText,
+  Inbox,
+  Layers,
+  Mail,
+  Package,
+  Play,
+  RefreshCw,
+  RotateCw,
+  Send,
+  Sparkles,
+  Users,
+  XCircle
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 
 interface TemplateInfo {
   id: string;

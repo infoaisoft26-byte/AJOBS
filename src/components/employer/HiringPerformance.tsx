@@ -1,9 +1,18 @@
-import { useState, useMemo } from "react";
-import { 
-  TrendingUp, Calendar, Users, Award, ShieldCheck, Sparkles, Filter, 
-  HelpCircle, ChevronDown, CheckCircle, Clock, PieChart as PieIcon, BarChart2,
-  Share2, ArrowUpRight, ArrowDownRight, Snail, Target, Zap
+import {
+  ArrowUpRight,
+  Award,
+  BarChart,
+  CheckCircle,
+  Clock,
+  Sparkles,
+  Target,
+  TrendingUp,
+  Users,
+  Volume,
+  Zap
 } from "lucide-react";
+import { useMemo, useState } from "react";
+
 import { 
   AreaChart, Area, BarChart, Bar, LineChart, Line, XAxis, YAxis, 
   CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, ComposedChart

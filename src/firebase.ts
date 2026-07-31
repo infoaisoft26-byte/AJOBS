@@ -1,3 +1,6 @@
+import {
+  Check
+} from "lucide-react";
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore, enableMultiTabIndexedDbPersistence, setLogLevel } from "firebase/firestore";

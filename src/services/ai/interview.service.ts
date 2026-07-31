@@ -1,3 +1,6 @@
+import {
+  Play
+} from "lucide-react";
 export interface InterviewQuestionItem {
   id: string;
   type: "MCQ" | "Technical Questions" | "Scenario Questions" | "Behavioral Questions" | "Role Play";

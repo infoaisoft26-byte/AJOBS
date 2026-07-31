@@ -1,8 +1,16 @@
-import React, { useState, useEffect } from "react";
 import {
-  Users, Search, Filter, Calendar, UserPlus, Phone, Mail, MapPin, 
-  Tag, Clock, CheckCircle2, AlertCircle, Edit3, ArrowUpRight, ShieldAlert, FileText, ChevronRight
+  CheckCircle2,
+  Edit3,
+  Facebook,
+  Instagram,
+  Mail,
+  Phone,
+  Save,
+  Search,
+  Users
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { CrmLead } from "../../types";
 
 export default function LiveLeadsCRM() {

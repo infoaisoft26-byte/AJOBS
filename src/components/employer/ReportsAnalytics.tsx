@@ -1,8 +1,13 @@
-import { useState } from "react";
-import { 
-  BarChart2, FileSpreadsheet, Download, FileText, Printer, CheckCircle, 
-  HelpCircle, Calendar, Briefcase, TrendingUp, Sparkles, Building
+import {
+  BarChart2,
+  Building,
+  FileSpreadsheet,
+  Printer,
+  Save,
+  Target
 } from "lucide-react";
+import { useState } from "react";
+
 import { CompanyJob, CompanyApplication, CompanyInterview, CompanyOffer } from "./EmployerTypes";
 import InteractiveExportTable from "../InteractiveExportTable";
 import AiInsightsPanel from "../AiInsightsPanel";

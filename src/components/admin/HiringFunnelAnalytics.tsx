@@ -1,9 +1,14 @@
-import { useState, useEffect, useMemo } from "react";
-import { motion } from "motion/react";
-import { 
-  BarChart2, TrendingUp, Users, CheckCircle, Briefcase, 
-  Clock, Download, RefreshCw, ArrowRight, ShieldCheck, Sparkles, Filter
+import {
+  BarChart2,
+  Cloud,
+  Download,
+  Map,
+  RefreshCw,
+  Search,
+  TrendingUp
 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+
 import { db } from "../../firebase";
 import { collection, getDocs } from "firebase/firestore";
 

@@ -1,10 +1,31 @@
-import React, { useState, useEffect, useRef } from "react";
-import { 
-  Search, MapPin, Briefcase, DollarSign, Clock, Users, ShieldCheck, 
-  Sparkles, Filter, Heart, Share2, ArrowRight, Upload, UserPlus, 
-  CheckCircle2, AlertTriangle, X, FileText, Send, Building2, Check,
-  ChevronDown, ExternalLink, RefreshCw, Loader2
+import {
+  AlertTriangle,
+  ArrowRight,
+  Briefcase,
+  Building2,
+  CheckCircle2,
+  ChevronDown,
+  Clock,
+  File,
+  FileText,
+  Heart,
+  Home,
+  Link,
+  MapPin,
+  RefreshCw,
+  Save,
+  Search,
+  Send,
+  Share,
+  Share2,
+  ShieldCheck,
+  Sparkles,
+  Upload,
+  UserPlus,
+  X
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
 import { motion, AnimatePresence } from "motion/react";
 import { auth, db } from "../firebase";
 import { 

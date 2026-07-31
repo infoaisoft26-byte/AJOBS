@@ -1,6 +1,12 @@
-import React, { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { Sparkles, Brain, Cpu, FileText, CheckCircle2, Building, ArrowRight, X, Volume2, VolumeX } from "lucide-react";
+import {
+  Brain,
+  Cpu,
+  Volume2,
+  VolumeX,
+  X
+} from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+
 import AIJobsLogo from "./AIJobsLogo";
 import soundSynth from "../utils/audioSynth";
 

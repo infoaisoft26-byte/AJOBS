@@ -1,5 +1,14 @@
-import React, { useState, useEffect } from "react";
-import { Clock, CheckCircle2, AlertCircle, X, ChevronRight, User, MessageSquare, Send } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  Send,
+  User,
+  X
+} from "lucide-react";
+import { useState, useEffect } from "react";
+
 import { ApplicationTimelineEntry, JobApplication } from "../types";
 
 interface ApplicationStatusTimelineModalProps {

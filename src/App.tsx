@@ -1,6 +1,10 @@
-import { useState, useEffect, lazy, Suspense } from "react";
-import { auth, db, isFirebaseConfigured } from "@/firebase";
-import { AlertTriangle, UserCheck } from "lucide-react";
+import {
+  AlertTriangle,
+  User,
+  UserCheck
+} from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { doc, getDoc } from "firebase/firestore";
 import { UserProfile } from "@/types";
 import { initializeUserCollectionsAndDocs, getOrCreateUserProfile } from "@/services/dbInitService";

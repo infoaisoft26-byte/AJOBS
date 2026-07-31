@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react";
-import { motion } from "motion/react";
-import { 
-  Sparkles, Upload, MessageSquare, Briefcase, Award, Send, Play, 
-  Brain, CheckCircle2, TrendingUp, AlertTriangle, PlayCircle, Star, Info, FileText,
-  Bell, ChevronRight, CheckCircle, Trash2
+import {
+  AlertTriangle,
+  Bookmark,
+  Type
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
 import { db, auth } from "../firebase";
 import { doc, getDoc, setDoc, collection, getDocs, updateDoc, arrayUnion, increment, query, where, onSnapshot } from "firebase/firestore";
 import { CandidateProfile, JobPosting, JobApplication, InterviewSession, ChatMessage, NotificationRecord } from "../types";

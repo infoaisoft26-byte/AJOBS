@@ -1,8 +1,17 @@
-import { useState } from "react";
-import { 
-  HelpCircle, Search, Filter, ShieldAlert, CheckCircle, MessageSquare, 
-  Send, AlertTriangle, Users, BookOpen, UserPlus, Clock, ArrowRight 
+import {
+  Activity,
+  BookOpen,
+  CheckCircle,
+  Chrome,
+  HelpCircle,
+  MessageSquare,
+  Search,
+  Send,
+  Server,
+  ShieldAlert
 } from "lucide-react";
+import { useState } from "react";
+
 import { SupportTicket } from "./AdminTypes";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../../firebase";

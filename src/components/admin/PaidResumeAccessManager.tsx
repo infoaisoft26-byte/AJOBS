@@ -1,5 +1,21 @@
-import React, { useState, useEffect } from "react";
-import { Key, ShieldCheck, UserCheck, Calendar, Eye, Download, AlertCircle, RefreshCw, CheckCircle, PauseCircle, Trash2, Plus, EyeOff } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle,
+  Download,
+  Eye,
+  EyeOff,
+  Info,
+  Key,
+  Pause,
+  PauseCircle,
+  Phone,
+  Plus,
+  RefreshCw,
+  Trash2,
+  User
+} from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { db } from "../../firebase";
 import { collection, getDocs } from "firebase/firestore";
 

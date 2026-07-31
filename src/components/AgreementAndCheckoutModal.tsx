@@ -1,8 +1,15 @@
-import React, { useState, useEffect, useRef } from "react";
-import { 
-  ShieldCheck, FileText, CheckCircle2, AlertCircle, CreditCard, Lock, 
-  ScrollText, CheckSquare, KeyRound, Printer, Download, Building2, X, RefreshCw
+import {
+  AlertCircle,
+  Building2,
+  CheckCircle2,
+  CreditCard,
+  Database,
+  KeyRound,
+  ShieldCheck,
+  X
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
 
 interface AgreementAndCheckoutModalProps {
   isOpen: boolean;

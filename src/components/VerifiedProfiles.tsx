@@ -1,8 +1,16 @@
-import React, { useState } from "react";
-import { 
-  ShieldCheck, CheckCircle2, AlertCircle, FileText, Smartphone, Mail,
-  Award, Building2, Upload, Lock, ExternalLink, Sparkles, RefreshCw
+import {
+  Award,
+  Building2,
+  CheckCircle2,
+  FileText,
+  Mail,
+  Phone,
+  ShieldCheck,
+  Smartphone,
+  Sparkles
 } from "lucide-react";
+import { useState } from "react";
+
 
 interface VerificationItem {
   id: string;

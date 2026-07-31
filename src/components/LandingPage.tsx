@@ -1,13 +1,15 @@
-import React, { useState, useRef, useEffect } from "react";
-import AIJobsLogo from "./AIJobsLogo";
-import { 
-  Sparkles, ArrowRight, Upload, Play, CheckCircle2, 
-  HelpCircle, Star, Send, Bot, MessageSquare, ChevronRight, 
-  Zap, Compass, UserCheck, ShieldAlert, Award, Check,
-  Building, Users, BarChart3, Database, Search, FileText,
-  Briefcase, Clock, Activity, PhoneCall, Video, X, Loader2, LogIn,
-  Calendar, ShieldCheck, Mail, Phone, Lock
+import {
+  ArrowRight,
+  Building,
+  Cloud,
+  LogIn,
+  Mail,
+  Phone,
+  Sparkles,
+  Upload
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
 import { motion, AnimatePresence } from "motion/react";
 import LegalModal, { LegalDocType } from "./LegalModal";
 import SmartResumeOtpModal, { CandidateParsedData } from "./SmartResumeOtpModal";

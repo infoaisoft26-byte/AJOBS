@@ -1,5 +1,14 @@
-import { useState, useRef } from "react";
-import { Upload, Loader2, CheckCircle2, Sparkles, AlertTriangle, FileText, RefreshCw, ArrowRight } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  File,
+  FileText,
+  RefreshCw,
+  Sparkles,
+  Upload
+} from "lucide-react";
+import { useRef, useState } from "react";
+
 import { motion } from "motion/react";
 import { doc, updateDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";

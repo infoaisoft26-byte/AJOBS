@@ -1,5 +1,17 @@
-import React, { useState } from "react";
-import { ShieldCheck, Lock, FileText, Trash2, Download, CheckCircle, Clock, AlertTriangle, Eye, RefreshCw, Key } from "lucide-react";
+import {
+  Archive,
+  CheckCircle,
+  Clock,
+  Download,
+  FileText,
+  Lock,
+  ShieldCheck,
+  Trash2,
+  User,
+  Video
+} from "lucide-react";
+import { useState } from "react";
+
 
 export default function ComplianceGdprCenter() {
   const [activeTab, setActiveTab] = useState<"gdpr" | "audit" | "retention" | "requests">("gdpr");

@@ -1,5 +1,16 @@
-import React, { useState } from "react";
-import { Video, Mic, MicOff, Camera, ShieldAlert, FileText, Award, Calendar, CheckCircle, Play, Pause, Download, User, Sparkles } from "lucide-react";
+import {
+  Award,
+  Camera,
+  CheckCircle,
+  FileText,
+  Key,
+  Mic,
+  ShieldAlert,
+  Sparkles,
+  Video
+} from "lucide-react";
+import { useState } from "react";
+
 import { InterviewSession } from "../types";
 
 interface VideoInterviewCenterProps {

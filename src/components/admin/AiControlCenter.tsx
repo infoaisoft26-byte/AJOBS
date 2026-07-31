@@ -1,8 +1,16 @@
-import { useState } from "react";
-import { 
-  Brain, ShieldAlert, Sparkles, CheckCircle, RefreshCw, Key, 
-  Settings, Play, HelpCircle, Code, MessageSquare, Sliders, Database, Save
+import {
+  Brain,
+  Chrome,
+  Cloud,
+  Code,
+  Key,
+  Save,
+  Server,
+  ShieldAlert,
+  Sliders
 } from "lucide-react";
+import { useState } from "react";
+
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import AiInsightsPanel from "../AiInsightsPanel";

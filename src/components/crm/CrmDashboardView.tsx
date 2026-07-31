@@ -1,6 +1,19 @@
-import { 
-  Users, Briefcase, Calendar, CheckCircle2, DollarSign, 
-  TrendingUp, BarChart3, Clock, AlertCircle, Sparkles, TrendingUp as TrendIcon
+import {
+  Activity,
+  AlertCircle,
+  BarChart,
+  BarChart3,
+  Briefcase,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  DollarSign,
+  Settings,
+  Sparkles,
+  TrendingUp,
+  TrendingUp as TrendIcon,
+  Users,
+  Volume
 } from "lucide-react";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 

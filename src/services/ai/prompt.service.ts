@@ -1,3 +1,10 @@
+import {
+  Code,
+  Play,
+  Target,
+  User,
+  X
+} from "lucide-react";
 /**
  * Prompt Service
  * Defines the standard system prompts and schemas for Gemini API integration.

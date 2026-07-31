@@ -1,8 +1,22 @@
-import { useState } from "react";
-import { 
-  Calendar, Video, MapPin, CheckSquare, Clock, Plus, 
-  Trash2, Send, Save, BookOpen, Star, UserCheck, AlertCircle, Sparkles
+import {
+  AlertCircle,
+  BookOpen,
+  Calendar,
+  Clock,
+  Link,
+  List,
+  MapPin,
+  Plus,
+  Save,
+  Send,
+  Sparkles,
+  Star,
+  UserCheck,
+  Video,
+  X
 } from "lucide-react";
+import { useState } from "react";
+
 import { CompanyInterview, CompanyApplication, CompanyJob } from "./EmployerTypes";
 import { doc, setDoc, deleteDoc, getDoc } from "firebase/firestore";
 import { db } from "../../firebase";

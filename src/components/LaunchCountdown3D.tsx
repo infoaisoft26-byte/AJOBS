@@ -1,6 +1,10 @@
-import React, { useState, useEffect } from "react";
-import { motion } from "motion/react";
-import { Clock, Calendar, Sparkles, ShieldCheck } from "lucide-react";
+import {
+  Clock,
+  ShieldCheck,
+  Sparkles
+} from "lucide-react";
+import { useState, useEffect } from "react";
+
 
 interface TimeLeft {
   days: number;

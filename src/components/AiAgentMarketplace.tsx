@@ -1,8 +1,15 @@
-import React, { useState } from "react";
-import { 
-  Bot, Sparkles, Send, CheckCircle2, MessageSquare, ToggleLeft, ToggleRight,
-  UserCheck, ShieldCheck, Zap, DollarSign, Award, Briefcase, Star, Search, RefreshCw, X
+import {
+  Search,
+  Send,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  ToggleLeft,
+  ToggleRight,
+  X
 } from "lucide-react";
+import { useState } from "react";
+
 import { GoogleGenAI } from "@google/genai";
 
 export interface AgentDef {

@@ -1,5 +1,14 @@
-import React, { useState } from "react";
-import { Sparkles, Briefcase, FileText, CheckCircle2, Copy, PlusCircle, RefreshCw, Layers } from "lucide-react";
+import {
+  CheckCircle2,
+  Key,
+  Package,
+  PlusCircle,
+  RefreshCw,
+  Sparkles,
+  Target
+} from "lucide-react";
+import { useState } from "react";
+
 import { useGlobalMarketplace } from "../context/GlobalMarketplaceContext";
 
 interface AiJobDescriptionGeneratorProps {

@@ -1,7 +1,15 @@
-import { useState } from "react";
-import { 
-  ShieldCheck, Shield, Users, Plus, X, Save, Key, Info, Check, AlertTriangle 
+import {
+  Edit,
+  Info,
+  Plus,
+  Save,
+  Shield,
+  ShieldCheck,
+  Users,
+  X
 } from "lucide-react";
+import { useState } from "react";
+
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { TeamMemberModel } from "./CrmTypes";

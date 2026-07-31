@@ -1,8 +1,16 @@
-import React, { useState } from "react";
-import { 
-  Users, DollarSign, Copy, Check, QrCode, Share2, TrendingUp,
-  Award, Sparkles, BarChart3, ChevronRight, Gift, ArrowUpRight
+import {
+  Check,
+  Code,
+  Copy,
+  Gift,
+  Link,
+  Share2,
+  Sparkles,
+  User,
+  Users
 } from "lucide-react";
+import { useState } from "react";
+
 
 export default function ReferralEcosystem() {
   const [copied, setCopied] = useState(false);

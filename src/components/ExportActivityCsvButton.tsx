@@ -1,5 +1,14 @@
-import React, { useState } from "react";
-import { Download, FileSpreadsheet, CheckCircle2 } from "lucide-react";
+import {
+  Activity,
+  CheckCircle2,
+  Cloud,
+  Download,
+  FileSpreadsheet,
+  Type,
+  Users
+} from "lucide-react";
+import { useState } from "react";
+
 import { downloadCsv, CsvData } from "../utils/csvExporter";
 import { useToast } from "./GlobalToast";
 

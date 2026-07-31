@@ -1,8 +1,18 @@
-import { useState, useEffect, useRef } from "react";
-import { 
-  Send, Paperclip, MessageSquare, Check, CheckCheck, Smile, MoreVertical, Search, User, 
-  Trash2, Image, FileText, Download, X, Circle, AlertCircle, RefreshCw
+import {
+  Check,
+  Circle,
+  Download,
+  FileText,
+  Image,
+  MessageSquare,
+  Paperclip,
+  RefreshCw,
+  Search,
+  User,
+  X
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
 import { db } from "../firebase";
 import { 
   collection, doc, getDoc, setDoc, updateDoc, deleteDoc, 

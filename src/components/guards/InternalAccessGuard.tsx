@@ -1,8 +1,9 @@
-import React, { useEffect } from "react";
-import { UserProfile } from "../../types";
-import { normalizeRole } from "../../utils/roleUtils";
-import { useToast } from "../GlobalToast";
-import { AlertTriangle, ShieldAlert } from "lucide-react";
+import {
+  AlertTriangle,
+  ShieldAlert
+} from "lucide-react";
+import { useEffect } from "react";
+
 
 interface InternalAccessGuardProps {
   user: UserProfile | null;

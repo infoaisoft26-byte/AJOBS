@@ -1,10 +1,25 @@
-import { useState, useEffect } from "react";
-import { 
-  Briefcase, MapPin, Calendar, DollarSign, Award, ArrowLeft, 
-  CheckCircle2, AlertTriangle, Brain, Heart, Share2, ShieldCheck, 
-  Sparkles, Lock, CheckCircle, ChevronRight, GraduationCap, Users, Clock, Send,
-  Building2, ArrowRight
+import {
+  AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
+  Brain,
+  Briefcase,
+  Check,
+  CheckCircle2,
+  Clock,
+  Heart,
+  Link,
+  MapPin,
+  Package,
+  Send,
+  Share,
+  Share2,
+  ShieldCheck,
+  Sparkles,
+  Users
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { db, auth } from "../firebase";
 import { collection, query, where, getDocs, limit } from "firebase/firestore";
 import { JobPosting, JobApplication } from "../types";

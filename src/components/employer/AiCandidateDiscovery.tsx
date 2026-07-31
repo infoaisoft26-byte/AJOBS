@@ -1,8 +1,20 @@
-import { useState, useEffect } from "react";
-import { 
-  Star, Search, Filter, ShieldCheck, Award, Briefcase, 
-  MapPin, Clock, DollarSign, Brain, Mail, Sparkles, UserPlus
+import {
+  Brain,
+  Clock,
+  DollarSign,
+  Figma,
+  Filter,
+  Framer,
+  MapPin,
+  Search,
+  Send,
+  ShieldCheck,
+  Sparkles,
+  User,
+  UserPlus
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { CompanyJob, CompanyApplication } from "./EmployerTypes";
 import { db } from "../../firebase";
 import { collection, getDocs, doc, setDoc } from "firebase/firestore";

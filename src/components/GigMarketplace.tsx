@@ -1,8 +1,14 @@
-import React, { useState } from "react";
-import { 
-  Briefcase, DollarSign, Clock, CheckCircle2, ShieldCheck, Send,
-  Filter, Sparkles, FileText, ChevronRight, UserCheck, Code
+import {
+  Briefcase,
+  CheckCircle2,
+  ChevronRight,
+  Send,
+  ShieldCheck,
+  Sparkles,
+  User
 } from "lucide-react";
+import { useState } from "react";
+
 
 export interface GigProject {
   id: string;

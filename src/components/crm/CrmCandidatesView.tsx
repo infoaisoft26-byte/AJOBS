@@ -1,8 +1,24 @@
-import { useState } from "react";
-import { 
-  Users, Search, Filter, Plus, Trash2, Edit, Save, X, 
-  Tag, FileText, CheckCircle, Mail, AlertTriangle, MessageSquare, Download, FileDown
+import {
+  Delete,
+  Download,
+  Edit,
+  FileDown,
+  Filter,
+  Info,
+  Key,
+  MessageSquare,
+  Phone,
+  Plus,
+  Save,
+  Search,
+  Tag,
+  Trash2,
+  Upload,
+  Users,
+  X
 } from "lucide-react";
+import { useState } from "react";
+
 import { doc, setDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { ConsultancyCandidateModel } from "./CrmTypes";

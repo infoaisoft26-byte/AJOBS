@@ -1,10 +1,26 @@
-import { useState, useEffect } from "react";
-import { motion } from "motion/react";
-import { 
-  Heart, Briefcase, Brain, Star, CheckCircle2, Search, ArrowRight, 
-  Trash2, ShieldCheck, HelpCircle, Clock, Calendar, Check, X, Award, ChevronRight,
-  SlidersHorizontal, Sparkles, Filter, CheckCircle, Lock, AlertTriangle, Share2, Building2, Download
+import {
+  AlertTriangle,
+  Award,
+  Bookmark,
+  Brain,
+  Briefcase,
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  Download,
+  Filter,
+  Heart,
+  Key,
+  Save,
+  Search,
+  Share,
+  Share2,
+  Sparkles,
+  Trash2,
+  X
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { JobPosting, JobApplication } from "../types";
 import { deleteDoc, doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import { db } from "../firebase";

@@ -1,8 +1,18 @@
-import { useState, useEffect } from "react";
-import { 
-  Calendar, Check, AlertTriangle, RefreshCw, Clock, Globe, User, 
-  MapPin, ShieldCheck, Mail, CalendarCheck, Link2, ExternalLink
+import {
+  Calendar,
+  CalendarCheck,
+  Clock,
+  ExternalLink,
+  Link2,
+  Lock,
+  Mail,
+  MapPin,
+  RefreshCw,
+  ShieldCheck,
+  User
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { db } from "../firebase";
 import { collection, getDocs, query, where, doc, updateDoc, setDoc } from "firebase/firestore";
 import { 

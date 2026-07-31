@@ -1,5 +1,17 @@
-import React, { useState } from "react";
-import { Sparkles, Brain, FileSearch, CheckCircle2, Award, ListFilter, UserCheck, Calendar, ArrowRight, Download, RefreshCw, Layers } from "lucide-react";
+import {
+  Award,
+  Brain,
+  Calendar,
+  CheckCircle2,
+  Code,
+  Database,
+  RefreshCw,
+  Sparkles,
+  Target,
+  UserCheck
+} from "lucide-react";
+import { useState } from "react";
+
 import { JobPosting, CandidateProfile } from "../types";
 import { useGlobalMarketplace } from "../context/GlobalMarketplaceContext";
 

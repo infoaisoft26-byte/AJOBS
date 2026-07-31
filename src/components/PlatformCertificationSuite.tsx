@@ -1,8 +1,16 @@
-import React, { useState } from "react";
-import { 
-  Award, CheckCircle2, ShieldCheck, Download, RefreshCw, Sparkles,
-  BarChart3, Cpu, Server, FileText, Check, AlertTriangle
+import {
+  Award,
+  CheckCircle2,
+  Download,
+  Eye,
+  RefreshCw,
+  ShieldCheck,
+  Sparkles,
+  Upload,
+  Video
 } from "lucide-react";
+import { useState } from "react";
+
 
 export default function PlatformCertificationSuite() {
   const [isAuditing, setIsAuditing] = useState(false);

@@ -1,3 +1,7 @@
+import {
+  Book,
+  Database
+} from "lucide-react";
 export interface AIEvaluationResponse {
   overallScore: number;
   technicalScore: number;

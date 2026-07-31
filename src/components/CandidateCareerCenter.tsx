@@ -1,10 +1,31 @@
-import React, { useState, useEffect, useRef } from "react";
-import { 
-  Sparkles, TrendingUp, Award, BookOpen, Briefcase, GraduationCap, 
-  CheckCircle, FileText, X, Search, Send, RefreshCw, Play, Check, 
-  Activity, Plus, Trash, Eye, Edit, Download, ChevronRight, Calendar, 
-  DollarSign, AlertCircle, ThumbsUp, Save, Clock, ChevronDown, User, Heart, Star
+import {
+  Activity,
+  AlertCircle,
+  Award,
+  BookOpen,
+  Calendar,
+  Check,
+  CheckCircle,
+  Clock,
+  Cloud,
+  Database,
+  DollarSign,
+  Download,
+  FileText,
+  Layout,
+  Phone,
+  RefreshCw,
+  Save,
+  Server,
+  Settings,
+  Sparkles,
+  Star,
+  Target,
+  Trash,
+  TrendingUp
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
 import { db } from "../firebase";
 import { 
   collection, query, where, getDocs, addDoc, updateDoc, 

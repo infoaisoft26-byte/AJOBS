@@ -1,7 +1,12 @@
-import { useState } from "react";
-import { 
-  Settings, Building, FileText, Globe, Mail, Phone, MapPin, Save, ShieldCheck, User 
+import {
+  Building,
+  Phone,
+  Save,
+  Settings,
+  ShieldCheck
 } from "lucide-react";
+import { useState } from "react";
+
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { ConsultancyProfile } from "../../types";

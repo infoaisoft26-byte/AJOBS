@@ -1,5 +1,14 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Search, MapPin, Briefcase, SlidersHorizontal, ChevronDown, Check, X, Building2 } from "lucide-react";
+import {
+  Briefcase,
+  Building2,
+  Check,
+  ChevronDown,
+  MapPin,
+  Search,
+  X
+} from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+
 
 interface JobSearchEngineProps {
   onSearchChange: (filters: {

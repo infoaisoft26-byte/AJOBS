@@ -1,5 +1,12 @@
-import React, { useState, useEffect } from "react";
-import { UserCheck, Users, AlertCircle, CheckCircle2, X, Send } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Send,
+  UserCheck,
+  X
+} from "lucide-react";
+import { useState, useEffect } from "react";
+
 
 interface CandidateAssignmentModalProps {
   isOpen: boolean;

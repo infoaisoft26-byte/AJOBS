@@ -1,6 +1,25 @@
-import React, { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { Bot, X, Send, Mic, MicOff, RefreshCw, AlertCircle, Minus, RotateCcw, Briefcase, Award, TrendingUp, DollarSign } from "lucide-react";
+import {
+  Award,
+  Briefcase,
+  Check,
+  Chrome,
+  Database,
+  DollarSign,
+  Mic,
+  MicOff,
+  Minimize,
+  Minus,
+  Navigation,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  Send,
+  Server,
+  TrendingUp,
+  X
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
 import ReactMarkdown from "react-markdown";
 
 interface GlobalChatbotProps {

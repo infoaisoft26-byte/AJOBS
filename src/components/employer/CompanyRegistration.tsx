@@ -1,8 +1,12 @@
-import { useState, useEffect } from "react";
-import { 
-  Building2, Globe, FileText, Mail, Phone, MapPin, 
-  Linkedin, Users, Save, ShieldCheck, FileCheck, CheckCircle
+import {
+  Building2,
+  CheckCircle,
+  FileCheck,
+  ShieldCheck,
+  Upload
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db, auth } from "../../firebase";
 import { CompanyProfile } from "./EmployerTypes";

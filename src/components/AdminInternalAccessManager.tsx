@@ -1,10 +1,17 @@
-import React, { useState, useEffect } from "react";
-import { db } from "../firebase";
-import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
-import { 
-  Users, Search, Shield, ShieldCheck, CheckCircle2, XCircle, 
-  RefreshCw, UserCheck, Key, FileText, ExternalLink, Filter, Sparkles 
+import {
+  CheckCircle2,
+  FileText,
+  Info,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  User,
+  Users,
+  XCircle
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { useToast } from "./GlobalToast";
 
 export interface UserAccessRecord {
