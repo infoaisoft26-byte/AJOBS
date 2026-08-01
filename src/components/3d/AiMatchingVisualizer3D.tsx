@@ -1,3 +1,15 @@
+import {
+  Building,
+  Cpu,
+  FileText,
+  Pause,
+  Play,
+  Search,
+  ShieldCheck,
+  Sparkles
+} from "lucide-react";
+
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 
 
