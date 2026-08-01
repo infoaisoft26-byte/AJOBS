@@ -1,7 +1,32 @@
+import { useState } from "react";
+
+import {
+  GoogleAuthProvider,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signInWithPopup
+} from "firebase/auth";
+
+import {
+  doc,
+  getDoc,
+  setDoc
+} from "firebase/firestore";
+
+import {
+  AlertCircle,
+  ArrowRight,
+  CheckCircle2,
+  KeyRound,
+  Lock,
+  LogIn,
+  Mail,
+  RefreshCw,
+  Sparkles
+} from "lucide-react";
+
 import { auth, db } from "../firebase";
-
-
-import { UserProfile } from "../types";
+import type { UserProfile } from "../types";
 import { useToast } from "./GlobalToast";
 
 const googleProvider = new GoogleAuthProvider();
