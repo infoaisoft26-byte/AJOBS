@@ -32,7 +32,7 @@ import { LanguageProvider } from "@/context/LanguageContext";
 import { GlobalMarketplaceProvider } from "@/context/GlobalMarketplaceContext";
 import { initGA, trackPageView, trackInteraction } from "@/utils/analytics";
 import { validateEnvironment } from "@/utils/envValidation";
-
+import { isFirebaseConfigured } from "@/firebase";
 // Pre-Launch Components & Route Guards
 import CandidatePreLaunchLogin from "@/components/CandidatePreLaunchLogin";
 import CandidateRegister from "@/components/CandidateRegister";
