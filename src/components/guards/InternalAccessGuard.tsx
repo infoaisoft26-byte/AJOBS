@@ -2,7 +2,7 @@ import {
   AlertTriangle,
   ShieldAlert
 } from "lucide-react";
-import { useEffect } from "react";
+import { ReactNode, useEffect } from "react";
 
 
 interface InternalAccessGuardProps {

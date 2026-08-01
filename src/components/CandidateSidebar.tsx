@@ -1,7 +1,6 @@
 import {
   Activity,
   Award,
-  BarChart3,
   Bell,
   BookOpen,
   Bot,
@@ -12,14 +11,11 @@ import {
   Clock,
   CloudLightning,
   Compass,
-  Database,
-  FileCheck,
   FileText,
   Gift,
   GraduationCap,
   Heart,
   LayoutDashboard,
-  Menu,
   MessageSquare,
   Mic,
   Search,
@@ -27,9 +23,9 @@ import {
   ShieldCheck,
   Smartphone,
   Sparkles,
-  User,
   Video,
-  X
+  X,
+  type User
 } from "lucide-react";
 
 interface SidebarProps {

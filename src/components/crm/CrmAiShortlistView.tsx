@@ -1,14 +1,17 @@
 import {
   AlertTriangle,
   CheckCircle2,
-  Figma,
   RefreshCw,
   Search,
   ShieldCheck,
   Sparkles,
   Star
 } from "lucide-react";
-import { useState } from "react";
+import { FormEvent, useState } from "react";
+import {
+  limit,
+  query
+} from "firebase/firestore";
 
 import { ConsultancyJobModel, ConsultancyCandidateModel } from "./CrmTypes";
 

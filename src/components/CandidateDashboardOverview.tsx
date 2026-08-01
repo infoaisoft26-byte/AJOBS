@@ -1,26 +1,6 @@
-import {
-  Activity,
-  Award,
-  Brain,
-  Briefcase,
-  CheckCircle,
-  ChevronRight,
-  Download,
-  Edit,
-  FileText,
-  Heart,
-  Lock,
-  ShieldCheck,
-  Sparkles,
-  Star,
-  Upload
-} from "lucide-react";
 import { useEffect, useState } from "react";
+import { Activity, Award, Brain, Briefcase, CheckCircle, ChevronRight, FileText, GripVertical, Heart, Lightbulb, Lock, ShieldCheck, Sparkles, Star } from "lucide-react";
 
-import { jsPDF } from "jspdf";
-import { CandidateProfile, JobApplication, NotificationRecord } from "../types";
-import { db } from "../firebase";
-import { doc, setDoc } from "firebase/firestore";
 import HolographicCard from "./HolographicCard";
 import AccountVerificationModal from "./AccountVerificationModal";
 

@@ -2,13 +2,11 @@ import {
   Activity,
   Bell,
   CheckCircle2,
-  Monitor,
   Send,
   Smartphone,
-  Sparkles,
-  Target
+  Sparkles
 } from "lucide-react";
-import { useState } from "react";
+import { Dispatch, useState } from "react";
 
 
 export default function MobileBackendHub() {

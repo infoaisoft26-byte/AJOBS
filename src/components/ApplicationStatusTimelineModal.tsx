@@ -4,10 +4,13 @@ import {
   ChevronRight,
   Clock,
   Send,
-  User,
   X
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import {
+  type User
+} from "firebase/auth";
+import { auth } from "../firebase";
 
 import { ApplicationTimelineEntry, JobApplication } from "../types";
 

@@ -1,10 +1,7 @@
-import {
-  Cpu,
-  Globe
-} from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { MouseEvent, useEffect, useRef, useState } from "react";
+import { Cpu, Globe } from "lucide-react";
 
-import { motion, AnimatePresence } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 
 interface SplashScreenProps {
   onComplete: () => void;

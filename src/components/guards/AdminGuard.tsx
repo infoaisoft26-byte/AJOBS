@@ -1,7 +1,5 @@
-import React from "react";
-import { UserProfile } from "../../types";
-import { normalizeRole } from "../../utils/roleUtils";
-import { ShieldAlert, Lock } from "lucide-react";
+import { ReactNode } from "react";
+import { Lock, ShieldAlert } from "lucide-react";
 
 interface AdminGuardProps {
   user: UserProfile | null;

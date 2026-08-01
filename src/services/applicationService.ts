@@ -1,15 +1,14 @@
-import { 
-  doc, 
-  setDoc, 
+import {
+  collection,
+  doc,
   getDoc,
-  updateDoc, 
-  increment, 
-  collection, 
-  query, 
-  where, 
-  getDocs 
+  getDocs,
+  increment,
+  query,
+  setDoc,
+  updateDoc,
+  where
 } from "firebase/firestore";
-import { db, auth } from "../firebase";
 import { JobPosting, JobApplication } from "../types";
 import { NotificationService } from "./notificationService";
 

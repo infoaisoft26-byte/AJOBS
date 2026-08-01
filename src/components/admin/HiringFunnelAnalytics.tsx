@@ -1,16 +1,5 @@
-import {
-  BarChart2,
-  Cloud,
-  Download,
-  Map,
-  RefreshCw,
-  Search,
-  TrendingUp
-} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-
-import { db } from "../../firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { BarChart2, Download, RefreshCw, TrendingUp } from "lucide-react";
 
 export interface JobPerformanceItem {
   id: string;

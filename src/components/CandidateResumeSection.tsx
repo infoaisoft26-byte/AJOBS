@@ -1,34 +1,6 @@
-import {
-  AlertTriangle,
-  ArrowUpRight,
-  Award,
-  BookOpen,
-  Briefcase,
-  Calendar,
-  Check,
-  CheckCircle,
-  CheckCircle2,
-  ChevronRight,
-  Cloud,
-  CloudLightning,
-  Compass,
-  Delete,
-  Download,
-  FileCheck,
-  FileText,
-  Globe,
-  Layout,
-  MapPin,
-  RefreshCw,
-  Sparkles,
-  Trash2,
-  TrendingUp,
-  Upload
-} from "lucide-react";
-import { useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
+import { AlertTriangle, ArrowUpRight, Award, BookOpen, Briefcase, Calendar, CheckCircle, CheckCircle2, ChevronRight, CloudLightning, Code2, Compass, Download, FileCheck, FileText, FolderOpen, Globe, GraduationCap, Landmark, MapPin, RefreshCw, Sparkles, Trash2, TrendingUp, Trophy, Upload } from "lucide-react";
 
-import { db } from "../firebase";
-import { doc, getDoc, setDoc, updateDoc, collection, getDocs, query, where, deleteDoc, orderBy } from "firebase/firestore";
 import { uploadToCloudinary } from "../services/cloudinaryService";
 import { uploadResumeService } from "../services/resumeUploadService";
 import { 

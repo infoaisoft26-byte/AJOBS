@@ -1,11 +1,7 @@
 import {
-  Activity,
   CheckCircle2,
-  Cloud,
   Download,
-  FileSpreadsheet,
-  Type,
-  Users
+  FileSpreadsheet
 } from "lucide-react";
 import { useState } from "react";
 

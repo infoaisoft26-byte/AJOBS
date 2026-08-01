@@ -1,8 +1,8 @@
 import {
   ArrowDown,
   ArrowUp,
+  ArrowUpDown,
   Check,
-  Columns,
   Download,
   ExternalLink,
   EyeOff,
@@ -10,7 +10,7 @@ import {
   Layers,
   RefreshCw
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ReactNode, useMemo, useState } from "react";
 
 import * as XLSX from "xlsx";
 import { connectGoogleSheets, exportToGoogleSheets } from "../services/googleSheetsService";

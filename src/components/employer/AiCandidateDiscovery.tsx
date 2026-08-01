@@ -1,23 +1,5 @@
-import {
-  Brain,
-  Clock,
-  DollarSign,
-  Figma,
-  Filter,
-  Framer,
-  MapPin,
-  Search,
-  Send,
-  ShieldCheck,
-  Sparkles,
-  User,
-  UserPlus
-} from "lucide-react";
 import { useEffect, useState } from "react";
-
-import { CompanyJob, CompanyApplication } from "./EmployerTypes";
-import { db } from "../../firebase";
-import { collection, getDocs, doc, setDoc } from "firebase/firestore";
+import { Brain, Clock, DollarSign, Filter, MapPin, Search, ShieldCheck, Sparkles, UserPlus } from "lucide-react";
 
 interface AiCandidateDiscoveryProps {
   userId: string;

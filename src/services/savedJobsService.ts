@@ -1,15 +1,14 @@
-import { 
-  collection, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  setDoc, 
-  deleteDoc, 
-  query, 
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
   orderBy,
-  serverTimestamp 
+  query,
+  serverTimestamp,
+  setDoc
 } from "firebase/firestore";
-import { db } from "../firebase";
 
 /**
  * Saved Jobs Service

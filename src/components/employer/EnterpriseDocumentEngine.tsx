@@ -1,17 +1,5 @@
-import {
-  Award,
-  Bookmark,
-  Briefcase,
-  Cloud,
-  FileCheck,
-  FileText,
-  Package,
-  Printer,
-  Save,
-  Sparkles,
-  User
-} from "lucide-react";
 import { useEffect, useState } from "react";
+import { Award, Bookmark, Briefcase, FileCheck, FileText, Printer, Sparkles } from "lucide-react";
 
 import { motion } from "motion/react";
 

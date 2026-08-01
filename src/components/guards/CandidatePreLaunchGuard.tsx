@@ -1,4 +1,4 @@
-import React from "react";
+import { ReactNode } from "react";
 import { UserProfile } from "../../types";
 
 interface CandidatePreLaunchGuardProps {

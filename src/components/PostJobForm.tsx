@@ -1,21 +1,6 @@
-import {
-  AlertCircle,
-  Briefcase,
-  Building2,
-  Calendar,
-  CheckCircle,
-  DollarSign,
-  Key,
-  MapPin,
-  Save,
-  ShieldAlert,
-  Target,
-  X
-} from "lucide-react";
-import { useState } from "react";
+import { FormEvent, useState } from "react";
+import { AlertCircle, Briefcase, Building2, Calendar, CheckCircle, DollarSign, ListTodo, MapPin, Save, ShieldAlert, X } from "lucide-react";
 
-import { db, auth } from "../firebase";
-import { doc, setDoc, collection, updateDoc } from "firebase/firestore";
 import { NotificationService } from "../services/notificationService";
 
 interface PostJobFormProps {

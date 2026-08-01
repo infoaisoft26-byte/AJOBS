@@ -1,12 +1,24 @@
 import {
+  type User
+} from "firebase/auth";
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  orderBy,
+  query,
+  setDoc,
+  updateDoc,
+  where
+} from "firebase/firestore";
+import { auth } from "../firebase";
+import {
   Link,
   User
 } from "lucide-react";
-import { db } from "../firebase";
-import { 
-  collection, doc, getDoc, setDoc, getDocs, updateDoc, 
-  deleteDoc, query, where, orderBy, addDoc 
-} from "firebase/firestore";
 
 // Notification Mediums
 export type NotificationMedium = "inApp" | "email" | "push" | "sms" | "whatsapp";

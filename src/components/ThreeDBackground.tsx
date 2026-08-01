@@ -1,7 +1,4 @@
-import {
-  Clock
-} from "lucide-react";
-import React, { useEffect, useRef, useState } from "react";
+import { MouseEvent, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import soundSynth from "../utils/audioSynth";
 

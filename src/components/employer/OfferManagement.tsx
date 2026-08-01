@@ -4,18 +4,15 @@ import {
   DollarSign,
   Download,
   FileText,
-  Package,
   Plus,
   Send,
-  Target,
-  X,
   XCircle
 } from "lucide-react";
-import { useState } from "react";
-
-import { CompanyOffer, CompanyApplication, CompanyJob } from "./EmployerTypes";
-import { doc, setDoc } from "firebase/firestore";
-import { db } from "../../firebase";
+import { FormEvent, useState } from "react";
+import {
+  doc,
+  setDoc
+} from "firebase/firestore";
 import { NotificationService } from "../../services/notificationService";
 
 interface OfferManagementProps {

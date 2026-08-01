@@ -1,6 +1,4 @@
 import {
-  Database,
-  Home,
   LayoutDashboard,
   LogOut,
   Moon,
@@ -8,11 +6,11 @@ import {
   RotateCcw,
   Shield,
   Sun,
-  User,
   Volume2,
   VolumeX
 } from "lucide-react";
 import { useState } from "react";
+import { auth } from "../../firebase";
 
 import { UserProfile } from "../../types";
 import AIJobsLogo from "../AIJobsLogo";

@@ -1,11 +1,8 @@
 import {
   CheckCircle2,
   Edit3,
-  Facebook,
-  Instagram,
   Mail,
   Phone,
-  Save,
   Search,
   Users
 } from "lucide-react";

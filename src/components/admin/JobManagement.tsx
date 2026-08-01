@@ -1,22 +1,19 @@
 import {
   Briefcase,
   CheckCircle,
-  Chrome,
-  Database,
-  Delete,
   MapPin,
-  Package,
   Plus,
   Search,
   Star,
   Trash2,
   X
 } from "lucide-react";
-import { useState } from "react";
-
-import { JobPosting } from "../../types";
-import { doc, setDoc, deleteDoc } from "firebase/firestore";
-import { db } from "../../firebase";
+import { FormEvent, useState } from "react";
+import {
+  deleteDoc,
+  doc,
+  setDoc
+} from "firebase/firestore";
 import InteractiveExportTable from "../InteractiveExportTable";
 
 interface JobManagementProps {

@@ -1,26 +1,22 @@
 import {
-  Delete,
   Download,
   Edit,
   FileDown,
-  Filter,
-  Info,
-  Key,
   MessageSquare,
-  Phone,
   Plus,
   Save,
   Search,
   Tag,
   Trash2,
-  Upload,
   Users,
   X
 } from "lucide-react";
-import { useState } from "react";
-
-import { doc, setDoc, deleteDoc } from "firebase/firestore";
-import { db } from "../../firebase";
+import { ChangeEvent, FormEvent, useState } from "react";
+import {
+  deleteDoc,
+  doc,
+  setDoc
+} from "firebase/firestore";
 import { ConsultancyCandidateModel } from "./CrmTypes";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";

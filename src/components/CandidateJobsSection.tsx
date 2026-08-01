@@ -1,29 +1,26 @@
 import {
   AlertTriangle,
   Award,
-  Bookmark,
   Brain,
   Briefcase,
-  Check,
   CheckCircle2,
   ChevronRight,
   Download,
   Filter,
   Heart,
-  Key,
-  Save,
   Search,
-  Share,
   Share2,
   Sparkles,
   Trash2,
   X
 } from "lucide-react";
 import { useEffect, useState } from "react";
-
-import { JobPosting, JobApplication } from "../types";
-import { deleteDoc, doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
-import { db } from "../firebase";
+import {
+  deleteDoc,
+  doc,
+  query,
+  updateDoc
+} from "firebase/firestore";
 import { evaluateAbacPolicy, mapUserToAbacSubject } from "../services/abacService";
 import { injectJobPostingSchema } from "../utils/schemaGenerator";
 import { fetchPaginatedLiveJobs } from "../services/jobService";

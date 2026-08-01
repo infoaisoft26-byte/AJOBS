@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { MouseEvent, useEffect, useState } from "react";
 import { motion } from "motion/react";
 
 interface Particle {

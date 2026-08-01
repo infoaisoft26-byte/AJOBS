@@ -1,25 +1,5 @@
-import {
-  Briefcase,
-  Check,
-  Cloud,
-  Figma,
-  Framer,
-  Mail,
-  MapPin,
-  MessageSquare,
-  RefreshCw,
-  Search,
-  ShieldCheck,
-  Tag,
-  Trash2,
-  User,
-  UserCheck,
-  X
-} from "lucide-react";
 import { useEffect, useState } from "react";
-
-import { db, auth } from "../../firebase";
-import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
+import { Briefcase, Code2, Mail, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, Tag, Trash2, UserCheck, X } from "lucide-react";
 
 interface CandidateProfile {
   id: string;

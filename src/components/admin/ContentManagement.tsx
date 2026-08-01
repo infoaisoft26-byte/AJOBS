@@ -1,24 +1,17 @@
 import {
-  Chrome,
-  Delete,
-  Edit,
-  Facebook,
   Globe,
-  Info,
-  Instagram,
-  Link,
   Mail,
-  Phone,
   Plus,
-  Save,
-  Twitter,
-  X
+  Save
 } from "lucide-react";
-import { useEffect, useState } from "react";
-
-import { CMSContent, EmailTemplate } from "./AdminTypes";
-import { doc, setDoc, deleteDoc, collection, getDocs } from "firebase/firestore";
-import { db } from "../../firebase";
+import { FormEvent, useEffect, useState } from "react";
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  setDoc
+} from "firebase/firestore";
 
 interface ContentManagementProps {
   cmsContents: CMSContent[];

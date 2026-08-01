@@ -4,9 +4,8 @@ import {
   RefreshCw,
   ShieldCheck,
   Sparkles,
-  User,
-  Users,
-  X
+  X,
+  type User
 } from "lucide-react";
 import { motion } from "motion/react";
 

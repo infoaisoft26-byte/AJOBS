@@ -2,18 +2,18 @@ import {
   AlertCircle,
   ArrowRight,
   CheckCircle2,
-  Code,
   Lock,
   Mail,
   Phone,
-  Send,
   ShieldCheck,
   X
 } from "lucide-react";
 import { useState } from "react";
-
-import { doc, updateDoc, setDoc } from "firebase/firestore";
-import { db } from "../firebase";
+import {
+  doc,
+  setDoc,
+  updateDoc
+} from "firebase/firestore";
 
 interface AccountVerificationModalProps {
   isOpen: boolean;

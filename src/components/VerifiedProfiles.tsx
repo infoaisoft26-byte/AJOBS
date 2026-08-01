@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   FileText,
   Mail,
-  Phone,
   ShieldCheck,
   Smartphone,
   Sparkles

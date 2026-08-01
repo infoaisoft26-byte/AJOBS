@@ -1,5 +1,14 @@
-import React from "react";
-import { BarChart3, TrendingUp, DollarSign, Users, Award, PieChart, ArrowUpRight, Zap, Target } from "lucide-react";
+import {
+  ArrowUpRight,
+  Award,
+  BarChart3,
+  DollarSign,
+  PieChart,
+  Target,
+  TrendingUp,
+  Users,
+  Zap
+} from "lucide-react";
 import { useGlobalMarketplace } from "../context/GlobalMarketplaceContext";
 
 export default function ExecutiveAnalyticsBi() {

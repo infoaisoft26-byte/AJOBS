@@ -2,10 +2,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
-  Code,
   ExternalLink,
   Globe,
-  Monitor,
   RefreshCw,
   Search,
   Send

@@ -3,15 +3,19 @@ import {
   CheckCircle2,
   File,
   FileText,
+  Loader2,
   RefreshCw,
   Sparkles,
   Upload
 } from "lucide-react";
-import { useRef, useState } from "react";
-
-import { motion } from "motion/react";
-import { doc, updateDoc, setDoc } from "firebase/firestore";
-import { auth, db } from "../firebase";
+import { ChangeEvent, useRef, useState } from "react";
+import {
+  doc,
+  limit,
+  setDoc,
+  updateDoc
+} from "firebase/firestore";
+import { auth } from "../firebase";
 import { useToast } from "./GlobalToast";
 import { uploadResumeService } from "../services/resumeUploadService";
 

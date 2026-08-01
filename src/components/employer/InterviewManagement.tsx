@@ -3,8 +3,6 @@ import {
   BookOpen,
   Calendar,
   Clock,
-  Link,
-  List,
   MapPin,
   Plus,
   Save,
@@ -12,14 +10,15 @@ import {
   Sparkles,
   Star,
   UserCheck,
-  Video,
-  X
+  Video
 } from "lucide-react";
-import { useState } from "react";
-
-import { CompanyInterview, CompanyApplication, CompanyJob } from "./EmployerTypes";
-import { doc, setDoc, deleteDoc, getDoc } from "firebase/firestore";
-import { db } from "../../firebase";
+import { FormEvent, useState } from "react";
+import {
+  deleteDoc,
+  doc,
+  getDoc,
+  setDoc
+} from "firebase/firestore";
 import { 
   signInWithGoogleCalendar, getCalendarAccessToken, GoogleCalendarService 
 } from "../../services/googleCalendarService";

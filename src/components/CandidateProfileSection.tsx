@@ -1,27 +1,6 @@
-import {
-  Award,
-  Briefcase,
-  Camera,
-  Check,
-  Edit,
-  Edit3,
-  Framer,
-  Image,
-  Plus,
-  Save,
-  ShieldAlert,
-  ShieldCheck,
-  Sparkles,
-  Target,
-  Trash2,
-  Upload,
-  User,
-  X
-} from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { Award, Briefcase, Camera, Check, Edit3, GraduationCap, Plus, Save, ShieldAlert, ShieldCheck, Sparkles, Trash2, Upload, X } from "lucide-react";
 
-import { db } from "../firebase";
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { recordActivityLog } from "../services/activityLogService";
 import { uploadToCloudinary } from "../services/cloudinaryService";
 

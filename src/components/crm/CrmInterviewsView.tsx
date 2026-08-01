@@ -5,18 +5,17 @@ import {
   ChevronRight,
   Clock,
   Edit3,
-  Grid,
   MessageSquare,
   Plus,
   Save,
-  Sun,
-  Target,
   X
 } from "lucide-react";
-import { useState } from "react";
-
-import { doc, setDoc, deleteDoc } from "firebase/firestore";
-import { db } from "../../firebase";
+import { FormEvent, useState } from "react";
+import {
+  deleteDoc,
+  doc,
+  setDoc
+} from "firebase/firestore";
 import { InterviewModel, ConsultancyJobModel, ConsultancyCandidateModel } from "./CrmTypes";
 
 interface CrmInterviewsViewProps {

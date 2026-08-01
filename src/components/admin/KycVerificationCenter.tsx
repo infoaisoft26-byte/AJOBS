@@ -2,12 +2,17 @@ import {
   CheckCircle2,
   ExternalLink,
   Eye,
-  List,
   Search,
-  ShieldCheck,
-  User
+  ShieldCheck
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import {
+  type User
+} from "firebase/auth";
+import {
+  doc
+} from "firebase/firestore";
+import { auth } from "../../firebase";
 
 import { VerificationRequest, KycDocument } from "../../types";
 

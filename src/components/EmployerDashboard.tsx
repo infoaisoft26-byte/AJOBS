@@ -1,31 +1,7 @@
-import {
-  AlertTriangle,
-  Award,
-  BarChart2,
-  Bell,
-  Brain,
-  Briefcase,
-  Building2,
-  Calendar,
-  CloudLightning,
-  CreditCard,
-  Database,
-  FileText,
-  MessageSquare,
-  Navigation,
-  Plus,
-  PlusCircle,
-  RefreshCw,
-  Search,
-  ShieldCheck,
-  TrendingUp,
-  Users,
-  Video
-} from "lucide-react";
 import { useEffect, useState } from "react";
+import { AlertTriangle, Award, BarChart2, Bell, Brain, Briefcase, Building2, Calendar, CloudLightning, CreditCard, FileText, MessageSquare, Plus, PlusCircle, RefreshCw, Search, ShieldCheck, TrendingUp, Users } from "lucide-react";
 
-import { db } from "../firebase";
-import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import { motion } from "motion/react";
 import SubscriptionBillingHub from "./SubscriptionBillingHub";
 import { NotificationCenterView } from "./NotificationCenter";
 import LiveChatSection from "./LiveChatSection";

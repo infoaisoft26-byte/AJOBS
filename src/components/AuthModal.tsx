@@ -1,44 +1,7 @@
-import {
-  AlertCircle,
-  ArrowLeft,
-  Briefcase,
-  Building2,
-  CheckCircle2,
-  CheckSquare,
-  Code,
-  Eye,
-  EyeOff,
-  Link,
-  Lock,
-  Mail,
-  Phone,
-  Search,
-  Send,
-  Shield,
-  ShieldCheck,
-  User,
-  UserPlus,
-  X
-} from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Dispatch, FormEvent, useEffect, useRef, useState } from "react";
+import { AlertCircle, ArrowLeft, Briefcase, Building2, CheckCircle2, CheckSquare, Eye, EyeOff, Lock, Mail, Phone, Send, Shield, ShieldCheck, User, UserPlus, X } from "lucide-react";
 
 import { motion } from "motion/react";
-import { auth, db, isFirebaseConfigured, firebaseConfigError } from "../firebase";
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  updateProfile,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  sendPasswordResetEmail,
-  signInAnonymously,
-  signInWithCustomToken
-} from "firebase/auth";
-import { doc, setDoc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { UserProfile } from "../types";
 import { initializeUserCollectionsAndDocs, getOrCreateUserProfile } from "../services/dbInitService";
 import { trackLeadSubmission } from "../utils/leadAttribution";
@@ -759,8 +722,6 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
       setLoading(false);
     }
   };
-
-
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-2xl">

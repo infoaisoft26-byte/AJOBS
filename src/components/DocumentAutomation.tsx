@@ -1,6 +1,4 @@
 import {
-  Cloud,
-  Code,
   Copy,
   FileCheck,
   Printer,

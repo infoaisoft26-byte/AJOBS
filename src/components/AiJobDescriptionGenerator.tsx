@@ -1,11 +1,8 @@
 import {
   CheckCircle2,
-  Key,
-  Package,
   PlusCircle,
   RefreshCw,
-  Sparkles,
-  Target
+  Sparkles
 } from "lucide-react";
 import { useState } from "react";
 

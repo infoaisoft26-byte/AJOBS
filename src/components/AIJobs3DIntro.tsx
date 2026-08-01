@@ -5,7 +5,7 @@ import {
   VolumeX,
   X
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import AIJobsLogo from "./AIJobsLogo";
 import soundSynth from "../utils/audioSynth";

@@ -5,9 +5,13 @@ import {
   ChevronDown,
   MapPin,
   Search,
+  SlidersHorizontal,
   X
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { MouseEvent, useEffect, useRef, useState } from "react";
+import {
+  query
+} from "firebase/firestore";
 
 
 interface JobSearchEngineProps {

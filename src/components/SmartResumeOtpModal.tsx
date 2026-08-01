@@ -1,21 +1,7 @@
-import {
-  AlertCircle,
-  ArrowRight,
-  CheckCircle2,
-  Code,
-  Edit2,
-  Mail,
-  RefreshCw,
-  Save,
-  ShieldCheck,
-  Smartphone,
-  Sparkles,
-  X
-} from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { AlertCircle, ArrowRight, CheckCircle2, Edit2, Loader2, Mail, RefreshCw, ShieldCheck, Smartphone, Sparkles, X } from "lucide-react";
 
-import { auth } from "../firebase";
-import { signInWithCustomToken } from "firebase/auth";
+import { AnimatePresence, motion } from "motion/react";
 
 export interface CandidateParsedData {
   uid: string;

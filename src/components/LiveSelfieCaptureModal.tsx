@@ -1,9 +1,6 @@
 import {
   AlertCircle,
-  Camera,
-  Check,
   CheckCircle2,
-  Save,
   ShieldCheck,
   Sparkles,
   X

@@ -1,5 +1,10 @@
-import { doc, setDoc, getDoc, collection, getDocs, writeBatch } from "firebase/firestore";
-import { db } from "../firebase";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc
+} from "firebase/firestore";
 
 export interface UserProfile {
   uid: string;

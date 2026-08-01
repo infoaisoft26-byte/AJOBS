@@ -1,9 +1,19 @@
 import {
+  type User
+} from "firebase/auth";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  setDoc
+} from "firebase/firestore";
+import { auth } from "../../firebase";
+import {
   Chrome,
   User
 } from "lucide-react";
-import { db } from "../../firebase";
-import { doc, setDoc, getDoc, collection, getDocs } from "firebase/firestore";
 import { 
   SystemAuditLog, SupportTicket, ApprovalRequest, 
   SystemNotification, EmailTemplate, CMSContent, 

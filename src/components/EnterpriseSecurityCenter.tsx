@@ -1,16 +1,18 @@
 import {
   Database,
   FileText,
-  Filter,
   Lock,
   Search,
   Shield,
   ShieldCheck,
   Sparkles,
-  User,
   Zap
 } from "lucide-react";
 import { useState } from "react";
+import {
+  type User
+} from "firebase/auth";
+import { auth } from "../firebase";
 
 
 export default function EnterpriseSecurityCenter() {

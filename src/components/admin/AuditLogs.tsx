@@ -1,23 +1,27 @@
 import {
-  Activity,
   ChevronLeft,
   ChevronRight,
-  Chrome,
   Clock,
   Download,
-  Flag,
-  Grid,
   Layers,
   RefreshCw,
   Search,
   ShieldAlert,
-  Terminal,
-  User
+  Terminal
 } from "lucide-react";
 import { useEffect, useState } from "react";
-
-import { collection, getDocs, deleteDoc, doc, query, orderBy } from "firebase/firestore";
-import { db } from "../../firebase";
+import {
+  type User
+} from "firebase/auth";
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  orderBy,
+  query
+} from "firebase/firestore";
+import { auth } from "../../firebase";
 import { useToast } from "../GlobalToast";
 
 interface ActivityLog {

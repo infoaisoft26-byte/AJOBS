@@ -1,4 +1,12 @@
 import {
+  type User
+} from "firebase/auth";
+import {
+  doc,
+  where
+} from "firebase/firestore";
+import { auth } from "../../firebase";
+import {
   Code,
   Play,
   Target,

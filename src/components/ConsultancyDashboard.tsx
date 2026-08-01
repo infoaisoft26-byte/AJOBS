@@ -1,25 +1,6 @@
-import {
-  Bell,
-  Briefcase,
-  Building,
-  Calendar,
-  CheckCircle2,
-  DollarSign,
-  FileText,
-  LayoutDashboard,
-  Plus,
-  RefreshCw,
-  Settings,
-  ShieldAlert,
-  ShieldCheck,
-  Sparkles,
-  TrendingUp,
-  Users
-} from "lucide-react";
 import { useEffect, useState } from "react";
+import { Bell, Briefcase, Building, Calendar, CheckCircle2, DollarSign, FileText, LayoutDashboard, Plus, RefreshCw, Settings, ShieldAlert, ShieldCheck, Sparkles, TrendingUp, Users } from "lucide-react";
 
-import { db } from "../firebase";
-import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { ConsultancyProfile } from "../types";
 import { NotificationCenterView } from "./NotificationCenter";
 import AbacControlInspector from "./AbacControlInspector";
@@ -281,7 +262,6 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
 
       {/* RIGHT COLUMN: Active Module Visual Stage */}
       <div className="md:col-span-3 space-y-6">
-
 
         {showMainPostForm ? (
           <PostJobForm

@@ -1,19 +1,7 @@
-import {
-  AlertCircle,
-  AlertTriangle,
-  CheckCircle2,
-  Database,
-  Play,
-  RefreshCw,
-  ShieldAlert,
-  ShieldCheck,
-  Sliders,
-  Tag
-} from "lucide-react";
 import { useEffect, useState } from "react";
+import { AlertCircle, AlertTriangle, CheckCircle2, Database, Play, RefreshCw, ShieldAlert, ShieldCheck, Sliders } from "lucide-react";
 
-import { db } from "../firebase";
-import { doc, getDoc, updateDoc, setDoc } from "firebase/firestore";
+import { AnimatePresence, motion } from "motion/react";
 import { 
   evaluateAbacPolicy, 
   mapUserToAbacSubject, 

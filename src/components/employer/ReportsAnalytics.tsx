@@ -2,9 +2,7 @@ import {
   BarChart2,
   Building,
   FileSpreadsheet,
-  Printer,
-  Save,
-  Target
+  Printer
 } from "lucide-react";
 import { useState } from "react";
 

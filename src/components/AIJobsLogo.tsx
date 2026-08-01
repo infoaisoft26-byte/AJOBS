@@ -1,4 +1,3 @@
-import React from "react";
 
 export interface AIJobsLogoProps {
   variant?: "full" | "compact" | "icon";

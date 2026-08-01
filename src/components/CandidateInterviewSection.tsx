@@ -1,43 +1,6 @@
-import {
-  AlertCircle,
-  AlertTriangle,
-  ArrowRight,
-  Award,
-  BarChart3,
-  Brain,
-  Calendar,
-  Camera,
-  Check,
-  CheckCircle,
-  CheckCircle2,
-  ChevronRight,
-  Clock,
-  Cloud,
-  Download,
-  HelpCircle,
-  Key,
-  Lock,
-  Mic,
-  Monitor,
-  Pause,
-  Play,
-  RefreshCw,
-  Save,
-  Share,
-  ShieldCheck,
-  Sparkles,
-  Square,
-  Unlock,
-  User,
-  Video,
-  Volume2,
-  X
-} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { AlertCircle, AlertTriangle, ArrowRight, Award, BarChart3, Brain, Calendar, Camera, Check, CheckCircle, CheckCircle2, ChevronRight, Clock, HelpCircle, Lock, Mic, Monitor, Pause, Play, RefreshCw, ShieldCheck, Sparkles, Square, Unlock, Volume2 } from "lucide-react";
 
-import { motion, AnimatePresence } from "motion/react";
-import { db } from "../firebase";
-import { doc, getDoc, setDoc, updateDoc, collection, getDocs, query, where, addDoc, Timestamp } from "firebase/firestore";
 import D3PerformanceCharts from "./D3PerformanceCharts";
 
 interface CandidateInterviewSectionProps {

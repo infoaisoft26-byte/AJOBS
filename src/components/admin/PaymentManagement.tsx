@@ -1,6 +1,4 @@
 import {
-  Chrome,
-  Code,
   CreditCard,
   FileText,
   Printer,
@@ -8,11 +6,11 @@ import {
   Search,
   Tag
 } from "lucide-react";
-import { useState } from "react";
-
-import { PaymentTransaction } from "./AdminTypes";
-import { doc, setDoc } from "firebase/firestore";
-import { db } from "../../firebase";
+import { FormEvent, useState } from "react";
+import {
+  doc,
+  setDoc
+} from "firebase/firestore";
 
 interface PaymentManagementProps {
   transactions: PaymentTransaction[];

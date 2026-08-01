@@ -1,15 +1,17 @@
 import {
   Check,
-  Code,
   Copy,
   Gift,
-  Link,
+  QrCode,
   Share2,
   Sparkles,
-  User,
   Users
 } from "lucide-react";
 import { useState } from "react";
+import {
+  type User
+} from "firebase/auth";
+import { auth } from "../firebase";
 
 
 export default function ReferralEcosystem() {

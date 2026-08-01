@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { MouseEvent, useEffect, useRef, useState } from "react";
 
 export default function CinematicBackground() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);

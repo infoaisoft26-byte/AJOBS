@@ -1,26 +1,7 @@
-import {
-  AlertTriangle,
-  User,
-  UserCheck
-} from "lucide-react";
-import { useEffect, useState } from "react";
+import { ReactNode, Suspense, lazy, useEffect, useState } from "react";
+import { AlertTriangle, UserCheck } from "lucide-react";
 
-import { doc, getDoc } from "firebase/firestore";
-import { UserProfile } from "@/types";
-import { initializeUserCollectionsAndDocs, getOrCreateUserProfile } from "@/services/dbInitService";
-import { normalizeRole } from "@/utils/roleUtils";
-import Header from "@/components/Header";
-import AuthModal from "@/components/AuthModal";
-import LandingPage from "@/components/LandingPage";
-import ResumeOnboarding from "@/components/ResumeOnboarding";
-import { GlobalChatbot } from "@/components/GlobalChatbot";
-import CompanySection from "@/components/CompanySection";
-import SplashScreen from "@/components/SplashScreen";
-import AIJobs3DIntro from "@/components/AIJobs3DIntro";
-import CinematicBackground from "@/components/CinematicBackground";
-import ThreeDBackground, { BackgroundMode } from "@/components/ThreeDBackground";
-import CustomCursor from "@/components/CustomCursor";
-import { motion, AnimatePresence } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 
 // Lazy-loaded dashboard components for smaller initial bundle sizes
 const CandidateDashboard = lazy(() => import("@/components/CandidateDashboard"));
@@ -37,7 +18,18 @@ const NotificationCenterViewLazy = lazy(() =>
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { DashboardSkeleton, GeneralLoading } from "@/components/LoadingSkeleton";
 import { CookieConsent } from "@/components/CookieConsent";
+import { CustomCursor } from "@/components/CustomCursor";
 import { ToastProvider, useToast } from "@/components/GlobalToast";
+import Header from "@/components/Header";
+import LandingPage from "@/components/LandingPage";
+import ResumeOnboarding from "@/components/ResumeOnboarding";
+import AuthModal from "@/components/AuthModal";
+import CompanySection from "@/components/CompanySection";
+import AIJobs3DIntro from "@/components/AIJobs3DIntro";
+import { GlobalChatbot } from "@/components/GlobalChatbot";
+import ThreeDBackground, { type BackgroundMode } from "@/components/ThreeDBackground";
+import { LanguageProvider } from "@/context/LanguageContext";
+import { GlobalMarketplaceProvider } from "@/context/GlobalMarketplaceContext";
 import { initGA, trackPageView, trackInteraction } from "@/utils/analytics";
 import { validateEnvironment } from "@/utils/envValidation";
 
@@ -872,9 +864,6 @@ function MainAppContent() {
     </div>
   );
 }
-
-import { LanguageProvider } from "@/context/LanguageContext";
-import { GlobalMarketplaceProvider } from "@/context/GlobalMarketplaceContext";
 
 export default function App() {
   return (

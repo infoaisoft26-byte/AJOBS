@@ -1,32 +1,7 @@
-import {
-  BarChart2,
-  Bell,
-  Brain,
-  Briefcase,
-  CheckCircle,
-  ChevronLeft,
-  ChevronRight,
-  CreditCard,
-  Database,
-  FileText,
-  Globe,
-  HelpCircle,
-  Layers,
-  Lock,
-  Mail,
-  MessageSquare,
-  RefreshCw,
-  Settings,
-  ShieldAlert,
-  ShieldCheck,
-  Terminal,
-  User,
-  Users
-} from "lucide-react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { BarChart2, Bell, Brain, Briefcase, CheckCircle, ChevronLeft, ChevronRight, CreditCard, Database, FileText, Globe, HelpCircle, Layers, Lock, Mail, MessageSquare, RefreshCw, Settings, ShieldAlert, ShieldCheck, Terminal, Users } from "lucide-react";
 
-import { db, auth } from "../firebase";
-import { collection, getDocs, doc, setDoc, getDoc } from "firebase/firestore";
+import { motion } from "motion/react";
 import { recordActivityLog } from "../services/activityLogService";
 
 // Sub-components
@@ -554,7 +529,6 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
             </button>
           </div>
 
-
         </div>
 
         {/* Navigation list */}
@@ -640,8 +614,6 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
               <span className="font-bold">{successMessage}</span>
             </div>
           )}
-
-
 
           {loading ? (
             <div className="flex flex-col items-center justify-center py-44 space-y-3">

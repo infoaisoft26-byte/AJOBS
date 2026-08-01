@@ -1,6 +1,5 @@
 import {
   CheckCircle,
-  Cloud,
   Database,
   RefreshCw,
   Wifi,

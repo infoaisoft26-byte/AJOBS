@@ -1,5 +1,5 @@
-import React, { useRef, useState } from "react";
-import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
+import { MouseEvent, ReactNode, useRef, useState } from "react";
+import { motion } from "motion/react";
 
 interface HolographicCardProps {
   children: React.ReactNode;

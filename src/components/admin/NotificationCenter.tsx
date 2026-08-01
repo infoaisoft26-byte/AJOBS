@@ -1,18 +1,15 @@
 import {
   Bell,
-  Chrome,
-  Info,
   Radio,
   Send,
-  Target,
-  Trash2,
-  Users
+  Trash2
 } from "lucide-react";
-import { useState } from "react";
-
-import { SystemNotification } from "./AdminTypes";
-import { doc, setDoc, deleteDoc } from "firebase/firestore";
-import { db } from "../../firebase";
+import { Dispatch, FormEvent, useState } from "react";
+import {
+  deleteDoc,
+  doc,
+  setDoc
+} from "firebase/firestore";
 import { NotificationService } from "../../services/notificationService";
 
 interface NotificationCenterProps {

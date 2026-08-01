@@ -1,5 +1,4 @@
 import {
-  Activity,
   ArrowRight,
   ArrowUpRight,
   Briefcase,
@@ -8,22 +7,27 @@ import {
   FileText,
   Flame,
   HelpCircle,
+  IndianRupee,
   Layers,
-  Phone,
   RefreshCw,
   ShieldAlert,
   Sparkles,
-  Sun,
-  Target,
   TrendingUp,
-  User,
-  Users,
-  Volume
+  Users
 } from "lucide-react";
 import { useEffect, useState } from "react";
-
-import { collection, getDocs, query, limit, orderBy, where } from "firebase/firestore";
-import { db } from "../../firebase";
+import {
+  type User
+} from "firebase/auth";
+import {
+  collection,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  where
+} from "firebase/firestore";
+import { auth } from "../../firebase";
 import { LiveStats, SystemAuditLog } from "./AdminTypes";
 import DashboardAnalyticsCharts from "../DashboardAnalyticsCharts";
 

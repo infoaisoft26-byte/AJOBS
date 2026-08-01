@@ -3,13 +3,8 @@ import {
   CheckCircle,
   Clock,
   Copy,
-  Delete,
   Edit,
   Eye,
-  Figma,
-  Key,
-  List,
-  Package,
   Pause,
   Play,
   Plus,
@@ -17,15 +12,16 @@ import {
   RefreshCw,
   Save,
   Search,
-  Target,
   Trash2,
   X
 } from "lucide-react";
-import { useState } from "react";
-
-import { CompanyJob } from "./EmployerTypes";
-import { doc, setDoc, deleteDoc } from "firebase/firestore";
-import { db, auth } from "../../firebase";
+import { FormEvent, useState } from "react";
+import {
+  deleteDoc,
+  doc,
+  setDoc
+} from "firebase/firestore";
+import { auth } from "../../firebase";
 import { useToast } from "../GlobalToast";
 import PostJobForm from "../PostJobForm";
 import { NotificationService } from "../../services/notificationService";

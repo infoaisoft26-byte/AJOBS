@@ -4,20 +4,15 @@ import {
   Camera,
   CheckCircle2,
   Clock,
-  Code,
   CreditCard,
-  Database,
   FileCheck,
   FileText,
   KeyRound,
   Lock,
   LogOut,
-  Phone,
-  Search,
-  ShieldCheck,
-  Upload
+  ShieldCheck
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Dispatch, FormEvent, SetStateAction, useEffect, useState } from "react";
 
 import { uploadToCloudinary } from "../services/cloudinaryService";
 import LiveSelfieCaptureModal from "./LiveSelfieCaptureModal";

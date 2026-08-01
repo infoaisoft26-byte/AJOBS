@@ -1,5 +1,9 @@
-import React from "react";
-import { Globe, DollarSign, ShieldCheck, MapPin } from "lucide-react";
+import {
+  DollarSign,
+  Globe,
+  MapPin,
+  ShieldCheck
+} from "lucide-react";
 import { useLanguage, SUPPORTED_LANGUAGES, SupportedLanguage } from "../context/LanguageContext";
 import { useGlobalMarketplace, GLOBAL_COUNTRIES } from "../context/GlobalMarketplaceContext";
 

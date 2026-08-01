@@ -1,4 +1,5 @@
 import {
+  Bot,
   Search,
   Send,
   ShieldCheck,
@@ -8,7 +9,10 @@ import {
   ToggleRight,
   X
 } from "lucide-react";
-import { useState } from "react";
+import { MouseEvent, useState } from "react";
+import {
+  query
+} from "firebase/firestore";
 
 import { GoogleGenAI } from "@google/genai";
 

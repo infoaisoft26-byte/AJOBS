@@ -4,7 +4,6 @@ import {
   Inbox,
   Layers,
   Mail,
-  Package,
   Play,
   RefreshCw,
   RotateCw,
@@ -13,7 +12,7 @@ import {
   Users,
   XCircle
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Dispatch, useEffect, useState } from "react";
 
 
 interface TemplateInfo {

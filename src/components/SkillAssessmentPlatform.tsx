@@ -3,9 +3,10 @@ import {
   Clock,
   Play,
   ShieldCheck,
-  Sparkles
+  Sparkles,
+  Trophy
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 
 export interface SkillTest {

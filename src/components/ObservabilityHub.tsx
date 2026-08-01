@@ -5,7 +5,6 @@ import {
   RefreshCw,
   Server,
   Sparkles,
-  Users,
   Zap
 } from "lucide-react";
 import { useEffect, useState } from "react";

@@ -1,28 +1,7 @@
-import {
-  AlertCircle,
-  Briefcase,
-  Building,
-  CheckCircle,
-  Eye,
-  Filter,
-  Mail,
-  Phone,
-  RefreshCw,
-  Search,
-  Sliders,
-  Target,
-  Trash2,
-  UserCheck,
-  Users,
-  X
-} from "lucide-react";
 import { useEffect, useState } from "react";
+import { AlertCircle, Briefcase, Building, CheckCircle, Eye, Filter, Loader2, Mail, Phone, RefreshCw, Search, Sliders, Trash2, UserCheck, Users, X } from "lucide-react";
 
-import { db, auth } from "../firebase";
-import { 
-  collection, doc, getDoc, getDocs, updateDoc, setDoc, deleteDoc, 
-  query, where, onSnapshot, arrayUnion 
-} from "firebase/firestore";
+import { motion } from "motion/react";
 import ExportActivityCsvButton from "./ExportActivityCsvButton";
 import OfflineSyncBadge from "./OfflineSyncBadge";
 

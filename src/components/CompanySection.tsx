@@ -1,30 +1,5 @@
-import {
-  AlertCircle,
-  Award,
-  BookOpen,
-  CheckCircle,
-  Clock,
-  Cloud,
-  Database,
-  Download,
-  FileText,
-  Mail,
-  Map,
-  MapPin,
-  Phone,
-  Play,
-  Search,
-  Send,
-  Shield,
-  Sparkles,
-  Target,
-  Video,
-  X
-} from "lucide-react";
-import { useEffect, useState } from "react";
-
-import { db, auth } from "../firebase";
-import { collection, getDocs, setDoc, doc, addDoc } from "firebase/firestore";
+import { Dispatch, FormEvent, lazy, useEffect, useState } from "react";
+import { AlertCircle, Award, BookOpen, CheckCircle, Clock, FileText, Mail, MapPin, Phone, Play, Send, Shield, Sparkles, X } from "lucide-react";
 
 interface CompanySectionProps {
   pageType: string;

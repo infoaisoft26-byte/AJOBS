@@ -1,17 +1,14 @@
 import {
   AlertCircle,
   CheckCircle2,
-  Code,
   File,
   FileCode,
   Key,
   Lock,
-  Share,
   ShieldCheck,
-  Upload,
   X
 } from "lucide-react";
-import { useState } from "react";
+import { ChangeEvent, FormEvent, useState } from "react";
 
 
 interface AadhaarOfflineModalProps {

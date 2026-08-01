@@ -1,19 +1,18 @@
 import {
   ArrowRight,
   Building,
-  Cloud,
+  Loader2,
   LogIn,
   Mail,
   Phone,
   Sparkles,
   Upload
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-
-import { motion, AnimatePresence } from "motion/react";
-import LegalModal, { LegalDocType } from "./LegalModal";
-import SmartResumeOtpModal, { CandidateParsedData } from "./SmartResumeOtpModal";
-import { auth, db } from "../firebase";
+import { ChangeEvent, useEffect, useRef, useState } from "react";
+import {
+  doc
+} from "firebase/firestore";
+import { db } from "../firebase";
 import { uploadToCloudinary } from "../services/cloudinaryService";
 import { useToast } from "./GlobalToast";
 import { UserProfile } from "../types";

@@ -1,5 +1,10 @@
-import { doc, setDoc, collection, addDoc } from "firebase/firestore";
-import { db, auth } from "../firebase";
+import {
+  addDoc,
+  collection,
+  doc,
+  setDoc
+} from "firebase/firestore";
+import { auth } from "../firebase";
 
 export enum OperationType {
   CREATE = "create",

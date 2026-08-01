@@ -1,24 +1,21 @@
 import {
   Award,
+  Bot,
   Briefcase,
-  Check,
-  Chrome,
-  Database,
   DollarSign,
   Mic,
   MicOff,
-  Minimize,
   Minus,
-  Navigation,
   RefreshCw,
   RotateCcw,
-  Search,
   Send,
-  Server,
   TrendingUp,
   X
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import {
+  query
+} from "firebase/firestore";
 
 import ReactMarkdown from "react-markdown";
 

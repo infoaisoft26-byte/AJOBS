@@ -1,21 +1,5 @@
-import {
-  Bell,
-  Check,
-  Delete,
-  Eye,
-  Lock,
-  Save,
-  Settings,
-  ShieldAlert,
-  Trash2,
-  User,
-  X
-} from "lucide-react";
-import { useState } from "react";
-
-import { auth, db } from "../firebase";
-import { updatePassword, deleteUser } from "firebase/auth";
-import { doc, deleteDoc } from "firebase/firestore";
+import { FormEvent, useState } from "react";
+import { Bell, Check, Eye, Lock, Settings, ShieldAlert, Trash2, X } from "lucide-react";
 
 interface SettingsProps {
   userId: string;

@@ -1,35 +1,7 @@
-import {
-  AlertCircle,
-  ArrowRight,
-  Briefcase,
-  Building,
-  Check,
-  CheckCircle2,
-  CheckSquare,
-  Code,
-  Copy,
-  CreditCard,
-  Disc,
-  FileText,
-  Gift,
-  Hash,
-  Key,
-  Phone,
-  Printer,
-  RefreshCw,
-  Save,
-  ShieldCheck,
-  Sparkles,
-  Tag,
-  Unlock
-} from "lucide-react";
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import { AlertCircle, ArrowRight, Briefcase, Building, Check, CheckCircle2, CheckSquare, Copy, CreditCard, FileText, Gift, Printer, RefreshCw, ShieldCheck, Sparkles, Tag } from "lucide-react";
 
-import { db } from "../firebase";
-import { 
-  doc, setDoc, getDoc, collection, getDocs, query, where, addDoc 
-} from "firebase/firestore";
-import { motion, AnimatePresence } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 
 interface SubscriptionBillingHubProps {
   userId: string;

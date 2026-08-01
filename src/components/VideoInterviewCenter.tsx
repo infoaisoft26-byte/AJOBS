@@ -3,7 +3,6 @@ import {
   Camera,
   CheckCircle,
   FileText,
-  Key,
   Mic,
   ShieldAlert,
   Sparkles,

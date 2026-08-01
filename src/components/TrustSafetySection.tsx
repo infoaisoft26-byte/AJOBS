@@ -1,4 +1,5 @@
 import {
+  FileCheck2,
   Lock,
   ShieldAlert,
   ShieldCheck,

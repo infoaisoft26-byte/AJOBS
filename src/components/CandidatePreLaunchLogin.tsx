@@ -1,17 +1,26 @@
 import {
   AlertCircle,
   ArrowRight,
-  Check,
   CheckCircle2,
   KeyRound,
-  Link,
   Lock,
   LogIn,
   Mail,
   RefreshCw,
   Sparkles
 } from "lucide-react";
-import { useState } from "react";
+import { Dispatch, FormEvent, useState } from "react";
+import {
+  GoogleAuthProvider,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signInWithPopup
+} from "firebase/auth";
+import {
+  doc,
+  getDoc,
+  setDoc
+} from "firebase/firestore";
 
 import { UserProfile } from "../types";
 import { useToast } from "./GlobalToast";

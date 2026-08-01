@@ -1,4 +1,5 @@
 import {
+  AreaChart,
   ArrowUpRight,
   Award,
   BarChart,
@@ -8,7 +9,6 @@ import {
   Target,
   TrendingUp,
   Users,
-  Volume,
   Zap
 } from "lucide-react";
 import { useMemo, useState } from "react";

@@ -1,8 +1,7 @@
 import {
-  Type
-} from "lucide-react";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { auth } from "../firebase";
+  GoogleAuthProvider,
+  signInWithPopup
+} from "firebase/auth";
 
 // In-memory cache for the Google OAuth access token
 let cachedAccessToken: string | null = null;

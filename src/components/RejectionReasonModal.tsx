@@ -3,10 +3,12 @@ import {
   Send,
   X
 } from "lucide-react";
-import { useState } from "react";
-
-import { doc, updateDoc, setDoc } from "firebase/firestore";
-import { db } from "../firebase";
+import { FormEvent, useState } from "react";
+import {
+  doc,
+  setDoc,
+  updateDoc
+} from "firebase/firestore";
 import { NotificationService } from "../services/notificationService";
 
 interface RejectionReasonModalProps {

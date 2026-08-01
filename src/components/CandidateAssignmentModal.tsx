@@ -5,7 +5,7 @@ import {
   UserCheck,
   X
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 
 interface CandidateAssignmentModalProps {

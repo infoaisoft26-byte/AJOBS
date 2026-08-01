@@ -11,7 +11,6 @@ import {
   Settings,
   Sparkles,
   TrendingUp,
-  TrendingUp as TrendIcon,
   Users,
   Volume
 } from "lucide-react";

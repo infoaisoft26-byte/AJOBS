@@ -1,11 +1,7 @@
 import {
   BookOpen,
-  Building,
   CheckCircle2,
-  Database,
-  Key,
   Play,
-  Server,
   Sparkles,
   Video,
   Zap

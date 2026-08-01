@@ -1,16 +1,22 @@
 import {
   CheckCircle2,
   KeyRound,
-  Link,
   Lock,
   LogIn,
   Mail,
   RefreshCw,
   ShieldAlert,
-  ShieldCheck,
-  User
+  ShieldCheck
 } from "lucide-react";
-import { useState } from "react";
+import { Dispatch, FormEvent, useState } from "react";
+import {
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword
+} from "firebase/auth";
+import {
+  doc,
+  getDoc
+} from "firebase/firestore";
 
 import { UserProfile } from "../types";
 import { useToast } from "./GlobalToast";

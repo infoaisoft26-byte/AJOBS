@@ -6,14 +6,20 @@ import {
   Mail,
   Phone,
   RefreshCw,
-  Repeat,
-  Send,
   Sparkles,
-  Target,
   User,
   UserPlus
 } from "lucide-react";
-import { useState } from "react";
+import { FormEvent, useState } from "react";
+import {
+  GoogleAuthProvider,
+  createUserWithEmailAndPassword,
+  signInWithPopup
+} from "firebase/auth";
+import {
+  doc,
+  setDoc
+} from "firebase/firestore";
 
 import { UserProfile } from "../types";
 import { useToast } from "./GlobalToast";

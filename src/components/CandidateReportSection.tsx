@@ -1,22 +1,7 @@
-import {
-  AlertTriangle,
-  Award,
-  BookOpen,
-  Brain,
-  CheckCircle2,
-  Cpu,
-  Database,
-  Key,
-  Map,
-  RefreshCw,
-  ShieldCheck,
-  Zap
-} from "lucide-react";
 import { useEffect, useState } from "react";
+import { AlertTriangle, Award, BookOpen, CheckCircle2, Cpu, LineChart, Map, RefreshCw, ShieldCheck, Zap } from "lucide-react";
 
-import { motion, AnimatePresence } from "motion/react";
-import { db } from "../firebase";
-import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { AnimatePresence, motion } from "motion/react";
 
 interface CandidateReportSectionProps {
   userId: string;

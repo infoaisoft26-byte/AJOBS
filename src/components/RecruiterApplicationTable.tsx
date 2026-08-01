@@ -1,39 +1,7 @@
-import {
-  Building,
-  Calendar,
-  CheckCircle,
-  ChevronDown,
-  Clock,
-  Cloud,
-  Download,
-  ExternalLink,
-  Eye,
-  FileText,
-  Filter,
-  Link,
-  List,
-  Mail,
-  Map,
-  MessageSquare,
-  Phone,
-  RefreshCw,
-  Save,
-  Search,
-  Send,
-  ShieldCheck,
-  Sparkles,
-  Target,
-  UserCheck,
-  Users,
-  XCircle
-} from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { ArrowUpDown, Building, Calendar, CheckCircle, ChevronDown, Clock, Download, ExternalLink, Eye, FileText, Filter, Mail, MessageSquare, Phone, RefreshCw, Search, Send, ShieldCheck, Sparkles, UserCheck, Users, XCircle } from "lucide-react";
 
-import { db, auth } from "../firebase";
-import { 
-  collection, getDocs, doc, setDoc, updateDoc, 
-  query, where, addDoc 
-} from "firebase/firestore";
+import { AnimatePresence, motion } from "motion/react";
 import { NotificationService } from "../services/notificationService";
 import OfferReleaseModal from "./OfferReleaseModal";
 import RejectionReasonModal from "./RejectionReasonModal";

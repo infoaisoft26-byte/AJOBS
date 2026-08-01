@@ -1,23 +1,5 @@
-import {
-  AlertCircle,
-  CheckCircle,
-  Download,
-  Eye,
-  EyeOff,
-  Info,
-  Key,
-  Pause,
-  PauseCircle,
-  Phone,
-  Plus,
-  RefreshCw,
-  Trash2,
-  User
-} from "lucide-react";
-import { useEffect, useState } from "react";
-
-import { db } from "../../firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { FormEvent, useEffect, useState } from "react";
+import { AlertCircle, CheckCircle, Download, Eye, EyeOff, Key, PauseCircle, Plus, RefreshCw, Trash2 } from "lucide-react";
 
 export interface ResumeAccessGrant {
   id: string;

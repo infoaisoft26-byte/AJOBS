@@ -1,11 +1,20 @@
 import {
+  type User
+} from "firebase/auth";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc
+} from "firebase/firestore";
+import { auth } from "../../firebase";
+import {
   Figma,
   Framer,
   Package,
   User
 } from "lucide-react";
-import { db } from "../../firebase";
-import { doc, getDoc, setDoc, collection, getDocs, writeBatch } from "firebase/firestore";
 import { CompanyProfile, CompanyJob, CompanyApplication, CompanyInterview, CompanyOffer, CompanyActivityLog } from "./EmployerTypes";
 
 export async function seedEmployerDataIfEmpty(userId: string, userName: string) {

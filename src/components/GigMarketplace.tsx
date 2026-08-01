@@ -4,10 +4,13 @@ import {
   ChevronRight,
   Send,
   ShieldCheck,
-  Sparkles,
-  User
+  Sparkles
 } from "lucide-react";
 import { useState } from "react";
+import {
+  type User
+} from "firebase/auth";
+import { auth } from "../firebase";
 
 
 export interface GigProject {

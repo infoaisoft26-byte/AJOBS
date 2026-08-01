@@ -1,30 +1,7 @@
-import {
-  Activity,
-  Archive,
-  Bell,
-  Check,
-  CheckCircle2,
-  CheckSquare,
-  Delete,
-  Edit,
-  Inbox,
-  Mail,
-  MessageSquare,
-  RefreshCw,
-  Save,
-  Search,
-  Server,
-  Sliders,
-  Smartphone,
-  Trash2,
-  Volume2,
-  X
-} from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Dispatch, useEffect, useRef, useState } from "react";
+import { Archive, Bell, Check, CheckCircle2, CheckSquare, Mail, MessageSquare, RefreshCw, Search, Sliders, Smartphone, Trash2, Volume2, X } from "lucide-react";
 
-import { motion, AnimatePresence } from "motion/react";
-import { db, auth } from "../firebase";
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, query, where, orderBy, onSnapshot } from "firebase/firestore";
+import { AnimatePresence, motion } from "motion/react";
 import { 
   NotificationService, NotificationItem, NotificationMedium, NotificationEvent, 
   CandidateEvent, ConsultancyEvent, EmployerEvent, AdminEvent, MessageLog, DEFAULT_EMAIL_TEMPLATES,

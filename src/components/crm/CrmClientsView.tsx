@@ -1,23 +1,26 @@
 import {
   Building,
-  Delete,
   Edit,
   FileCheck,
   FileText,
   Globe,
-  Key,
   Mail,
   Phone,
   Plus,
   Save,
   Trash2,
-  User,
   X
 } from "lucide-react";
-import { useState } from "react";
-
-import { doc, setDoc, deleteDoc } from "firebase/firestore";
-import { db } from "../../firebase";
+import { FormEvent, useState } from "react";
+import {
+  type User
+} from "firebase/auth";
+import {
+  deleteDoc,
+  doc,
+  setDoc
+} from "firebase/firestore";
+import { auth } from "../../firebase";
 import { ClientModel } from "./CrmTypes";
 
 interface CrmClientsViewProps {

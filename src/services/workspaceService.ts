@@ -1,5 +1,10 @@
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User } from "firebase/auth";
-import { auth } from "../firebase";
+import {
+  GoogleAuthProvider,
+  getAuth,
+  onAuthStateChanged,
+  signInWithPopup,
+  type User
+} from "firebase/auth";
 
 // Scopes we requested and got authorized for:
 export const WORKSPACE_SCOPES = [

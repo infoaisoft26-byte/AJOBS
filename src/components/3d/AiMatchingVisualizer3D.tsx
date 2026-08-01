@@ -6,8 +6,7 @@ import {
   Play,
   Search,
   ShieldCheck,
-  Sparkles,
-  Upload
+  Sparkles
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 

@@ -1,22 +1,5 @@
-import {
-  AlertCircle,
-  CheckCircle2,
-  CheckSquare,
-  Code,
-  Database,
-  FileCheck,
-  FileText,
-  KeyRound,
-  Printer,
-  RefreshCw,
-  Save,
-  ShieldCheck,
-  User
-} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-
-import { db } from "../../firebase";
-import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
+import { AlertCircle, CheckCircle2, CheckSquare, FileCheck, FileText, KeyRound, Printer, RefreshCw, ScrollText, ShieldCheck } from "lucide-react";
 
 interface AgreementsViewProps {
   userId: string;

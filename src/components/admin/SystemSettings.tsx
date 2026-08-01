@@ -1,29 +1,23 @@
 import {
-  Activity,
-  Check,
-  Chrome,
-  Cloud,
   Database,
   Eye,
   EyeOff,
   Globe,
   Lock,
   Mail,
-  Package,
   Phone,
   RefreshCw,
   Save,
-  Search,
-  Send,
-  Server,
   Settings,
   Sliders
 } from "lucide-react";
-import { useEffect, useState } from "react";
-
-import { AdminSystemSettings } from "./AdminTypes";
-import { doc, setDoc } from "firebase/firestore";
-import { db } from "../../firebase";
+import { Dispatch, FormEvent, useEffect, useState } from "react";
+import {
+  collection,
+  doc,
+  setDoc,
+  where
+} from "firebase/firestore";
 
 interface SystemSettingsProps {
   settings: AdminSystemSettings;

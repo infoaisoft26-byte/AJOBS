@@ -1,22 +1,20 @@
 import {
-  Chrome,
+  Ban,
   Clock,
-  Code,
-  Delete,
   Eye,
-  Filter,
   Key,
   Search,
   ShieldCheck,
   Trash2,
-  User,
   Users
 } from "lucide-react";
 import { useState } from "react";
-
-import { UserProfile } from "../../types";
-import { doc, setDoc, deleteDoc } from "firebase/firestore";
-import { db } from "../../firebase";
+import {
+  deleteDoc,
+  doc,
+  setDoc
+} from "firebase/firestore";
+import { auth } from "../../firebase";
 import InteractiveExportTable from "../InteractiveExportTable";
 
 interface UserManagementProps {

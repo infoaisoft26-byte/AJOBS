@@ -1,6 +1,3 @@
-import {
-  Layout
-} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 

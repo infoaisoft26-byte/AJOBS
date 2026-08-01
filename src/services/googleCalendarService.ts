@@ -1,9 +1,9 @@
 import {
-  Calendar,
-  Type
-} from "lucide-react";
-import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, User } from "firebase/auth";
-import { auth } from "../firebase";
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signInWithPopup,
+  type User
+} from "firebase/auth";
 
 let cachedAccessToken: string | null = null;
 let isSigningIn = false;

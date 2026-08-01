@@ -1,12 +1,7 @@
-import {
-  AlertTriangle,
-  Bookmark,
-  Type
-} from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { AlertTriangle } from "lucide-react";
 
-import { db, auth } from "../firebase";
-import { doc, getDoc, setDoc, collection, getDocs, updateDoc, arrayUnion, increment, query, where, onSnapshot } from "firebase/firestore";
+import { motion } from "motion/react";
 import { CandidateProfile, JobPosting, JobApplication, InterviewSession, ChatMessage, NotificationRecord } from "../types";
 import { getLiveJobs } from "../services/jobService";
 import { applyToJob } from "../services/applicationService";

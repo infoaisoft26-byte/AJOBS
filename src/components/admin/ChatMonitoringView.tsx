@@ -1,7 +1,6 @@
 import {
   AlertTriangle,
   CheckCircle,
-  Eye,
   Filter,
   Lock,
   MessageSquare,
@@ -9,14 +8,22 @@ import {
   Search,
   ShieldAlert,
   ShieldCheck,
-  Target,
-  User,
   XCircle
 } from "lucide-react";
 import { useEffect, useState } from "react";
-
-import { collection, getDocs, query, orderBy, limit, doc, getDoc } from "firebase/firestore";
-import { db } from "../../firebase";
+import {
+  type User
+} from "firebase/auth";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  orderBy,
+  query
+} from "firebase/firestore";
+import { auth } from "../../firebase";
 
 interface ChatSession {
   id: string;

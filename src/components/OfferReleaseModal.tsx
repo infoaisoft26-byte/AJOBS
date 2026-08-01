@@ -1,14 +1,13 @@
 import {
   Award,
-  Package,
   Send,
   X
 } from "lucide-react";
-import { useState } from "react";
-
-import { jsPDF } from "jspdf";
-import { doc, setDoc } from "firebase/firestore";
-import { db } from "../firebase";
+import { FormEvent, useState } from "react";
+import {
+  doc,
+  setDoc
+} from "firebase/firestore";
 import { NotificationService } from "../services/notificationService";
 
 interface OfferReleaseModalProps {

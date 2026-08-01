@@ -3,11 +3,9 @@ import {
   Brain,
   Calendar,
   CheckCircle2,
-  Code,
-  Database,
+  ListFilter,
   RefreshCw,
   Sparkles,
-  Target,
   UserCheck
 } from "lucide-react";
 import { useState } from "react";

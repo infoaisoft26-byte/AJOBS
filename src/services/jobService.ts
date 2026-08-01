@@ -1,24 +1,17 @@
 import {
-  Type
-} from "lucide-react";
-import { 
-  collection, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  setDoc, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  where, 
-  orderBy, 
-  getFirestore,
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
   limit,
-  startAfter,
-  QueryConstraint
+  orderBy,
+  query,
+  setDoc,
+  updateDoc,
+  where
 } from "firebase/firestore";
-import { db } from "../firebase";
 import { JobPosting } from "../types";
 import { generateJobSlug, getPublicJobUrl } from "../config/site";
 

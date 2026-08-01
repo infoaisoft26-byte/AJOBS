@@ -1,24 +1,7 @@
-import {
-  Check,
-  Circle,
-  Download,
-  FileText,
-  Image,
-  MessageSquare,
-  Paperclip,
-  RefreshCw,
-  Search,
-  User,
-  X
-} from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
+import { Check, CheckCheck, Circle, Download, FileText, Image, MessageSquare, Paperclip, RefreshCw, Search, X } from "lucide-react";
 
-import { db } from "../firebase";
-import { 
-  collection, doc, getDoc, setDoc, updateDoc, deleteDoc, 
-  query, where, orderBy, onSnapshot, addDoc, limit, getDocs, arrayUnion 
-} from "firebase/firestore";
-import { motion, AnimatePresence } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { detectPaymentRequest, ANTI_FRAUD_CANDIDATE_WARNING } from "../utils/fraudDetection";
 import { uploadToCloudinary } from "../services/cloudinaryService";
 

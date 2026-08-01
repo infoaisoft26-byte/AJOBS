@@ -1,36 +1,5 @@
-import {
-  Activity,
-  AlertCircle,
-  Award,
-  BookOpen,
-  Calendar,
-  Check,
-  CheckCircle,
-  Clock,
-  Cloud,
-  Database,
-  DollarSign,
-  Download,
-  FileText,
-  Layout,
-  Phone,
-  RefreshCw,
-  Save,
-  Server,
-  Settings,
-  Sparkles,
-  Star,
-  Target,
-  Trash,
-  TrendingUp
-} from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-
-import { db } from "../firebase";
-import { 
-  collection, query, where, getDocs, addDoc, updateDoc, 
-  deleteDoc, doc, Timestamp, orderBy, limit, setDoc 
-} from "firebase/firestore";
+import { FormEvent, MouseEvent, useEffect, useState } from "react";
+import { Activity, AlertCircle, Award, BookOpen, Calendar, Check, CheckCircle, Clock, DollarSign, Download, FileText, RefreshCw, Save, Sparkles, Star, Trash, TrendingUp } from "lucide-react";
 
 interface CareerCenterProps {
   userId: string;
@@ -563,7 +532,6 @@ export default function CandidateCareerCenter({
       setLoading(false);
     }
   };
-
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300" id="ai-career-intelligence-center">

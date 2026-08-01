@@ -1,9 +1,17 @@
 import {
+  GoogleAuthProvider,
+  browserLocalPersistence,
+  getAuth,
+  setPersistence
+} from "firebase/auth";
+import {
+  enableMultiTabIndexedDbPersistence,
+  getFirestore,
+  setLogLevel
+} from "firebase/firestore";
+import {
   Check
 } from "lucide-react";
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider } from "firebase/auth";
-import { getFirestore, enableMultiTabIndexedDbPersistence, setLogLevel } from "firebase/firestore";
 import { initializeAppCheck, ReCaptchaV3Provider, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 import config from "../firebase-applet-config.json";
 

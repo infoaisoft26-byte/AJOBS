@@ -2,12 +2,10 @@ import {
   ArrowRight,
   Brain,
   CheckCircle,
-  Cloud,
   Compass,
   DollarSign,
   FileText,
   MessageSquare,
-  Server,
   Target,
   TrendingUp
 } from "lucide-react";
