@@ -6,7 +6,7 @@ import {
   X
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-
+import { AnimatePresence, motion } from "motion/react";
 import AIJobsLogo from "./AIJobsLogo";
 import soundSynth from "../utils/audioSynth";
 
