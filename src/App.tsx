@@ -1,4 +1,5 @@
 import { auth } from "./firebase";
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 
 // Lazy-loaded dashboard components for smaller initial bundle sizes
@@ -869,6 +870,7 @@ export default function App() {
       <GlobalMarketplaceProvider>
         <ToastProvider>
           <MainAppContent />
+          <SpeedInsights />
         </ToastProvider>
       </GlobalMarketplaceProvider>
     </LanguageProvider>
