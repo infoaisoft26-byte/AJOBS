@@ -1,18 +1,28 @@
+import { initializeApp, getApps, getApp } from "firebase/app";
+
 import {
   GoogleAuthProvider,
   browserLocalPersistence,
   getAuth,
   setPersistence
 } from "firebase/auth";
+
 import {
   enableMultiTabIndexedDbPersistence,
   getFirestore,
   setLogLevel
 } from "firebase/firestore";
+
 import {
   Check
 } from "lucide-react";
-import { initializeAppCheck, ReCaptchaV3Provider, ReCaptchaEnterpriseProvider } from "firebase/app-check";
+
+import {
+  initializeAppCheck,
+  ReCaptchaV3Provider,
+  ReCaptchaEnterpriseProvider
+} from "firebase/app-check";
+
 import config from "../firebase-applet-config.json";
 
 // Safe helper to extract all text from any log argument, including nested objects with circular references
