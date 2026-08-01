@@ -1,5 +1,5 @@
-import { FormEvent, MouseEvent, useEffect, useState } from "react";
-import { Activity, AlertCircle, Award, BookOpen, Calendar, Check, CheckCircle, Clock, DollarSign, Download, FileText, RefreshCw, Save, Sparkles, Star, Trash, TrendingUp } from "lucide-react";
+import { db } from "../firebase";
+
 
 interface CareerCenterProps {
   userId: string;

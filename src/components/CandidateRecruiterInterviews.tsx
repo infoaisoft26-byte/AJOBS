@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Calendar, CalendarCheck, Clock, ExternalLink, Link2, Mail, MapPin, RefreshCw, ShieldCheck } from "lucide-react";
+import { db } from "../firebase";
+import { User } from "lucide-react";
 
 import { 
   signInWithGoogleCalendar, 

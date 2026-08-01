@@ -1,21 +1,5 @@
-import {
-  Calendar,
-  CheckCircle,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  Edit3,
-  MessageSquare,
-  Plus,
-  Save,
-  X
-} from "lucide-react";
-import { FormEvent, useState } from "react";
-import {
-  deleteDoc,
-  doc,
-  setDoc
-} from "firebase/firestore";
+import { db } from "../../firebase";
+
 import { InterviewModel, ConsultancyJobModel, ConsultancyCandidateModel } from "./CrmTypes";
 
 interface CrmInterviewsViewProps {

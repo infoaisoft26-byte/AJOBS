@@ -1,17 +1,5 @@
-import {
-  Briefcase,
-  Building2,
-  Check,
-  ChevronDown,
-  MapPin,
-  Search,
-  SlidersHorizontal,
-  X
-} from "lucide-react";
-import { MouseEvent, useEffect, useRef, useState } from "react";
-import {
-  query
-} from "firebase/firestore";
+import { Briefcase, Building2, Check, ChevronDown, MapPin, Search, SlidersHorizontal, X } from "lucide-react";
+
 
 
 interface JobSearchEngineProps {

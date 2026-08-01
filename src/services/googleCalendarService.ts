@@ -1,9 +1,5 @@
-import {
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  signInWithPopup,
-  type User
-} from "firebase/auth";
+import { auth } from "../firebase";
+
 
 let cachedAccessToken: string | null = null;
 let isSigningIn = false;

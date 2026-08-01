@@ -1,16 +1,5 @@
-import {
-  CheckCircle,
-  Clock,
-  Download,
-  FileText,
-  Lock,
-  ShieldCheck,
-  Trash2
-} from "lucide-react";
-import { useState } from "react";
-import {
-  type User
-} from "firebase/auth";
+import { CheckCircle, Clock, Download, FileText, Lock, ShieldCheck, Trash2 } from "lucide-react";
+
 import { auth } from "../firebase";
 
 

@@ -1,17 +1,5 @@
-import {
-  Database,
-  FileText,
-  Lock,
-  Search,
-  Shield,
-  ShieldCheck,
-  Sparkles,
-  Zap
-} from "lucide-react";
-import { useState } from "react";
-import {
-  type User
-} from "firebase/auth";
+import { Database, FileText, Lock, Search, Shield, ShieldCheck, Sparkles, Zap } from "lucide-react";
+
 import { auth } from "../firebase";
 
 

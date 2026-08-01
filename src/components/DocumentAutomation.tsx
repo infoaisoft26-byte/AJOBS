@@ -1,11 +1,5 @@
-import {
-  Copy,
-  FileCheck,
-  Printer,
-  RefreshCw,
-  Sparkles
-} from "lucide-react";
-import { useState } from "react";
+import { Copy, FileCheck, Printer, RefreshCw, Sparkles } from "lucide-react";
+
 
 import { useGlobalMarketplace } from "../context/GlobalMarketplaceContext";
 

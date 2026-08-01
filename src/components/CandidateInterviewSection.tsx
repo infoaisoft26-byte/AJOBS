@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { AlertCircle, AlertTriangle, ArrowRight, Award, BarChart3, Brain, Calendar, Camera, Check, CheckCircle, CheckCircle2, ChevronRight, Clock, HelpCircle, Lock, Mic, Monitor, Pause, Play, RefreshCw, ShieldCheck, Sparkles, Square, Unlock, Volume2 } from "lucide-react";
+import { db } from "../firebase";
+
 
 import D3PerformanceCharts from "./D3PerformanceCharts";
 

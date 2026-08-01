@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
-import { Award, Bookmark, Briefcase, FileCheck, FileText, Printer, Sparkles } from "lucide-react";
 
-import { motion } from "motion/react";
 
 interface EnterpriseDocumentEngineProps {
   companyName: string;

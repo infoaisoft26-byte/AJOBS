@@ -1,17 +1,6 @@
-import {
-  ArrowRight,
-  Building,
-  Loader2,
-  LogIn,
-  Mail,
-  Phone,
-  Sparkles,
-  Upload
-} from "lucide-react";
 import { ChangeEvent, useEffect, useRef, useState } from "react";
-import {
-  doc
-} from "firebase/firestore";
+
+
 import { db } from "../firebase";
 import { uploadToCloudinary } from "../services/cloudinaryService";
 import { useToast } from "./GlobalToast";

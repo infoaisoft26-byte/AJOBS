@@ -1,15 +1,5 @@
-import {
-  Building2,
-  CheckCircle,
-  FileCheck,
-  ShieldCheck
-} from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
-import {
-  doc,
-  getDoc,
-  setDoc
-} from "firebase/firestore";
+import { Building2, CheckCircle, FileCheck, ShieldCheck } from "lucide-react";
+
 import { auth } from "../../firebase";
 import { CompanyProfile } from "./EmployerTypes";
 import { useToast } from "../GlobalToast";

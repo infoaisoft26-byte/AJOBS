@@ -1,14 +1,5 @@
-import {
-  AlertCircle,
-  CheckCircle2,
-  Clock,
-  ExternalLink,
-  Globe,
-  RefreshCw,
-  Search,
-  Send
-} from "lucide-react";
-import { useEffect, useState } from "react";
+import { AlertCircle, CheckCircle2, Clock, ExternalLink, Globe, RefreshCw, Search, Send } from "lucide-react";
+
 
 import { IndexingLogRecord } from "../../../server/googleIndexingService";
 

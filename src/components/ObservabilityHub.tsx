@@ -1,13 +1,5 @@
-import {
-  Activity,
-  CheckCircle2,
-  Cpu,
-  RefreshCw,
-  Server,
-  Sparkles,
-  Zap
-} from "lucide-react";
-import { useEffect, useState } from "react";
+import { Activity, CheckCircle2, Cpu, RefreshCw, Server, Sparkles, Zap } from "lucide-react";
+
 
 
 export default function ObservabilityHub() {

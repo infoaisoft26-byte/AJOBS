@@ -1,16 +1,5 @@
-import {
-  Brain,
-  Code,
-  Key,
-  Save,
-  ShieldAlert,
-  Sliders
-} from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
-import {
-  doc,
-  setDoc
-} from "firebase/firestore";
+import { db } from "../../firebase";
+
 import AiInsightsPanel from "../AiInsightsPanel";
 
 interface AiControlCenterProps {

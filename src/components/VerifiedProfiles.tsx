@@ -1,14 +1,5 @@
-import {
-  Award,
-  Building2,
-  CheckCircle2,
-  FileText,
-  Mail,
-  ShieldCheck,
-  Smartphone,
-  Sparkles
-} from "lucide-react";
-import { useState } from "react";
+import { Award, Building2, CheckCircle2, FileText, Mail, ShieldCheck, Smartphone, Sparkles } from "lucide-react";
+
 
 
 interface VerificationItem {

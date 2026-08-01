@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { BarChart2, Download, RefreshCw, TrendingUp } from "lucide-react";
+import { db } from "../../firebase";
+
 
 export interface JobPerformanceItem {
   id: string;

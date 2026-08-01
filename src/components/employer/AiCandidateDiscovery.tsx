@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Brain, Clock, DollarSign, Filter, MapPin, Search, ShieldCheck, Sparkles, UserPlus } from "lucide-react";
+import { db } from "../../firebase";
+
 
 interface AiCandidateDiscoveryProps {
   userId: string;

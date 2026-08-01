@@ -1,14 +1,5 @@
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  increment,
-  query,
-  setDoc,
-  updateDoc,
-  where
-} from "firebase/firestore";
+import { auth, db } from "../firebase";
+
 import { JobPosting, JobApplication } from "../types";
 import { NotificationService } from "./notificationService";
 

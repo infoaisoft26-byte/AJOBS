@@ -1,15 +1,5 @@
-import {
-  Building,
-  Cpu,
-  FileText,
-  Pause,
-  Play,
-  Search,
-  ShieldCheck,
-  Sparkles
-} from "lucide-react";
-import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
+
 
 const SKILL_NODES = [
   { id: "tech", label: "Technology & AI", score: "98% Match", color: "#06B6D4" },

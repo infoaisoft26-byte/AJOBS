@@ -1,22 +1,4 @@
-import {
-  Award,
-  Bot,
-  Briefcase,
-  DollarSign,
-  Mic,
-  MicOff,
-  Minus,
-  RefreshCw,
-  RotateCcw,
-  Send,
-  TrendingUp,
-  X
-} from "lucide-react";
-import { FormEvent, useEffect, useRef, useState } from "react";
-import {
-  query
-} from "firebase/firestore";
-
+import { AnimatePresence, motion } from "motion/react";
 import ReactMarkdown from "react-markdown";
 
 interface GlobalChatbotProps {

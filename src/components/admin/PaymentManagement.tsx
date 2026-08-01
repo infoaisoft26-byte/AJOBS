@@ -1,16 +1,5 @@
-import {
-  CreditCard,
-  FileText,
-  Printer,
-  RefreshCw,
-  Search,
-  Tag
-} from "lucide-react";
-import { FormEvent, useState } from "react";
-import {
-  doc,
-  setDoc
-} from "firebase/firestore";
+import { db } from "../../firebase";
+
 
 interface PaymentManagementProps {
   transactions: PaymentTransaction[];

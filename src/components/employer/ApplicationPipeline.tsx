@@ -1,26 +1,5 @@
-import {
-  Award,
-  CalendarClock,
-  Download,
-  FileDown,
-  FileText,
-  MessageSquare,
-  Plus,
-  ShieldCheck,
-  Tag,
-  Trash2,
-  Users
-} from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  setDoc
-} from "firebase/firestore";
-import { auth } from "../../firebase";
+
+import { auth, db } from "../../firebase";
 import * as XLSX from "xlsx";
 import { NotificationService } from "../../services/notificationService";
 

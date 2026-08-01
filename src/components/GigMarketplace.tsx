@@ -1,15 +1,5 @@
-import {
-  Briefcase,
-  CheckCircle2,
-  ChevronRight,
-  Send,
-  ShieldCheck,
-  Sparkles
-} from "lucide-react";
-import { useState } from "react";
-import {
-  type User
-} from "firebase/auth";
+import { Briefcase, CheckCircle2, ChevronRight, Send, ShieldCheck, Sparkles } from "lucide-react";
+
 import { auth } from "../firebase";
 
 

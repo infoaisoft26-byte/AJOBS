@@ -1,20 +1,5 @@
-import {
-  Briefcase,
-  Copy,
-  DollarSign,
-  Edit,
-  MapPin,
-  Plus,
-  Save,
-  Trash2,
-  X
-} from "lucide-react";
-import { FormEvent, useState } from "react";
-import {
-  deleteDoc,
-  doc,
-  setDoc
-} from "firebase/firestore";
+import { db } from "../../firebase";
+
 import { ConsultancyJobModel, ClientModel } from "./CrmTypes";
 
 interface CrmJobsViewProps {

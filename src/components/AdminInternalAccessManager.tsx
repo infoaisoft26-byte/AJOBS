@@ -1,23 +1,5 @@
-import {
-  CheckCircle2,
-  FileText,
-  RefreshCw,
-  Search,
-  ShieldCheck,
-  Sparkles,
-  XCircle
-} from "lucide-react";
-import { useEffect, useState } from "react";
-import {
-  type User
-} from "firebase/auth";
-import {
-  collection,
-  doc,
-  getDocs,
-  updateDoc
-} from "firebase/firestore";
-import { auth } from "../firebase";
+
+import { auth, db } from "../firebase";
 
 import { useToast } from "./GlobalToast";
 

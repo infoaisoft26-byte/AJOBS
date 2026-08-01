@@ -1,7 +1,5 @@
-import { useEffect, useState } from "react";
-import { AlertTriangle, Award, BarChart2, Bell, Brain, Briefcase, Building2, Calendar, CloudLightning, CreditCard, FileText, MessageSquare, Plus, PlusCircle, RefreshCw, Search, ShieldCheck, TrendingUp, Users } from "lucide-react";
+import { db } from "../firebase";
 
-import { motion } from "motion/react";
 import SubscriptionBillingHub from "./SubscriptionBillingHub";
 import { NotificationCenterView } from "./NotificationCenter";
 import LiveChatSection from "./LiveChatSection";

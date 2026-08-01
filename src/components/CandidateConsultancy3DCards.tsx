@@ -1,15 +1,3 @@
-import {
-  ArrowRight,
-  Briefcase,
-  Building2,
-  CheckCircle2,
-  LogIn,
-  ShieldCheck,
-  Sparkles,
-  UserCheck,
-  Users,
-  Zap
-} from "lucide-react";
 import { motion } from "motion/react";
 
 interface CardsProps {

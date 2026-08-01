@@ -1,7 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
-import { CloudLightning, Database, ExternalLink, FileSpreadsheet, FileUp, FolderOpen, Layers, Loader2, Plus, RefreshCw, Sparkles } from "lucide-react";
 
-import { motion } from "motion/react";
 import { 
   workspaceSignIn, 
   getWorkspaceAccessToken, 

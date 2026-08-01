@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { AlertTriangle, ArrowLeft, ArrowRight, Brain, Briefcase, CheckCircle2, Clock, Heart, MapPin, Send, Share2, ShieldCheck, Sparkles, Users } from "lucide-react";
+import { db } from "../firebase";
+
 
 import { JobPosting, JobApplication } from "../types";
 import { getJobById, getLiveJobs } from "../services/jobService";

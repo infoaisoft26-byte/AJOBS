@@ -1,7 +1,5 @@
-import { useEffect, useState } from "react";
-import { AlertCircle, Briefcase, Building, CheckCircle, Eye, Filter, Loader2, Mail, Phone, RefreshCw, Search, Sliders, Trash2, UserCheck, Users, X } from "lucide-react";
+import { auth, db } from "../firebase";
 
-import { motion } from "motion/react";
 import ExportActivityCsvButton from "./ExportActivityCsvButton";
 import OfflineSyncBadge from "./OfflineSyncBadge";
 

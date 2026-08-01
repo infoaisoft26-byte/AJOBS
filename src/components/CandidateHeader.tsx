@@ -1,7 +1,5 @@
-import { useState } from "react";
 import { Bell, LogOut, Menu, MessageSquare, Moon, Search, Settings, ShieldCheck, Sun, X } from "lucide-react";
 
-import { AnimatePresence, motion } from "motion/react";
 import { ExportActivityCsvButton } from "./ExportActivityCsvButton";
 import { OfflineSyncBadge } from "./OfflineSyncBadge";
 

@@ -1,33 +1,5 @@
-import {
-  ArrowRight,
-  ArrowUpRight,
-  Briefcase,
-  Building,
-  Clock,
-  FileText,
-  Flame,
-  HelpCircle,
-  IndianRupee,
-  Layers,
-  RefreshCw,
-  ShieldAlert,
-  Sparkles,
-  TrendingUp,
-  Users
-} from "lucide-react";
-import { useEffect, useState } from "react";
-import {
-  type User
-} from "firebase/auth";
-import {
-  collection,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  where
-} from "firebase/firestore";
-import { auth } from "../../firebase";
+
+import { auth, db } from "../../firebase";
 import { LiveStats, SystemAuditLog } from "./AdminTypes";
 import DashboardAnalyticsCharts from "../DashboardAnalyticsCharts";
 

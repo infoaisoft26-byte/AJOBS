@@ -1,7 +1,5 @@
-import { Dispatch, FormEvent, useEffect, useRef, useState } from "react";
-import { AlertCircle, ArrowLeft, Briefcase, Building2, CheckCircle2, CheckSquare, Eye, EyeOff, Lock, Mail, Phone, Send, Shield, ShieldCheck, User, UserPlus, X } from "lucide-react";
+import { auth, db, firebaseConfigError } from "../firebase";
 
-import { motion } from "motion/react";
 import { UserProfile } from "../types";
 import { initializeUserCollectionsAndDocs, getOrCreateUserProfile } from "../services/dbInitService";
 import { trackLeadSubmission } from "../utils/leadAttribution";

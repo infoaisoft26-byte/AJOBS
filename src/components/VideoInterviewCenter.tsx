@@ -1,14 +1,5 @@
-import {
-  Award,
-  Camera,
-  CheckCircle,
-  FileText,
-  Mic,
-  ShieldAlert,
-  Sparkles,
-  Video
-} from "lucide-react";
-import { useState } from "react";
+import { Award, Camera, CheckCircle, FileText, Mic, ShieldAlert, Sparkles, Video } from "lucide-react";
+
 
 import { InterviewSession } from "../types";
 

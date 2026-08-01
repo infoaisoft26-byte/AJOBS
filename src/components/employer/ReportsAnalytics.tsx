@@ -1,10 +1,5 @@
-import {
-  BarChart2,
-  Building,
-  FileSpreadsheet,
-  Printer
-} from "lucide-react";
-import { useState } from "react";
+import { BarChart2, Building, FileSpreadsheet, Printer } from "lucide-react";
+
 
 import { CompanyJob, CompanyApplication, CompanyInterview, CompanyOffer } from "./EmployerTypes";
 import InteractiveExportTable from "../InteractiveExportTable";

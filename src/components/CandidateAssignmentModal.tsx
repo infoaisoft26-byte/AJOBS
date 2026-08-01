@@ -1,11 +1,5 @@
-import {
-  AlertCircle,
-  CheckCircle2,
-  Send,
-  UserCheck,
-  X
-} from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { AlertCircle, CheckCircle2, Send, UserCheck, X } from "lucide-react";
+
 
 
 interface CandidateAssignmentModalProps {

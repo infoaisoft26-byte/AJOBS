@@ -1,17 +1,5 @@
-import {
-  BookOpen,
-  CheckCircle,
-  HelpCircle,
-  MessageSquare,
-  Search,
-  Send,
-  ShieldAlert
-} from "lucide-react";
-import { FormEvent, useState } from "react";
-import {
-  doc,
-  setDoc
-} from "firebase/firestore";
+import { db } from "../../firebase";
+
 
 interface SupportSystemProps {
   tickets: SupportTicket[];

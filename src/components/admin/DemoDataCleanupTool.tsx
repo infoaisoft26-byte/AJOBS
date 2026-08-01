@@ -1,11 +1,5 @@
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Layers,
-  RefreshCw,
-  Trash2
-} from "lucide-react";
-import { useState } from "react";
+import { AlertTriangle, CheckCircle2, Layers, RefreshCw, Trash2 } from "lucide-react";
+
 
 
 export default function DemoDataCleanupTool({ adminUserId }: { adminUserId: string }) {

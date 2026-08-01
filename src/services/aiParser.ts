@@ -1,11 +1,5 @@
-import {
-  type User
-} from "firebase/auth";
-import {
-  doc,
-  setDoc
-} from "firebase/firestore";
-import { auth } from "../firebase";
+
+import { auth, db } from "../firebase";
 import { ResumeAIService } from "./ai/resume.service";
 
 export interface ParsedResumeMetadata {

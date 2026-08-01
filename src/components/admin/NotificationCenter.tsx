@@ -1,15 +1,5 @@
-import {
-  Bell,
-  Radio,
-  Send,
-  Trash2
-} from "lucide-react";
-import { Dispatch, FormEvent, useState } from "react";
-import {
-  deleteDoc,
-  doc,
-  setDoc
-} from "firebase/firestore";
+import { db } from "../../firebase";
+
 import { NotificationService } from "../../services/notificationService";
 
 interface NotificationCenterProps {

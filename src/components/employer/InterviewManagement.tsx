@@ -1,24 +1,5 @@
-import {
-  AlertCircle,
-  BookOpen,
-  Calendar,
-  Clock,
-  MapPin,
-  Plus,
-  Save,
-  Send,
-  Sparkles,
-  Star,
-  UserCheck,
-  Video
-} from "lucide-react";
-import { FormEvent, useState } from "react";
-import {
-  deleteDoc,
-  doc,
-  getDoc,
-  setDoc
-} from "firebase/firestore";
+import { db } from "../../firebase";
+
 import { 
   signInWithGoogleCalendar, getCalendarAccessToken, GoogleCalendarService 
 } from "../../services/googleCalendarService";

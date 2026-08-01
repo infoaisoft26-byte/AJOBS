@@ -1,7 +1,5 @@
-import { FormEvent, useEffect, useState } from "react";
-import { AlertCircle, ArrowRight, Briefcase, Building, Check, CheckCircle2, CheckSquare, Copy, CreditCard, FileText, Gift, Printer, RefreshCw, ShieldCheck, Sparkles, Tag } from "lucide-react";
+import { db } from "../firebase";
 
-import { AnimatePresence, motion } from "motion/react";
 
 interface SubscriptionBillingHubProps {
   userId: string;

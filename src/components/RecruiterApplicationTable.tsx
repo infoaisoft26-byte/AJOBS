@@ -1,7 +1,5 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { ArrowUpDown, Building, Calendar, CheckCircle, ChevronDown, Clock, Download, ExternalLink, Eye, FileText, Filter, Mail, MessageSquare, Phone, RefreshCw, Search, Send, ShieldCheck, Sparkles, UserCheck, Users, XCircle } from "lucide-react";
+import { auth, db } from "../firebase";
 
-import { AnimatePresence, motion } from "motion/react";
 import { NotificationService } from "../services/notificationService";
 import OfferReleaseModal from "./OfferReleaseModal";
 import RejectionReasonModal from "./RejectionReasonModal";

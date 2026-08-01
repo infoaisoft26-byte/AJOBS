@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { CheckCircle, Download, FileText, RefreshCw, Search, Trash2 } from "lucide-react";
+import { db } from "../../firebase";
+
 
 export interface AdminApplicationRecord {
   id: string;

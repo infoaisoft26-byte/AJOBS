@@ -1,27 +1,5 @@
-import {
-  Briefcase,
-  CheckCircle,
-  Clock,
-  Copy,
-  Edit,
-  Eye,
-  Pause,
-  Play,
-  Plus,
-  PlusCircle,
-  RefreshCw,
-  Save,
-  Search,
-  Trash2,
-  X
-} from "lucide-react";
-import { FormEvent, useState } from "react";
-import {
-  deleteDoc,
-  doc,
-  setDoc
-} from "firebase/firestore";
-import { auth } from "../../firebase";
+
+import { auth, db } from "../../firebase";
 import { useToast } from "../GlobalToast";
 import PostJobForm from "../PostJobForm";
 import { NotificationService } from "../../services/notificationService";

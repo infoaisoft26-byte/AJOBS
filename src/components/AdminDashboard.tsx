@@ -1,7 +1,5 @@
-import { useEffect, useState } from "react";
-import { BarChart2, Bell, Brain, Briefcase, CheckCircle, ChevronLeft, ChevronRight, CreditCard, Database, FileText, Globe, HelpCircle, Layers, Lock, Mail, MessageSquare, RefreshCw, Settings, ShieldAlert, ShieldCheck, Terminal, Users } from "lucide-react";
+import { auth, db } from "../firebase";
 
-import { motion } from "motion/react";
 import { recordActivityLog } from "../services/activityLogService";
 
 // Sub-components

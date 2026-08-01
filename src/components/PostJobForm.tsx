@@ -1,5 +1,5 @@
-import { FormEvent, useState } from "react";
-import { AlertCircle, Briefcase, Building2, Calendar, CheckCircle, DollarSign, ListTodo, MapPin, Save, ShieldAlert, X } from "lucide-react";
+import { db } from "../firebase";
+
 
 import { NotificationService } from "../services/notificationService";
 

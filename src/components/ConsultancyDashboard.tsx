@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Bell, Briefcase, Building, Calendar, CheckCircle2, DollarSign, FileText, LayoutDashboard, Plus, RefreshCw, Settings, ShieldAlert, ShieldCheck, Sparkles, TrendingUp, Users } from "lucide-react";
+import { db } from "../firebase";
+
 
 import { ConsultancyProfile } from "../types";
 import { NotificationCenterView } from "./NotificationCenter";

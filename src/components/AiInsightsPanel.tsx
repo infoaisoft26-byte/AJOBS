@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Activity, Award, BarChart, Brain, CheckCircle, Info, ListOrdered, Radar, RefreshCw, ScatterChart, Sparkles, UserCheck } from "lucide-react";
+import { db } from "../firebase";
+
 
 // Define TypeScript interfaces for AI Insights
 interface AiRecommendation {

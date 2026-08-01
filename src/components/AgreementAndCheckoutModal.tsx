@@ -1,17 +1,5 @@
-import {
-  AlertCircle,
-  Building2,
-  CheckCircle2,
-  CreditCard,
-  KeyRound,
-  ScrollText,
-  ShieldCheck,
-  X
-} from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import {
-  where
-} from "firebase/firestore";
+import { AlertCircle, Building2, CheckCircle2, CreditCard, KeyRound, ScrollText, ShieldCheck, X } from "lucide-react";
+
 
 
 interface AgreementAndCheckoutModalProps {

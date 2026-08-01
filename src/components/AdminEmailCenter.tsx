@@ -1,18 +1,5 @@
-import {
-  CheckCircle2,
-  FileText,
-  Inbox,
-  Layers,
-  Mail,
-  Play,
-  RefreshCw,
-  RotateCw,
-  Send,
-  Sparkles,
-  Users,
-  XCircle
-} from "lucide-react";
-import { Dispatch, useEffect, useState } from "react";
+import { CheckCircle2, FileText, Inbox, Layers, Mail, Play, RefreshCw, RotateCw, Send, Sparkles, Users, XCircle } from "lucide-react";
+
 
 
 interface TemplateInfo {

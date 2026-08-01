@@ -1,14 +1,5 @@
-import {
-  Building,
-  Save,
-  Settings,
-  ShieldCheck
-} from "lucide-react";
-import { FormEvent, useState } from "react";
-import {
-  doc,
-  setDoc
-} from "firebase/firestore";
+import { db } from "../../firebase";
+
 import { ConsultancyProfile } from "../../types";
 
 interface CrmOnboardingViewProps {

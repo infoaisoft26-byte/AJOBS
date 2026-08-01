@@ -1,14 +1,5 @@
-import {
-  AlertCircle,
-  Send,
-  X
-} from "lucide-react";
-import { FormEvent, useState } from "react";
-import {
-  doc,
-  setDoc,
-  updateDoc
-} from "firebase/firestore";
+import { db } from "../firebase";
+
 import { NotificationService } from "../services/notificationService";
 
 interface RejectionReasonModalProps {

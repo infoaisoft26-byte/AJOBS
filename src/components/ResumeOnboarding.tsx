@@ -1,20 +1,6 @@
-import {
-  AlertTriangle,
-  CheckCircle2,
-  File,
-  FileText,
-  Loader2,
-  RefreshCw,
-  Sparkles,
-  Upload
-} from "lucide-react";
 import { ChangeEvent, useRef, useState } from "react";
-import {
-  doc,
-  limit,
-  setDoc,
-  updateDoc
-} from "firebase/firestore";
+
+
 import { auth } from "../firebase";
 import { useToast } from "./GlobalToast";
 import { uploadResumeService } from "../services/resumeUploadService";

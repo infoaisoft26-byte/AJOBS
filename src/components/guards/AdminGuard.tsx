@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { Lock, ShieldAlert } from "lucide-react";
+
 
 interface AdminGuardProps {
   user: UserProfile | null;

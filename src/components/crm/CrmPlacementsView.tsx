@@ -1,18 +1,5 @@
-import {
-  Building,
-  CheckCircle2,
-  Plus,
-  Save,
-  Trash2,
-  TrendingUp,
-  X
-} from "lucide-react";
-import { FormEvent, useState } from "react";
-import {
-  deleteDoc,
-  doc,
-  setDoc
-} from "firebase/firestore";
+import { db } from "../../firebase";
+
 import { PlacementModel, ClientModel } from "./CrmTypes";
 
 interface CrmPlacementsViewProps {

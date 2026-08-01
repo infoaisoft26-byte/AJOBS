@@ -1,5 +1,5 @@
-import { ChangeEvent, useEffect, useRef, useState } from "react";
-import { Award, Briefcase, Camera, Check, Edit3, GraduationCap, Plus, Save, ShieldAlert, ShieldCheck, Sparkles, Trash2, Upload, X } from "lucide-react";
+import { db } from "../firebase";
+import { User } from "lucide-react";
 
 import { recordActivityLog } from "../services/activityLogService";
 import { uploadToCloudinary } from "../services/cloudinaryService";

@@ -1,7 +1,5 @@
-import { Dispatch, useEffect, useRef, useState } from "react";
-import { Archive, Bell, Check, CheckCircle2, CheckSquare, Mail, MessageSquare, RefreshCw, Search, Sliders, Smartphone, Trash2, Volume2, X } from "lucide-react";
+import { auth, db } from "../firebase";
 
-import { AnimatePresence, motion } from "motion/react";
 import { 
   NotificationService, NotificationItem, NotificationMedium, NotificationEvent, 
   CandidateEvent, ConsultancyEvent, EmployerEvent, AdminEvent, MessageLog, DEFAULT_EMAIL_TEMPLATES,

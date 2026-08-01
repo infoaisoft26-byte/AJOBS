@@ -1,17 +1,5 @@
-import {
-  Globe,
-  Mail,
-  Plus,
-  Save
-} from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
-import {
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  setDoc
-} from "firebase/firestore";
+import { db } from "../../firebase";
+
 
 interface ContentManagementProps {
   cmsContents: CMSContent[];

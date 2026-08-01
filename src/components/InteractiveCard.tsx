@@ -1,5 +1,5 @@
 import { MouseEvent, ReactNode, useRef, useState } from "react";
-import { motion } from "motion/react";
+
 
 interface InteractiveCardProps {
   children: React.ReactNode;

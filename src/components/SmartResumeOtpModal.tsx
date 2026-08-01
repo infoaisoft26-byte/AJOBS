@@ -1,7 +1,5 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
-import { AlertCircle, ArrowRight, CheckCircle2, Edit2, Loader2, Mail, RefreshCw, ShieldCheck, Smartphone, Sparkles, X } from "lucide-react";
+import { auth } from "../firebase";
 
-import { AnimatePresence, motion } from "motion/react";
 
 export interface CandidateParsedData {
   uid: string;

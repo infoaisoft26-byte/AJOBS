@@ -1,7 +1,5 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { auth, db } from "../firebase";
 
-import { motion } from "motion/react";
 import { CandidateProfile, JobPosting, JobApplication, InterviewSession, ChatMessage, NotificationRecord } from "../types";
 import { getLiveJobs } from "../services/jobService";
 import { applyToJob } from "../services/applicationService";

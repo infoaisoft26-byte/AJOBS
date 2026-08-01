@@ -1,18 +1,5 @@
-import {
-  AlertCircle,
-  Building,
-  Camera,
-  CheckCircle2,
-  Clock,
-  CreditCard,
-  FileCheck,
-  FileText,
-  KeyRound,
-  Lock,
-  LogOut,
-  ShieldCheck
-} from "lucide-react";
-import { Dispatch, FormEvent, SetStateAction, useEffect, useState } from "react";
+import { AlertCircle, Building, Camera, CheckCircle2, Clock, CreditCard, FileCheck, FileText, KeyRound, Lock, LogOut, ShieldCheck } from "lucide-react";
+
 
 import { uploadToCloudinary } from "../services/cloudinaryService";
 import LiveSelfieCaptureModal from "./LiveSelfieCaptureModal";

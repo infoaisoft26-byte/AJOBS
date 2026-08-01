@@ -1,18 +1,5 @@
-import {
-  Award,
-  CheckCircle,
-  DollarSign,
-  Download,
-  FileText,
-  Plus,
-  Send,
-  XCircle
-} from "lucide-react";
-import { FormEvent, useState } from "react";
-import {
-  doc,
-  setDoc
-} from "firebase/firestore";
+import { db } from "../../firebase";
+
 import { NotificationService } from "../../services/notificationService";
 
 interface OfferManagementProps {

@@ -1,20 +1,5 @@
-import {
-  Ban,
-  Clock,
-  Eye,
-  Key,
-  Search,
-  ShieldCheck,
-  Trash2,
-  Users
-} from "lucide-react";
-import { useState } from "react";
-import {
-  deleteDoc,
-  doc,
-  setDoc
-} from "firebase/firestore";
-import { auth } from "../../firebase";
+
+import { auth, db } from "../../firebase";
 import InteractiveExportTable from "../InteractiveExportTable";
 
 interface UserManagementProps {

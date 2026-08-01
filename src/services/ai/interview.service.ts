@@ -1,10 +1,5 @@
-import {
-  collection,
-  where
-} from "firebase/firestore";
-import {
-  Play
-} from "lucide-react";
+import { collection, where } from "firebase/firestore";
+
 export interface InterviewQuestionItem {
   id: string;
   type: "MCQ" | "Technical Questions" | "Scenario Questions" | "Behavioral Questions" | "Role Play";

@@ -1,10 +1,3 @@
-import {
-  FileCheck2,
-  Lock,
-  ShieldAlert,
-  ShieldCheck,
-  UserCheck
-} from "lucide-react";
 import { motion } from "motion/react";
 
 

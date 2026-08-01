@@ -1,12 +1,5 @@
-import {
-  CheckCircle2,
-  Edit3,
-  Mail,
-  Phone,
-  Search,
-  Users
-} from "lucide-react";
-import { useEffect, useState } from "react";
+import { CheckCircle2, Edit3, Mail, Phone, Search, Users } from "lucide-react";
+
 
 import { CrmLead } from "../../types";
 

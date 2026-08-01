@@ -1,5 +1,5 @@
-import { FormEvent, useEffect, useState } from "react";
-import { AlertCircle, CheckCircle, Download, Eye, EyeOff, Key, PauseCircle, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { db } from "../../firebase";
+
 
 export interface ResumeAccessGrant {
   id: string;

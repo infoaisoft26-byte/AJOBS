@@ -1,26 +1,5 @@
-import {
-  Award,
-  Briefcase,
-  CheckCircle2,
-  Edit3,
-  ExternalLink,
-  FileText,
-  LogOut,
-  MapPin,
-  Phone,
-  RefreshCw,
-  Save,
-  Sparkles,
-  Upload,
-  X
-} from "lucide-react";
-import { ChangeEvent, FormEvent, useEffect, useState } from "react";
-import {
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc
-} from "firebase/firestore";
+import { db } from "../firebase";
+
 
 import { useToast } from "./GlobalToast";
 

@@ -1,12 +1,3 @@
-import {
-  AlertCircle,
-  FileText,
-  RefreshCw,
-  ShieldCheck,
-  Sparkles,
-  X,
-  type User
-} from "lucide-react";
 import { motion } from "motion/react";
 
 export type LegalDocType = "privacy" | "terms" | "refund" | "cancellation" | "cookie" | "disclaimer";

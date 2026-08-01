@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Activity, Award, Brain, Briefcase, CheckCircle, ChevronRight, FileText, GripVertical, Heart, Lightbulb, Lock, ShieldCheck, Sparkles, Star } from "lucide-react";
+import { db } from "../firebase";
+
 
 import HolographicCard from "./HolographicCard";
 import AccountVerificationModal from "./AccountVerificationModal";

@@ -1,10 +1,5 @@
-import {
-  CheckCircle2,
-  PlusCircle,
-  RefreshCw,
-  Sparkles
-} from "lucide-react";
-import { useState } from "react";
+import { CheckCircle2, PlusCircle, RefreshCw, Sparkles } from "lucide-react";
+
 
 import { useGlobalMarketplace } from "../context/GlobalMarketplaceContext";
 

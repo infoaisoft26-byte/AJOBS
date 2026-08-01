@@ -1,5 +1,5 @@
-import { ChangeEvent, useEffect, useState } from "react";
-import { AlertTriangle, ArrowUpRight, Award, BookOpen, Briefcase, Calendar, CheckCircle, CheckCircle2, ChevronRight, CloudLightning, Code2, Compass, Download, FileCheck, FileText, FolderOpen, Globe, GraduationCap, Landmark, MapPin, RefreshCw, Sparkles, Trash2, TrendingUp, Trophy, Upload } from "lucide-react";
+import { auth, db } from "../firebase";
+
 
 import { uploadToCloudinary } from "../services/cloudinaryService";
 import { uploadResumeService } from "../services/resumeUploadService";

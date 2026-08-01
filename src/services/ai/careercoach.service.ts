@@ -1,19 +1,3 @@
-import {
-  type User
-} from "firebase/auth";
-import { auth } from "../../firebase";
-import {
-  Building,
-  Cloud,
-  Database,
-  Figma,
-  Framer,
-  Server,
-  Star,
-  Type,
-  User
-} from "lucide-react";
-import { motion } from "motion/react";
 export interface AICareerCoachResponse {
   responseText: string;
   careerSuggestions: string[];

@@ -1,6 +1,5 @@
 import { ReactNode, createContext, useContext, useState } from "react";
 
-import { AnimatePresence, motion } from "motion/react";
 
 export type ToastType = "success" | "error" | "info" | "warning";
 

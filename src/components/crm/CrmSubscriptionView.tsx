@@ -1,16 +1,5 @@
-import {
-  ArrowRight,
-  Check,
-  DollarSign,
-  RefreshCw,
-  ShieldCheck,
-  Sparkles
-} from "lucide-react";
-import { useState } from "react";
-import {
-  doc,
-  setDoc
-} from "firebase/firestore";
+import { db } from "../../firebase";
+
 import { ConsultancyProfile } from "../../types";
 
 interface CrmSubscriptionViewProps {

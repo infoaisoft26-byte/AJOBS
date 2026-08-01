@@ -1,16 +1,5 @@
-import {
-  Check,
-  Copy,
-  Gift,
-  QrCode,
-  Share2,
-  Sparkles,
-  Users
-} from "lucide-react";
-import { useState } from "react";
-import {
-  type User
-} from "firebase/auth";
+import { Check, Copy, Gift, QrCode, Share2, Sparkles, Users } from "lucide-react";
+
 import { auth } from "../firebase";
 
 

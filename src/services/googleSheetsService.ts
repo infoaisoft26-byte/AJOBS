@@ -1,7 +1,5 @@
-import {
-  GoogleAuthProvider,
-  signInWithPopup
-} from "firebase/auth";
+import { auth } from "../firebase";
+
 
 // In-memory cache for the Google OAuth access token
 let cachedAccessToken: string | null = null;

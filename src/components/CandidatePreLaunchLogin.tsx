@@ -1,26 +1,5 @@
-import {
-  AlertCircle,
-  ArrowRight,
-  CheckCircle2,
-  KeyRound,
-  Lock,
-  LogIn,
-  Mail,
-  RefreshCw,
-  Sparkles
-} from "lucide-react";
-import { Dispatch, FormEvent, useState } from "react";
-import {
-  GoogleAuthProvider,
-  sendPasswordResetEmail,
-  signInWithEmailAndPassword,
-  signInWithPopup
-} from "firebase/auth";
-import {
-  doc,
-  getDoc,
-  setDoc
-} from "firebase/firestore";
+import { auth, db } from "../firebase";
+
 
 import { UserProfile } from "../types";
 import { useToast } from "./GlobalToast";

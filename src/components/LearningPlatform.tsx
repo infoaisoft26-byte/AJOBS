@@ -1,12 +1,5 @@
-import {
-  BookOpen,
-  CheckCircle2,
-  Play,
-  Sparkles,
-  Video,
-  Zap
-} from "lucide-react";
-import { useState } from "react";
+import { BookOpen, CheckCircle2, Play, Sparkles, Video, Zap } from "lucide-react";
+
 
 
 export interface Course {

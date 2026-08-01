@@ -1,5 +1,5 @@
-import { FormEvent, useState } from "react";
-import { Bell, Check, Eye, Lock, Settings, ShieldAlert, Trash2, X } from "lucide-react";
+import { auth, db } from "../firebase";
+
 
 interface SettingsProps {
   userId: string;

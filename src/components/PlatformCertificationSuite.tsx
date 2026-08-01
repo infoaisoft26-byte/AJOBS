@@ -1,16 +1,5 @@
-import {
-  Award,
-  CheckCircle2,
-  Download,
-  RefreshCw,
-  ShieldCheck,
-  Sparkles
-} from "lucide-react";
-import { useState } from "react";
-import {
-  collection,
-  limit
-} from "firebase/firestore";
+import { Award, CheckCircle2, Download, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
+
 
 
 export default function PlatformCertificationSuite() {

@@ -1,22 +1,7 @@
-import {
-  AreaChart,
-  ArrowUpRight,
-  Award,
-  BarChart,
-  CheckCircle,
-  Clock,
-  Sparkles,
-  Target,
-  TrendingUp,
-  Users,
-  Zap
-} from "lucide-react";
-import { useMemo, useState } from "react";
+import { AreaChart, ArrowUpRight, Award, BarChart, CheckCircle, Clock, LineChart, Sparkles, Target, TrendingUp, Users, Zap } from "lucide-react";
 
-import { 
-  AreaChart, Area, BarChart, Bar, LineChart, Line, XAxis, YAxis, 
-  CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, ComposedChart
-} from "recharts";
+
+import { Area, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, ComposedChart } from "recharts";
 import { CompanyJob, CompanyApplication, CompanyInterview, CompanyOffer } from "./EmployerTypes";
 
 interface HiringPerformanceProps {

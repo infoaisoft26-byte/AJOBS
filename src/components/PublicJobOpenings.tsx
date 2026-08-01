@@ -1,7 +1,5 @@
-import { FormEvent, MouseEvent, useEffect, useRef, useState } from "react";
-import { AlertTriangle, ArrowRight, Briefcase, Building2, CheckCircle2, ChevronDown, Clock, File, FileText, Heart, Loader2, MapPin, RefreshCw, Search, Send, Share2, ShieldCheck, Sparkles, Upload, UserPlus, X } from "lucide-react";
+import { db } from "../firebase";
 
-import { AnimatePresence, motion } from "motion/react";
 import { JobPosting, JobApplication, UserProfile } from "../types";
 import { fetchPaginatedLiveJobs } from "../services/jobService";
 import { applyToJob } from "../services/applicationService";

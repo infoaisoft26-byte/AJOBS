@@ -1,17 +1,5 @@
-import {
-  Info,
-  Plus,
-  Save,
-  Shield,
-  ShieldCheck,
-  Users,
-  X
-} from "lucide-react";
-import { FormEvent, useState } from "react";
-import {
-  doc,
-  setDoc
-} from "firebase/firestore";
+import { db } from "../../firebase";
+
 import { TeamMemberModel } from "./CrmTypes";
 
 interface CrmTeamViewProps {

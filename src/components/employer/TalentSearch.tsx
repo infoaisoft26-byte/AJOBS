@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Briefcase, Code2, Mail, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, Tag, Trash2, UserCheck, X } from "lucide-react";
+import { auth, db } from "../../firebase";
+
 
 interface CandidateProfile {
   id: string;

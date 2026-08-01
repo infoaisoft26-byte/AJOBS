@@ -1,23 +1,5 @@
-import {
-  Database,
-  Eye,
-  EyeOff,
-  Globe,
-  Lock,
-  Mail,
-  Phone,
-  RefreshCw,
-  Save,
-  Settings,
-  Sliders
-} from "lucide-react";
-import { Dispatch, FormEvent, useEffect, useState } from "react";
-import {
-  collection,
-  doc,
-  setDoc,
-  where
-} from "firebase/firestore";
+import { db } from "../../firebase";
+
 
 interface SystemSettingsProps {
   settings: AdminSystemSettings;

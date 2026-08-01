@@ -1,5 +1,5 @@
-import { Dispatch, FormEvent, lazy, useEffect, useState } from "react";
-import { AlertCircle, Award, BookOpen, CheckCircle, Clock, FileText, Mail, MapPin, Phone, Play, Send, Shield, Sparkles, X } from "lucide-react";
+import { auth, db } from "../firebase";
+
 
 interface CompanySectionProps {
   pageType: string;
