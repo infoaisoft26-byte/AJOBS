@@ -165,70 +165,87 @@ const filteredTxns = transactions.filter((txn) => {
                     <th className="pb-3 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5 text-gray-300">
-                  {filteredTxns.length > 0 ? (
-                    filteredTxns.map((t) => (
-                      <tr key={t.id} className="hover:bg-white/5">
-                        <td className="py-3 pr-2">
-                          <div className="font-bold text-white">
-  {t.userName || t.userEmail || "Unknown User"}
-</div>
-                          <div className="text-[9px] text-gray-400 font-mono mt-0.5">{t.userEmail}</div>
-                          <div className="text-[8px] text-gray-500 font-mono mt-0.5">SaaS Plan: <strong className="text-indigo-400">{t.planName}</strong></div>
-                        <td className="py-3 font-mono text-gray-400">
-  {t.invoiceNumber}
-</td>
-
-<td className="py-3 font-mono font-bold text-white">
-  ₹{Number(t.totalPaid ?? 0).toLocaleString()}
-</td>
-
-<td className="py-3">
-  <span
-    className={`px-2 py-0.5 rounded font-mono text-[9px] font-bold uppercase ${
-      t.status === "SUCCESS"
-        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25"
-        : t.status === "REFUNDED"
-        ? "bg-blue-500/10 text-blue-400 border border-blue-500/25"
-        : "bg-rose-500/10 text-rose-400 border border-rose-500/25"
-    }`}
-  >
-    {t.status}
-  </span>
-</td>
-                        <td className="py-3 text-right space-x-1 whitespace-nowrap">
-                          <button
-                            onClick={() => setSelectedTxnForInvoice(t)}
-                            className="p-1.5 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white rounded transition-all cursor-pointer inline-flex items-center"
-                            title="Generate GST Invoice PDF"
-                          >
-                            <FileText className="w-3.5 h-3.5" />
-                          </button>
-
-                          {t.status === "SUCCESS" && (
-                            <button
-                              onClick={() => handleIssueRefund(t)}
-                              className="p-1.5 bg-rose-600/10 hover:bg-rose-600 text-rose-400 hover:text-white rounded transition-all cursor-pointer inline-flex items-center border border-rose-500/20"
-                              title="Trigger Full Refund"
-                            >
-                              <RefreshCw className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} className="text-center py-12 text-xs text-gray-500 italic">
-                        No transactions registered in database.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+               <tbody className="divide-y divide-white/5 text-gray-300">
+  {filteredTxns.length > 0 ? (
+    filteredTxns.map((t) => (
+      <tr key={t.id} className="hover:bg-white/5">
+        <td className="py-3 pr-2">
+          <div className="font-bold text-white">
+            {t.userName || t.userEmail || "Unknown User"}
           </div>
-        </div>
+
+          <div className="text-[9px] text-gray-400 font-mono mt-0.5">
+            {t.userEmail || "No email"}
+          </div>
+
+          <div className="text-[8px] text-gray-500 font-mono mt-0.5">
+            SaaS Plan:{" "}
+            <strong className="text-indigo-400">
+              {t.planName || "No Plan"}
+            </strong>
+          </div>
+        </td>
+
+        <td className="py-3 font-mono text-gray-400">
+          {t.invoiceNumber || "N/A"}
+        </td>
+
+        <td className="py-3 font-mono font-bold text-white">
+          ₹{Number(t.totalPaid ?? 0).toLocaleString()}
+        </td>
+
+        <td className="py-3">
+          <span
+            className={`px-2 py-0.5 rounded font-mono text-[9px] font-bold uppercase ${
+              t.status === "SUCCESS"
+                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25"
+                : t.status === "REFUNDED"
+                  ? "bg-blue-500/10 text-blue-400 border border-blue-500/25"
+                  : "bg-rose-500/10 text-rose-400 border border-rose-500/25"
+            }`}
+          >
+            {t.status || "UNKNOWN"}
+          </span>
+        </td>
+
+        <td className="py-3 text-right space-x-1 whitespace-nowrap">
+          <button
+            type="button"
+            onClick={() => setSelectedTxnForInvoice(t)}
+            className="p-1.5 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white rounded transition-all cursor-pointer inline-flex items-center"
+            title="Generate GST Invoice PDF"
+          >
+            <FileText className="w-3.5 h-3.5" />
+          </button>
+
+          {t.status === "SUCCESS" && (
+            <button
+              type="button"
+              onClick={() => handleIssueRefund(t)}
+              className="p-1.5 bg-rose-600/10 hover:bg-rose-600 text-rose-400 hover:text-white rounded transition-all cursor-pointer inline-flex items-center border border-rose-500/20"
+              title="Trigger Full Refund"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </td>
+      </tr>
+    ))
+  ) : (
+    <tr>
+      <td
+        colSpan={5}
+        className="text-center py-12 text-xs text-gray-500 italic"
+      >
+        No transactions registered in database.
+      </td>
+    </tr>
+  )}
+</tbody>
+</table>
+</div>
+</div>
+</div>
 
         {/* GST Invoice visualizer & Coupon desk */}
         <div className="space-y-6">
