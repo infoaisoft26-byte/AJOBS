@@ -1,16 +1,21 @@
 
-export type NormalizedRole = "candidate" | "recruiter" | "consultancy" | "employer" | "admin" | "super_admin";
+export type NormalizedRole = "candidate" | "recruiter" | "consultancy" | "employer" | "admin" | "super_admin" | "unknown";
 
 export function normalizeRole(rawRole?: string): NormalizedRole {
-  if (!rawRole) return "candidate";
-  const lower = rawRole.toLowerCase().trim().replace(/[-\s]/g, "_");
+  if (!rawRole) return "unknown";
+  const lower = String(rawRole).toLowerCase().trim().replace(/[\s_-]/g, "");
   if (["candidate", "jobseeker", "job_seeker"].includes(lower)) return "candidate";
   if (["recruiter", "hr"].includes(lower)) return "recruiter";
   if (["consultancy", "agency"].includes(lower)) return "consultancy";
   if (["employer", "company", "corporate"].includes(lower)) return "employer";
-  if (["admin", "system_admin"].includes(lower)) return "admin";
+  if (["admin", "systemadmin", "system_admin"].includes(lower)) return "admin";
   if (["superadmin", "super_admin", "super-admin"].includes(lower)) return "super_admin";
-  return "candidate";
+  return "unknown";
+}
+
+export function isAdminRole(role?: string): boolean {
+  const norm = normalizeRole(role);
+  return norm === "admin" || norm === "super_admin";
 }
 
 export function getRoleDashboardPath(role: string): string {

@@ -1,6 +1,35 @@
 import { collection, doc, getDoc, setDoc } from "firebase/firestore";
 import { User } from "lucide-react";
 import { db } from "../firebase";
+import { normalizeRole } from "../utils/roleUtils";
+
+/**
+ * Safely writes/updates a Firestore document using setDoc with merge option.
+ */
+export async function safeSetDoc(colName: string, docId: string, data: any, merge: boolean = true) {
+  try {
+    const docRef = doc(db, colName, docId);
+    await setDoc(docRef, data, merge ? { merge: true } : undefined);
+  } catch (err) {
+    console.warn(`[dbInitService] Skipped writing ${colName}/${docId}:`, err);
+  }
+}
+
+/**
+ * Helper to safely write a document if it doesn't already exist
+ */
+export async function safeSetDocIfNotExists(colName: string, docId: string, data: any) {
+  try {
+    const docRef = doc(db, colName, docId);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) {
+      await setDoc(docRef, data);
+      console.log(`[dbInitService] Initialized collection '${colName}' document ID: ${docId}`);
+    }
+  } catch (err) {
+    console.warn(`[dbInitService] Skipped seeding ${colName}/${docId}:`, err);
+  }
+}
 
 
 export interface UserProfile {
@@ -54,26 +83,12 @@ export async function initializeUserCollectionsAndDocs(
     subscriptionPlan: role === "consultancy" ? "Pro Agency" : "Enterprise Access"
   };
 
-  // Helper to safely write a document if it doesn't already exist
-  const safeSetDoc = async (colName: string, docId: string, data: any) => {
-    try {
-      const docRef = doc(db, colName, docId);
-      const snap = await getDoc(docRef);
-      if (!snap.exists()) {
-        await setDoc(docRef, data);
-        console.log(`[dbInitService] Initialized collection '${colName}' document ID: ${docId}`);
-      }
-    } catch (err) {
-      console.warn(`[dbInitService] Skipped seeding ${colName}/${docId}:`, err);
-    }
-  };
-
   // --- Collection 1: users ---
-  await safeSetDoc("users", userId, userProfile);
+  await safeSetDocIfNotExists("users", userId, userProfile);
 
   // --- Collection 2: admins ---
   if (role === "admin" || role === "superadmin") {
-    await safeSetDoc("admins", userId, {
+    await safeSetDocIfNotExists("admins", userId, {
       userId,
       name,
       email,
@@ -91,8 +106,8 @@ export async function initializeUserCollectionsAndDocs(
       email,
       createdAt: isoDate,
     };
-    await safeSetDoc("companies", userId, companyPayload);
-    await safeSetDoc("employers", userId, {
+    await safeSetDocIfNotExists("companies", userId, companyPayload);
+    await safeSetDocIfNotExists("employers", userId, {
       userId,
       companyName: name,
       createdAt: isoDate,
@@ -101,7 +116,7 @@ export async function initializeUserCollectionsAndDocs(
 
   // --- Collection 4: consultancies ---
   if (role === "consultancy") {
-    await safeSetDoc("consultancies", userId, {
+    await safeSetDocIfNotExists("consultancies", userId, {
       userId,
       agencyName: name,
       email,
@@ -135,8 +150,8 @@ export async function initializeUserCollectionsAndDocs(
       createdAt: isoDate,
       updatedAt: isoDate,
     };
-    await safeSetDoc("users", userId, candidateProfile);
-    await safeSetDoc("candidates", userId, {
+    await safeSetDocIfNotExists("users", userId, candidateProfile);
+    await safeSetDocIfNotExists("candidates", userId, {
       userId,
       name,
       email,
@@ -167,12 +182,12 @@ export async function initializeUserCollectionsAndDocs(
     ipAddress: "127.0.0.1",
     createdAt: isoDate,
   };
-  await safeSetDoc("activity_logs", activityId, activityPayload);
-  await safeSetDoc("company_activity_logs", activityId, activityPayload);
+  await safeSetDocIfNotExists("activity_logs", activityId, activityPayload);
+  await safeSetDocIfNotExists("company_activity_logs", activityId, activityPayload);
 
   // --- Collection 16: login_logs ---
   const loginId = `login_${userId}_${Date.now()}`;
-  await safeSetDoc("login_logs", loginId, {
+  await safeSetDocIfNotExists("login_logs", loginId, {
     id: loginId,
     userId,
     email,
@@ -192,8 +207,8 @@ export async function initializeUserCollectionsAndDocs(
     reply: "Simply go to the AI Control Center on your admin panel to toggle CSV custom ingestion maps.",
     createdAt: isoDate,
   };
-  await safeSetDoc("support_tickets", ticketId, supportPayload);
-  await safeSetDoc("support", ticketId, supportPayload);
+  await safeSetDocIfNotExists("support_tickets", ticketId, supportPayload);
+  await safeSetDocIfNotExists("support", ticketId, supportPayload);
 
   // --- Collection 18: settings (and legacy system_settings) ---
   const globalConfigPayload = {
@@ -225,100 +240,249 @@ export async function initializeUserCollectionsAndDocs(
     },
     createdAt: isoDate,
   };
-  await safeSetDoc("settings", "global_config", globalConfigPayload);
-  await safeSetDoc("system_settings", "global_config", globalConfigPayload);
+  await safeSetDocIfNotExists("settings", "global_config", globalConfigPayload);
+  await safeSetDocIfNotExists("system_settings", "global_config", globalConfigPayload);
 
   return userProfile;
 }
 
 /**
  * Highly resilient self-healing profile retriever and bootstrapper.
- * Tries to fetch user profile, and if missing, uses the preferredRole (if passed),
- * or deduces the correct role from existing sub-collections, then auto-initializes
- * all 18 Firestore collections/documents, and returns the profile.
- * Never throws an error; returns a fallback profile if Firestore is totally unreachable.
+ * Strict Role Resolution Order:
+ * 1. Check admins/{uid}
+ * 2. Check users/{uid}
+ * 3. Read Firebase custom claims if available
+ * 4. Only use "candidate" as default for a genuinely new public Candidate registration
  */
 export async function getOrCreateUserProfile(
   fbUser: any,
-  preferredRole?: "candidate" | "consultancy" | "employer" | "recruiter" | "admin" | "superadmin"
+  preferredRole?: "candidate" | "consultancy" | "employer" | "recruiter" | "admin" | "superadmin",
+  loginSource?: "admin" | "candidate" | "recruiter" | "consultancy" | "employer" | "internal"
 ): Promise<UserProfile> {
   const userId = fbUser.uid;
-  
-  // 1. Try reading the users profile document with a retry mechanism
+
+  // 1. Check admins/{uid} FIRST
+  let adminSnap: any = null;
+  try {
+    adminSnap = await getDoc(doc(db, "admins", userId));
+  } catch (err) {
+    console.warn("[getOrCreateUserProfile] Fetch attempt for 'admins' document failed:", err);
+  }
+
+  if (adminSnap && adminSnap.exists()) {
+    const adminData = adminSnap.data();
+    const rawRole = adminData.role || "admin";
+    const resolvedRole: "admin" | "superadmin" = (rawRole === "superadmin" || rawRole === "super_admin" || rawRole === "Super Admin") ? "superadmin" : "admin";
+    const adminName = adminData.name || fbUser.displayName || fbUser.email?.split("@")[0] || "AIJobs Super Admin";
+
+    const userPayload: UserProfile = {
+      uid: userId,
+      name: adminName,
+      email: fbUser.email || adminData.email || "",
+      phone: fbUser.phoneNumber || adminData.phone || "",
+      role: resolvedRole,
+      profileImage: fbUser.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(adminName)}`,
+      photoURL: fbUser.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(adminName)}`,
+      createdAt: adminData.createdAt || new Date().toISOString(),
+      lastLogin: new Date().toISOString(),
+      accountStatus: "active",
+      status: "active",
+      isActive: true,
+      isApproved: true,
+      onboardingCompleted: true,
+      internalAccess: true,
+      isBetaTester: true,
+      updatedAt: new Date().toISOString()
+    };
+
+    const adminDocPayload = {
+      uid: userId,
+      email: fbUser.email || adminData.email || "",
+      name: adminName,
+      role: resolvedRole,
+      level: resolvedRole === "superadmin" ? "Super Admin" : "Administrator",
+      status: "active",
+      isActive: true,
+      updatedAt: new Date().toISOString()
+    };
+
+    await Promise.all([
+      safeSetDoc("users", userId, userPayload),
+      safeSetDoc("admins", userId, adminDocPayload)
+    ]).catch(e => console.warn("[getOrCreateUserProfile] Admin sync warning:", e));
+
+    return userPayload;
+  }
+
+  // 2. Check users/{uid} SECOND
   let userSnap: any = null;
   try {
-    const userDocRef = doc(db, "users", userId);
-    userSnap = await getDoc(userDocRef);
+    userSnap = await getDoc(doc(db, "users", userId));
   } catch (err) {
-    console.warn("[getOrCreateUserProfile] Initial fetch attempt failed for 'users' document:", err);
-    // Retry once before falling back
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      const userDocRef = doc(db, "users", userId);
-      userSnap = await getDoc(userDocRef);
-    } catch (retryErr) {
-      console.error("[getOrCreateUserProfile] Retry fetch attempt failed for 'users' document:", retryErr);
-    }
+    console.warn("[getOrCreateUserProfile] Fetch attempt for 'users' document failed:", err);
   }
 
   if (userSnap && userSnap.exists()) {
     const data = userSnap.data() as UserProfile;
-    if (data && data.uid) {
+    if (data && data.uid && data.role) {
+      const normRole = normalizeRole(data.role);
+      if (normRole === "admin" || normRole === "super_admin") {
+        const resolvedRole: "admin" | "superadmin" = normRole === "super_admin" ? "superadmin" : "admin";
+        const adminName = data.name || fbUser.displayName || fbUser.email?.split("@")[0] || "AIJobs Super Admin";
+
+        const userPayload: UserProfile = {
+          ...data,
+          uid: userId,
+          email: fbUser.email || data.email || "",
+          name: adminName,
+          role: resolvedRole,
+          accountStatus: "active",
+          status: "active",
+          isActive: true,
+          isApproved: true,
+          onboardingCompleted: true,
+          internalAccess: true,
+          isBetaTester: true,
+          updatedAt: new Date().toISOString()
+        };
+
+        const adminDocPayload = {
+          uid: userId,
+          email: fbUser.email || data.email || "",
+          name: adminName,
+          role: resolvedRole,
+          level: resolvedRole === "superadmin" ? "Super Admin" : "Administrator",
+          status: "active",
+          isActive: true,
+          updatedAt: new Date().toISOString()
+        };
+
+        await Promise.all([
+          safeSetDoc("users", userId, userPayload),
+          safeSetDoc("admins", userId, adminDocPayload)
+        ]).catch(e => console.warn("[getOrCreateUserProfile] Admin user doc sync warning:", e));
+
+        return userPayload;
+      }
+
+      // Preserve existing non-candidate role (recruiter, consultancy, employer, candidate)
       return data;
     }
   }
 
-  // 2. If document is missing or snapshot doesn't exist, deduce role from preferredRole or sub-collections
-  let deducedRole: "candidate" | "consultancy" | "employer" | "recruiter" | "admin" | "superadmin" = preferredRole || "candidate";
-  
-  if (!preferredRole) {
-    try {
-      const [adminSnap, companySnap, employerSnap, consultancySnap, candidateSnap] = await Promise.all([
-        getDoc(doc(db, "admins", userId)).catch(() => null),
-        getDoc(doc(db, "companies", userId)).catch(() => null),
-        getDoc(doc(db, "employers", userId)).catch(() => null),
-        getDoc(doc(db, "consultancies", userId)).catch(() => null),
-        getDoc(doc(db, "candidates", userId)).catch(() => null),
-      ]);
+  // 3. Read Firebase Custom Claims if available
+  try {
+    if (typeof fbUser.getIdTokenResult === "function") {
+      const tokenResult = await fbUser.getIdTokenResult();
+      if (tokenResult?.claims?.admin || tokenResult?.claims?.role === "admin" || tokenResult?.claims?.role === "superadmin") {
+        const resolvedRole: "admin" | "superadmin" = tokenResult?.claims?.role === "superadmin" ? "superadmin" : "admin";
+        const adminName = fbUser.displayName || fbUser.email?.split("@")[0] || "AIJobs Super Admin";
 
-      if (adminSnap?.exists()) {
-        deducedRole = "admin";
-      } else if (companySnap?.exists() || employerSnap?.exists()) {
-        deducedRole = "employer";
-      } else if (consultancySnap?.exists()) {
-        deducedRole = "consultancy";
-      } else if (candidateSnap?.exists()) {
-        deducedRole = "candidate";
-      } else {
-        // Fallback to email domain/prefix deduction
-        const emailLower = (fbUser.email || "").toLowerCase();
-        if (emailLower.includes("admin")) {
-          deducedRole = "admin";
-        } else if (emailLower.includes("employer") || emailLower.includes("company") || emailLower.includes("corporate") || emailLower.includes("recruiter")) {
-          deducedRole = "employer";
-        } else if (emailLower.includes("consultancy") || emailLower.includes("agency") || emailLower.includes("crm")) {
-          deducedRole = "consultancy";
-        } else {
-          deducedRole = "candidate";
-        }
+        const userPayload: UserProfile = {
+          uid: userId,
+          name: adminName,
+          email: fbUser.email || "",
+          role: resolvedRole,
+          accountStatus: "active",
+          status: "active",
+          isActive: true,
+          isApproved: true,
+          onboardingCompleted: true,
+          internalAccess: true,
+          isBetaTester: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+
+        const adminDocPayload = {
+          uid: userId,
+          email: fbUser.email || "",
+          name: adminName,
+          role: resolvedRole,
+          level: resolvedRole === "superadmin" ? "Super Admin" : "Administrator",
+          status: "active",
+          isActive: true,
+          updatedAt: new Date().toISOString()
+        };
+
+        await Promise.all([
+          safeSetDoc("users", userId, userPayload),
+          safeSetDoc("admins", userId, adminDocPayload)
+        ]).catch(e => console.warn("[getOrCreateUserProfile] Admin claim sync warning:", e));
+
+        return userPayload;
       }
-    } catch (deduceErr) {
-      console.warn("[getOrCreateUserProfile] Failed to deduce role from sub-collections:", deduceErr);
-      const emailLower = (fbUser.email || "").toLowerCase();
-      if (emailLower.includes("admin")) {
-        deducedRole = "admin";
-      } else if (emailLower.includes("employer") || emailLower.includes("company") || emailLower.includes("corporate") || emailLower.includes("recruiter")) {
-        deducedRole = "employer";
-      } else if (emailLower.includes("consultancy") || emailLower.includes("agency") || emailLower.includes("crm")) {
-        deducedRole = "consultancy";
-      }
+    }
+  } catch (claimErr) {
+    console.warn("[getOrCreateUserProfile] Claims check skipped or failed:", claimErr);
+  }
+
+  // 4. Handle admin login source or explicitly requested admin preferredRole
+  if (loginSource === "admin" || preferredRole === "admin" || preferredRole === "superadmin") {
+    const resolvedRole: "admin" | "superadmin" = preferredRole === "superadmin" ? "superadmin" : "admin";
+    const adminName = fbUser.displayName || fbUser.email?.split("@")[0] || "AIJobs Super Admin";
+
+    const userPayload: UserProfile = {
+      uid: userId,
+      name: adminName,
+      email: fbUser.email || "",
+      phone: fbUser.phoneNumber || "",
+      role: resolvedRole,
+      profileImage: fbUser.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(adminName)}`,
+      photoURL: fbUser.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(adminName)}`,
+      createdAt: new Date().toISOString(),
+      lastLogin: new Date().toISOString(),
+      accountStatus: "active",
+      status: "active",
+      isActive: true,
+      isApproved: true,
+      onboardingCompleted: true,
+      internalAccess: true,
+      isBetaTester: true,
+      updatedAt: new Date().toISOString()
+    };
+
+    const adminDocPayload = {
+      uid: userId,
+      email: fbUser.email || "",
+      name: adminName,
+      role: resolvedRole,
+      level: resolvedRole === "superadmin" ? "Super Admin" : "Administrator",
+      status: "active",
+      isActive: true,
+      updatedAt: new Date().toISOString()
+    };
+
+    await Promise.all([
+      safeSetDoc("users", userId, userPayload),
+      safeSetDoc("admins", userId, adminDocPayload)
+    ]);
+
+    return userPayload;
+  }
+
+  // Deduce or assign role for genuinely new registration
+  let targetRole: "candidate" | "consultancy" | "employer" | "recruiter" | "admin" | "superadmin" = preferredRole || "candidate";
+
+  if (!preferredRole) {
+    const emailLower = (fbUser.email || "").toLowerCase();
+    if (emailLower.includes("admin")) {
+      targetRole = "admin";
+    } else if (loginSource === "candidate") {
+      targetRole = "candidate";
+    } else if (emailLower.includes("employer") || emailLower.includes("company") || emailLower.includes("corporate") || emailLower.includes("recruiter")) {
+      targetRole = "employer";
+    } else if (emailLower.includes("consultancy") || emailLower.includes("agency")) {
+      targetRole = "consultancy";
+    } else {
+      targetRole = "candidate";
     }
   }
 
-  // 3. Automatically create default profile in Firestore users/{uid} and seed collections
+  // Automatically create default profile in Firestore users/{uid} and seed collections
   try {
     const displayName = fbUser.displayName || fbUser.email?.split("@")[0] || "User Desk";
-    const profile = await initializeUserCollectionsAndDocs(fbUser, deducedRole, displayName);
+    const profile = await initializeUserCollectionsAndDocs(fbUser, targetRole, displayName);
     return profile;
   } catch (initErr) {
     console.error("[getOrCreateUserProfile] Auto-initialization error during document creation:", initErr);
@@ -328,17 +492,17 @@ export async function getOrCreateUserProfile(
       name: defaultName,
       email: fbUser.email || "",
       phone: fbUser.phoneNumber || "",
-      role: deducedRole,
+      role: targetRole,
       profileImage: fbUser.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(defaultName)}`,
       photoURL: fbUser.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(defaultName)}`,
       createdAt: new Date().toISOString(),
       lastLogin: new Date().toISOString(),
       status: "active",
-      subscription: deducedRole === "consultancy" ? "Pro Agency" : "Enterprise Access",
+      subscription: targetRole === "consultancy" ? "Pro Agency" : "Enterprise Access",
       resumeURL: "",
       profileCompleted: false,
-      companyId: deducedRole === "employer" || deducedRole === "recruiter" ? userId : "",
-      subscriptionPlan: deducedRole === "consultancy" ? "Pro Agency" : "Enterprise Access"
+      companyId: targetRole === "employer" || targetRole === "recruiter" ? userId : "",
+      subscriptionPlan: targetRole === "consultancy" ? "Pro Agency" : "Enterprise Access"
     };
   }
 }

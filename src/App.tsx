@@ -45,6 +45,7 @@ import { GlobalMarketplaceProvider } from "@/context/GlobalMarketplaceContext";
 import { initGA, trackPageView, trackInteraction } from "@/utils/analytics";
 import { validateEnvironment } from "@/utils/envValidation";
 import { getOrCreateUserProfile } from "@/services/dbInitService";
+import { isAdminRole, normalizeRole } from "@/utils/roleUtils";
 
 // Route Guards
 import CandidatePreLaunchGuard from "@/components/guards/CandidatePreLaunchGuard";
@@ -326,8 +327,11 @@ function MainAppContent() {
           setUser(profile);
           trackInteraction("login_success", "auth", profile.role);
 
-          // Auto-redirect if profile is incomplete
-          if (profile.role === "candidate" && !profile.profileCompleted) {
+          if (isAdminRole(profile.role)) {
+            if (activeView === "admin-login" || activeView === "home" || activeView === "internal-login") {
+              setActiveView("admin-dashboard");
+            }
+          } else if (profile.role === "candidate" && !profile.profileCompleted) {
             window.history.pushState({}, "", "/resume/onboarding");
             setActiveView("resume-onboarding");
           }
@@ -575,41 +579,43 @@ function MainAppContent() {
         );
       default:
         return (
-          <div id="dashboard-role-selector" className="p-8 max-w-lg mx-auto text-center space-y-4 glass rounded-2xl border border-white/10 my-12 bg-gray-900/40 shadow-2xl backdrop-blur-md">
+          <div id="dashboard-role-selector" className="p-8 max-w-lg mx-auto text-center space-y-4 glass rounded-2xl border border-red-500/30 my-12 bg-gray-900/60 shadow-2xl backdrop-blur-md">
             <div className="flex justify-center">
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 uppercase tracking-wider shadow-sm">
-                <UserCheck className="w-3.5 h-3.5 text-indigo-400" /> Account Type
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-red-500/20 text-red-300 border border-red-500/30 uppercase tracking-wider shadow-sm">
+                <UserCheck className="w-3.5 h-3.5 text-red-400" /> Access Configuration Error
               </span>
             </div>
-            <AlertTriangle className="w-10 h-10 text-yellow-400 mx-auto" />
-            <h3 className="font-bold text-white text-lg">Select Dashboard Workspace</h3>
-            <p className="text-xs text-gray-400">Your profile doesn't have a workspace role designated. Please select your account type to proceed:</p>
+            <AlertTriangle className="w-10 h-10 text-red-400 mx-auto" />
+            <h3 className="font-bold text-white text-lg">Unassigned Role Configuration</h3>
+            <p className="text-xs text-gray-300">
+              Your profile role ("{user.role || "unknown"}") is not recognized or assigned to a designated workspace. Please select your workspace account type below:
+            </p>
             <div className="grid grid-cols-2 gap-4 pt-4">
               <button 
                 id="btn-select-candidate"
                 onClick={() => handleUpdateUserRole("candidate")}
-                className="py-2.5 px-3 bg-indigo-600/20 hover:bg-indigo-600/40 text-xs font-bold text-indigo-300 rounded-xl border border-indigo-500/30 hover:border-indigo-400 transition-all duration-200 transform hover:scale-105 hover:shadow-[0_0_15px_rgba(99,102,241,0.5)] cursor-pointer active:scale-95"
+                className="py-2.5 px-3 bg-indigo-600/20 hover:bg-indigo-600/40 text-xs font-bold text-indigo-300 rounded-xl border border-indigo-500/30 hover:border-indigo-400 transition-all duration-200 cursor-pointer"
               >
                 Candidate Workspace
               </button>
               <button 
                 id="btn-select-employer"
                 onClick={() => handleUpdateUserRole("employer")}
-                className="py-2.5 px-3 bg-pink-600/20 hover:bg-pink-600/40 text-xs font-bold text-pink-300 rounded-xl border border-pink-500/30 hover:border-pink-400 transition-all duration-200 transform hover:scale-105 hover:shadow-[0_0_15px_rgba(236,72,153,0.5)] cursor-pointer active:scale-95"
+                className="py-2.5 px-3 bg-pink-600/20 hover:bg-pink-600/40 text-xs font-bold text-pink-300 rounded-xl border border-pink-500/30 hover:border-pink-400 transition-all duration-200 cursor-pointer"
               >
                 Recruiter Workspace
               </button>
               <button 
                 id="btn-select-consultancy"
                 onClick={() => handleUpdateUserRole("consultancy")}
-                className="py-2.5 px-3 bg-emerald-600/20 hover:bg-emerald-600/40 text-xs font-bold text-emerald-300 rounded-xl border border-emerald-500/30 hover:border-emerald-400 transition-all duration-200 transform hover:scale-105 hover:shadow-[0_0_15px_rgba(16,185,129,0.5)] cursor-pointer active:scale-95"
+                className="py-2.5 px-3 bg-emerald-600/20 hover:bg-emerald-600/40 text-xs font-bold text-emerald-300 rounded-xl border border-emerald-500/30 hover:border-emerald-400 transition-all duration-200 cursor-pointer"
               >
                 Consultancy Agency
               </button>
               <button 
                 id="btn-select-admin"
                 onClick={() => handleUpdateUserRole("admin")}
-                className="py-2.5 px-3 bg-yellow-600/20 hover:bg-yellow-600/40 text-xs font-bold text-yellow-300 rounded-xl border border-yellow-500/30 hover:border-yellow-400 transition-all duration-200 transform hover:scale-105 hover:shadow-[0_0_15px_rgba(234,179,8,0.5)] cursor-pointer active:scale-95"
+                className="py-2.5 px-3 bg-yellow-600/20 hover:bg-yellow-600/40 text-xs font-bold text-yellow-300 rounded-xl border border-yellow-500/30 hover:border-yellow-400 transition-all duration-200 cursor-pointer"
               >
                 Administrator Desk
               </button>

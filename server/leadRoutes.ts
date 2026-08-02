@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getFirestoreDb } from "./firestoreHelper";
+import { adminDb } from "./firestoreHelper";
 
 const router = Router();
 
@@ -33,7 +33,6 @@ router.post("/create", async (req, res) => {
       return res.status(400).json({ success: false, error: "Email or mobile number is required" });
     }
 
-    const db = getFirestoreDb();
     const nowIso = new Date().toISOString();
 
     // Determine lead source priority
@@ -41,7 +40,7 @@ router.post("/create", async (req, res) => {
     const leadCampaign = campaign || utm_campaign || "Organic Search";
 
     const leadId = `lead_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-    const leadRef = db.collection("leads").doc(leadId);
+    const leadRef = adminDb.collection("leads").doc(leadId);
 
     const leadData = {
       leadId,
@@ -90,8 +89,7 @@ router.post("/create", async (req, res) => {
  */
 router.get("/list", async (req, res) => {
   try {
-    const db = getFirestoreDb();
-    const leadsSnap = await db.collection("leads").orderBy("createdAt", "desc").limit(100).get();
+    const leadsSnap = await adminDb.collection("leads").orderBy("createdAt", "desc").limit(100).get();
 
     const leads: any[] = [];
     leadsSnap.forEach((docSnap) => {
@@ -127,7 +125,6 @@ router.post("/update", async (req, res) => {
       return res.status(400).json({ success: false, error: "leadId is required" });
     }
 
-    const db = getFirestoreDb();
     const nowIso = new Date().toISOString();
 
     const updatePayload: any = {
@@ -140,7 +137,7 @@ router.post("/update", async (req, res) => {
     if (nextFollowUpAt) updatePayload.nextFollowUpAt = nextFollowUpAt;
     if (adminNotes !== undefined) updatePayload.adminNotes = adminNotes;
 
-    await db.collection("leads").doc(leadId).set(updatePayload, { merge: true });
+    await adminDb.collection("leads").doc(leadId).set(updatePayload, { merge: true });
 
     return res.json({
       success: true,

@@ -7,7 +7,8 @@ import { auth, db } from "../firebase";
 
 import { UserProfile } from "../types";
 import { useToast } from "./GlobalToast";
-import { normalizeRole } from "../utils/roleUtils";
+import { isAdminRole, normalizeRole } from "../utils/roleUtils";
+import { getOrCreateUserProfile } from "../services/dbInitService";
 
 const googleProvider = new GoogleAuthProvider();
 
@@ -33,45 +34,17 @@ export default function InternalPlatformLogin({
   const [resetSent, setResetSent] = useState(false);
 
   const verifyAndRouteInternalUser = async (fbUser: any) => {
-    const userRef = doc(db, "users", fbUser.uid);
-    const snap = await getDoc(userRef);
-
     let profile: UserProfile;
-
-    if (snap.exists()) {
-      const data = snap.data();
-      profile = {
-        uid: fbUser.uid,
-        name: data.name || fbUser.displayName || fbUser.email?.split("@")[0] || "Internal User",
-        email: fbUser.email || "",
-        phone: data.phone || "",
-        role: data.role || "candidate",
-        isBetaTester: data.isBetaTester ?? false,
-        internalAccess: data.internalAccess ?? false,
-        accountStatus: data.accountStatus || "active",
-        createdAt: data.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        profileCompleted: data.profileCompleted ?? true,
-      };
-      await setDoc(userRef, { lastLogin: new Date().toISOString() }, { merge: true });
-    } else {
-      // Fallback
-      profile = {
-        uid: fbUser.uid,
-        name: fbUser.displayName || fbUser.email?.split("@")[0] || "Internal User",
-        email: fbUser.email || "",
-        role: "candidate",
-        isBetaTester: false,
-        internalAccess: false,
-        accountStatus: "active",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      await setDoc(userRef, profile);
+    try {
+      profile = await getOrCreateUserProfile(fbUser, undefined, "internal");
+    } catch (err) {
+      console.error("[Internal Login] Profile resolution failed:", err);
+      showToast("Internal user profile authorization failed.", "error");
+      return;
     }
 
     const normRole = normalizeRole(profile.role);
-    const hasInternalAccess = profile.internalAccess === true || profile.isBetaTester === true || normRole === "admin";
+    const hasInternalAccess = profile.internalAccess === true || profile.isBetaTester === true || isAdminRole(profile.role);
 
     if (!hasInternalAccess && normRole === "candidate") {
       // Un-authorized candidate attempting internal portal login
@@ -82,7 +55,7 @@ export default function InternalPlatformLogin({
 
     // Determine target internal route based on role
     let targetRoute = "/internal/candidate";
-    if (normRole === "admin") {
+    if (isAdminRole(profile.role)) {
       targetRoute = "/admin/dashboard";
     } else if (normRole === "employer" || normRole === "recruiter") {
       targetRoute = "/internal/employer";
@@ -109,7 +82,11 @@ export default function InternalPlatformLogin({
       const res = await signInWithEmailAndPassword(auth, email.trim(), password);
       await verifyAndRouteInternalUser(res.user);
     } catch (err: any) {
-      console.error("[Internal Login Error]:", err);
+      if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password" || err.code === "auth/invalid-credential" || err.code === "auth/invalid-email") {
+        console.warn("[Internal Login]: Invalid credentials provided.", err.code);
+      } else {
+        console.error("[Internal Login Error]:", err);
+      }
       let msg = "Invalid internal login credentials.";
       if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password" || err.code === "auth/invalid-credential") {
         msg = "Incorrect internal account credentials.";

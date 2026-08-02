@@ -5,7 +5,8 @@ import { collection, doc, getDoc } from "firebase/firestore";
 import { Badge, Check, CheckCircle2, KeyRound, Link, Lock, LogIn, Mail, RefreshCw, Shield, ShieldAlert, ShieldCheck, User } from "lucide-react";
 import { UserProfile } from "../types";
 import { useToast } from "./GlobalToast";
-import { normalizeRole } from "../utils/roleUtils";
+import { isAdminRole, normalizeRole } from "../utils/roleUtils";
+import { getOrCreateUserProfile } from "../services/dbInitService";
 
 interface AdminLoginProps {
   onAdminLoginSuccess: (userProfile: UserProfile) => void;
@@ -39,54 +40,31 @@ export default function AdminLogin({
     try {
       const res = await signInWithEmailAndPassword(auth, email.trim(), password);
       
-      // Fetch Firestore profile to verify Admin role securely
-      const userDocRef = doc(db, "users", res.user.uid);
-      const snap = await getDoc(userDocRef);
+      // Resolve user profile using strict admin login source
+      const profile = await getOrCreateUserProfile(res.user, "admin", "admin");
 
-      let roleFromDoc = "candidate";
-      let profileName = res.user.displayName || "Admin User";
-
-      if (snap.exists()) {
-        const data = snap.data();
-        roleFromDoc = data.role || "candidate";
-        profileName = data.name || profileName;
-      } else {
-        // Check admins collection
-        const adminSnap = await getDoc(doc(db, "admins", res.user.uid));
-        if (adminSnap.exists()) {
-          roleFromDoc = "admin";
-        }
-      }
-
-      const normRole = normalizeRole(roleFromDoc);
-
-      if (normRole !== "admin") {
-        // Sign out non-admin
+      if (!isAdminRole(profile.role)) {
+        // Sign out non-admin and block access
         await auth.signOut();
-        const accessDeniedMsg = "Access Denied: You do not have Administrator permissions.";
+        const accessDeniedMsg = "This account does not have Admin access.";
         setErrorMsg(accessDeniedMsg);
         showToast(accessDeniedMsg, "error");
         return;
       }
 
-      const adminProfile: UserProfile = {
-        uid: res.user.uid,
-        name: profileName,
-        email: res.user.email || email.trim(),
-        role: roleFromDoc as any,
-        isBetaTester: true,
-        internalAccess: true,
-        accountStatus: "active",
-        createdAt: new Date().toISOString()
-      };
-
-      showToast(`Administrator authenticated successfully: ${adminProfile.name}`, "success");
-      onAdminLoginSuccess(adminProfile);
+      showToast(`Administrator authenticated successfully: ${profile.name}`, "success");
+      onAdminLoginSuccess(profile);
     } catch (err: any) {
-      console.error("[Admin Login Error]:", err);
+      if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password" || err.code === "auth/invalid-credential" || err.code === "auth/invalid-email") {
+        console.warn("[Admin Login]: Invalid credentials provided.", err.code);
+      } else {
+        console.error("[Admin Login Error]:", err);
+      }
       let msg = "Invalid Administrator credentials. Please verify your email and password.";
       if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password" || err.code === "auth/invalid-credential") {
         msg = "Incorrect Administrator credentials.";
+      } else if (err.message === "Authorized role profile not found" || err.message?.includes("Admin access")) {
+        msg = "This account does not have Admin access.";
       }
       setErrorMsg(msg);
       showToast(msg, "error");

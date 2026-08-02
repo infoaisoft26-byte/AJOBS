@@ -89,7 +89,11 @@ export default function CandidatePreLaunchLogin({
       showToast(`Welcome back, ${profile.name}!`, "success");
       onLoginSuccess(profile);
     } catch (err: any) {
-      console.error("[Candidate Login Error]:", err);
+      if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password" || err.code === "auth/invalid-credential" || err.code === "auth/invalid-email") {
+        console.warn("[Candidate Login]: Invalid credentials provided.", err.code);
+      } else {
+        console.error("[Candidate Login Error]:", err);
+      }
       let msg = "Invalid login credentials. Please check your email and password.";
       if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password" || err.code === "auth/invalid-credential") {
         msg = "Incorrect email or password. If you haven't registered, click 'Register as Candidate'.";
