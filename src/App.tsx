@@ -8,7 +8,32 @@ import { auth, isFirebaseConfigured } from "./firebase";
 const CandidateDashboard = lazy(() => import("@/components/CandidateDashboard"));
 const ConsultancyDashboard = lazy(() => import("@/components/ConsultancyDashboard"));
 const EmployerDashboard = lazy(() => import("@/components/EmployerDashboard"));
-const AdminDashboard = lazy(() => import("@/components/AdminDashboard"));
+const AdminDashboard = lazy(() => {
+  console.log("[Trace Lazy] AdminDashboard lazy import starting...");
+  return import("@/components/AdminDashboard")
+    .then((m) => {
+      console.log("[Trace Lazy] AdminDashboard lazy import success");
+      return m;
+    })
+    .catch((err) => {
+      console.error("[Trace Lazy] AdminDashboard lazy import failed:", err);
+      return {
+        default: () => (
+          <div className="p-8 max-w-md mx-auto text-center space-y-4 bg-gray-900 border border-red-500/30 rounded-2xl my-12 text-white">
+            <AlertTriangle className="w-12 h-12 text-red-500 mx-auto" />
+            <h3 className="font-bold text-lg">Failed to Load Admin Dashboard Module</h3>
+            <p className="text-xs text-gray-400">A network or chunk error occurred while loading the Admin Dashboard component.</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-red-600 hover:bg-red-500 text-xs font-bold text-white rounded-xl cursor-pointer"
+            >
+              Reload Page
+            </button>
+          </div>
+        )
+      };
+    });
+});
 const VerificationOnboardingView = lazy(() => import("@/components/VerificationOnboardingView"));
 const JobDetailsLazy = lazy(() => import("@/components/JobDetails"));
 const NotificationCenterViewLazy = lazy(() =>
@@ -325,10 +350,14 @@ function MainAppContent() {
 
         if (profile) {
           setUser(profile);
+          const normRole = normalizeRole(profile.role);
+          console.log(`[Trace Auth] Authenticated UID: ${fbUser.uid}, Resolved Role: ${profile.role}, Normalized Role: ${normRole}`);
           trackInteraction("login_success", "auth", profile.role);
 
           if (isAdminRole(profile.role)) {
+            console.log(`[Trace Auth] Admin role detected. ActiveView: ${activeView}`);
             if (activeView === "admin-login" || activeView === "home" || activeView === "internal-login") {
+              console.log("[Trace Auth] Routing admin to 'admin-dashboard'");
               setActiveView("admin-dashboard");
             }
           } else if (profile.role === "candidate" && !profile.profileCompleted) {
@@ -565,16 +594,22 @@ function MainAppContent() {
           );
         }
       case "admin":
+      case "superadmin":
       case "super_admin":
+        console.log(`[Trace Route] Selected route for admin role '${normRole}' (raw: ${user.role}, UID: ${user.uid}): AdminDashboard`);
         return (
           <ProtectedRoute 
             user={user} 
-            allowedRoles={["admin", "super_admin", "superadmin"]} 
+            allowedRoles={["admin", "superadmin", "super_admin"]} 
             fallbackView="home" 
             setActiveView={setActiveView} 
             setAuthMode={setAuthMode}
           >
-            <AdminDashboard userId={user.uid} userName={user.name} />
+            <ErrorBoundary componentName="AdminDashboard" onLogout={handleLogout}>
+              <Suspense fallback={<DashboardSkeleton />}>
+                <AdminDashboard userId={user.uid} userName={user.name} />
+              </Suspense>
+            </ErrorBoundary>
           </ProtectedRoute>
         );
       default:
@@ -777,12 +812,14 @@ function MainAppContent() {
                     user={user}
                     onNavigateToAdminLogin={() => setActiveView("admin-login")}
                   >
-                    <Suspense fallback={<DashboardSkeleton />}>
-                      <AdminDashboard
-                        userId={user?.uid}
-                        userName={user?.name}
-                      />
-                    </Suspense>
+                    <ErrorBoundary componentName="AdminDashboard" onLogout={handleLogout}>
+                      <Suspense fallback={<DashboardSkeleton />}>
+                        <AdminDashboard
+                          userId={user?.uid}
+                          userName={user?.name}
+                        />
+                      </Suspense>
+                    </ErrorBoundary>
                   </AdminGuard>
                 ) : activeView === "internal-candidate" ? (
                   <InternalAccessGuard

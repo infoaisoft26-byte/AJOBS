@@ -14,6 +14,8 @@ export default function AdminGuard({
   children,
   onNavigateToAdminLogin
 }: AdminGuardProps) {
+  console.log(`[Trace Guard] AdminGuard check - UID: ${user?.uid}, Role: ${user?.role}, Normalized: ${normalizeRole(user?.role)}, isAdmin: ${isAdminRole(user?.role)}`);
+
   if (!user) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 text-center space-y-4">

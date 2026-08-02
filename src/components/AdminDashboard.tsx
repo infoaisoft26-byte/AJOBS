@@ -378,6 +378,7 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
   };
 
   useEffect(() => {
+    console.log(`[Trace AdminDashboard] First AdminDashboard render - UID: ${currentUserId}, UserName: ${currentUserName}`);
     fetchWorkspaceData();
     syncAdminRoleFromFirestore();
   }, [currentUserId]);

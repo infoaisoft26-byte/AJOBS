@@ -53,6 +53,7 @@ export default function AdminLogin({
       }
 
       showToast(`Administrator authenticated successfully: ${profile.name}`, "success");
+      console.log(`[Trace Login] Admin login success - UID: ${profile.uid}, Role: ${profile.role}, Normalized: ${normalizeRole(profile.role)}`);
       onAdminLoginSuccess(profile);
     } catch (err: any) {
       if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password" || err.code === "auth/invalid-credential" || err.code === "auth/invalid-email") {

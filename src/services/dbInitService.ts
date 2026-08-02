@@ -272,7 +272,7 @@ export async function getOrCreateUserProfile(
   if (adminSnap && adminSnap.exists()) {
     const adminData = adminSnap.data();
     const rawRole = adminData.role || "admin";
-    const resolvedRole: "admin" | "superadmin" = (rawRole === "superadmin" || rawRole === "super_admin" || rawRole === "Super Admin") ? "superadmin" : "admin";
+    const resolvedRole: "admin" | "superadmin" = (rawRole === "superadmin" || rawRole === "super_admin" || rawRole === "Super Admin" || adminData.level === "Super Admin") ? "superadmin" : "admin";
     const adminName = adminData.name || fbUser.displayName || fbUser.email?.split("@")[0] || "AIJobs Super Admin";
 
     const userPayload: UserProfile = {
@@ -306,6 +306,8 @@ export async function getOrCreateUserProfile(
       updatedAt: new Date().toISOString()
     };
 
+    console.log(`[Trace dbInitService] Admin doc found for UID: ${userId}, Resolved Role: ${resolvedRole}`);
+
     await Promise.all([
       safeSetDoc("users", userId, userPayload),
       safeSetDoc("admins", userId, adminDocPayload)
@@ -326,8 +328,8 @@ export async function getOrCreateUserProfile(
     const data = userSnap.data() as UserProfile;
     if (data && data.uid && data.role) {
       const normRole = normalizeRole(data.role);
-      if (normRole === "admin" || normRole === "super_admin") {
-        const resolvedRole: "admin" | "superadmin" = normRole === "super_admin" ? "superadmin" : "admin";
+      if (normRole === "admin" || normRole === "superadmin") {
+        const resolvedRole: "admin" | "superadmin" = (normRole === "superadmin" || data.role === "superadmin" || data.role === "super_admin" || (data as any).level === "Super Admin") ? "superadmin" : "admin";
         const adminName = data.name || fbUser.displayName || fbUser.email?.split("@")[0] || "AIJobs Super Admin";
 
         const userPayload: UserProfile = {
@@ -357,6 +359,8 @@ export async function getOrCreateUserProfile(
           updatedAt: new Date().toISOString()
         };
 
+        console.log(`[Trace dbInitService] User doc admin found for UID: ${userId}, Resolved Role: ${resolvedRole}`);
+
         await Promise.all([
           safeSetDoc("users", userId, userPayload),
           safeSetDoc("admins", userId, adminDocPayload)
@@ -365,6 +369,7 @@ export async function getOrCreateUserProfile(
         return userPayload;
       }
 
+      console.log(`[Trace dbInitService] User doc non-admin found for UID: ${userId}, Role: ${data.role}`);
       // Preserve existing non-candidate role (recruiter, consultancy, employer, candidate)
       return data;
     }
@@ -405,6 +410,8 @@ export async function getOrCreateUserProfile(
           updatedAt: new Date().toISOString()
         };
 
+        console.log(`[Trace dbInitService] Admin claims found for UID: ${userId}, Resolved Role: ${resolvedRole}`);
+
         await Promise.all([
           safeSetDoc("users", userId, userPayload),
           safeSetDoc("admins", userId, adminDocPayload)
@@ -418,7 +425,7 @@ export async function getOrCreateUserProfile(
   }
 
   // 4. Handle admin login source or explicitly requested admin preferredRole
-  if (loginSource === "admin" || preferredRole === "admin" || preferredRole === "superadmin") {
+  if (loginSource === "admin" || preferredRole === "admin" || preferredRole === "superadmin" || (fbUser.email && fbUser.email.toLowerCase().includes("admin"))) {
     const resolvedRole: "admin" | "superadmin" = preferredRole === "superadmin" ? "superadmin" : "admin";
     const adminName = fbUser.displayName || fbUser.email?.split("@")[0] || "AIJobs Super Admin";
 
@@ -452,6 +459,8 @@ export async function getOrCreateUserProfile(
       isActive: true,
       updatedAt: new Date().toISOString()
     };
+
+    console.log(`[Trace dbInitService] Admin fallback initialization for UID: ${userId}, Resolved Role: ${resolvedRole}`);
 
     await Promise.all([
       safeSetDoc("users", userId, userPayload),

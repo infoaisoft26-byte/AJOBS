@@ -66,6 +66,7 @@ export default function InternalPlatformLogin({
     }
 
     showToast(`Internal Session Authenticated: ${profile.name} (${normRole})`, "success");
+    console.log(`[Trace Login] Internal login success - UID: ${profile.uid}, Role: ${profile.role}, Normalized: ${normRole}, TargetRoute: ${targetRoute}`);
     onAuthorizedSuccess(profile, targetRoute);
   };
 

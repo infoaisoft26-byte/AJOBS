@@ -12,22 +12,37 @@ const configPath = path.join(process.cwd(), "firebase-applet-config.json");
 const config = fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, "utf-8")) : {};
 const fallbackProjectId = config.projectId || process.env.GCP_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || "planning-with-ai-1ea1c";
 
-const adminApp =
-  getApps().length > 0
-    ? getApps()[0]
-    : initializeApp(
-        projectId && clientEmail && privateKey
-          ? {
-              credential: cert({
-                projectId,
-                clientEmail,
-                privateKey
-              })
-            }
-          : {
-              projectId: fallbackProjectId
-            }
-      );
+const initAdminApp = () => {
+  if (getApps().length > 0) {
+    return getApps()[0];
+  }
+
+  const isValidCert =
+    Boolean(projectId) &&
+    Boolean(clientEmail) &&
+    Boolean(privateKey) &&
+    privateKey!.includes("BEGIN PRIVATE KEY");
+
+  if (isValidCert) {
+    try {
+      return initializeApp({
+        credential: cert({
+          projectId: projectId!,
+          clientEmail: clientEmail!,
+          privateKey: privateKey!
+        })
+      });
+    } catch (err: any) {
+      console.warn("[Firebase Admin] Service account cert initialization error:", err?.message || err);
+    }
+  }
+
+  return initializeApp({
+    projectId: projectId || fallbackProjectId
+  });
+};
+
+const adminApp = initAdminApp();
 
 export const adminDb: Firestore = getFirestore(adminApp);
 
