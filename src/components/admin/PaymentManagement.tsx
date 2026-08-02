@@ -175,19 +175,27 @@ const filteredTxns = transactions.filter((txn) => {
 </div>
                           <div className="text-[9px] text-gray-400 font-mono mt-0.5">{t.userEmail}</div>
                           <div className="text-[8px] text-gray-500 font-mono mt-0.5">SaaS Plan: <strong className="text-indigo-400">{t.planName}</strong></div>
-                        </td>
-                        <td className="py-3 font-mono text-gray-400">{t.invoiceNumber}</td>
-                        <td className="py-3 font-mono font-bold text-white">
-                        ₹{Number(t.totalPaid ?? 0).toLocaleString()}
-                        <td className="py-3">
-                          <span className={`px-2 py-0.5 rounded font-mono text-[9px] font-bold uppercase ${
-                            t.status === "SUCCESS" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25" :
-                            t.status === "REFUNDED" ? "bg-blue-500/10 text-blue-400 border border-blue-500/25" :
-                            "bg-rose-500/10 text-rose-400 border border-rose-500/25"
-                          }`}>
-                            {t.status}
-                          </span>
-                        </td>
+                        <td className="py-3 font-mono text-gray-400">
+  {t.invoiceNumber}
+</td>
+
+<td className="py-3 font-mono font-bold text-white">
+  ₹{Number(t.totalPaid ?? 0).toLocaleString()}
+</td>
+
+<td className="py-3">
+  <span
+    className={`px-2 py-0.5 rounded font-mono text-[9px] font-bold uppercase ${
+      t.status === "SUCCESS"
+        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25"
+        : t.status === "REFUNDED"
+        ? "bg-blue-500/10 text-blue-400 border border-blue-500/25"
+        : "bg-rose-500/10 text-rose-400 border border-rose-500/25"
+    }`}
+  >
+    {t.status}
+  </span>
+</td>
                         <td className="py-3 text-right space-x-1 whitespace-nowrap">
                           <button
                             onClick={() => setSelectedTxnForInvoice(t)}
