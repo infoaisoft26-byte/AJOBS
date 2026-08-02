@@ -431,6 +431,17 @@ export function ThreeDBackground({ mode = "neural", onModeChange }: ThreeDBackgr
       renderer.render(scene, camera);
     };
 
+    let isPaused = false;
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        isPaused = true;
+      } else if (isPaused) {
+        isPaused = false;
+        animate();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     animate();
 
     // Resize Handler
@@ -442,13 +453,35 @@ export function ThreeDBackground({ mode = "neural", onModeChange }: ThreeDBackgr
     window.addEventListener("resize", handleResize);
 
     return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("resize", handleResize);
       cancelAnimationFrame(animationFrameId);
+
+      // Memory Disposal: Destroy geometries, materials, textures, and renderer
+      scene.traverse((obj) => {
+        if ((obj as THREE.Mesh).geometry) {
+          (obj as THREE.Mesh).geometry.dispose();
+        }
+        if ((obj as THREE.Mesh).material) {
+          const mat = (obj as THREE.Mesh).material;
+          if (Array.isArray(mat)) {
+            mat.forEach((m) => m.dispose());
+          } else if (mat) {
+            mat.dispose();
+          }
+        }
+      });
+
+      if (aiJobsTexture) {
+        aiJobsTexture.dispose();
+      }
+
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
       }
       renderer.dispose();
+      renderer.forceContextLoss();
     };
   }, []);
 

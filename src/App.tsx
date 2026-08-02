@@ -1,11 +1,10 @@
 import React, { KeyboardEvent, ReactNode, Suspense, lazy, useEffect, useState } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertTriangle, Cookie, Route, Type, User, UserCheck } from "lucide-react";
+import { AlertTriangle, Bot, Cookie, Route, Type, User, UserCheck } from "lucide-react";
 import { auth, isFirebaseConfigured } from "./firebase";
 
-
-// Lazy-loaded dashboard components for smaller initial bundle sizes
+// Lazy-loaded dashboard and view components for minimal initial bundle size
 const CandidateDashboard = lazy(() => import("@/components/CandidateDashboard"));
 const ConsultancyDashboard = lazy(() => import("@/components/ConsultancyDashboard"));
 const EmployerDashboard = lazy(() => import("@/components/EmployerDashboard"));
@@ -16,6 +15,22 @@ const NotificationCenterViewLazy = lazy(() =>
   import("@/components/NotificationCenter").then((m) => ({ default: m.NotificationCenterView }))
 );
 
+// Lazy-loaded secondary pages & modals
+const CandidatePreLaunchLoginLazy = lazy(() => import("@/components/CandidatePreLaunchLogin"));
+const CandidateRegisterLazy = lazy(() => import("@/components/CandidateRegister"));
+const CandidatePreLaunchProfileLazy = lazy(() => import("@/components/CandidatePreLaunchProfile"));
+const InternalPlatformLoginLazy = lazy(() => import("@/components/InternalPlatformLogin"));
+const AdminLoginLazy = lazy(() => import("@/components/AdminLogin"));
+const UnsubscribeViewLazy = lazy(() => import("@/components/UnsubscribeView"));
+const ResumeOnboardingLazy = lazy(() => import("@/components/ResumeOnboarding"));
+const AuthModalLazy = lazy(() => import("@/components/AuthModal"));
+const CompanySectionLazy = lazy(() => import("@/components/CompanySection"));
+const AIJobs3DIntroLazy = lazy(() => import("@/components/AIJobs3DIntro"));
+const ThreeDBackgroundLazy = lazy(() => import("@/components/ThreeDBackground"));
+const GlobalChatbotLazy = lazy(() =>
+  import("@/components/GlobalChatbot").then((m) => ({ default: m.GlobalChatbot }))
+);
+
 // Production infrastructure components
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { DashboardSkeleton, GeneralLoading } from "@/components/LoadingSkeleton";
@@ -24,28 +39,16 @@ import { CustomCursor } from "@/components/CustomCursor";
 import { ToastProvider, useToast } from "@/components/GlobalToast";
 import Header from "@/components/Header";
 import LandingPage from "@/components/LandingPage";
-import ResumeOnboarding from "@/components/ResumeOnboarding";
-import AuthModal from "@/components/AuthModal";
-import CompanySection from "@/components/CompanySection";
-import AIJobs3DIntro from "@/components/AIJobs3DIntro";
-import { GlobalChatbot } from "@/components/GlobalChatbot";
-import ThreeDBackground, { type BackgroundMode } from "@/components/ThreeDBackground";
+import { type BackgroundMode } from "@/components/ThreeDBackground";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { GlobalMarketplaceProvider } from "@/context/GlobalMarketplaceContext";
 import { initGA, trackPageView, trackInteraction } from "@/utils/analytics";
 import { validateEnvironment } from "@/utils/envValidation";
 
-// Pre-Launch Components & Route Guards
-import CandidatePreLaunchLogin from "@/components/CandidatePreLaunchLogin";
-import CandidateRegister from "@/components/CandidateRegister";
-import CandidatePreLaunchProfile from "@/components/CandidatePreLaunchProfile";
-import InternalPlatformLogin from "@/components/InternalPlatformLogin";
-import AdminLogin from "@/components/AdminLogin";
-
+// Route Guards
 import CandidatePreLaunchGuard from "@/components/guards/CandidatePreLaunchGuard";
 import InternalAccessGuard from "@/components/guards/InternalAccessGuard";
 import AdminGuard from "@/components/guards/AdminGuard";
-import UnsubscribeView from "@/components/UnsubscribeView";
 
 function PageTransitionParticles({ triggerKey }: { triggerKey: string }) {
   const [particles, setParticles] = useState<Array<{ id: number; left: number; top: number; size: number; delay: number }>>([]);
@@ -605,6 +608,17 @@ function MainAppContent() {
     }
   };
 
+  // Deferred 3D background mounting so DOM paint completes first
+  const [mount3D, setMount3D] = useState(false);
+  const [showChatbot, setShowChatbot] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMount3D(true);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div className={`min-h-screen flex flex-col font-sans relative overflow-hidden transition-colors duration-300 ${
       theme === "dark" ? "bg-[#020204] text-white" : "bg-gray-100 text-gray-900"
@@ -612,8 +626,12 @@ function MainAppContent() {
       {/* Interactive 5D Custom Cursor */}
       <CustomCursor />
 
-      {/* Global 3D Interactive React Three Fiber Canvas Background */}
-      {theme === "dark" && <ThreeDBackground mode={threeDMode} />}
+      {/* Global 3D Interactive React Three Fiber Canvas Background (Deferred) */}
+      {theme === "dark" && mount3D && (
+        <Suspense fallback={null}>
+          <ThreeDBackgroundLazy mode={threeDMode} />
+        </Suspense>
+      )}
 
       {/* Header */}
       <Header
@@ -662,7 +680,9 @@ function MainAppContent() {
                 className="w-full min-h-full"
               >
                 {activeView === "unsubscribe" ? (
-                  <UnsubscribeView />
+                  <Suspense fallback={<GeneralLoading />}>
+                    <UnsubscribeViewLazy />
+                  </Suspense>
                 ) : activeView === "home" ? (
                   <LandingPage
                     onGetStarted={() => {
@@ -682,49 +702,59 @@ function MainAppContent() {
                     user={user}
                   />
                 ) : activeView === "candidate-login" ? (
-                  <CandidatePreLaunchLogin
-                    onLoginSuccess={(profile) => {
-                      setUser(profile);
-                      setActiveView("pre-launch-profile");
-                    }}
-                    onNavigateToRegister={() => setActiveView("candidate-register")}
-                  />
+                  <Suspense fallback={<GeneralLoading />}>
+                    <CandidatePreLaunchLoginLazy
+                      onLoginSuccess={(profile) => {
+                        setUser(profile);
+                        setActiveView("pre-launch-profile");
+                      }}
+                      onNavigateToRegister={() => setActiveView("candidate-register")}
+                    />
+                  </Suspense>
                 ) : activeView === "candidate-register" ? (
-                  <CandidateRegister
-                    onRegisterSuccess={(profile) => {
-                      setUser(profile);
-                      setActiveView("pre-launch-profile");
-                    }}
-                    onNavigateToLogin={() => setActiveView("candidate-login")}
-                  />
+                  <Suspense fallback={<GeneralLoading />}>
+                    <CandidateRegisterLazy
+                      onRegisterSuccess={(profile) => {
+                        setUser(profile);
+                        setActiveView("pre-launch-profile");
+                      }}
+                      onNavigateToLogin={() => setActiveView("candidate-login")}
+                    />
+                  </Suspense>
                 ) : activeView === "pre-launch-profile" ? (
                   <CandidatePreLaunchGuard
                     user={user}
                     onNavigateToLogin={() => setActiveView("candidate-login")}
                   >
-                    <CandidatePreLaunchProfile
-                      user={user}
-                      onEditProfile={() => setActiveView("resume-onboarding")}
-                    />
+                    <Suspense fallback={<GeneralLoading />}>
+                      <CandidatePreLaunchProfileLazy
+                        user={user}
+                        onEditProfile={() => setActiveView("resume-onboarding")}
+                      />
+                    </Suspense>
                   </CandidatePreLaunchGuard>
                 ) : activeView === "internal-login" ? (
-                  <InternalPlatformLogin
-                    onAuthorizedSuccess={(profile, targetRoute) => {
-                      setUser(profile);
-                      if (targetRoute === "/admin/dashboard") setActiveView("admin-dashboard");
-                      else if (targetRoute === "/internal/employer") setActiveView("internal-employer");
-                      else if (targetRoute === "/internal/consultancy") setActiveView("internal-consultancy");
-                      else setActiveView("internal-candidate");
-                    }}
-                    onCandidateRedirect={() => setActiveView("pre-launch-profile")}
-                  />
+                  <Suspense fallback={<GeneralLoading />}>
+                    <InternalPlatformLoginLazy
+                      onAuthorizedSuccess={(profile, targetRoute) => {
+                        setUser(profile);
+                        if (targetRoute === "/admin/dashboard") setActiveView("admin-dashboard");
+                        else if (targetRoute === "/internal/employer") setActiveView("internal-employer");
+                        else if (targetRoute === "/internal/consultancy") setActiveView("internal-consultancy");
+                        else setActiveView("internal-candidate");
+                      }}
+                      onCandidateRedirect={() => setActiveView("pre-launch-profile")}
+                    />
+                  </Suspense>
                 ) : activeView === "admin-login" ? (
-                  <AdminLogin
-                    onAdminLoginSuccess={(profile) => {
-                      setUser(profile);
-                      setActiveView("admin-dashboard");
-                    }}
-                  />
+                  <Suspense fallback={<GeneralLoading />}>
+                    <AdminLoginLazy
+                      onAdminLoginSuccess={(profile) => {
+                        setUser(profile);
+                        setActiveView("admin-dashboard");
+                      }}
+                    />
+                  </Suspense>
                 ) : activeView === "admin-dashboard" ? (
                   <AdminGuard
                     user={user}
@@ -794,11 +824,13 @@ function MainAppContent() {
                     </Suspense>
                   </div>
                 ) : activeView === "resume-onboarding" ? (
-                  <ResumeOnboarding
-                    user={user}
-                    setUser={setUser}
-                    setActiveView={setActiveView}
-                  />
+                  <Suspense fallback={<GeneralLoading />}>
+                    <ResumeOnboardingLazy
+                      user={user}
+                      setUser={setUser}
+                      setActiveView={setActiveView}
+                    />
+                  </Suspense>
                 ) : activeView === "notifications" ? (
                   <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
                     {user ? (
@@ -828,41 +860,60 @@ function MainAppContent() {
 
       {/* Auth Overlay Modal */}
       {authMode && (
-        <AuthModal
-          initialMode={authMode}
-          initialRole={authRole}
-          onClose={() => {
-            setAuthMode(null);
-            setAuthRole(undefined);
-          }}
-          onAuthSuccess={handleAuthSuccess}
-        />
+        <Suspense fallback={null}>
+          <AuthModalLazy
+            initialMode={authMode}
+            initialRole={authRole}
+            onClose={() => {
+              setAuthMode(null);
+              setAuthRole(undefined);
+            }}
+            onAuthSuccess={handleAuthSuccess}
+          />
+        </Suspense>
       )}
 
       {/* Cookie Consent Banner */}
       <CookieConsent />
 
       {activeCompanyPage && (
-        <CompanySection
-          pageType={activeCompanyPage}
-          onClose={() => setActiveCompanyPage(null)}
-        />
+        <Suspense fallback={null}>
+          <CompanySectionLazy
+            pageType={activeCompanyPage}
+            onClose={() => setActiveCompanyPage(null)}
+          />
+        </Suspense>
       )}
 
       {/* Premium 3D Opening Animation Intro Overlay */}
       {showSplash && (
-        <AIJobs3DIntro onComplete={() => {
-          setShowSplash(false);
-          try {
-            sessionStorage.setItem("aijobs_3d_intro_played", "true");
-          } catch (e) {
-            // ignore
-          }
-        }} />
+        <Suspense fallback={null}>
+          <AIJobs3DIntroLazy onComplete={() => {
+            setShowSplash(false);
+            try {
+              sessionStorage.setItem("aijobs_3d_intro_played", "true");
+            } catch (e) {
+              // ignore
+            }
+          }} />
+        </Suspense>
       )}
 
-      {/* Globally Floating AI Career Assistant */}
-      <GlobalChatbot user={user} />
+      {/* Globally Floating AI Career Assistant - Deferred load on user click */}
+      {showChatbot ? (
+        <Suspense fallback={null}>
+          <GlobalChatbotLazy user={user} />
+        </Suspense>
+      ) : (
+        <button
+          onClick={() => setShowChatbot(true)}
+          className="fixed bottom-6 right-6 z-50 p-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-full shadow-2xl hover:scale-105 transition-all flex items-center gap-2 cursor-pointer border border-indigo-400/30 font-medium text-xs shadow-indigo-500/25"
+          title="Open AI Career Assistant"
+        >
+          <Bot className="w-5 h-5 text-indigo-200 animate-pulse" />
+          <span className="hidden sm:inline">AI Assistant</span>
+        </button>
+      )}
     </div>
   );
 }
