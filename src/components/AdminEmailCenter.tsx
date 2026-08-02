@@ -78,9 +78,12 @@ export default function AdminEmailCenter() {
   const fetchTemplates = async () => {
     try {
       const res = await fetch("/api/email/templates");
-      const data = await res.json();
-      if (data.success) {
-        setTemplates(data.templates || []);
+      const contentType = res.headers.get("content-type") || "";
+      if (res.ok && contentType.includes("application/json")) {
+        const data = await res.json();
+        if (data.success) {
+          setTemplates(data.templates || []);
+        }
       }
     } catch (e) {
       console.warn("Failed to fetch templates:", e);
@@ -90,9 +93,12 @@ export default function AdminEmailCenter() {
   const fetchStats = async () => {
     try {
       const res = await fetch("/api/email/stats");
-      const data = await res.json();
-      if (data.success && data.stats) {
-        setOverallStats(data.stats);
+      const contentType = res.headers.get("content-type") || "";
+      if (res.ok && contentType.includes("application/json")) {
+        const data = await res.json();
+        if (data.success && data.stats) {
+          setOverallStats(data.stats);
+        }
       }
     } catch (e) {
       console.warn("Failed to fetch stats:", e);
@@ -103,9 +109,12 @@ export default function AdminEmailCenter() {
     setLogsLoading(true);
     try {
       const res = await fetch("/api/email/deliveries");
-      const data = await res.json();
-      if (data.success) {
-        setDeliveries(data.deliveries || []);
+      const contentType = res.headers.get("content-type") || "";
+      if (res.ok && contentType.includes("application/json")) {
+        const data = await res.json();
+        if (data.success) {
+          setDeliveries(data.deliveries || []);
+        }
       }
     } catch (e) {
       console.warn("Failed to fetch delivery logs:", e);

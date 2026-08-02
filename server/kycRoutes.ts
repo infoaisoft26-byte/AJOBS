@@ -502,4 +502,154 @@ router.post("/delete", async (req, res) => {
   }
 });
 
+/**
+ * 8. Admin: List pending KYC / verification requests
+ */
+router.get("/admin-pending-list", async (req, res) => {
+  try {
+    const status = String(req.query.status || "pending").toLowerCase();
+    const db = getFirestoreDb();
+
+    const verifSnap = await db.collection("verification_requests").get();
+    const requests: any[] = [];
+
+    verifSnap.forEach((docSnap) => {
+      const data = docSnap.data();
+      const reqStatus = (data.kycStatus || data.verificationStatus || "pending").toLowerCase();
+
+      let match = false;
+      if (status === "all") {
+        match = true;
+      } else if (status === "pending") {
+        match = reqStatus.includes("pending") || reqStatus === "under_review" || reqStatus === "manual_review";
+      } else if (status === "approved" || status === "verified") {
+        match = reqStatus === "approved" || reqStatus === "verified" || reqStatus === "active";
+      } else if (status === "rejected") {
+        match = reqStatus === "rejected" || reqStatus === "resubmit_required";
+      } else {
+        match = reqStatus.includes(status);
+      }
+
+      if (match) {
+        requests.push({
+          id: docSnap.id,
+          requestId: data.requestId || docSnap.id,
+          userId: data.userId || "",
+          userEmail: data.userEmail || data.email || "",
+          role: data.role || "Candidate",
+          status: data.kycStatus || data.verificationStatus || "pending",
+          kycStatus: data.kycStatus || data.verificationStatus || "pending",
+          submittedAt: data.submittedAt || data.createdAt || new Date().toISOString(),
+          riskLevel: data.riskLevel || "low",
+          riskFlags: data.riskFlags || [],
+          documents: data.documents || []
+        });
+      }
+    });
+
+    return res.json({
+      success: true,
+      count: requests.length,
+      requests
+    });
+  } catch (error: any) {
+    console.error("[KYC API] Admin pending list error:", error);
+    return res.json({ success: true, count: 0, requests: [] });
+  }
+});
+
+/**
+ * 9. Admin: Submit review decision (Approve / Reject / Resubmit)
+ */
+router.post("/review-decision", async (req, res) => {
+  try {
+    const { requestId, userId, decision, rejectionReason, adminNotes, reviewedBy } = req.body;
+
+    if (!userId || !decision) {
+      return res.status(400).json({ success: false, error: "userId and decision are required" });
+    }
+
+    const db = getFirestoreDb();
+    const nowIso = new Date().toISOString();
+    const uppercaseDecision = String(decision).toUpperCase();
+
+    if (uppercaseDecision === "APPROVED" || uppercaseDecision === "APPROVE") {
+      await db.collection("users").doc(userId).set({
+        accountStatus: "active",
+        kycStatus: "verified",
+        isApproved: true,
+        isActive: true,
+        onboardingCompleted: true,
+        approvedAt: nowIso,
+        approvedBy: reviewedBy || "Super Admin",
+        updatedAt: nowIso
+      }, { merge: true });
+
+      await db.collection("kyc_profiles").doc(userId).set({
+        kycStatus: "verified",
+        reviewedAt: nowIso,
+        reviewedBy: reviewedBy || "Super Admin",
+        adminNotes: adminNotes || "Approved after compliance verification."
+      }, { merge: true });
+
+      if (requestId) {
+        await db.collection("verification_requests").doc(requestId).set({
+          kycStatus: "verified",
+          verificationStatus: "approved",
+          accountStatus: "active",
+          adminDecision: "APPROVED",
+          reviewedAt: nowIso,
+          reviewedBy: reviewedBy || "Super Admin"
+        }, { merge: true });
+      }
+
+      return res.json({
+        success: true,
+        message: `KYC approved for ${userId}`
+      });
+    } else {
+      const isResubmit = uppercaseDecision === "RESUBMIT";
+      const kycStatus = isResubmit ? "resubmit_required" : "rejected";
+      const accountStatus = isResubmit ? "pending_kyc" : "rejected";
+
+      await db.collection("users").doc(userId).set({
+        accountStatus,
+        kycStatus,
+        isApproved: false,
+        isActive: false,
+        rejectionReason: rejectionReason || "Document mismatch or compliance issue.",
+        updatedAt: nowIso
+      }, { merge: true });
+
+      await db.collection("kyc_profiles").doc(userId).set({
+        kycStatus,
+        rejectionReason: rejectionReason || "Compliance discrepancy",
+        reviewedAt: nowIso,
+        reviewedBy: reviewedBy || "Super Admin",
+        adminNotes: adminNotes || ""
+      }, { merge: true });
+
+      if (requestId) {
+        await db.collection("verification_requests").doc(requestId).set({
+          kycStatus,
+          verificationStatus: isResubmit ? "resubmit_required" : "rejected",
+          accountStatus,
+          adminDecision: uppercaseDecision,
+          rejectionReason: rejectionReason || "",
+          reviewedAt: nowIso,
+          reviewedBy: reviewedBy || "Super Admin"
+        }, { merge: true });
+      }
+
+      return res.json({
+        success: true,
+        message: `KYC decision recorded: ${uppercaseDecision}`
+      });
+    }
+  } catch (error: any) {
+    console.error("[KYC API] Review decision error:", error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;

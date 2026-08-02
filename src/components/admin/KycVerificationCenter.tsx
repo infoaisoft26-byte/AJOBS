@@ -25,12 +25,21 @@ export default function KycVerificationCenter() {
     setLoading(true);
     try {
       const res = await fetch(`/api/kyc/admin-pending-list?status=${statusFilter}`);
-      const data = await res.json();
-      if (data.success) {
-        setRequests(data.requests);
+      const contentType = res.headers.get("content-type") || "";
+      if (res.ok && contentType.includes("application/json")) {
+        const data = await res.json();
+        if (data.success) {
+          setRequests(data.requests || []);
+        } else {
+          setRequests([]);
+        }
+      } else {
+        console.warn("[KYC Center] Non-JSON response or request failed:", res.status);
+        setRequests([]);
       }
     } catch (err) {
       console.error("Failed to fetch KYC verification requests:", err);
+      setRequests([]);
     } finally {
       setLoading(false);
     }

@@ -26,9 +26,14 @@ export default function LiveLeadsCRM() {
     setLoading(true);
     try {
       const res = await fetch("/api/leads/list");
-      const data = await res.json();
-      if (data.success) {
-        setLeads(data.leads);
+      const contentType = res.headers.get("content-type") || "";
+      if (res.ok && contentType.includes("application/json")) {
+        const data = await res.json();
+        if (data.success) {
+          setLeads(data.leads || []);
+        }
+      } else {
+        console.warn("[LiveLeadsCRM] Non-JSON response or request failed:", res.status);
       }
     } catch (err) {
       console.error("Failed to load CRM leads:", err);
