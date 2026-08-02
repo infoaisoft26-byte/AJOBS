@@ -288,27 +288,42 @@ const filteredTxns = transactions.filter((txn) => {
                   </div>
 
                   <div className="space-y-1.5 pt-2 border-t border-gray-200">
-                    <div className="flex justify-between text-gray-500 font-bold">
-                      <span>PLAN DESCRIPTION</span>
-                      <span>LINE CHARGES</span>
-                    </div>
-                    <div className="flex justify-between font-bold text-neutral-900 border-b border-gray-100 pb-1.5">
-                      <span>{selectedTxnForInvoice.planName}</span>
-                      <span>₹{selectedTxnForInvoice.amount.toLocaleString()}</span>
-                    </div>
+  <div className="flex justify-between text-gray-500 font-bold">
+    <span>PLAN DESCRIPTION</span>
+    <span>LINE CHARGES</span>
+  </div>
 
-                    <div className="space-y-1 text-right text-gray-500">
-                      <p>Line Subtotal: ₹{selectedTxnForInvoice.amount.toLocaleString()}</p>
-                      <p>Integrated GST (18%): ₹{selectedTxnForInvoice.gstAmount.toLocaleString()}</p>
-                      {selectedTxnForInvoice.discountAmount > 0 && (
-                        <p className="text-rose-600">Discounts/Coupons: -₹{selectedTxnForInvoice.discountAmount.toLocaleString()}</p>
-                      )}
-                      <p className="font-extrabold text-neutral-900 text-[10px] pt-1.5 border-t border-gray-200">
-                        Total Collected Paid: ₹{selectedTxnForInvoice.totalPaid.toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
+  <div className="flex justify-between font-bold text-neutral-900 border-b border-gray-100 pb-1.5">
+    <span>{selectedTxnForInvoice.planName || "No Plan"}</span>
+    <span>
+      ₹{Number(selectedTxnForInvoice.amount ?? 0).toLocaleString()}
+    </span>
+  </div>
 
+  <div className="space-y-1 text-right text-gray-500">
+    <p>
+      Line Subtotal: ₹
+      {Number(selectedTxnForInvoice.amount ?? 0).toLocaleString()}
+    </p>
+
+    <p>
+      Integrated GST (18%): ₹
+      {Number(selectedTxnForInvoice.gstAmount ?? 0).toLocaleString()}
+    </p>
+
+    {Number(selectedTxnForInvoice.discountAmount ?? 0) > 0 && (
+      <p className="text-rose-600">
+        Discounts/Coupons: -₹
+        {Number(selectedTxnForInvoice.discountAmount ?? 0).toLocaleString()}
+      </p>
+    )}
+
+    <p className="font-extrabold text-neutral-900 text-[10px] pt-1.5 border-t border-gray-200">
+      Total Collected Paid: ₹
+      {Number(selectedTxnForInvoice.totalPaid ?? 0).toLocaleString()}
+    </p>
+  </div>
+</div>
                   <div className="text-center text-[7px] text-gray-400 pt-2 border-t border-gray-200">
                     This is an electronically generated valid tax certificate. No manual signatures required.
                   </div>
