@@ -44,6 +44,7 @@ import { LanguageProvider } from "@/context/LanguageContext";
 import { GlobalMarketplaceProvider } from "@/context/GlobalMarketplaceContext";
 import { initGA, trackPageView, trackInteraction } from "@/utils/analytics";
 import { validateEnvironment } from "@/utils/envValidation";
+import { getOrCreateUserProfile } from "@/services/dbInitService";
 
 // Route Guards
 import CandidatePreLaunchGuard from "@/components/guards/CandidatePreLaunchGuard";
@@ -306,9 +307,22 @@ function MainAppContent() {
     const unsubscribe = auth.onAuthStateChanged(async (fbUser) => {
       setAuthLoading(true);
       if (fbUser) {
+        let profile: UserProfile | null = null;
         try {
-          // Highly resilient auto-recovery profile retriever
-          const profile = await getOrCreateUserProfile(fbUser);
+          // Attempt 1: Fetch or auto-create profile snapshot
+          profile = await getOrCreateUserProfile(fbUser);
+        } catch (err) {
+          console.error("[Auth] Error fetching user profile snapshot, retrying once...", err);
+          try {
+            // Attempt 2: Retry loading profile once before fallback
+            await new Promise((res) => setTimeout(res, 300));
+            profile = await getOrCreateUserProfile(fbUser);
+          } catch (retryErr) {
+            console.error("[Auth] Retry fetch for user profile snapshot failed:", retryErr);
+          }
+        }
+
+        if (profile) {
           setUser(profile);
           trackInteraction("login_success", "auth", profile.role);
 
@@ -317,11 +331,8 @@ function MainAppContent() {
             window.history.pushState({}, "", "/resume/onboarding");
             setActiveView("resume-onboarding");
           }
-        } catch (err) {
-          console.error("Error loading user snapshot, triggering resilient client-side fallback:", err);
-          showToast("Failed to retrieve profile snapshot, entering fallback workspace mode", "warning");
-          
-          // Deduce role from email prefixes or default to candidate
+        } else {
+          // Deduce role cleanly from email prefixes
           const emailLower = (fbUser.email || "").toLowerCase();
           let deducedRole: "candidate" | "consultancy" | "employer" | "admin" = "candidate";
           if (emailLower.includes("admin")) {
@@ -332,7 +343,7 @@ function MainAppContent() {
             deducedRole = "consultancy";
           }
 
-          const fallbackProfile: UserProfile = {
+          const defaultProfile: UserProfile = {
             uid: fbUser.uid,
             name: fbUser.displayName || fbUser.email?.split("@")[0] || "User Desk",
             email: fbUser.email || "",
@@ -343,7 +354,7 @@ function MainAppContent() {
             status: "active",
             subscription: deducedRole === "consultancy" ? "Pro Agency" : "Enterprise Access"
           };
-          setUser(fallbackProfile);
+          setUser(defaultProfile);
         }
       } else {
         setUser(null);
@@ -352,7 +363,7 @@ function MainAppContent() {
     });
 
     return () => unsubscribe();
-  }, [showToast]);
+  }, []);
 
   // Handle URL Routing & Popstate
   useEffect(() => {

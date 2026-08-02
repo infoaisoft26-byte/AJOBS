@@ -240,22 +240,36 @@ export async function initializeUserCollectionsAndDocs(
  */
 export async function getOrCreateUserProfile(
   fbUser: any,
-  preferredRole?: "candidate" | "consultancy" | "employer" | "admin"
+  preferredRole?: "candidate" | "consultancy" | "employer" | "recruiter" | "admin" | "superadmin"
 ): Promise<UserProfile> {
   const userId = fbUser.uid;
   
+  // 1. Try reading the users profile document with a retry mechanism
+  let userSnap: any = null;
   try {
-    // 1. Try reading the users profile
-    const userSnap = await getDoc(doc(db, "users", userId));
-    if (userSnap.exists()) {
-      return userSnap.data() as UserProfile;
-    }
+    const userDocRef = doc(db, "users", userId);
+    userSnap = await getDoc(userDocRef);
   } catch (err) {
-    console.warn("[getOrCreateUserProfile] Failed to read 'users' collection:", err);
+    console.warn("[getOrCreateUserProfile] Initial fetch attempt failed for 'users' document:", err);
+    // Retry once before falling back
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      const userDocRef = doc(db, "users", userId);
+      userSnap = await getDoc(userDocRef);
+    } catch (retryErr) {
+      console.error("[getOrCreateUserProfile] Retry fetch attempt failed for 'users' document:", retryErr);
+    }
   }
 
-  // 2. If missing (or read failed), try to deduce role from other collections
-  let deducedRole: "candidate" | "consultancy" | "employer" | "admin" = preferredRole || "candidate";
+  if (userSnap && userSnap.exists()) {
+    const data = userSnap.data() as UserProfile;
+    if (data && data.uid) {
+      return data;
+    }
+  }
+
+  // 2. If document is missing or snapshot doesn't exist, deduce role from preferredRole or sub-collections
+  let deducedRole: "candidate" | "consultancy" | "employer" | "recruiter" | "admin" | "superadmin" = preferredRole || "candidate";
   
   if (!preferredRole) {
     try {
@@ -276,11 +290,11 @@ export async function getOrCreateUserProfile(
       } else if (candidateSnap?.exists()) {
         deducedRole = "candidate";
       } else {
-        // 3. Fallback to email domain/prefix deduction
+        // Fallback to email domain/prefix deduction
         const emailLower = (fbUser.email || "").toLowerCase();
         if (emailLower.includes("admin")) {
           deducedRole = "admin";
-        } else if (emailLower.includes("employer") || emailLower.includes("company") || emailLower.includes("corporate")) {
+        } else if (emailLower.includes("employer") || emailLower.includes("company") || emailLower.includes("corporate") || emailLower.includes("recruiter")) {
           deducedRole = "employer";
         } else if (emailLower.includes("consultancy") || emailLower.includes("agency") || emailLower.includes("crm")) {
           deducedRole = "consultancy";
@@ -289,12 +303,11 @@ export async function getOrCreateUserProfile(
         }
       }
     } catch (deduceErr) {
-      console.warn("[getOrCreateUserProfile] Failed to deduce role from collections:", deduceErr);
-      // Deduce from email as fallback
+      console.warn("[getOrCreateUserProfile] Failed to deduce role from sub-collections:", deduceErr);
       const emailLower = (fbUser.email || "").toLowerCase();
       if (emailLower.includes("admin")) {
         deducedRole = "admin";
-      } else if (emailLower.includes("employer") || emailLower.includes("company") || emailLower.includes("corporate")) {
+      } else if (emailLower.includes("employer") || emailLower.includes("company") || emailLower.includes("corporate") || emailLower.includes("recruiter")) {
         deducedRole = "employer";
       } else if (emailLower.includes("consultancy") || emailLower.includes("agency") || emailLower.includes("crm")) {
         deducedRole = "consultancy";
@@ -302,15 +315,14 @@ export async function getOrCreateUserProfile(
     }
   }
 
-  // 4. Automatically create the profile and seed all collections
+  // 3. Automatically create default profile in Firestore users/{uid} and seed collections
   try {
-    const displayName = fbUser.displayName || fbUser.email?.split("@")[0] || "Candidate";
+    const displayName = fbUser.displayName || fbUser.email?.split("@")[0] || "User Desk";
     const profile = await initializeUserCollectionsAndDocs(fbUser, deducedRole, displayName);
     return profile;
   } catch (initErr) {
-    console.error("[getOrCreateUserProfile] Failed to auto-initialize profile document:", initErr);
-    // 5. Hard fallback: Return a fully compliant client-side profile so login never fails
-    const defaultName = fbUser.displayName || fbUser.email?.split("@")[0] || "Candidate";
+    console.error("[getOrCreateUserProfile] Auto-initialization error during document creation:", initErr);
+    const defaultName = fbUser.displayName || fbUser.email?.split("@")[0] || "User Desk";
     return {
       uid: userId,
       name: defaultName,
