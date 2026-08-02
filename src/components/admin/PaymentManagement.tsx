@@ -73,18 +73,35 @@ export default function PaymentManagement({
   };
 
   // Filter transactions
-  const filteredTxns = transactions.filter((t) => {
-    const matchesSearch = 
-      t.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.userEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.id.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesStatus = selectedStatus === "all" || t.status === selectedStatus;
+// Safely normalize optional values for search
+const safeLower = (value: unknown): string =>
+  String(value ?? "").trim().toLowerCase();
 
-    return matchesSearch && matchesStatus;
-  });
+const filteredTxns = transactions.filter((txn) => {
+  const query = safeLower(searchQuery);
 
+  const resolvedUserName =
+    txn.userName ||
+    (txn as any).name ||
+    (txn as any).customerName ||
+    (txn as any).candidateName ||
+    txn.userEmail ||
+    "";
+
+  const matchesSearch =
+    safeLower(resolvedUserName).includes(query) ||
+    safeLower(txn.userEmail).includes(query) ||
+    safeLower(txn.invoiceNumber).includes(query) ||
+    safeLower(txn.id).includes(query) ||
+    safeLower(txn.planName).includes(query) ||
+    safeLower(txn.status).includes(query);
+
+  const matchesStatus =
+    selectedStatus === "all" ||
+    safeLower(txn.status) === safeLower(selectedStatus);
+
+  return matchesSearch && matchesStatus;
+});
   return (
     <div className="space-y-6" id="payment-management-portal">
       {/* View Header */}
@@ -153,14 +170,15 @@ export default function PaymentManagement({
                     filteredTxns.map((t) => (
                       <tr key={t.id} className="hover:bg-white/5">
                         <td className="py-3 pr-2">
-                          <div className="font-bold text-white">{t.userName}</div>
+                          <div className="font-bold text-white">
+  {t.userName || t.userEmail || "Unknown User"}
+</div>
                           <div className="text-[9px] text-gray-400 font-mono mt-0.5">{t.userEmail}</div>
                           <div className="text-[8px] text-gray-500 font-mono mt-0.5">SaaS Plan: <strong className="text-indigo-400">{t.planName}</strong></div>
                         </td>
                         <td className="py-3 font-mono text-gray-400">{t.invoiceNumber}</td>
                         <td className="py-3 font-mono font-bold text-white">
-                          ₹{t.totalPaid.toLocaleString()}
-                        </td>
+                        ₹{Number(t.totalPaid ?? 0).toLocaleString()}
                         <td className="py-3">
                           <span className={`px-2 py-0.5 rounded font-mono text-[9px] font-bold uppercase ${
                             t.status === "SUCCESS" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25" :
@@ -236,7 +254,11 @@ export default function PaymentManagement({
 
                   <div className="space-y-1">
                     <p className="text-gray-500">BILLED TO:</p>
-                    <p className="font-bold text-neutral-900">{selectedTxnForInvoice.userName}</p>
+                    <p className="font-bold text-neutral-900">
+  {selectedTxnForInvoice.userName ||
+  selectedTxnForInvoice.userEmail ||
+  "Unknown User"}
+</p>
                     <p className="text-[8px] text-gray-400">{selectedTxnForInvoice.userEmail}</p>
                   </div>
 
