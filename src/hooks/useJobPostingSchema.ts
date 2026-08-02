@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import React, { useEffect } from "react";
+import { Search, Store } from "lucide-react";
 import { JobPosting } from "../types";
 import { generateJobPostingSchema } from "../utils/schemaGenerator";
 import { getPublicJobUrl } from "../config/site";

@@ -1,3 +1,6 @@
+import { useEffect, useMemo, useState } from "react";
+import { collection, deleteDoc, doc, getDocs, updateDoc } from "firebase/firestore";
+import { CheckCircle, Cloud, Delete, Download, FileText, List, Phone, RefreshCw, Search, Table, Target, Trash2 } from "lucide-react";
 import { db } from "../../firebase";
 
 

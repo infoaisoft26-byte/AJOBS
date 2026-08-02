@@ -1,6 +1,5 @@
-import { AlertCircle, BellOff, CheckCircle2, RefreshCw, ShieldCheck } from "lucide-react";
-
-
+import { useEffect, useState } from "react";
+import { AlertCircle, BellOff, CheckCircle2, RefreshCw, Save, ShieldCheck, Type } from "lucide-react";
 import AIJobsLogo from "./AIJobsLogo";
 
 export default function UnsubscribeView() {

@@ -1,12 +1,5 @@
-import {
-  AlertTriangle,
-  Home,
-  RefreshCw
-} from "lucide-react";
-
-import React from "react";
-import type { ErrorInfo, ReactNode } from "react";
-
+import React, { Component, ReactNode } from "react";
+import { AlertTriangle, Component, Home, RefreshCw } from "lucide-react";
 interface Props {
   children?: ReactNode;
   fallback?: ReactNode;
@@ -17,7 +10,7 @@ interface State {
   error: Error | null;
 }
 
-export class ErrorBoundary extends React.Component<Props, State>  {
+export class ErrorBoundary extends React.Component<Props, State> {
   public state: State = {
     hasError: false,
     error: null

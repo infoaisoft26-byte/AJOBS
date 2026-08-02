@@ -1,3 +1,6 @@
+import React, { DragEvent, useEffect, useState } from "react";
+import { collection, doc, setDoc } from "firebase/firestore";
+import { Activity, Award, Badge, Brain, Briefcase, CheckCircle, ChevronRight, Database, Download, Edit, FileText, Grid, GripVertical, Heart, Languages, Layout, Lightbulb, Lock, Logs, Save, Section, ShieldCheck, Sparkles, Speech, Star, Text, Upload, Verified } from "lucide-react";
 import { db } from "../firebase";
 
 

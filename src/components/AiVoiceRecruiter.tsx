@@ -1,7 +1,5 @@
-import { Award, ChevronRight, FileText, Mic, MicOff, Sparkles, Volume2 } from "lucide-react";
-
-
-
+import { useEffect, useRef, useState } from "react";
+import { Award, ChevronRight, FileText, Mic, MicOff, Sparkles, Speech, Text, Volume2 } from "lucide-react";
 interface AiVoiceRecruiterProps {
   candidateName?: string;
   roleTitle?: string;

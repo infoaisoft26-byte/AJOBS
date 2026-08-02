@@ -1,7 +1,5 @@
+import React, { ReactNode } from "react";
 import { AlertTriangle, ShieldAlert } from "lucide-react";
-
-
-
 interface InternalAccessGuardProps {
   user: UserProfile | null;
   children: React.ReactNode;

@@ -1,7 +1,6 @@
-
 import { useEffect, useState } from "react";
-
-
+import { motion } from "motion/react";
+import { Bolt, Clock, Section, ShieldCheck, Sparkles, Target, Timer } from "lucide-react";
 interface TimeLeft {
   days: number;
   hours: number;

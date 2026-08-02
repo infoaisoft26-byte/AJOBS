@@ -1,3 +1,5 @@
+import { storage } from "../firebase";
+import { Check, Type } from "lucide-react";
 /**
  * Service Worker Offline Sync Service
  * Caches pending dashboard actions when offline and replays them when connectivity is restored.

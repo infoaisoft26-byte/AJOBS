@@ -1,3 +1,8 @@
+import React, { Dispatch, FormEvent, useEffect, useState } from "react";
+import { collection, doc, getDoc, getDocs, query, setDoc, where } from "firebase/firestore";
+import { ref } from "firebase/storage";
+import { AnimatePresence, motion } from "motion/react";
+import { AlertCircle, ArrowRight, Briefcase, Building, Check, CheckCircle2, CheckSquare, Code, Copy, CreditCard, Currency, Disc, FileText, Gift, Grid, Hash, History, Key, Logs, Navigation, Phone, Printer, Receipt, RefreshCw, Save, Scaling, ShieldCheck, Sparkles, Table, Tag, Type, Unlock, View, Wallet } from "lucide-react";
 import { db } from "../firebase";
 
 

@@ -1,4 +1,9 @@
-import { auth, db, firebaseConfigError } from "../firebase";
+import React, { ClipboardEvent, Dispatch, FormEvent, HTMLInputElement, KeyboardEvent, useEffect, useRef, useState } from "react";
+import { GoogleAuthProvider, createUserWithEmailAndPassword, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithPopup, updateProfile } from "firebase/auth";
+import { collection, doc, getDocs, query, where } from "firebase/firestore";
+import { motion } from "motion/react";
+import { AlertCircle, ArrowLeft, Briefcase, Building2, Check, CheckCircle2, CheckSquare, Code, Container, Eye, EyeOff, Infinity, Link, Lock, Mail, Phone, Search, Send, Shield, ShieldCheck, Type, User, UserPlus, X } from "lucide-react";
+import { auth, db, firebaseConfigError, isFirebaseConfigured } from "../firebase";
 
 import { UserProfile } from "../types";
 import { initializeUserCollectionsAndDocs, getOrCreateUserProfile } from "../services/dbInitService";

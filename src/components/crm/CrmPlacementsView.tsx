@@ -1,3 +1,6 @@
+import React, { FormEvent, useState } from "react";
+import { deleteDoc, doc, setDoc } from "firebase/firestore";
+import { Building, CheckCircle2, Delete, Kanban, Plus, Save, Trash2, TrendingUp, X } from "lucide-react";
 import { db } from "../../firebase";
 
 import { PlacementModel, ClientModel } from "./CrmTypes";

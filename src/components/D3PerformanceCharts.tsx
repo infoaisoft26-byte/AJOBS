@@ -1,4 +1,6 @@
 import { useEffect, useRef } from "react";
+import { ref } from "firebase/storage";
+import { Grid, Radar, Text, X } from "lucide-react";
 import * as d3 from "d3";
 
 interface D3PerformanceChartsProps {

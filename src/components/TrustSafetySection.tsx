@@ -1,6 +1,5 @@
 import { motion } from "motion/react";
-
-
+import { Box, FileCheck2, Lock, ShieldAlert, ShieldCheck, UserCheck } from "lucide-react";
 export default function TrustSafetySection() {
   const trustCards = [
     {

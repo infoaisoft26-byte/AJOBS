@@ -1,3 +1,6 @@
+import React, { FormEvent, useState } from "react";
+import { doc, setDoc } from "firebase/firestore";
+import { Chrome, Code, CreditCard, FileText, Filter, Layout, List, Printer, RefreshCw, Search, Tag, View } from "lucide-react";
 import { db } from "../../firebase";
 
 

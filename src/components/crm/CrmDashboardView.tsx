@@ -1,5 +1,5 @@
-import { Activity, AlertCircle, BarChart, BarChart3, Briefcase, Calendar, CheckCircle2, Clock, DollarSign, Settings, Sparkles, TrendingUp, Users, Volume } from "lucide-react";
-import { Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { Activity, AlertCircle, Badge, BarChart, BarChart3, Briefcase, Calendar, Clock, DollarSign, Grid, Key, Logs, Settings, Sparkles, TrendingUp as TrendIcon, Users, Volume } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { ConsultancyProfile } from "../../types";
 import { ClientModel, ConsultancyJobModel, ConsultancyCandidateModel, PlacementModel, InterviewModel } from "./CrmTypes";
 

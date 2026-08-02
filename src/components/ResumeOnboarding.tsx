@@ -1,7 +1,9 @@
-import { ChangeEvent, useRef, useState } from "react";
-
-
-import { auth } from "../firebase";
+import React, { ChangeEvent, DragEvent, HTMLInputElement, useRef, useState } from "react";
+import { doc, limit, setDoc, updateDoc } from "firebase/firestore";
+import { ref } from "firebase/storage";
+import { motion } from "motion/react";
+import { AlertTriangle, CheckCircle2, File, FileText, Loader2, Network, RefreshCw, Sparkles, Type, Upload } from "lucide-react";
+import { auth, db, storage } from "../firebase";
 import { useToast } from "./GlobalToast";
 import { uploadResumeService } from "../services/resumeUploadService";
 

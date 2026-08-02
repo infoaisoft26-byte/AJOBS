@@ -1,6 +1,7 @@
 import { db } from "../firebase";
-import { User } from "lucide-react";
-
+import React, { useEffect, useState } from "react";
+import { collection, doc, getDocs, query, setDoc, updateDoc, where } from "firebase/firestore";
+import { Calendar, CalendarCheck, Clock, ExternalLink, Handshake, Link2, Lock, Mail, MapPin, RefreshCw, Save, ShieldCheck, User } from "lucide-react";
 import { 
   signInWithGoogleCalendar, 
   getCalendarAccessToken, 

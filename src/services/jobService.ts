@@ -1,3 +1,5 @@
+import { collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from "firebase/firestore";
+import { Search, Type } from "lucide-react";
 import { db } from "../firebase";
 
 import { JobPosting } from "../types";

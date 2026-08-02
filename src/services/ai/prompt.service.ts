@@ -1,18 +1,5 @@
-import {
-  type User
-} from "firebase/auth";
-import {
-  doc,
-  where
-} from "firebase/firestore";
-import { auth } from "../../firebase";
-import {
-  Code,
-  Play,
-  Target,
-  User,
-  X
-} from "lucide-react";
+import { doc, where } from "firebase/firestore";
+import { Code, History, Play, Target, Text, User, X } from "lucide-react";
 /**
  * Prompt Service
  * Defines the standard system prompts and schemas for Gemini API integration.

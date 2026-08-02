@@ -1,3 +1,8 @@
+import React, { ChangeEvent, Dispatch, FormEvent, HTMLDivElement, HTMLInputElement, useEffect, useRef, useState } from "react";
+import { collection, doc, getDocs, limit, onSnapshot, orderBy, query, setDoc, updateDoc, where } from "firebase/firestore";
+import { ref } from "firebase/storage";
+import { motion } from "motion/react";
+import { Check, CheckCheck, Circle, Download, FileText, Filter, Image, List, MessageSquare, Paperclip, RefreshCw, Save, Scroll, Search, Send, Sidebar, Type, User, X } from "lucide-react";
 import { db } from "../firebase";
 
 import { detectPaymentRequest, ANTI_FRAUD_CANDIDATE_WARNING } from "../utils/fraudDetection";

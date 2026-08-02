@@ -1,3 +1,5 @@
+import { collection, doc, getDoc, getDocs, limit, setDoc } from "firebase/firestore";
+import { Bot, Check, Chrome, Rose, Settings, Space, Tickets, User } from "lucide-react";
 import { db } from "../../firebase";
 
 import { 

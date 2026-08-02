@@ -1,6 +1,6 @@
-import { Bot, Search, Send, ShieldCheck, Sparkles, Star, ToggleLeft, ToggleRight, X } from "lucide-react";
-
-
+import React, { MouseEvent, useState } from "react";
+import { query } from "firebase/firestore";
+import { Bot, Cross, Drill, Filter, Grid, Milestone, Ratio, Search, Send, ShieldCheck, Sparkles, Star, Store, ToggleLeft, ToggleRight, Type, X } from "lucide-react";
 import { GoogleGenAI } from "@google/genai";
 
 export interface AgentDef {

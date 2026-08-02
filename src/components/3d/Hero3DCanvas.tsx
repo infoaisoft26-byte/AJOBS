@@ -1,4 +1,7 @@
-import { MouseEvent, useEffect, useMemo, useRef, useState } from "react";
+import { Component, MouseEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ref } from "firebase/storage";
+import { motion } from "motion/react";
+import { Cable, Component, Container, Group, Key, Mouse, Scroll, Shell } from "lucide-react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Float, Html } from "@react-three/drei";
 import * as THREE from "three";

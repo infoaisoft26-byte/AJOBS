@@ -1,3 +1,6 @@
+import React, { useEffect, useState } from "react";
+import { collection, doc, getDocs, setDoc } from "firebase/firestore";
+import { Badge, Brain, Clock, DollarSign, Figma, Filter, Framer, List, MapPin, Search, Send, ShieldCheck, Sparkles, Type, User, UserPlus, Verified, View } from "lucide-react";
 import { db } from "../../firebase";
 
 

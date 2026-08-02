@@ -1,3 +1,7 @@
+import { storage } from "../../firebase";
+import React from "react";
+import { motion } from "motion/react";
+import { Building, Cloud, Cross, Database, Figma, Frame, Framer, Milestone, Scaling, Server, Star, Type, User } from "lucide-react";
 export interface AICareerCoachResponse {
   responseText: string;
   careerSuggestions: string[];

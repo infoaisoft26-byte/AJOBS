@@ -1,7 +1,4 @@
-import {
-  Book,
-  Database
-} from "lucide-react";
+import { Book, Database, Focus, Scaling, Type } from "lucide-react";
 export interface AIEvaluationResponse {
   overallScore: number;
   technicalScore: number;

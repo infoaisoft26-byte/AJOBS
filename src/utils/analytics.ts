@@ -1,3 +1,4 @@
+import { View } from "lucide-react";
 /**
  * Google Analytics 4 Telemetry Utilities
  * Safely wraps analytics events with graceful fallback when scripts are absent or blocked.

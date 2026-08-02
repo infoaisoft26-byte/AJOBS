@@ -1,12 +1,5 @@
-import {
-  AreaChart,
-  Award,
-  BarChart,
-  BarChart2,
-  TrendingUp,
-  Users
-} from "lucide-react";
-
+import { ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Area, Bar, Cell } from "recharts";
+import { AreaChart, Award, BarChart, BarChart2, Funnel, TrendingUp, Users } from "lucide-react";
 // Standard futuristic custom tooltips for Recharts
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {

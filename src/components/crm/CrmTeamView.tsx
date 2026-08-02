@@ -1,3 +1,6 @@
+import React, { FormEvent, useState } from "react";
+import { doc, setDoc } from "firebase/firestore";
+import { Edit, Info, List, Plus, Save, Shield, ShieldCheck, Users, View, X } from "lucide-react";
 import { db } from "../../firebase";
 
 import { TeamMemberModel } from "./CrmTypes";

@@ -1,3 +1,6 @@
+import React, { ChangeEvent, DragEvent, HTMLInputElement, useEffect, useState } from "react";
+import { collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from "firebase/firestore";
+import { AlertTriangle, ArrowUpRight, Award, BookOpen, Briefcase, Calendar, Check, CheckCircle, CheckCircle2, ChevronRight, Cloud, CloudLightning, Code2, Compass, Delete, Download, File, FileCheck, FileText, Files, FolderOpen, Frame, Gauge, Globe, GraduationCap, History, Import, Landmark, Layout, MapPin, Navigation, Radar, RefreshCw, Replace, Route, Scan, Section, Sparkles, Store, Text, Trash2, TrendingUp, Trophy, Type, University, Upload, Vault, Verified } from "lucide-react";
 import { auth, db } from "../firebase";
 
 

@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-
+import { ArrowRight, Badge, Building2, CheckCircle2, Icon, List, LogIn, Network, Section, UserCheck, Users, Verified } from "lucide-react";
 interface CardsProps {
   onCandidateRegister: () => void;
   onCandidateLogin: () => void;

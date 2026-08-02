@@ -1,6 +1,8 @@
 import { db } from "../firebase";
-import { User } from "lucide-react";
-
+import React, { ChangeEvent, HTMLInputElement, useEffect, useRef, useState } from "react";
+import { doc, setDoc, updateDoc } from "firebase/firestore";
+import { ref } from "firebase/storage";
+import { Award, Briefcase, Camera, Check, Computer, Contact, Edit, Edit3, File, Framer, GraduationCap, Grid, Handshake, Image, Languages, List, Plus, Save, Scan, School, Section, ShieldAlert, ShieldCheck, Sparkles, Target, Trash2, Type, University, Upload, User, Verified, X } from "lucide-react";
 import { recordActivityLog } from "../services/activityLogService";
 import { uploadToCloudinary } from "../services/cloudinaryService";
 

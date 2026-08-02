@@ -1,3 +1,6 @@
+import React, { ChangeEvent, FormEvent, HTMLInputElement, useState } from "react";
+import { deleteDoc, doc, setDoc } from "firebase/firestore";
+import { Contact, Delete, Download, Edit, FileDown, Filter, Info, Key, Map, MessageSquare, Phone, Plus, Save, Search, Table, Tag, Tags, Trash2, Upload, Users, X } from "lucide-react";
 import { db } from "../../firebase";
 
 import { ConsultancyCandidateModel } from "./CrmTypes";

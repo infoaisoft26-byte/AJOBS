@@ -1,7 +1,5 @@
-import { BookOpen, CheckCircle2, Play, Sparkles, Video, Zap } from "lucide-react";
-
-
-
+import React, { useState } from "react";
+import { BookOpen, Building, CheckCircle2, Database, Key, Play, Router, Scale, Server, Sparkles, Verified, Video, View, Zap } from "lucide-react";
 export interface Course {
   id: string;
   title: string;

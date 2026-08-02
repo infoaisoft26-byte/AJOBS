@@ -1,6 +1,5 @@
-import {
-  Upload
-} from "lucide-react";
+import { increment } from "firebase/firestore";
+import { File, Network, Type, Upload } from "lucide-react";
 export interface CloudinaryUploadResult {
   secure_url: string;
   public_id: string;

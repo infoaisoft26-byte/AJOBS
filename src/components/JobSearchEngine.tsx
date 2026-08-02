@@ -1,7 +1,7 @@
-import { Briefcase, Building2, Check, ChevronDown, MapPin, Search, SlidersHorizontal, X } from "lucide-react";
-
-
-
+import { HTMLDivElement, MouseEvent, useEffect, useRef, useState } from "react";
+import { query } from "firebase/firestore";
+import { ref } from "firebase/storage";
+import { Briefcase, Building2, Check, ChevronDown, Container, Filter, MapPin, Search, SlidersHorizontal, Tags, Type, X } from "lucide-react";
 interface JobSearchEngineProps {
   onSearchChange: (filters: {
     query: string;

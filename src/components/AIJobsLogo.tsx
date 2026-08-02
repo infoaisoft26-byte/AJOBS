@@ -1,4 +1,4 @@
-
+import { Container, Filter, Frame, Grid, Text } from "lucide-react";
 export interface AIJobsLogoProps {
   variant?: "full" | "compact" | "icon";
   size?: "sm" | "md" | "lg" | "xl";

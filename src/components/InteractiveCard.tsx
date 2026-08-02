@@ -1,5 +1,6 @@
-import { MouseEvent, ReactNode, useRef, useState } from "react";
-
+import React, { HTMLDivElement, MouseEvent, ReactNode, useRef, useState } from "react";
+import { ref } from "firebase/storage";
+import { motion } from "motion/react";
 
 interface InteractiveCardProps {
   children: React.ReactNode;

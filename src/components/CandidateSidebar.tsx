@@ -1,33 +1,4 @@
-import {
-  Activity,
-  Award,
-  Bell,
-  BookOpen,
-  Bot,
-  Brain,
-  Briefcase,
-  Calendar,
-  CheckCircle2,
-  Clock,
-  CloudLightning,
-  Compass,
-  FileText,
-  Gift,
-  GraduationCap,
-  Heart,
-  LayoutDashboard,
-  MessageSquare,
-  Mic,
-  Search,
-  Settings,
-  ShieldCheck,
-  Smartphone,
-  Sparkles,
-  Video,
-  X,
-  type User
-} from "lucide-react";
-
+import { Activity, Award, Bell, BookOpen, Bot, Brain, Briefcase, Calendar, CheckCircle2, Clock, CloudLightning, Compass, Container, Database, FileText, Gift, GraduationCap, Heart, LayoutDashboard, Menu, MessageSquare, Mic, Navigation, Search, Settings, ShieldCheck, Sidebar, Smartphone, Sparkles, Store, User, Verified, Video, X } from "lucide-react";
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: any) => void;

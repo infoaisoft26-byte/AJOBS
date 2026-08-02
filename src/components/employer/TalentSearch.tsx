@@ -1,3 +1,6 @@
+import React, { useEffect, useState } from "react";
+import { collection, deleteDoc, doc, getDocs, setDoc } from "firebase/firestore";
+import { Briefcase, Check, Cloud, Code2, Figma, Filter, Framer, Mail, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, Sliders, Tag, Tags, Trash2, Type, User, UserCheck, Verified, View, X } from "lucide-react";
 import { auth, db } from "../../firebase";
 
 

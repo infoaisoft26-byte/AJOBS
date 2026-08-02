@@ -1,6 +1,6 @@
-import { AlertTriangle, CheckCircle2, RefreshCw, Search, ShieldCheck, Sparkles, Star } from "lucide-react";
-
-
+import React, { FormEvent, useState } from "react";
+import { limit, query } from "firebase/firestore";
+import { AlertTriangle, CheckCircle2, Figma, List, RefreshCw, Search, ShieldCheck, Sparkles, Star, Type, Weight } from "lucide-react";
 import { ConsultancyJobModel, ConsultancyCandidateModel } from "./CrmTypes";
 
 interface CrmAiShortlistViewProps {

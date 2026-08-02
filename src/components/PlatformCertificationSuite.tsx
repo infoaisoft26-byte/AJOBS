@@ -1,7 +1,6 @@
-import { Award, CheckCircle2, Download, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
-
-
-
+import { useState } from "react";
+import { collection, limit } from "firebase/firestore";
+import { Award, Badge, CheckCircle2, Contact, Download, Eye, RefreshCw, ShieldCheck, Sparkles, Speech, Table, Upload, Verified, Video } from "lucide-react";
 export default function PlatformCertificationSuite() {
   const [isAuditing, setIsAuditing] = useState(false);
   const [auditComplete, setAuditComplete] = useState(true);

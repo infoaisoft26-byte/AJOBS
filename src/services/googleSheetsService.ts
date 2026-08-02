@@ -1,3 +1,5 @@
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { Type } from "lucide-react";
 import { auth } from "../firebase";
 
 

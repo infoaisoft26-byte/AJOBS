@@ -1,3 +1,5 @@
+import { collection, doc, getDoc, getDocs, increment, query, setDoc, updateDoc, where } from "firebase/firestore";
+import { Check, Type, User } from "lucide-react";
 import { auth, db } from "../firebase";
 
 import { JobPosting, JobApplication } from "../types";

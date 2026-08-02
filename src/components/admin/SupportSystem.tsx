@@ -1,3 +1,6 @@
+import React, { FormEvent, useState } from "react";
+import { doc, setDoc } from "firebase/firestore";
+import { Activity, BookOpen, CheckCircle, Chrome, Filter, HelpCircle, MessageSquare, Reply, Save, Search, Send, Server, ShieldAlert, Ticket, Type, View } from "lucide-react";
 import { db } from "../../firebase";
 
 

@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { HTMLDivElement, useEffect, useRef, useState } from "react";
+import { ref } from "firebase/storage";
+import { Grid, Layout, Map, Radar, Scale } from "lucide-react";
 import * as d3 from "d3";
 
 interface ResumeRadarChartProps {

@@ -1,3 +1,4 @@
+
 export type NormalizedRole = "candidate" | "recruiter" | "consultancy" | "employer" | "admin" | "super_admin";
 
 export function normalizeRole(rawRole?: string): NormalizedRole {

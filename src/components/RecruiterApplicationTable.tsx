@@ -1,3 +1,7 @@
+import React, { Dispatch, FormEvent, useEffect, useMemo, useState } from "react";
+import { addDoc, collection, doc, getDocs, query, setDoc, updateDoc, where } from "firebase/firestore";
+import { AnimatePresence, motion } from "motion/react";
+import { ArrowUpDown, Badge, Building, Calendar, CheckCircle, ChevronDown, Clock, Cloud, Contact, Container, Download, ExternalLink, Eye, FileText, Filter, Inspect, Link, List, Mail, Map, MessageSquare, Phone, RefreshCw, Save, Search, Send, ShieldCheck, Sparkles, Table, Target, Type, UserCheck, Users, View, XCircle } from "lucide-react";
 import { auth, db } from "../firebase";
 
 import { NotificationService } from "../services/notificationService";

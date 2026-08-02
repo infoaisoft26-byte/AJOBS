@@ -1,3 +1,7 @@
+import React, { Dispatch, FormEvent, HTMLInputElement, useEffect, useRef, useState } from "react";
+import { ref } from "firebase/storage";
+import { AnimatePresence, motion } from "motion/react";
+import { AlertCircle, ArrowRight, Badge, CheckCircle2, Code, Edit, Edit2, Loader2, Mail, Phone, RefreshCw, Save, ShieldCheck, Smartphone, Sparkles, Type, Verified, X } from "lucide-react";
 import { auth } from "../firebase";
 
 

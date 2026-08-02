@@ -1,6 +1,4 @@
-import {
-  Type
-} from "lucide-react";
+import { Type, Weight } from "lucide-react";
 export interface JobMatchResponse {
   matchPercentage: number;
   skillsMatchPercentage: number;

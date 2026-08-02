@@ -1,3 +1,6 @@
+import React, { FormEvent, useState } from "react";
+import { deleteDoc, doc, getDoc, setDoc } from "firebase/firestore";
+import { AlertCircle, BookOpen, Calendar, Clock, History, Link, List, Logs, MapPin, Option, Plus, Save, Send, Sparkles, Star, Type, UserCheck, Video, View, X } from "lucide-react";
 import { db } from "../../firebase";
 
 import { 

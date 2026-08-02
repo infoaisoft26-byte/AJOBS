@@ -1,5 +1,8 @@
+import { storage } from "../firebase";
+import { useEffect, useRef, useState } from "react";
+import { ref } from "firebase/storage";
 import { AnimatePresence, motion } from "motion/react";
-
+import { Brain, Check, Cpu, Lock, Presentation, Scan, Volume2, VolumeX, X } from "lucide-react";
 import AIJobsLogo from "./AIJobsLogo";
 import soundSynth from "../utils/audioSynth";
 

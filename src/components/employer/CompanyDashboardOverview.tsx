@@ -1,6 +1,5 @@
-import { Award, BarChart2, Bell, Briefcase, Calendar, CheckCircle, Clock, RefreshCw, Send, Star, TrendingUp, Users } from "lucide-react";
-
-
+import { useState } from "react";
+import { Award, BarChart2, Bell, Briefcase, Calendar, CheckCircle, Clock, RefreshCw, Send, Star, TrendingUp, Users, View } from "lucide-react";
 import { CompanyJob, CompanyApplication, CompanyInterview, CompanyOffer, CompanyActivityLog } from "./EmployerTypes";
 import HolographicCard from "../HolographicCard";
 import DashboardAnalyticsCharts from "../DashboardAnalyticsCharts";

@@ -1,18 +1,4 @@
-import {
-  AlertTriangle,
-  Award,
-  Briefcase,
-  CheckCircle,
-  DollarSign,
-  ExternalLink,
-  Heart,
-  Lock,
-  MapPin,
-  Save,
-  Share,
-  Share2,
-  Sparkles
-} from "lucide-react";
+import { AlertTriangle, CheckCircle, Heart, Lock, Save, Share, Share2, Sparkles, Verified } from "lucide-react";
 import { JobPosting } from "../types";
 
 interface JobCardProps {

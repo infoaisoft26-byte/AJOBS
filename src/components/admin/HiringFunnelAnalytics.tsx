@@ -1,3 +1,6 @@
+import { useEffect, useMemo, useState } from "react";
+import { collection, getDocs } from "firebase/firestore";
+import { BarChart2, Cloud, Download, Funnel, Map, RefreshCw, Search, Table, TrendingUp } from "lucide-react";
 import { db } from "../../firebase";
 
 

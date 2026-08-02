@@ -1,10 +1,4 @@
-import {
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc
-} from "firebase/firestore";
-
+import { Timestamp, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 describe("Firestore Security Rules - TDD Verification Suite", () => {
   let testEnv: RulesTestEnvironment;
 

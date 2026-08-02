@@ -1,4 +1,6 @@
-
+import React, { FormEvent, useState } from "react";
+import { collection, deleteDoc, doc, setDoc } from "firebase/firestore";
+import { Briefcase, CheckCircle, Clock, Computer, Copy, Delete, Edit, Eye, Figma, Filter, Grid, Key, Languages, List, Package, Pause, Play, Plus, PlusCircle, RefreshCw, Save, Search, Target, Trash2, Type, X } from "lucide-react";
 import { auth, db } from "../../firebase";
 import { useToast } from "../GlobalToast";
 import PostJobForm from "../PostJobForm";

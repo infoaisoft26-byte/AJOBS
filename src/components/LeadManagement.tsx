@@ -1,3 +1,7 @@
+import { useEffect, useState } from "react";
+import { arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, query, setDoc, updateDoc, where } from "firebase/firestore";
+import { motion } from "motion/react";
+import { AlertCircle, Briefcase, Building, CheckCircle, Contact, Eye, Filter, Grid, Info, Inspect, List, Loader2, Mail, Network, Phone, RefreshCw, Search, Sliders, Table, Target, Trash2, UserCheck, Users, X } from "lucide-react";
 import { auth, db } from "../firebase";
 
 import ExportActivityCsvButton from "./ExportActivityCsvButton";

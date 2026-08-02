@@ -1,5 +1,6 @@
+import { Children } from "react";
 import { motion } from "motion/react";
-
+import { AlertCircle, Contact, Cookie, FileText, RefreshCw, ShieldCheck, Sparkles, User, Users, X } from "lucide-react";
 export type LegalDocType = "privacy" | "terms" | "refund" | "cancellation" | "cookie" | "disclaimer";
 
 interface LegalModalProps {

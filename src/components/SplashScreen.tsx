@@ -1,6 +1,8 @@
+import AIJobsLogo from "./AIJobsLogo";
 import { MouseEvent, useEffect, useRef, useState } from "react";
-
-
+import { ref } from "firebase/storage";
+import { AnimatePresence, motion } from "motion/react";
+import { Apple, Chrome, Code, Cpu, Focus, Frame, Globe, Infinity, Loader, Presentation, Radar, Space } from "lucide-react";
 interface SplashScreenProps {
   onComplete: () => void;
 }

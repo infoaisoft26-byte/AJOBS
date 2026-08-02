@@ -1,7 +1,6 @@
-import { AlertCircle, CheckCircle2, File, FileCode, Key, Lock, ShieldCheck, X } from "lucide-react";
-
-
-
+import { storage } from "../firebase";
+import React, { ChangeEvent, FormEvent, HTMLInputElement, useState } from "react";
+import { AlertCircle, CheckCircle2, Code, File, FileCode, Key, Lock, Share, ShieldCheck, Signature, Upload, X } from "lucide-react";
 interface AadhaarOfflineModalProps {
   isOpen: boolean;
   onClose: () => void;

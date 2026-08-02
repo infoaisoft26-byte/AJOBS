@@ -1,7 +1,6 @@
-import { AlertCircle, CheckCircle2, ShieldCheck, Sparkles, X } from "lucide-react";
-
-
-
+import { useEffect, useRef, useState } from "react";
+import { ref } from "firebase/storage";
+import { AlertCircle, Camera, Check, CheckCircle2, Frame, Save, ShieldCheck, Sparkles, X } from "lucide-react";
 interface LiveSelfieCaptureModalProps {
   isOpen: boolean;
   onClose: () => void;

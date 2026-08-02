@@ -1,3 +1,7 @@
+import { ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Bar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Legend, Scatter, Cell } from "recharts";
+import React, { useEffect, useState } from "react";
+import { collection, doc, getDocs, setDoc } from "firebase/firestore";
+import { Activity, Award, BarChart, Brain, CheckCircle, Cross, Figma, Framer, Info, Key, ListOrdered, Radar, RefreshCw, ScatterChart, Sparkles, Target, User, UserCheck, X } from "lucide-react";
 import { db } from "../firebase";
 
 

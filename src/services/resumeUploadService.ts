@@ -1,4 +1,5 @@
-
+import { doc, limit, setDoc } from "firebase/firestore";
+import { File, Save, Upload, User } from "lucide-react";
 import { auth, db } from "../firebase";
 import { uploadToCloudinary, CloudinaryUploadResult } from "./cloudinaryService";
 import { parseResumeData } from "./aiParser";

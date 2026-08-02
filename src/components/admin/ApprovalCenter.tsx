@@ -1,6 +1,7 @@
-import { CheckCircle, Download, Eye, FileText, MessageSquare, ShieldCheck, XCircle } from "lucide-react";
-
-
+import { db } from "../../firebase";
+import { useState } from "react";
+import { collection, doc, setDoc } from "firebase/firestore";
+import { CheckCircle, Chrome, Dot, Download, Eye, File, FileText, History, MessageSquare, ShieldCheck, Type, Verified, View, XCircle } from "lucide-react";
 interface ApprovalCenterProps {
   approvals: ApprovalRequest[];
   onRefresh: () => void;

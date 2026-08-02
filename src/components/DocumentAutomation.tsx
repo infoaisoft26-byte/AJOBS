@@ -1,6 +1,5 @@
-import { Copy, FileCheck, Printer, RefreshCw, Sparkles } from "lucide-react";
-
-
+import { useState } from "react";
+import { Cloud, Code, Copy, FileCheck, Laptop, Printer, RefreshCw, Sparkles, Text, Type } from "lucide-react";
 import { useGlobalMarketplace } from "../context/GlobalMarketplaceContext";
 
 export default function DocumentAutomation() {

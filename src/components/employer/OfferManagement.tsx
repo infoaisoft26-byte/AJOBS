@@ -1,3 +1,6 @@
+import React, { FormEvent, useState } from "react";
+import { doc, setDoc } from "firebase/firestore";
+import { Award, CheckCircle, DollarSign, Download, FileText, Package, Plus, Send, Target, Vault, View, X, XCircle } from "lucide-react";
 import { db } from "../../firebase";
 
 import { NotificationService } from "../../services/notificationService";

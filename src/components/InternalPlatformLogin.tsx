@@ -1,3 +1,7 @@
+import React, { FormEvent, useState } from "react";
+import { GoogleAuthProvider, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { AlertCircle, CheckCircle2, KeyRound, Link, Lock, LockKeyhole, LogIn, Mail, RefreshCw, Send, User } from "lucide-react";
 import { auth, db } from "../firebase";
 
 

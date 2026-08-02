@@ -1,6 +1,5 @@
-import { Award, Camera, CheckCircle, FileText, Mic, ShieldAlert, Sparkles, Video } from "lucide-react";
-
-
+import { useState } from "react";
+import { Award, Badge, Camera, CheckCircle, FileText, Key, Logs, Mic, ShieldAlert, Sparkles, Video, View } from "lucide-react";
 import { InterviewSession } from "../types";
 
 interface VideoInterviewCenterProps {

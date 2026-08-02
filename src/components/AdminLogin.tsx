@@ -1,6 +1,8 @@
-import { CheckCircle2, KeyRound, Lock, LogIn, Mail, RefreshCw, ShieldAlert, ShieldCheck } from "lucide-react";
-
-
+import { auth, db } from "../firebase";
+import React, { Dispatch, FormEvent, useState } from "react";
+import { sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { collection, doc, getDoc } from "firebase/firestore";
+import { Badge, Check, CheckCircle2, KeyRound, Link, Lock, LogIn, Mail, RefreshCw, Shield, ShieldAlert, ShieldCheck, User } from "lucide-react";
 import { UserProfile } from "../types";
 import { useToast } from "./GlobalToast";
 import { normalizeRole } from "../utils/roleUtils";

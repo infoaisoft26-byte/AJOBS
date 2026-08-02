@@ -1,3 +1,8 @@
+import React, { FormEvent, HTMLInputElement, MouseEvent, useEffect, useRef, useState } from "react";
+import { doc, getDoc } from "firebase/firestore";
+import { ref } from "firebase/storage";
+import { AnimatePresence, motion } from "motion/react";
+import { AlertTriangle, ArrowRight, Badge, Bookmark, Briefcase, Building2, CheckCircle2, ChevronDown, Clock, File, FileText, Filter, Grid, Heart, Home, Link, Loader2, MapPin, Pill, RefreshCw, Save, Search, Send, Share, Share2, ShieldCheck, Sparkles, Upload, UserPlus, Verified, View, X } from "lucide-react";
 import { db } from "../firebase";
 
 import { JobPosting, JobApplication, UserProfile } from "../types";

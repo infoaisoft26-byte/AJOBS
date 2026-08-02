@@ -1,7 +1,12 @@
-import { ChangeEvent, useEffect, useRef, useState } from "react";
-
-
-import { db } from "../firebase";
+import SmartResumeOtpModal from "./SmartResumeOtpModal";
+import LegalModal from "./LegalModal";
+import AIJobsLogo from "./AIJobsLogo";
+import React, { ChangeEvent, HTMLInputElement, useRef, useState } from "react";
+import { doc } from "firebase/firestore";
+import { ref } from "firebase/storage";
+import { AnimatePresence, motion } from "motion/react";
+import { ArrowRight, Box, Building, Cloud, Contact, File, Info, Layout, Loader2, LogIn, Mail, Phone, Sparkles, Type, Upload } from "lucide-react";
+import { auth, db, storage } from "../firebase";
 import { uploadToCloudinary } from "../services/cloudinaryService";
 import { useToast } from "./GlobalToast";
 import { UserProfile } from "../types";

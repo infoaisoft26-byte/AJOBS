@@ -1,4 +1,6 @@
-import { MouseEvent, useEffect, useRef, useState } from "react";
+import { HTMLDivElement, MouseEvent, useEffect, useRef } from "react";
+import { ref } from "firebase/storage";
+import { Camera, Clock, Earth, Group, Mars, Moon, Mouse, Orbit, Sun, Torus, Venus } from "lucide-react";
 import * as THREE from "three";
 import soundSynth from "../utils/audioSynth";
 

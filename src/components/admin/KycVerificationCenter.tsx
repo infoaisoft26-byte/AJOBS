@@ -1,5 +1,6 @@
-import { CheckCircle2, ExternalLink, Eye, Search, ShieldCheck } from "lucide-react";
-
+import { useEffect, useState } from "react";
+import { doc } from "firebase/firestore";
+import { CheckCircle2, ExternalLink, Eye, File, Inspect, List, Search, Section, ShieldCheck, Table, Type, User, Verified, View } from "lucide-react";
 import { auth } from "../../firebase";
 
 import { VerificationRequest, KycDocument } from "../../types";

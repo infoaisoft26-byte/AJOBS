@@ -1,4 +1,8 @@
-import { auth } from "./firebase";
+import React, { KeyboardEvent, ReactNode, Suspense, lazy, useEffect, useState } from "react";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { AnimatePresence, motion } from "motion/react";
+import { AlertTriangle, Cookie, Route, Type, User, UserCheck } from "lucide-react";
+import { auth, isFirebaseConfigured } from "./firebase";
 
 
 // Lazy-loaded dashboard components for smaller initial bundle sizes

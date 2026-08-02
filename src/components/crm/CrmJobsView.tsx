@@ -1,3 +1,6 @@
+import React, { FormEvent, useState } from "react";
+import { collection, deleteDoc, doc, setDoc } from "firebase/firestore";
+import { Briefcase, Copy, Delete, DollarSign, Edit, List, MapPin, Plus, Save, Sidebar, Target, Trash2, X } from "lucide-react";
 import { db } from "../../firebase";
 
 import { ConsultancyJobModel, ClientModel } from "./CrmTypes";

@@ -1,3 +1,6 @@
+import { useState } from "react";
+import { doc, setDoc } from "firebase/firestore";
+import { ArrowRight, Calendar, Check, Database, DollarSign, RefreshCw, Scale, ShieldCheck, Sparkles } from "lucide-react";
 import { db } from "../../firebase";
 
 import { ConsultancyProfile } from "../../types";

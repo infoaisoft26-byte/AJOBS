@@ -1,3 +1,6 @@
+import React, { FormEvent, useState } from "react";
+import { doc, setDoc } from "firebase/firestore";
+import { Calendar, CheckCircle, ChevronLeft, ChevronRight, Clock, Edit3, Grid, List, Logs, MessageSquare, Plus, Save, Sidebar, Sun, Target, View, X } from "lucide-react";
 import { db } from "../../firebase";
 
 import { InterviewModel, ConsultancyJobModel, ConsultancyCandidateModel } from "./CrmTypes";

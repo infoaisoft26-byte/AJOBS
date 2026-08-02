@@ -1,6 +1,5 @@
-import { BarChart3, FileSpreadsheet, Printer, TrendingUp } from "lucide-react";
-
-
+import { useState } from "react";
+import { BarChart3, FileSpreadsheet, Printer, Sidebar, TrendingUp } from "lucide-react";
 import { PlacementModel, ClientModel, ConsultancyJobModel } from "./CrmTypes";
 
 interface CrmReportsViewProps {

@@ -1,6 +1,4 @@
-import {
-  Search
-} from "lucide-react";
+import { Grid, Icon } from "lucide-react";
 import AIJobsLogo from "./AIJobsLogo";
 
 export function SkeletonPulse() {

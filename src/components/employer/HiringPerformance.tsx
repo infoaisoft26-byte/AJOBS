@@ -1,6 +1,5 @@
-import { AreaChart, ArrowUpRight, Award, BarChart, CheckCircle, Clock, LineChart, Sparkles, Target, TrendingUp, Users, Zap } from "lucide-react";
-
-
+import { useMemo, useState } from "react";
+import { AreaChart, ArrowUpRight, Award, BarChart, Box, CheckCircle, Clock, Filter, Funnel, Map, PieChart as PieIcon, Slice, Sparkles, Table, Target, TrendingUp, Users, Volume, Zap } from "lucide-react";
 import { Area, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, ComposedChart } from "recharts";
 import { CompanyJob, CompanyApplication, CompanyInterview, CompanyOffer } from "./EmployerTypes";
 

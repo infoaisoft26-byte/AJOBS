@@ -1,3 +1,6 @@
+import React from "react";
+import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
+import { Car, Computer, Figma, Framer, Package, Presentation, User } from "lucide-react";
 import { db } from "../../firebase";
 
 import { CompanyProfile, CompanyJob, CompanyApplication, CompanyInterview, CompanyOffer, CompanyActivityLog } from "./EmployerTypes";

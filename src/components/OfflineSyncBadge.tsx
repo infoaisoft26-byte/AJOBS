@@ -1,6 +1,5 @@
-import { CheckCircle, Database, RefreshCw, Wifi, WifiOff } from "lucide-react";
-
-
+import { useEffect, useState } from "react";
+import { CheckCircle, Cloud, Database, Icon, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import offlineSyncService from "../services/offlineSyncService";
 import { useToast } from "./GlobalToast";
 

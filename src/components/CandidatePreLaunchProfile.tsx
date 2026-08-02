@@ -1,3 +1,6 @@
+import React, { ChangeEvent, FormEvent, HTMLInputElement, useEffect, useState } from "react";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { Award, Briefcase, CheckCircle2, Download, Edit, Edit3, ExternalLink, FileText, Key, LogOut, MapPin, Phone, RefreshCw, Replace, Save, Sparkles, Target, Upload, Verified, View, X } from "lucide-react";
 import { db } from "../firebase";
 
 

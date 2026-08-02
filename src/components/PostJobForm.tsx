@@ -1,3 +1,6 @@
+import React, { FormEvent, useState } from "react";
+import { doc, setDoc } from "firebase/firestore";
+import { AlertCircle, Briefcase, Building2, Calendar, CheckCircle, Computer, DollarSign, Key, Languages, ListTodo, MapPin, Save, Section, ShieldAlert, Target, Type, Workflow, X } from "lucide-react";
 import { db } from "../firebase";
 
 

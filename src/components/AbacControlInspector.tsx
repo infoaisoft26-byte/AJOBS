@@ -1,3 +1,7 @@
+import { Dispatch, useEffect, useState } from "react";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { AnimatePresence, motion } from "motion/react";
+import { AlertCircle, AlertTriangle, CheckCircle2, Database, List, Logs, Play, RefreshCw, Save, ShieldAlert, ShieldCheck, Sliders, Tag, Type, User, Verified } from "lucide-react";
 import { db } from "../firebase";
 
 import { 

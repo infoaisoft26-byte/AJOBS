@@ -1,6 +1,5 @@
-import { ArrowRight, Brain, CheckCircle, Compass, DollarSign, FileText, MessageSquare, Target, TrendingUp } from "lucide-react";
-
-
+import React, { useState } from "react";
+import { ArrowRight, Brain, CheckCircle, Cloud, Compass, Cross, DollarSign, FileText, Focus, MessageSquare, Navigation, Server, Target, TrendingUp, Type } from "lucide-react";
 import { CandidateProfile } from "../types";
 import { useGlobalMarketplace } from "../context/GlobalMarketplaceContext";
 

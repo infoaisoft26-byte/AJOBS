@@ -1,14 +1,4 @@
-import {
-  ArrowUpRight,
-  Award,
-  BarChart3,
-  DollarSign,
-  PieChart,
-  Target,
-  TrendingUp,
-  Users,
-  Zap
-} from "lucide-react";
+import { ArrowUpRight, BarChart3, Funnel, PieChart, Section, Target, Verified } from "lucide-react";
 import { useGlobalMarketplace } from "../context/GlobalMarketplaceContext";
 
 export default function ExecutiveAnalyticsBi() {

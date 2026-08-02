@@ -1,10 +1,4 @@
-import {
-  type User
-} from "firebase/auth";
-import { auth } from "../../firebase";
-import {
-  User
-} from "lucide-react";
+import { User } from "lucide-react";
 export interface SystemAuditLog {
   id: string;
   userId: string;

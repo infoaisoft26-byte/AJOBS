@@ -1,5 +1,5 @@
-import { AlertCircle, CheckCircle2, ChevronRight, Clock, Send, X } from "lucide-react";
-
+import React, { FormEvent, useEffect, useState } from "react";
+import { AlertCircle, CheckCircle2, ChevronRight, Clock, History, Send, Type, User, X } from "lucide-react";
 import { auth } from "../firebase";
 
 import { ApplicationTimelineEntry, JobApplication } from "../types";

@@ -1,7 +1,5 @@
-import { Award, Clock, Play, ShieldCheck, Sparkles, Trophy } from "lucide-react";
-
-
-
+import React, { useEffect, useRef, useState, useTransition } from "react";
+import { Award, Badge, Clock, Filter, Grid, Play, ShieldCheck, Sparkles, Table, Trophy, Verified } from "lucide-react";
 export interface SkillTest {
   id: string;
   title: string;

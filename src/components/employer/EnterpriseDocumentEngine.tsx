@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
-
-
+import React, { useEffect, useState } from "react";
+import { Award, Bookmark, Briefcase, Cloud, FileCheck, FileText, Package, Printer, Save, Signature, Sparkles, Type, User } from "lucide-react";
 interface EnterpriseDocumentEngineProps {
   companyName: string;
 }

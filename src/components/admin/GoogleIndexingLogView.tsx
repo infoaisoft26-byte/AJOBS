@@ -1,6 +1,6 @@
-import { AlertCircle, CheckCircle2, Clock, ExternalLink, Globe, RefreshCw, Search, Send } from "lucide-react";
-
-
+import { useEffect, useState } from "react";
+import { Timestamp } from "firebase/firestore";
+import { AlertCircle, CheckCircle2, Clock, Code, ExternalLink, Globe, Logs, Monitor, RefreshCw, Search, Send, Table, Type, View } from "lucide-react";
 import { IndexingLogRecord } from "../../../server/googleIndexingService";
 
 export function GoogleIndexingLogView() {

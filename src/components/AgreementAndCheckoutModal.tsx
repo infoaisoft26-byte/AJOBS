@@ -1,7 +1,7 @@
-import { AlertCircle, Building2, CheckCircle2, CreditCard, KeyRound, ScrollText, ShieldCheck, X } from "lucide-react";
-
-
-
+import { HTMLDivElement, useEffect, useRef, useState } from "react";
+import { where } from "firebase/firestore";
+import { ref } from "firebase/storage";
+import { AlertCircle, Building2, CheckCircle2, Container, CreditCard, Database, KeyRound, ScrollText, Send, ShieldCheck, Signature, Table, Type, Verified, X } from "lucide-react";
 interface AgreementAndCheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;

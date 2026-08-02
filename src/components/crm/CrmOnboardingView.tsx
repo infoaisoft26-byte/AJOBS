@@ -1,3 +1,6 @@
+import React, { FormEvent, useState } from "react";
+import { doc, setDoc } from "firebase/firestore";
+import { Building, Contact, Phone, Save, Settings, ShieldCheck } from "lucide-react";
 import { db } from "../../firebase";
 
 import { ConsultancyProfile } from "../../types";

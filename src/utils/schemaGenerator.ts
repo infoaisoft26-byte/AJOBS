@@ -1,3 +1,5 @@
+import React from "react";
+import { View } from "lucide-react";
 import { JobPosting } from "../types";
 
 /**

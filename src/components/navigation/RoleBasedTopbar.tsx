@@ -1,5 +1,5 @@
-import { LayoutDashboard, LogOut, Moon, PlusCircle, RotateCcw, Shield, Sun, Volume2, VolumeX } from "lucide-react";
-
+import { useState } from "react";
+import { Contact, Database, Home, LayoutDashboard, LogOut, Logs, Moon, PlusCircle, RotateCcw, Shield, Sun, User, Volume2, VolumeX } from "lucide-react";
 import { auth } from "../../firebase";
 
 import { UserProfile } from "../../types";

@@ -1,3 +1,6 @@
+import React, { FormEvent, useState } from "react";
+import { deleteDoc, doc, setDoc } from "firebase/firestore";
+import { Briefcase, CheckCircle, Chrome, Database, Delete, Filter, List, MapPin, Option, Package, Plus, Search, Star, Table, Tags, Trash2, View, X } from "lucide-react";
 import { db } from "../../firebase";
 
 import InteractiveExportTable from "../InteractiveExportTable";

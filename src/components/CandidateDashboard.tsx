@@ -1,3 +1,8 @@
+import React, { FormEvent, HTMLDivElement, useEffect, useRef, useState } from "react";
+import { signOut } from "firebase/auth";
+import { collection, doc, getDoc, getDocs, onSnapshot, query, setDoc, updateDoc, where } from "firebase/firestore";
+import { motion } from "motion/react";
+import { AlertTriangle, Badge, Bookmark, Contact, Focus, Frame, Import, Menu, Navigation, Save, Sidebar, Type } from "lucide-react";
 import { auth, db } from "../firebase";
 
 import { CandidateProfile, JobPosting, JobApplication, InterviewSession, ChatMessage, NotificationRecord } from "../types";

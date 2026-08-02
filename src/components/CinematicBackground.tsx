@@ -1,5 +1,6 @@
 import { MouseEvent, useEffect, useRef, useState } from "react";
-
+import { ref } from "firebase/storage";
+import { Columns, Grid, Mouse, Move, Network, Star } from "lucide-react";
 export default function CinematicBackground() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [scrollOffset, setScrollOffset] = useState(0);

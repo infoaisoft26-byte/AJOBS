@@ -1,6 +1,9 @@
+import { db } from "../firebase";
 import { useEffect, useState } from "react";
-
-
+import { deleteDoc, doc, query } from "firebase/firestore";
+import { ref } from "firebase/storage";
+import { motion } from "motion/react";
+import { AlertTriangle, Award, Bookmark, Brain, Briefcase, Check, CheckCircle2, ChevronRight, Download, Filter, Focus, Grid, Heart, Key, List, Save, Search, Share, Share2, Sparkles, Trash2, Type, Verified, View, X } from "lucide-react";
 import { evaluateAbacPolicy, mapUserToAbacSubject } from "../services/abacService";
 import { injectJobPostingSchema } from "../utils/schemaGenerator";
 import { fetchPaginatedLiveJobs } from "../services/jobService";

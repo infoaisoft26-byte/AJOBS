@@ -1,18 +1,7 @@
-import {
-  Building,
-  Cpu,
-  FileText,
-  Pause,
-  Play,
-  Search,
-  ShieldCheck,
-  Sparkles
-} from "lucide-react";
-
 import { useEffect, useRef, useState } from "react";
+import { ref } from "firebase/storage";
 import { AnimatePresence, motion } from "motion/react";
-
-
+import { Building, Cpu, FileText, Grid, Pause, Play, Search, Section, ShieldCheck, Sparkles, Upload, Verified } from "lucide-react";
 const SKILL_NODES = [
   { id: "tech", label: "Technology & AI", score: "98% Match", color: "#06B6D4" },
   { id: "banking", label: "Banking & Finance", score: "94% Match", color: "#2563EB" },

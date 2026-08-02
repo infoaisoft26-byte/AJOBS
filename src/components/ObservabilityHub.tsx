@@ -1,7 +1,5 @@
-import { Activity, CheckCircle2, Cpu, RefreshCw, Server, Sparkles, Zap } from "lucide-react";
-
-
-
+import { useEffect, useState } from "react";
+import { Activity, CheckCircle2, Cpu, Grid, RefreshCw, Server, Sparkles, Users, Zap } from "lucide-react";
 export default function ObservabilityHub() {
   const [telemetry, setTelemetry] = useState<any>({
     activeUsers: 8,

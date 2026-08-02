@@ -1,6 +1,5 @@
-import { CheckCircle2, Edit3, Mail, Phone, Search, Users } from "lucide-react";
-
-
+import { useEffect, useState } from "react";
+import { CheckCircle2, Contact, Edit, Edit3, Facebook, Filter, Instagram, Mail, Phone, Save, Search, Table, Type, Users } from "lucide-react";
 import { CrmLead } from "../../types";
 
 export default function LiveLeadsCRM() {

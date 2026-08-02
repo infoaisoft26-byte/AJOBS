@@ -1,5 +1,7 @@
-import { FormEvent, useEffect, useState } from "react";
-
+import React, { FormEvent, useEffect, useState } from "react";
+import { doc } from "firebase/firestore";
+import { motion } from "motion/react";
+import { CloudLightning, Database, ExternalLink, File, FileSpreadsheet, FileUp, FolderOpen, Layers, List, Loader2, Plus, RefreshCw, Share, Sparkles, Type, View } from "lucide-react";
 import { 
   workspaceSignIn, 
   getWorkspaceAccessToken, 

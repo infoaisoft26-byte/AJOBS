@@ -1,3 +1,6 @@
+import React, { FormEvent, useEffect, useState } from "react";
+import { doc, setDoc } from "firebase/firestore";
+import { Baseline, Brain, Chrome, Cloud, Code, Group, Key, List, Save, Server, ShieldAlert, Sliders, View } from "lucide-react";
 import { db } from "../../firebase";
 
 import AiInsightsPanel from "../AiInsightsPanel";

@@ -1,6 +1,6 @@
 import { MouseEvent, useEffect, useState } from "react";
-
-
+import { motion } from "motion/react";
+import { Check, Dot, Pointer } from "lucide-react";
 interface Particle {
   id: number;
   x: number;

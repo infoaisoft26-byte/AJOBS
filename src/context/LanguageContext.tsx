@@ -1,5 +1,5 @@
-import { ReactNode, createContext, useContext, useEffect, useState } from "react";
-
+import React, { FC, ReactNode, createContext, useContext, useEffect, useState } from "react";
+import { Currency, Filter, Home, Search, Video } from "lucide-react";
 export type SupportedLanguage = "en" | "hi" | "ar" | "fr" | "de" | "es";
 
 export interface LanguageInfo {

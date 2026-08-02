@@ -1,3 +1,7 @@
+import React, { useEffect, useRef, useState } from "react";
+import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from "firebase/firestore";
+import { ref } from "firebase/storage";
+import { AlertCircle, AlertTriangle, ArrowRight, Award, Badge, BarChart3, Brain, Calendar, Camera, Check, CheckCircle, CheckCircle2, ChevronRight, Circle, Clock, Cloud, Download, HelpCircle, History, Key, List, Lock, Mic, Monitor, Navigation, Pause, Play, RefreshCw, Route, Save, Section, Share, ShieldCheck, Sidebar, Sparkles, Speech, Square, Tag, Text, Timer, Type, Unlock, User, Verified, Video, View, Volume2, Webcam, X } from "lucide-react";
 import { db } from "../firebase";
 
 

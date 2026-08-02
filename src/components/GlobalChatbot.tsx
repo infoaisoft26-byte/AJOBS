@@ -1,4 +1,8 @@
+import React, { FormEvent, HTMLDivElement, useEffect, useRef, useState } from "react";
+import { query } from "firebase/firestore";
+import { ref } from "firebase/storage";
 import { AnimatePresence, motion } from "motion/react";
+import { Award, Bot, Briefcase, Check, Chrome, Database, DollarSign, Expand, Mic, MicOff, Minimize, Minus, Navigation, RefreshCw, RotateCcw, Search, Send, Server, Speech, TrendingUp, Type, User, Verified, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 interface GlobalChatbotProps {

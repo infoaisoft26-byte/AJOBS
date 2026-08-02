@@ -1,4 +1,6 @@
-
+import { useEffect, useState } from "react";
+import { collection, doc, getDocs, updateDoc } from "firebase/firestore";
+import { CheckCircle2, FileText, Filter, Info, Link, RefreshCw, Search, ShieldCheck, Sparkles, User, Users, View, XCircle } from "lucide-react";
 import { auth, db } from "../firebase";
 
 import { useToast } from "./GlobalToast";

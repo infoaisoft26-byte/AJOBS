@@ -1,3 +1,6 @@
+import { useState } from "react";
+import { doc, setDoc } from "firebase/firestore";
+import { AlertCircle, ArrowRight, CheckCircle2, Code, Lock, Mail, Phone, Send, ShieldCheck, Verified, X } from "lucide-react";
 import { db } from "../firebase";
 
 

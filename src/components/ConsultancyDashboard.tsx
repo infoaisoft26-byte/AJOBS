@@ -1,3 +1,6 @@
+import { useEffect, useState } from "react";
+import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
+import { Bell, Briefcase, Building, Calendar, CheckCircle2, DollarSign, FileText, Import, LayoutDashboard, List, Plus, RefreshCw, Router, Settings, ShieldAlert, ShieldCheck, Sidebar, Sparkles, TrendingUp, Users } from "lucide-react";
 import { db } from "../firebase";
 
 

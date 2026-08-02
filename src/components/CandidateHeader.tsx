@@ -1,5 +1,7 @@
-import { Bell, LogOut, Menu, MessageSquare, Moon, Search, Settings, ShieldCheck, Sun, X } from "lucide-react";
-
+import React, { useState } from "react";
+import { query } from "firebase/firestore";
+import { AnimatePresence, motion } from "motion/react";
+import { Badge, Bell, Cloud, Icon, Infinity, LogOut, Menu, MessageSquare, Moon, Search, Settings, ShieldCheck, Sun, User, View, X } from "lucide-react";
 import { ExportActivityCsvButton } from "./ExportActivityCsvButton";
 import { OfflineSyncBadge } from "./OfflineSyncBadge";
 

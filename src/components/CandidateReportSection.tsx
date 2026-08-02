@@ -1,3 +1,7 @@
+import React, { useEffect, useState } from "react";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { AnimatePresence, motion } from "motion/react";
+import { AlertTriangle, Award, BookOpen, Brain, CheckCircle2, Circle, Cpu, Database, Info, Key, LineChart, Map, Menu, Navigation, Ratio, RefreshCw, Scan, Section, ShieldCheck, Text, Type, Verified, Zap } from "lucide-react";
 import { db } from "../firebase";
 
 

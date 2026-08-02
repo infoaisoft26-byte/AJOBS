@@ -1,10 +1,4 @@
-import {
-  type User
-} from "firebase/auth";
-import { auth } from "../firebase";
-import {
-  User
-} from "lucide-react";
+import { Check, User, Verified } from "lucide-react";
 /**
  * Attribute-Based Access Control (ABAC) Service
  * Implements fine-grained security policies based on user (subject), resource, action, and environment attributes.

@@ -1,7 +1,5 @@
-import { AlertTriangle, CheckCircle2, Layers, RefreshCw, Trash2 } from "lucide-react";
-
-
-
+import { useState } from "react";
+import { AlertTriangle, CheckCircle2, Layers, RefreshCw, Scan, Trash2, Type } from "lucide-react";
 export default function DemoDataCleanupTool({ adminUserId }: { adminUserId: string }) {
   const [loading, setLoading] = useState(false);
   const [dryRunResult, setDryRunResult] = useState<any>(null);
