@@ -73,35 +73,18 @@ export default function PaymentManagement({
   };
 
   // Filter transactions
-// Safely normalize optional values for search
-const safeLower = (value: unknown): string =>
-  String(value ?? "").trim().toLowerCase();
+  const filteredTxns = transactions.filter((t) => {
+    const matchesSearch = 
+      t.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.userEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.id.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesStatus = selectedStatus === "all" || t.status === selectedStatus;
 
-const filteredTxns = transactions.filter((txn) => {
-  const query = safeLower(searchQuery);
+    return matchesSearch && matchesStatus;
+  });
 
-  const resolvedUserName =
-    txn.userName ||
-    (txn as any).name ||
-    (txn as any).customerName ||
-    (txn as any).candidateName ||
-    txn.userEmail ||
-    "";
-
-  const matchesSearch =
-    safeLower(resolvedUserName).includes(query) ||
-    safeLower(txn.userEmail).includes(query) ||
-    safeLower(txn.invoiceNumber).includes(query) ||
-    safeLower(txn.id).includes(query) ||
-    safeLower(txn.planName).includes(query) ||
-    safeLower(txn.status).includes(query);
-
-  const matchesStatus =
-    selectedStatus === "all" ||
-    safeLower(txn.status) === safeLower(selectedStatus);
-
-  return matchesSearch && matchesStatus;
-});
   return (
     <div className="space-y-6" id="payment-management-portal">
       {/* View Header */}
@@ -165,87 +148,61 @@ const filteredTxns = transactions.filter((txn) => {
                     <th className="pb-3 text-right">Actions</th>
                   </tr>
                 </thead>
-               <tbody className="divide-y divide-white/5 text-gray-300">
-  {filteredTxns.length > 0 ? (
-    filteredTxns.map((t) => (
-      <tr key={t.id} className="hover:bg-white/5">
-        <td className="py-3 pr-2">
-          <div className="font-bold text-white">
-            {t.userName || t.userEmail || "Unknown User"}
+                <tbody className="divide-y divide-white/5 text-gray-300">
+                  {filteredTxns.length > 0 ? (
+                    filteredTxns.map((t) => (
+                      <tr key={t.id} className="hover:bg-white/5">
+                        <td className="py-3 pr-2">
+                          <div className="font-bold text-white">{t.userName}</div>
+                          <div className="text-[9px] text-gray-400 font-mono mt-0.5">{t.userEmail}</div>
+                          <div className="text-[8px] text-gray-500 font-mono mt-0.5">SaaS Plan: <strong className="text-indigo-400">{t.planName}</strong></div>
+                        </td>
+                        <td className="py-3 font-mono text-gray-400">{t.invoiceNumber}</td>
+                        <td className="py-3 font-mono font-bold text-white">
+                          ₹{t.totalPaid.toLocaleString()}
+                        </td>
+                        <td className="py-3">
+                          <span className={`px-2 py-0.5 rounded font-mono text-[9px] font-bold uppercase ${
+                            t.status === "SUCCESS" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25" :
+                            t.status === "REFUNDED" ? "bg-blue-500/10 text-blue-400 border border-blue-500/25" :
+                            "bg-rose-500/10 text-rose-400 border border-rose-500/25"
+                          }`}>
+                            {t.status}
+                          </span>
+                        </td>
+                        <td className="py-3 text-right space-x-1 whitespace-nowrap">
+                          <button
+                            onClick={() => setSelectedTxnForInvoice(t)}
+                            className="p-1.5 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white rounded transition-all cursor-pointer inline-flex items-center"
+                            title="Generate GST Invoice PDF"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                          </button>
+
+                          {t.status === "SUCCESS" && (
+                            <button
+                              onClick={() => handleIssueRefund(t)}
+                              className="p-1.5 bg-rose-600/10 hover:bg-rose-600 text-rose-400 hover:text-white rounded transition-all cursor-pointer inline-flex items-center border border-rose-500/20"
+                              title="Trigger Full Refund"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="text-center py-12 text-xs text-gray-500 italic">
+                        No transactions registered in database.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-
-          <div className="text-[9px] text-gray-400 font-mono mt-0.5">
-            {t.userEmail || "No email"}
-          </div>
-
-          <div className="text-[8px] text-gray-500 font-mono mt-0.5">
-            SaaS Plan:{" "}
-            <strong className="text-indigo-400">
-              {t.planName || "No Plan"}
-            </strong>
-          </div>
-        </td>
-
-        <td className="py-3 font-mono text-gray-400">
-          {t.invoiceNumber || "N/A"}
-        </td>
-
-        <td className="py-3 font-mono font-bold text-white">
-          ₹{Number(t.totalPaid ?? 0).toLocaleString()}
-        </td>
-
-        <td className="py-3">
-          <span
-            className={`px-2 py-0.5 rounded font-mono text-[9px] font-bold uppercase ${
-              t.status === "SUCCESS"
-                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25"
-                : t.status === "REFUNDED"
-                  ? "bg-blue-500/10 text-blue-400 border border-blue-500/25"
-                  : "bg-rose-500/10 text-rose-400 border border-rose-500/25"
-            }`}
-          >
-            {t.status || "UNKNOWN"}
-          </span>
-        </td>
-
-        <td className="py-3 text-right space-x-1 whitespace-nowrap">
-          <button
-            type="button"
-            onClick={() => setSelectedTxnForInvoice(t)}
-            className="p-1.5 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white rounded transition-all cursor-pointer inline-flex items-center"
-            title="Generate GST Invoice PDF"
-          >
-            <FileText className="w-3.5 h-3.5" />
-          </button>
-
-          {t.status === "SUCCESS" && (
-            <button
-              type="button"
-              onClick={() => handleIssueRefund(t)}
-              className="p-1.5 bg-rose-600/10 hover:bg-rose-600 text-rose-400 hover:text-white rounded transition-all cursor-pointer inline-flex items-center border border-rose-500/20"
-              title="Trigger Full Refund"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </td>
-      </tr>
-    ))
-  ) : (
-    <tr>
-      <td
-        colSpan={5}
-        className="text-center py-12 text-xs text-gray-500 italic"
-      >
-        No transactions registered in database.
-      </td>
-    </tr>
-  )}
-</tbody>
-</table>
-</div>
-</div>
-</div>
+        </div>
 
         {/* GST Invoice visualizer & Coupon desk */}
         <div className="space-y-6">
@@ -279,51 +236,32 @@ const filteredTxns = transactions.filter((txn) => {
 
                   <div className="space-y-1">
                     <p className="text-gray-500">BILLED TO:</p>
-                    <p className="font-bold text-neutral-900">
-  {selectedTxnForInvoice.userName ||
-  selectedTxnForInvoice.userEmail ||
-  "Unknown User"}
-</p>
+                    <p className="font-bold text-neutral-900">{selectedTxnForInvoice.userName}</p>
                     <p className="text-[8px] text-gray-400">{selectedTxnForInvoice.userEmail}</p>
                   </div>
 
                   <div className="space-y-1.5 pt-2 border-t border-gray-200">
-  <div className="flex justify-between text-gray-500 font-bold">
-    <span>PLAN DESCRIPTION</span>
-    <span>LINE CHARGES</span>
-  </div>
+                    <div className="flex justify-between text-gray-500 font-bold">
+                      <span>PLAN DESCRIPTION</span>
+                      <span>LINE CHARGES</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-neutral-900 border-b border-gray-100 pb-1.5">
+                      <span>{selectedTxnForInvoice.planName}</span>
+                      <span>₹{selectedTxnForInvoice.amount.toLocaleString()}</span>
+                    </div>
 
-  <div className="flex justify-between font-bold text-neutral-900 border-b border-gray-100 pb-1.5">
-    <span>{selectedTxnForInvoice.planName || "No Plan"}</span>
-    <span>
-      ₹{Number(selectedTxnForInvoice.amount ?? 0).toLocaleString()}
-    </span>
-  </div>
+                    <div className="space-y-1 text-right text-gray-500">
+                      <p>Line Subtotal: ₹{selectedTxnForInvoice.amount.toLocaleString()}</p>
+                      <p>Integrated GST (18%): ₹{selectedTxnForInvoice.gstAmount.toLocaleString()}</p>
+                      {selectedTxnForInvoice.discountAmount > 0 && (
+                        <p className="text-rose-600">Discounts/Coupons: -₹{selectedTxnForInvoice.discountAmount.toLocaleString()}</p>
+                      )}
+                      <p className="font-extrabold text-neutral-900 text-[10px] pt-1.5 border-t border-gray-200">
+                        Total Collected Paid: ₹{selectedTxnForInvoice.totalPaid.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
 
-  <div className="space-y-1 text-right text-gray-500">
-    <p>
-      Line Subtotal: ₹
-      {Number(selectedTxnForInvoice.amount ?? 0).toLocaleString()}
-    </p>
-
-    <p>
-      Integrated GST (18%): ₹
-      {Number(selectedTxnForInvoice.gstAmount ?? 0).toLocaleString()}
-    </p>
-
-    {Number(selectedTxnForInvoice.discountAmount ?? 0) > 0 && (
-      <p className="text-rose-600">
-        Discounts/Coupons: -₹
-        {Number(selectedTxnForInvoice.discountAmount ?? 0).toLocaleString()}
-      </p>
-    )}
-
-    <p className="font-extrabold text-neutral-900 text-[10px] pt-1.5 border-t border-gray-200">
-      Total Collected Paid: ₹
-      {Number(selectedTxnForInvoice.totalPaid ?? 0).toLocaleString()}
-    </p>
-  </div>
-</div>
                   <div className="text-center text-[7px] text-gray-400 pt-2 border-t border-gray-200">
                     This is an electronically generated valid tax certificate. No manual signatures required.
                   </div>

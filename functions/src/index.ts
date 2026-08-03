@@ -3,6 +3,8 @@ import { onDocumentUpdated } from "firebase-functions/v2/firestore";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import * as admin from "firebase-admin";
 
+export * from "./agreement";
+
 if (!admin.apps.length) {
   admin.initializeApp();
 }

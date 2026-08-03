@@ -95,6 +95,34 @@ export default function AgreementAndCheckoutModal({
 
   if (!isOpen) return null;
 
+  const safeParseJson = async (res: Response, defaultErr: string) => {
+    const text = await res.text();
+    const contentType = res.headers.get("content-type") || "";
+    const isJson = contentType.includes("application/json");
+
+    let json: any = null;
+    if (isJson || (text.trim().startsWith("{") || text.trim().startsWith("["))) {
+      try {
+        json = JSON.parse(text);
+      } catch (e) {
+        // Not valid JSON
+      }
+    }
+
+    if (!res.ok) {
+      if (json && (json.error || json.message)) {
+        throw new Error(json.error || json.message);
+      }
+      throw new Error(`${defaultErr} (${res.status}): ${text.slice(0, 150) || res.statusText}`);
+    }
+
+    if (!json) {
+      throw new Error(`${defaultErr}: Server returned non-JSON response (${res.status}).`);
+    }
+
+    return json;
+  };
+
   // Step 1 -> Generate Agreement
   const handleGenerateAgreement = async () => {
     setErrorMsg("");
@@ -114,7 +142,7 @@ export default function AgreementAndCheckoutModal({
         })
       });
 
-      const data = await res.json();
+      const data = await safeParseJson(res, "Failed to generate agreement");
       if (!data.success) throw new Error(data.error || "Failed to generate agreement.");
 
       setAgreement(data.agreement);
@@ -158,7 +186,7 @@ export default function AgreementAndCheckoutModal({
         })
       });
 
-      const data = await res.json();
+      const data = await safeParseJson(res, "Failed to sign agreement");
       if (!data.success) throw new Error(data.error || "Failed to sign agreement.");
 
       setAgreement(data.agreement);
@@ -173,7 +201,7 @@ export default function AgreementAndCheckoutModal({
         })
       });
 
-      const orderData = await orderRes.json();
+      const orderData = await safeParseJson(orderRes, "Failed to create payment order");
       if (!orderData.success) throw new Error(orderData.error || "Failed to create payment order.");
 
       setPaymentOrder(orderData.order);
@@ -203,12 +231,12 @@ export default function AgreementAndCheckoutModal({
         })
       });
 
-      const data = await res.json();
+      const data = await safeParseJson(res, "Payment verification failed");
       if (!data.success) throw new Error(data.error || "Payment verification failed.");
 
       // Fetch generated Tax Invoice
       const invRes = await fetch(`/api/invoices/${data.invoiceId}`);
-      const invData = await invRes.json();
+      const invData = await safeParseJson(invRes, "Failed to fetch invoice");
 
       if (invData.success) {
         setInvoice(invData.invoice);

@@ -104,6 +104,7 @@ app.use("/api/payments", subscriptionRoutes);
 app.use("/api/subscriptions", subscriptionRoutes);
 app.use("/api/data-access", subscriptionRoutes);
 app.use("/api/invoices", subscriptionRoutes);
+app.use("/api", subscriptionRoutes);
 
 // Track unique active users and errors
 app.use((req, res, next) => {
@@ -4441,6 +4442,10 @@ if (process.env.NODE_ENV !== "production") {
       }
     }
   }));
+  app.all("/api/*", (req, res) => {
+    res.status(404).json({ success: false, error: `API endpoint not found: ${req.method} ${req.path}` });
+  });
+
   app.get("*", (req, res) => {
     res.sendFile(path.join(distPath, "index.html"));
   });

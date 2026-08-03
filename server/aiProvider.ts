@@ -85,40 +85,66 @@ export class GeminiProvider implements AIProvider {
       ];
     }
 
-    const selectedModel = model || "gemini-3.6-flash";
-
-    // Call using correct @google/genai guidelines
-    const response = await this.client.models.generateContent({
-      model: selectedModel,
-      contents,
-      config
-    });
-
-    if (!response.text) {
-      throw new Error("Empty text response received from Gemini model");
+    const primaryModel = model || "gemini-3.6-flash";
+    const modelsToTry = [primaryModel];
+    if (!model || model === "gemini-3.6-flash") {
+      modelsToTry.push("gemini-2.5-flash", "gemini-1.5-flash");
     }
 
-    let resultText = response.text;
+    let lastError: any = null;
+    for (let i = 0; i < modelsToTry.length; i++) {
+      const modelCandidate = modelsToTry[i];
+      try {
+        const response = await this.client.models.generateContent({
+          model: modelCandidate,
+          contents,
+          config
+        });
 
-    // Handle grounding metadata if googleSearch was enabled
-    const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-    if (enableSearch && chunks && chunks.length > 0) {
-      let footer = "\n\n---\n*Live Web Results Powered by Google*\n\n**Sources:**\n";
-      const seenUris = new Set<string>();
-      chunks.forEach((chunk: any) => {
-        const title = chunk.web?.title || "Reference";
-        const uri = chunk.web?.uri;
-        if (uri && !seenUris.has(uri)) {
-          seenUris.add(uri);
-          footer += `- [${title}](${uri})\n`;
+        if (!response.text) {
+          throw new Error("Empty text response received from Gemini model");
         }
-      });
-      if (seenUris.size > 0) {
-        resultText += footer;
+
+        let resultText = response.text;
+
+        // Handle grounding metadata if googleSearch was enabled
+        const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+        if (enableSearch && chunks && chunks.length > 0) {
+          let footer = "\n\n---\n*Live Web Results Powered by Google*\n\n**Sources:**\n";
+          const seenUris = new Set<string>();
+          chunks.forEach((chunk: any) => {
+            const title = chunk.web?.title || "Reference";
+            const uri = chunk.web?.uri;
+            if (uri && !seenUris.has(uri)) {
+              seenUris.add(uri);
+              footer += `- [${title}](${uri})\n`;
+            }
+          });
+          if (seenUris.size > 0) {
+            resultText += footer;
+          }
+        }
+
+        return resultText;
+      } catch (err: any) {
+        lastError = err;
+        const errMsg = String(err?.message || err);
+        const isQuotaOrDemand =
+          errMsg.includes("429") ||
+          errMsg.includes("RESOURCE_EXHAUSTED") ||
+          errMsg.includes("503") ||
+          errMsg.includes("high demand") ||
+          errMsg.includes("UNAVAILABLE");
+
+        if (isQuotaOrDemand && i < modelsToTry.length - 1) {
+          console.warn(`[GeminiProvider] ${modelCandidate} hit quota/demand limits (${errMsg.slice(0, 100)}). Trying fallback model ${modelsToTry[i + 1]}...`);
+          continue;
+        }
+        throw err;
       }
     }
 
-    return resultText;
+    throw lastError || new Error("All Gemini model candidates failed.");
   }
 }
 

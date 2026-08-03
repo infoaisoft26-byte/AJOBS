@@ -50,6 +50,34 @@ export default function AgreementsView({
   const [successMsg, setSuccessMsg] = useState("");
 
   // Load user agreements from Firestore / API
+  const parseJsonResponse = async (res: Response, defaultError: string) => {
+    const text = await res.text();
+    const contentType = res.headers.get("content-type") || "";
+    const isJson = contentType.includes("application/json");
+
+    let json: any = null;
+    if (isJson || (text.trim().startsWith("{") || text.trim().startsWith("["))) {
+      try {
+        json = JSON.parse(text);
+      } catch (e) {
+        // Not valid JSON
+      }
+    }
+
+    if (!res.ok) {
+      if (json && (json.error || json.message)) {
+        throw new Error(json.error || json.message);
+      }
+      throw new Error(`${defaultError} (${res.status}): ${text.slice(0, 150) || res.statusText}`);
+    }
+
+    if (!json) {
+      throw new Error(`${defaultError}: Server returned non-JSON response (${res.status}).`);
+    }
+
+    return json;
+  };
+
   const fetchAgreements = async () => {
     setLoading(true);
     setErrorMsg("");
@@ -78,14 +106,17 @@ export default function AgreementsView({
             authorizedPerson: userName
           })
         });
-        const data = await res.json();
+        const data = await parseJsonResponse(res, "Failed to generate agreement");
         if (data.success && data.agreement) {
           setAgreements([data.agreement]);
           setActiveAgreement(data.agreement);
+        } else {
+          setErrorMsg(data.error || "Failed to generate agreement.");
         }
       }
     } catch (err: any) {
-      console.warn("Failed to fetch agreements:", err);
+      console.warn("Failed to fetch/generate agreements:", err);
+      setErrorMsg(err.message || "Failed to load agreement.");
     } finally {
       setLoading(false);
     }
@@ -122,16 +153,18 @@ export default function AgreementsView({
       const res = await fetch("/api/agreements/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, phone: "" })
+        body: JSON.stringify({ userId, agreementId: activeAgreement?.agreementId, phone: "" })
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res, "Failed to send OTP");
       if (data.success) {
         setOtpSent(true);
         setSuccessMsg(data.message || "OTP code sent successfully.");
+      } else {
+        setErrorMsg(data.error || "Could not dispatch OTP.");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.warn("OTP dispatch notice:", err);
-      setOtpSent(true);
+      setErrorMsg(err.message || "OTP dispatch error.");
     }
   };
 
@@ -151,8 +184,10 @@ export default function AgreementsView({
       let ipAddress = "127.0.0.1";
       try {
         const ipRes = await fetch("https://api.ipify.org?format=json");
-        const ipData = await ipRes.json();
-        if (ipData?.ip) ipAddress = ipData.ip;
+        if (ipRes.ok) {
+          const ipData = await ipRes.json();
+          if (ipData?.ip) ipAddress = ipData.ip;
+        }
       } catch (e) {
         // Fallback IP
       }
@@ -170,7 +205,7 @@ export default function AgreementsView({
         })
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res, "Digital signature failed");
       if (!data.success) {
         throw new Error(data.error || "Digital signature failed.");
       }

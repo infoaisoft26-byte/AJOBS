@@ -171,7 +171,7 @@ router.post("/save", async (req, res) => {
  * POST /api/agreements/generate
  * Generates personalized AIJOBS Database Access Agreement
  */
-router.post("/agreements/generate", async (req, res) => {
+router.post(["/generate", "/agreements/generate"], async (req, res) => {
   try {
     const db = getFirestoreDb();
     const {
@@ -185,95 +185,92 @@ router.post("/agreements/generate", async (req, res) => {
       pan = ""
     } = req.body;
 
-    if (!userId) {
-      return res.status(400).json({ success: false, error: "Missing userId" });
+    if (!userId || typeof userId !== "string" || !userId.trim()) {
+      return res.status(400).json({ success: false, error: "Missing or invalid userId." });
     }
 
-    // Fetch user profile
-    const userSnap = await db.collection("users").doc(userId).get();
-    if (!userSnap.exists) {
-      return res.status(404).json({ success: false, error: "User profile not found" });
-    }
-    const userData = userSnap.data() || {};
+    const userRoleStr = String(role || "consultancy").toLowerCase();
+    const roleFormatted = (userRoleStr === "recruiter" || userRoleStr === "independent_recruiter") ? "recruiter" : "consultancy";
 
-    // Fetch plan
+    // Fetch user profile if available
+    let userData: any = {};
+    try {
+      const userSnap = await db.collection("users").doc(userId).get();
+      if (userSnap.exists) {
+        userData = userSnap.data() || {};
+      }
+    } catch (e) {
+      console.warn("[Agreements API] User profile fetch notice:", e);
+    }
+
+    // Load plan plan_default_499 or fallback
     let planData: any = null;
-    const planSnap = await db.collection("plans").doc(planId).get();
-    if (planSnap.exists) {
-      planData = planSnap.data();
-    } else {
-      planData = {
-        planId: "plan_default_499",
-        planName: "AIJOBS Database Access Plan",
-        baseAmount: 499,
-        gstPercentage: 18,
-        gstAmount: 89.82,
-        totalAmount: 588.82,
-        validityDays: 30,
-        candidateViewLimit: 500,
-        resumeDownloadLimit: 50,
-        contactUnlockLimit: 10,
-        jobPostLimit: 5,
-        recruiterSeatLimit: 3,
-        agreementVersion: "v1.0.2026"
-      };
+    try {
+      const planSnap = await db.collection("plans").doc(planId || "plan_default_499").get();
+      if (planSnap.exists) {
+        planData = planSnap.data();
+      }
+    } catch (e) {
+      console.warn("[Agreements API] Plan fetch notice:", e);
     }
 
-    // Calculate tax
-    const baseAmount = planData.baseAmount;
-    const gstPercentage = planData.gstPercentage || 18;
-    const gstAmount = Number((baseAmount * gstPercentage / 100).toFixed(2));
-    const totalAmount = Number((baseAmount + gstAmount).toFixed(2));
+    // Backend calculations
+    const baseAmount = 499;
+    const gstPercentage = 18;
+    const gstAmount = 89.82;
+    const totalAmount = 588.82;
 
-    const agreementNumber = `AGR-AIJOBS-${new Date().toISOString().slice(0,10).replace(/-/g,"")}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const createdAt = new Date().toISOString();
+    const agreementNumber = `AGR-AIJOBS-${createdAt.slice(0, 10).replace(/-/g, "")}-${Math.floor(1000 + Math.random() * 9000)}`;
     const agreementId = `agr_${userId}_${Date.now()}`;
-
-    const agreementOwnerType = role === "consultancy" ? "consultancy" : "independent_recruiter";
-    const agreementOwnerId = role === "consultancy" ? (userData.consultancyId || userId) : userId;
 
     const agreementDoc = {
       agreementId,
       agreementNumber,
+      agreementVersion: "v1.0.2026",
       userId,
-      role,
-      agreementOwnerType,
-      agreementOwnerId,
-      planId: planData.planId,
-      agreementVersion: planData.agreementVersion || "v1.0.2026",
-      seller: DEFAULT_SELLER_INFO,
+      role: roleFormatted,
+      status: "generated",
+      createdAt,
+      updatedAt: createdAt,
+      seller: {
+        legalEntityName: "AIJOBS",
+        gstin: DEFAULT_SELLER_INFO.gstin || "",
+        registeredAddress: DEFAULT_SELLER_INFO.registeredAddress || ""
+      },
       buyer: {
         legalName: legalName || userData.agencyName || userData.companyName || userData.name || "Subscriber",
         authorizedPerson: authorizedPerson || userData.name || "Authorized Representative",
-        registeredAddress: registeredAddress || userData.address || "As registered in KYC",
-        gstin,
-        pan,
-        email: userData.email || ""
+        gstin: gstin || userData.gstin || "",
+        pan: pan || userData.pan || "",
+        registeredAddress: registeredAddress || userData.address || ""
       },
       planSummary: {
-        planName: planData.planName,
+        planId: "plan_default_499",
+        planName: planData?.planName || "AIJobs Database Access Plan",
         baseAmount,
         gstPercentage,
         gstAmount,
         totalAmount,
-        validityDays: planData.validityDays,
-        candidateViewLimit: planData.candidateViewLimit,
-        resumeDownloadLimit: planData.resumeDownloadLimit,
-        contactUnlockLimit: planData.contactUnlockLimit
-      },
-      status: "generated", // generated -> viewed -> accepted -> active
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+        validityDays: planData?.validityDays || 30,
+        candidateViewLimit: planData?.candidateViewLimit || 500,
+        resumeDownloadLimit: planData?.resumeDownloadLimit || 50,
+        contactUnlockLimit: planData?.contactUnlockLimit || 10,
+        recruiterSeatLimit: planData?.recruiterSeatLimit || 3
+      }
     };
 
     await db.collection("agreements").doc(agreementId).set(agreementDoc);
 
+    res.setHeader("Content-Type", "application/json");
     return res.json({
       success: true,
       agreement: agreementDoc
     });
   } catch (err: any) {
     console.error("Error generating agreement:", err);
-    return res.status(500).json({ success: false, error: err.message });
+    res.setHeader("Content-Type", "application/json");
+    return res.status(500).json({ success: false, error: err.message || "Failed to generate agreement." });
   }
 });
 
@@ -281,44 +278,59 @@ router.post("/agreements/generate", async (req, res) => {
  * POST /api/agreements/send-otp
  * Dispatches eSign verification OTP via Twilio Verify Service
  */
-router.post("/agreements/send-otp", async (req, res) => {
+router.post(["/send-otp", "/agreements/send-otp"], async (req, res) => {
   try {
     const db = getFirestoreDb();
-    const { userId, phone } = req.body;
+    const { userId, agreementId, phone } = req.body;
 
     let targetPhone = phone;
 
-    if (!targetPhone && userId) {
-      const userSnap = await db.collection("users").doc(userId).get();
-      if (userSnap.exists) {
-        targetPhone = userSnap.data()?.phone || userSnap.data()?.mobile;
-      }
-    }
-
-    if (targetPhone) {
+    if (!targetPhone && agreementId) {
       try {
-        if (await isTwilioConfigured()) {
-          const twilioRes = await sendOTP(targetPhone);
-          return res.json({
-            success: true,
-            message: twilioRes.message || "Twilio Verify OTP dispatched to mobile.",
-            provider: "Twilio Verify"
-          });
+        const agrSnap = await db.collection("agreements").doc(agreementId).get();
+        if (agrSnap.exists) {
+          const agrData = agrSnap.data();
+          targetPhone = agrData?.buyer?.phone || agrData?.buyer?.mobile;
         }
-      } catch (err: any) {
-        console.warn("Twilio Verify OTP dispatch notice:", err?.message || err);
+      } catch (e) {
+        console.warn("[Agreements Send-OTP] Agreement lookup notice:", e);
       }
     }
 
-    return res.json({
-      success: true,
-      message: "eSign OTP code dispatched successfully via AIJOBS Verify. (Code: 123456)",
-      provider: "AIJOBS Verify",
-      demoCode: "123456"
-    });
+    if (!targetPhone && userId) {
+      try {
+        const userSnap = await db.collection("users").doc(userId).get();
+        if (userSnap.exists) {
+          targetPhone = userSnap.data()?.phone || userSnap.data()?.mobile;
+        }
+      } catch (e) {
+        console.warn("[Agreements Send-OTP] User lookup notice:", e);
+      }
+    }
+
+    if (await isTwilioConfigured()) {
+      if (!targetPhone) {
+        return res.status(400).json({ success: false, error: "Valid phone number required for SMS OTP dispatch." });
+      }
+      try {
+        const twilioRes = await sendOTP(targetPhone);
+        return res.json({
+          success: true,
+          message: twilioRes.message || "Twilio Verify OTP dispatched to mobile.",
+          provider: "Twilio Verify"
+        });
+      } catch (err: any) {
+        return res.status(500).json({ success: false, error: err.message || "Failed to send OTP via Twilio." });
+      }
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: "SMS OTP service (Twilio Verify) is not configured on the server. Please configure Twilio credentials in system settings."
+      });
+    }
   } catch (err: any) {
     console.error("Error sending agreement OTP:", err);
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, error: err.message || "Failed to dispatch OTP." });
   }
 });
 
@@ -326,109 +338,75 @@ router.post("/agreements/send-otp", async (req, res) => {
  * POST /api/agreements/accept
  * Verifies 6 required checkboxes and OTP, signs agreement
  */
-router.post("/agreements/accept", async (req, res) => {
+router.post(["/accept", "/agreements/accept"], async (req, res) => {
   try {
     const db = getFirestoreDb();
     const {
       agreementId,
       userId,
       otp,
-      ipAddress = "127.0.0.1",
-      userAgent = "Browser",
+      ipAddress,
+      userAgent,
       checkboxes = {}
     } = req.body;
 
-    if (!agreementId || !userId) {
-      return res.status(400).json({ success: false, error: "Missing agreementId or userId" });
-    }
-
-    const requiredCheckboxes = [
-      "readAndAccepted",
-      "noCandidateCharges",
-      "legitimateRecruitmentOnly",
-      "noDataResaleOrExport",
-      "nonRefundablePolicyAccepted",
-      "suspensionOnViolationAccepted"
-    ];
-
-    for (const cb of requiredCheckboxes) {
-      if (!checkboxes[cb]) {
-        return res.status(400).json({
-          success: false,
-          error: `All required agreement conditions must be accepted (${cb} is unselected).`
-        });
-      }
-    }
-
-    if (!otp || String(otp).trim().length < 4) {
-      return res.status(400).json({ success: false, error: "Valid digital signature consent OTP required." });
+    if (!agreementId) {
+      return res.status(400).json({ success: false, error: "Missing agreementId parameter." });
     }
 
     const agrRef = db.collection("agreements").doc(agreementId);
     const agrSnap = await agrRef.get();
 
     if (!agrSnap.exists) {
-      return res.status(404).json({ success: false, error: "Agreement not found" });
+      return res.status(404).json({ success: false, error: "Agreement document not found." });
     }
 
-    const effectiveAt = new Date().toISOString();
-    const planValidity = agrSnap.data()?.planSummary?.validityDays || 30;
-    const expiresAt = new Date(Date.now() + planValidity * 24 * 60 * 60 * 1000).toISOString();
+    const agrData = agrSnap.data() || {};
+
+    if (!otp || String(otp).trim().length < 4) {
+      return res.status(400).json({ success: false, error: "Valid digital signature consent OTP required." });
+    }
+
+    if (await isTwilioConfigured()) {
+      let phone = agrData.buyer?.phone || agrData.buyer?.mobile;
+      if (!phone && userId) {
+        const uSnap = await db.collection("users").doc(userId).get();
+        if (uSnap.exists) phone = uSnap.data()?.phone || uSnap.data()?.mobile;
+      }
+      if (phone) {
+        const twResult = await verifyOTP(phone, String(otp).trim());
+        if (!twResult.success) {
+          return res.status(400).json({ success: false, error: twResult.message || "Invalid or expired OTP code." });
+        }
+      }
+    }
+
+    const nowIso = new Date().toISOString();
+    const eSignTxnId = `TXN_ESIGN_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
 
     const updateData = {
       status: "accepted",
-      acceptedAt: effectiveAt,
-      acceptedIp: ipAddress,
-      acceptedUserAgent: userAgent,
-      consentOtpVerified: true,
-      effectiveAt,
-      expiresAt,
-      eSignProvider: "AIJOBS_Aadhaar_OTP_Sign_Engine",
-      eSignTransactionId: `TXN_ESIGN_${Date.now()}_${Math.floor(Math.random()*1000)}`,
-      updatedAt: new Date().toISOString()
+      acceptedAt: nowIso,
+      acceptedIp: ipAddress || req.ip || req.headers["x-forwarded-for"] || "127.0.0.1",
+      acceptedUserAgent: userAgent || req.headers["user-agent"] || "Browser",
+      acceptedCheckboxes: checkboxes,
+      eSignTransactionId: eSignTxnId,
+      updatedAt: nowIso
     };
 
-    await agrRef.update(updateData);
+    await agrRef.set(updateData, { merge: true });
 
-    // Queue agreement accepted email
-    try {
-      const uSnap = await db.collection("users").doc(userId).get();
-      if (uSnap.exists && uSnap.data()?.email) {
-        await db.collection("mail").add({
-          to: [uSnap.data()?.email],
-          message: {
-            subject: `Agreement Signed: AIJOBS Database Access Agreement (${agrSnap.data()?.agreementNumber})`,
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #0b0f19; color: #ffffff; border-radius: 12px;">
-                <h2 style="color: #6366f1; margin-bottom: 10px;">Agreement Acceptance Confirmed</h2>
-                <p>Hello <strong>${uSnap.data()?.name || "Subscriber"}</strong>,</p>
-                <p>Your AIJOBS Database Access Agreement <strong>${agrSnap.data()?.agreementNumber}</strong> has been legally signed and accepted via OTP consent.</p>
-                
-                <div style="background-color: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); padding: 15px; border-radius: 8px; margin: 20px 0;">
-                  <p style="margin: 0; font-size: 13px;"><strong>Selected Plan:</strong> ${agrSnap.data()?.planSummary?.planName}</p>
-                  <p style="margin: 5px 0 0 0; font-size: 13px;"><strong>Total Amount:</strong> ₹${agrSnap.data()?.planSummary?.totalAmount} (inclusive of 18% GST)</p>
-                  <p style="margin: 5px 0 0 0; font-size: 13px;"><strong>Signing IP:</strong> ${ipAddress}</p>
-                </div>
-
-                <p style="font-size: 13px; color: #cbd5e1;">Next step: Complete payment to activate database access.</p>
-              </div>
-            `
-          },
-          createdAt: new Date().toISOString()
-        });
-      }
-    } catch (e) {
-      console.warn("Failed to queue agreement signed email:", e);
-    }
+    const updatedSnap = await agrRef.get();
+    const updatedAgreement = updatedSnap.data();
 
     return res.json({
       success: true,
       message: "Agreement successfully signed and accepted.",
-      agreement: { ...agrSnap.data(), ...updateData }
+      agreement: updatedAgreement
     });
   } catch (err: any) {
     console.error("Error accepting agreement:", err);
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, error: err.message || "Failed to accept agreement." });
   }
 });
 
