@@ -90,9 +90,8 @@ export class GeminiProvider implements AIProvider {
       primaryModel,
       "gemini-2.5-flash",
       "gemini-2.0-flash",
-      "gemini-1.5-flash",
-      "gemini-2.5-flash-lite",
-      "gemini-flash-latest"
+      "gemini-flash-latest",
+      "gemini-2.5-flash-lite"
     ];
     const modelsToTry = Array.from(new Set(candidateList.filter(Boolean)));
 
@@ -134,7 +133,13 @@ export class GeminiProvider implements AIProvider {
       } catch (err: any) {
         lastError = err;
         const errMsg = String(err?.message || err);
+        const isNotFound =
+          errMsg.includes("404") ||
+          errMsg.includes("NOT_FOUND") ||
+          errMsg.includes("not found") ||
+          errMsg.includes("no longer available");
         const isQuotaOrDemand =
+          isNotFound ||
           errMsg.includes("429") ||
           errMsg.includes("RESOURCE_EXHAUSTED") ||
           errMsg.includes("503") ||
@@ -142,7 +147,7 @@ export class GeminiProvider implements AIProvider {
           errMsg.includes("UNAVAILABLE");
 
         if (isQuotaOrDemand && i < modelsToTry.length - 1) {
-          console.warn(`[GeminiProvider] Model ${modelCandidate} hit quota/demand limit. Swapping to fallback candidate ${modelsToTry[i + 1]}...`);
+          console.warn(`[GeminiProvider] Model ${modelCandidate} failed (${errMsg.slice(0, 100)}). Swapping to fallback candidate ${modelsToTry[i + 1]}...`);
           continue;
         }
         throw err;

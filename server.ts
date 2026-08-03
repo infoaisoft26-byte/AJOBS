@@ -26,6 +26,7 @@ import {
 import { parsePaymentThreat, logChatSessionAndMessage } from "./server/chatService";
 import { sendGoogleIndexingNotification } from "./server/googleIndexingService";
 import emailRoutes from "./server/emailRoutes";
+import { dispatchEmail, sendCandidateWelcomeEmail } from "./server/emailService";
 import kycRoutes from "./server/kycRoutes";
 import leadRoutes from "./server/leadRoutes";
 import applicationRoutes from "./server/applicationRoutes";
@@ -3131,6 +3132,10 @@ app.post("/api/auth/smart-onboard", async (req, res) => {
             archived: false,
             createdAt: isoDate
           }, { merge: true }).catch(() => {});
+
+          // Automatically send Welcome Email after Candidate Registration
+          sendCandidateWelcomeEmail(email, finalName, uid)
+            .catch((e) => console.warn("[SmartOnboard] Welcome email dispatch notice:", e.message));
         } else {
           await userRef.update({
             lastLogin: isoDate,
@@ -3230,6 +3235,27 @@ app.post("/api/auth/smart-onboard", async (req, res) => {
   }
 });
 
+async function callGeminiWithModelFallback(aiClient: any, payload: { contents: any; config?: any }) {
+  const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest", "gemini-2.5-flash-lite"];
+  let lastErr: any = null;
+  for (const modelCandidate of modelsToTry) {
+    try {
+      const res = await aiClient.models.generateContent({
+        model: modelCandidate,
+        contents: payload.contents,
+        config: payload.config
+      });
+      if (res && res.text) {
+        return res;
+      }
+    } catch (err: any) {
+      lastErr = err;
+      console.warn(`[Gemini Parser] Model ${modelCandidate} failed (${String(err?.message || err).slice(0, 80)}). Trying next candidate...`);
+    }
+  }
+  throw lastErr || new Error("All Gemini model candidates failed for structured parsing.");
+}
+
 // 8c. Real AI Resume Auto-Parsing API
 app.post("/api/resume/parse", async (req, res) => {
   const { userId, resumeUrl, fileName, fileBase64, fileType } = req.body;
@@ -3258,8 +3284,7 @@ app.post("/api/resume/parse", async (req, res) => {
       }
 
       console.log("[Parser] Dispatched native PDF bytes to Gemini...");
-      const geminiRes = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
+      const geminiRes = await callGeminiWithModelFallback(ai, {
         contents: [
           {
             inlineData: {
@@ -3310,8 +3335,7 @@ app.post("/api/resume/parse", async (req, res) => {
       console.log("[Parser] Word text extracted successfully. Length:", textResult.length);
 
       console.log("[Parser] Dispatching extracted Word text to Gemini...");
-      const geminiRes = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
+      const geminiRes = await callGeminiWithModelFallback(ai, {
         contents: [
           `You are an expert resume parser. Extract information from the following resume text and format it EXACTLY as the requested JSON schema. All fields should be string values, skills should be a list of strings.\n\nResume Text:\n${textResult}`
         ],
@@ -3346,8 +3370,7 @@ app.post("/api/resume/parse", async (req, res) => {
       }
 
       console.log("[Parser] Dispatching plain text to Gemini...");
-      const geminiRes = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
+      const geminiRes = await callGeminiWithModelFallback(ai, {
         contents: [
           `You are an expert resume parser. Extract information from the following resume text and format it EXACTLY as the requested JSON schema. Extract Name, Email, Phone, Skills, Experience, Education, Designation, Current Company, Location (city/state), Languages, and Certificates.\n\nResume Text:\n${fileText}`
         ],

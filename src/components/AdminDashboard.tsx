@@ -51,7 +51,7 @@ import MobileBackendHub from "./MobileBackendHub";
 import EnterpriseSecurityCenter from "./EnterpriseSecurityCenter";
 import ObservabilityHub from "./ObservabilityHub";
 import PlatformCertificationSuite from "./PlatformCertificationSuite";
-import AdminEmailCenter from "./AdminEmailCenter";
+import AdminEmailCenter from "./admin/AdminEmailCenter";
 
 export default function AdminDashboard({ userId, userName }: { userId?: string; userName?: string }) {
   const currentUserId = userId || auth.currentUser?.uid || "system_admin_01";

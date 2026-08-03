@@ -453,6 +453,18 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
           console.warn("Failed to trigger registration SMS notification:", smsErr);
         }
 
+        if (role === "candidate" && fbUser?.email) {
+          fetch("/api/email/welcome-candidate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: fbUser.email,
+              candidateName: displayName,
+              candidateId: fbUser.uid
+            })
+          }).catch((eErr) => console.warn("[AuthModal] Candidate welcome email trigger notice:", eErr));
+        }
+
         setSuccess("Account registered successfully!");
         onAuthSuccess(userProfile);
         onClose();
@@ -673,6 +685,19 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
           });
         } catch (leadErr) {
           console.warn("[AuthModal] Lead attribution capture warning:", leadErr);
+        }
+
+        // Trigger Candidate Welcome Email if Candidate
+        if (role === "candidate" && email.trim()) {
+          fetch("/api/email/welcome-candidate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: email.trim(),
+              candidateName: displayName,
+              candidateId: fbUser.uid
+            })
+          }).catch((eErr) => console.warn("[AuthModal] Candidate welcome email trigger notice:", eErr));
         }
 
         console.log("Registration successfully finalized. User Profile:", userProfile);

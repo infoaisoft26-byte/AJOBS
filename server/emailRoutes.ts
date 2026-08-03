@@ -3,6 +3,8 @@ import { getFirestoreDb } from "./firestoreHelper";
 import { EMAIL_TEMPLATES, EmailTemplateData } from "./emailTemplates";
 import {
   dispatchEmail,
+  sendCandidateWelcomeEmail,
+  getEmailLogs,
   getOrCreateUserEmailPreferences,
   triggerJobAlertCampaign,
   runWeeklyJobDigest,
@@ -27,6 +29,30 @@ router.get("/templates", (req, res) => {
   ];
 
   return res.json({ success: true, templates: templatesList });
+});
+
+// 1b. Get Email Delivery Logs from Firestore (email_logs)
+router.get("/logs", async (req, res) => {
+  try {
+    const memoryLogs = getEmailLogs();
+    const db = getFirestoreDb();
+    let fsLogs: any[] = [];
+    if (db && db.collection) {
+      try {
+        const snap = await db.collection("email_logs").limit(50).get();
+        snap.forEach((doc) => fsLogs.push({ id: doc.id, ...doc.data() }));
+      } catch (dbErr: any) {
+        console.warn("[EmailRoutes] Firestore email_logs query notice:", dbErr.message);
+      }
+    }
+    const logMap = new Map();
+    memoryLogs.forEach(l => logMap.set(l.emailId || l.id, l));
+    fsLogs.forEach(l => logMap.set(l.emailId || l.id, l));
+    const logs = Array.from(logMap.values());
+    return res.json({ success: true, count: logs.length, logs });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // 2. Preview Rendered Email Template
@@ -382,6 +408,222 @@ router.post("/notify-application-status", async (req, res) => {
     return res.json({ success: true, templateName, dispatchRes });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 14. Send Custom Email (Admin Email Center)
+router.post("/send-custom", async (req, res) => {
+  const { targetAudience, customEmails, subject, customMessage, templateName, templateData } = req.body;
+  const db = getFirestoreDb();
+
+  if (!subject && !templateName) {
+    return res.status(400).json({ success: false, error: "Subject line or template selection is required." });
+  }
+
+  let recipients: Array<{ email: string; name?: string; role?: string; uid?: string }> = [];
+
+  try {
+    if (targetAudience === "custom" || (Array.isArray(customEmails) && customEmails.length > 0)) {
+      const emailList = Array.isArray(customEmails) 
+        ? customEmails 
+        : (typeof customEmails === "string" ? customEmails.split(",").map(e => e.trim()).filter(Boolean) : []);
+      recipients = emailList.map(email => ({ email, name: email.split("@")[0], role: "custom" }));
+    } else if (db && db.collection) {
+      let queryRef: any = db.collection("users");
+      if (targetAudience === "candidates") {
+        queryRef = queryRef.where("role", "in", ["candidate", "user"]);
+      } else if (targetAudience === "recruiters") {
+        queryRef = queryRef.where("role", "in", ["employer", "recruiter"]);
+      } else if (targetAudience === "consultancies") {
+        queryRef = queryRef.where("role", "==", "consultancy");
+      } else if (targetAudience === "employers") {
+        queryRef = queryRef.where("role", "==", "employer");
+      }
+
+      const snap = await queryRef.limit(200).get();
+      snap.forEach((doc: any) => {
+        const d = doc.data();
+        if (d.email) {
+          recipients.push({ email: d.email, name: d.name || d.displayName || d.email.split("@")[0], role: d.role || targetAudience, uid: doc.id });
+        }
+      });
+    }
+
+    if (recipients.length === 0) {
+      return res.status(400).json({ success: false, error: "No valid recipient email addresses found for target audience." });
+    }
+
+    let sent = 0;
+    let failed = 0;
+    const errors: string[] = [];
+
+    const activeTemplate = templateName || "custom-admin-email";
+
+    for (const rec of recipients) {
+      try {
+        const dispatchRes = await dispatchEmail({
+          to: rec.email,
+          templateName: activeTemplate,
+          data: {
+            recipientName: rec.name,
+            candidateName: rec.name,
+            userRole: rec.role,
+            customSubject: subject,
+            customMessage: customMessage,
+            ...templateData
+          },
+          category: "marketing",
+          userId: rec.uid
+        });
+
+        if (dispatchRes.success) {
+          sent++;
+        } else {
+          failed++;
+          if (dispatchRes.error) errors.push(`${rec.email}: ${dispatchRes.error}`);
+        }
+      } catch (err: any) {
+        failed++;
+        errors.push(`${rec.email}: ${err.message}`);
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: `Broadcast completed: ${sent} sent, ${failed} failed across ${recipients.length} target recipient(s).`,
+      sentCount: sent,
+      failedCount: failed,
+      errors
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 15. Auto Welcome Candidate Email
+router.post("/welcome-candidate", async (req, res) => {
+  const { email, candidateName, candidateId } = req.body;
+  if (!email) {
+    return res.status(400).json({ success: false, error: "Candidate email is required." });
+  }
+
+  try {
+    const result = await sendCandidateWelcomeEmail(email, candidateName || "Candidate", candidateId);
+    return res.json({
+      success: result.success,
+      message: result.success ? `Welcome email sent successfully to ${email}` : `Welcome email failed to send to ${email}`,
+      result
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 16. Auto Registration Approval Email
+router.post("/registration-approval", async (req, res) => {
+  const { email, userName, userRole, userId } = req.body;
+  if (!email) {
+    return res.status(400).json({ success: false, error: "Recipient email is required." });
+  }
+
+  try {
+    const result = await dispatchEmail({
+      to: email,
+      templateName: "registration-approval",
+      data: {
+        recipientName: userName || "Valued User",
+        candidateName: userName || "Valued User",
+        userRole: userRole || "Account",
+        email
+      },
+      category: "transactional",
+      userId: userId
+    });
+
+    return res.json({ success: true, message: `Registration approval email dispatched to ${email}`, result });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 17. Auto Interview Email
+router.post("/interview-email", async (req, res) => {
+  const { candidateEmail, candidateName, jobTitle, companyName, interviewDate, interviewTime, interviewLink, candidateId } = req.body;
+  if (!candidateEmail) {
+    return res.status(400).json({ success: false, error: "candidateEmail is required." });
+  }
+
+  try {
+    const result = await dispatchEmail({
+      to: candidateEmail,
+      templateName: "interview-scheduled",
+      data: {
+        candidateName: candidateName || "Candidate",
+        jobTitle: jobTitle || "Software Position",
+        companyName: companyName || "Hiring Partner",
+        interviewDate: interviewDate || "As scheduled",
+        interviewTime: interviewTime || "10:00 AM IST",
+        interviewLink: interviewLink || "https://aijobs.in/interviews",
+        email: candidateEmail
+      },
+      category: "transactional",
+      userId: candidateId
+    });
+
+    return res.json({ success: true, message: `Interview invitation email dispatched to ${candidateEmail}`, result });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 18. Auto Offer Letter Email
+router.post("/offer-letter", async (req, res) => {
+  const { candidateEmail, candidateName, jobTitle, companyName, offerDetails, candidateId } = req.body;
+  if (!candidateEmail) {
+    return res.status(400).json({ success: false, error: "candidateEmail is required." });
+  }
+
+  try {
+    const result = await dispatchEmail({
+      to: candidateEmail,
+      templateName: "offer-released",
+      data: {
+        candidateName: candidateName || "Candidate",
+        jobTitle: jobTitle || "Software Position",
+        companyName: companyName || "Hiring Partner",
+        offerDetails: offerDetails || "Official Offer Letter Issued",
+        email: candidateEmail
+      },
+      category: "transactional",
+      userId: candidateId
+    });
+
+    return res.json({ success: true, message: `Offer letter email dispatched to ${candidateEmail}`, result });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 19. Email Logs (Firestore message_logs)
+router.get("/logs", async (req, res) => {
+  const db = getFirestoreDb();
+  if (!db || !db.collection) {
+    return res.json({ success: true, logs: [] });
+  }
+
+  try {
+    const logsSnap = await db.collection("message_logs").orderBy("createdAt", "desc").limit(100).get().catch(() => null);
+    const logs: any[] = [];
+    if (logsSnap) {
+      logsSnap.forEach((doc) => {
+        logs.push({ id: doc.id, ...doc.data() });
+      });
+    }
+
+    return res.json({ success: true, logs });
+  } catch (err: any) {
+    console.warn("[EmailRoutes] Logs fetch warning:", err.message);
+    return res.json({ success: true, logs: [] });
   }
 });
 

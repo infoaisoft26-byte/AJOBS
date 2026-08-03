@@ -3,32 +3,45 @@ import crypto from "crypto";
 import { getFirestoreDb } from "./firestoreHelper";
 import { EMAIL_TEMPLATES, EmailTemplateData } from "./emailTemplates";
 
-const DEFAULT_SENDER = process.env.SMTP_FROM || "AIJobs <notifications@aijobs.in>";
-const REPLY_TO = "infoaisoft26@gmail.com";
+const getSenderAddress = () => {
+  const fromName = process.env.EMAIL_FROM_NAME || "AIJobs";
+  const fromAddress = process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER || "aijobs1401@gmail.com";
+  return `"${fromName}" <${fromAddress}>`;
+};
+
+const REPLY_TO = process.env.EMAIL_FROM_ADDRESS || "aijobs1401@gmail.com";
 const APP_URL = process.env.VITE_SITE_URL || process.env.APP_URL || "https://aijobs.in";
 
 let transporter: nodemailer.Transporter | null = null;
+const inMemoryEmailLogs: Map<string, any> = new Map();
+
+export function getEmailLogs() {
+  return Array.from(inMemoryEmailLogs.values());
+}
 
 function getTransporter(): nodemailer.Transporter | null {
   if (!transporter) {
-    const host = process.env.SMTP_HOST;
-    const user = process.env.SMTP_USER;
-    const pass = process.env.SMTP_PASS;
+    const host = process.env.SMTP_HOST || "smtp.gmail.com";
+    const user = process.env.SMTP_USER || process.env.EMAIL_FROM_ADDRESS || "aijobs1401@gmail.com";
+    const pass = process.env.SMTP_APP_PASSWORD || process.env.SMTP_PASS;
     const port = Number(process.env.SMTP_PORT || 587);
+    const secure = process.env.SMTP_SECURE === "true" || port === 465;
 
-    if (host && user && pass) {
+    if (user && pass) {
       try {
         transporter = nodemailer.createTransport({
           host,
           port,
-          secure: port === 465,
+          secure,
           auth: { user, pass },
           tls: { rejectUnauthorized: false }
         });
-        console.log(`[EmailService] Nodemailer SMTP initialized with host: ${host}`);
+        console.log(`[EmailService] Nodemailer SMTP initialized with host: ${host}, user: ${user}`);
       } catch (err) {
         console.error("[EmailService] Failed to initialize Nodemailer transporter:", err);
       }
+    } else {
+      console.warn("[EmailService] SMTP credentials missing (SMTP_USER/SMTP_APP_PASSWORD not set). Will fallback to Firestore mail queue.");
     }
   }
   return transporter;
@@ -112,7 +125,7 @@ export async function dispatchEmail(options: SendEmailOptions): Promise<{ succes
   if (smtpTransporter) {
     try {
       const mailHeader: any = {
-        from: DEFAULT_SENDER,
+        from: getSenderAddress(),
         to,
         replyTo: REPLY_TO,
         subject: rendered.subject,
@@ -182,6 +195,91 @@ export async function dispatchEmail(options: SendEmailOptions): Promise<{ succes
   }
 
   return { success: true, messageId };
+}
+
+/**
+ * Sends Candidate Welcome Email via Gmail Nodemailer SMTP and logs delivery status to Firestore email_logs/{emailId}
+ */
+export async function sendCandidateWelcomeEmail(
+  candidateEmail: string,
+  candidateName: string = "Candidate",
+  userId?: string
+): Promise<{ success: boolean; emailId: string; error?: string }> {
+  const recipient = (candidateEmail || "").trim();
+  const subject = "Welcome to AIJobs – Registration Successful";
+  const emailId = `wel_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const createdAt = new Date().toISOString();
+
+  if (!recipient) {
+    const error = "Missing candidate email address";
+    console.error(`[Welcome Email] Failed: empty recipient email`);
+    return { success: false, emailId, error };
+  }
+
+  // Requirement 11: Server log: [Welcome Email] Sending to:
+  console.log(`[Welcome Email] Sending to: ${recipient}`);
+
+  let sentStatus: "sent" | "failed" = "failed";
+  let errorMessage: string | null = null;
+
+  try {
+    const dispatchRes = await dispatchEmail({
+      to: recipient,
+      templateName: "candidate-registration",
+      data: {
+        candidateName: candidateName || "Candidate",
+        email: recipient,
+        customSubject: subject
+      },
+      category: "transactional",
+      userId: userId || "anonymous"
+    });
+
+    if (dispatchRes.success) {
+      sentStatus = "sent";
+      // Requirement 11: Server log: [Welcome Email] Sent successfully:
+      console.log(`[Welcome Email] Sent successfully: ${recipient}`);
+    } else {
+      sentStatus = "failed";
+      errorMessage = dispatchRes.error || "Failed to dispatch email via Nodemailer/SMTP";
+      // Requirement 11: Server log: [Welcome Email] Failed:
+      console.error(`[Welcome Email] Failed: ${recipient} - ${errorMessage}`);
+    }
+  } catch (err: any) {
+    sentStatus = "failed";
+    errorMessage = err?.message || String(err);
+    // Requirement 11: Server log: [Welcome Email] Failed:
+    console.error(`[Welcome Email] Failed: ${recipient} - ${errorMessage}`);
+  }
+
+  const logRecord = {
+    emailId,
+    userId: userId || "anonymous",
+    recipient,
+    subject,
+    template: "candidate_welcome",
+    status: sentStatus,
+    errorMessage: errorMessage || null,
+    createdAt
+  };
+
+  inMemoryEmailLogs.set(emailId, logRecord);
+
+  // Requirement 10: Save email delivery logs in Firestore: email_logs/{emailId}
+  const db = getFirestoreDb();
+  if (db && db.collection) {
+    try {
+      await db.collection("email_logs").doc(emailId).set(logRecord);
+    } catch (logErr: any) {
+      console.warn(`[Welcome Email] Notice: could not record email_logs doc: ${logErr.message}`);
+    }
+  }
+
+  return {
+    success: sentStatus === "sent",
+    emailId,
+    error: errorMessage || undefined
+  };
 }
 
 /**

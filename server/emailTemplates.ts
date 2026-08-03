@@ -1,6 +1,8 @@
 export interface EmailTemplateData {
   candidateName?: string;
+  recipientName?: string;
   email?: string;
+  userRole?: string;
   jobTitle?: string;
   companyName?: string;
   location?: string;
@@ -20,6 +22,7 @@ export interface EmailTemplateData {
     salary: string;
     url: string;
   }>;
+  customSubject?: string;
   customMessage?: string;
   appUrl?: string;
 }
@@ -157,7 +160,8 @@ export const EMAIL_TEMPLATES: Record<string, (data: EmailTemplateData) => { subj
         </div>
       </div>
     `;
-    return wrapBaseLayout('Welcome to AIJobs - Registration Confirmed', body, false, undefined, appUrl);
+    const subject = data.customSubject || 'Welcome to AIJobs – Registration Successful';
+    return wrapBaseLayout(subject, body, false, undefined, appUrl);
   },
 
   // 2. Resume Uploaded Successfully
@@ -535,5 +539,70 @@ export const EMAIL_TEMPLATES: Record<string, (data: EmailTemplateData) => { subj
       </div>
     `;
     return wrapBaseLayout('Weekly Job Recommendations - AIJobs', body, true, unsubToken, appUrl);
+  },
+
+  // 11. Registration Approval Confirmation
+  'registration-approval': (data) => {
+    const name = data.recipientName || data.candidateName || 'Valued Member';
+    const role = (data.userRole || 'account').toUpperCase();
+    const appUrl = data.appUrl || DEFAULT_APP_URL;
+    const body = `
+      <div style="text-align: left;">
+        <div style="display: inline-block; background-color: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 20px; padding: 4px 12px; font-size: 11px; font-weight: 700; color: #4ade80; text-transform: uppercase; margin-bottom: 12px;">
+          REGISTRATION APPROVED
+        </div>
+        <h2 style="color: #ffffff; font-size: 22px; font-weight: 800; margin-top: 0; margin-bottom: 12px;">
+          Your ${role} Registration is Approved! ✅
+        </h2>
+        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+          Dear ${name}, we are pleased to inform you that your registration and KYC verification on AIJobs has been officially approved by the AIJobs Admin Desk.
+        </p>
+
+        <div style="background-color: rgba(30, 41, 59, 0.8); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+          <h3 style="color: #4ade80; font-size: 14px; font-weight: 700; margin: 0 0 8px 0;">
+            Account Status: Active & Full Access Granted
+          </h3>
+          <p style="color: #cbd5e1; font-size: 13px; margin: 0;">
+            You can now sign into your dashboard to access full platform capabilities, candidate databases, job postings, and automated recruitment tools.
+          </p>
+        </div>
+
+        <div style="text-align: center; margin-top: 24px;">
+          <a href="${appUrl}" style="background-color: #16a34a; color: #ffffff; padding: 14px 28px; border-radius: 10px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 14px; box-shadow: 0 4px 14px rgba(22, 163, 74, 0.4);">
+            Access AIJobs Dashboard →
+          </a>
+        </div>
+      </div>
+    `;
+    return wrapBaseLayout(`Registration Approved - AIJobs Enterprise`, body, false, undefined, appUrl);
+  },
+
+  // 12. Custom Admin Broadcast Email
+  'custom-admin-email': (data) => {
+    const name = data.recipientName || data.candidateName || 'Valued Partner';
+    const subject = data.customSubject || 'Important Announcement from AIJobs Admin';
+    const message = data.customMessage || 'We have an important update regarding your AIJobs account.';
+    const appUrl = data.appUrl || DEFAULT_APP_URL;
+
+    // Convert newlines to HTML paragraphs if raw string provided
+    const formattedMessage = message.includes('<p>') ? message : message.split('\n\n').map(p => `<p style="margin-bottom: 14px;">${p.replace(/\n/g, '<br/>')}</p>`).join('');
+
+    const body = `
+      <div style="text-align: left;">
+        <h2 style="color: #ffffff; font-size: 20px; font-weight: 800; margin-top: 0; margin-bottom: 12px;">
+          Hello ${name},
+        </h2>
+        <div style="color: #e2e8f0; font-size: 14px; line-height: 1.7; margin-bottom: 24px;">
+          ${formattedMessage}
+        </div>
+
+        <div style="text-align: center; margin-top: 28px;">
+          <a href="${appUrl}" style="background-color: #2563eb; color: #ffffff; padding: 14px 28px; border-radius: 10px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 14px;">
+            Visit AIJobs Portal →
+          </a>
+        </div>
+      </div>
+    `;
+    return wrapBaseLayout(subject, body, false, undefined, appUrl);
   }
 };
