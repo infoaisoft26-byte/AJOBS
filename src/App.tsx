@@ -365,27 +365,17 @@ function MainAppContent() {
             setActiveView("resume-onboarding");
           }
         } else {
-          // Deduce role cleanly from email prefixes
-          const emailLower = (fbUser.email || "").toLowerCase();
-          let deducedRole: "candidate" | "consultancy" | "employer" | "admin" = "candidate";
-          if (emailLower.includes("admin")) {
-            deducedRole = "admin";
-          } else if (emailLower.includes("employer") || emailLower.includes("company") || emailLower.includes("corporate") || emailLower.includes("recruiter")) {
-            deducedRole = "employer";
-          } else if (emailLower.includes("consultancy") || emailLower.includes("agency") || emailLower.includes("crm")) {
-            deducedRole = "consultancy";
-          }
-
+          // Default fallback for missing profile - MUST default to candidate
           const defaultProfile: UserProfile = {
             uid: fbUser.uid,
             name: fbUser.displayName || fbUser.email?.split("@")[0] || "User Desk",
             email: fbUser.email || "",
-            role: deducedRole,
+            role: "candidate",
             profileImage: fbUser.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(fbUser.uid)}`,
             createdAt: new Date().toISOString(),
             lastLogin: new Date().toISOString(),
             status: "active",
-            subscription: deducedRole === "consultancy" ? "Pro Agency" : "Enterprise Access"
+            subscription: "Enterprise Access"
           };
           setUser(defaultProfile);
         }

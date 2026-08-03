@@ -39,12 +39,57 @@ export default function AdminLogin({
     setLoading(true);
     try {
       const res = await signInWithEmailAndPassword(auth, email.trim(), password);
-      
-      // Resolve user profile using strict admin login source
-      const profile = await getOrCreateUserProfile(res.user, "admin", "admin");
+      const uid = res.user.uid;
+
+      // 1. Read admins/{uid}
+      let adminSnap: any = null;
+      try {
+        adminSnap = await getDoc(doc(db, "admins", uid));
+      } catch (e) {
+        console.warn("[AdminLogin] Error checking admins doc:", e);
+      }
+
+      // 2. Read users/{uid}
+      let userSnap: any = null;
+      try {
+        userSnap = await getDoc(doc(db, "users", uid));
+      } catch (e) {
+        console.warn("[AdminLogin] Error checking users doc:", e);
+      }
+
+      // 3. Read custom claims
+      let hasAdminClaim = false;
+      try {
+        const idTokenResult = await res.user.getIdTokenResult();
+        hasAdminClaim = Boolean(idTokenResult?.claims?.admin || idTokenResult?.claims?.role === "admin" || idTokenResult?.claims?.role === "superadmin");
+      } catch (e) {}
+
+      const adminData = adminSnap?.exists() ? adminSnap.data() : null;
+      const userData = userSnap?.exists() ? userSnap.data() : null;
+
+      const isAdminDocValid = Boolean(adminData && (adminData.status === "active" || adminData.isActive === true) && adminData.status !== "suspended" && adminData.status !== "disabled");
+      const isUserDocAdminValid = Boolean(
+        userData &&
+        (userData.role === "admin" || userData.role === "superadmin" || userData.role === "super_admin") &&
+        userData.isActive !== false &&
+        userData.status !== "suspended" &&
+        userData.accountStatus !== "disabled"
+      );
+
+      const isAuthorizedAdmin = isAdminDocValid || isUserDocAdminValid || hasAdminClaim;
+
+      if (!isAuthorizedAdmin) {
+        await auth.signOut();
+        const accessDeniedMsg = "This account does not have Admin access.";
+        setErrorMsg(accessDeniedMsg);
+        showToast(accessDeniedMsg, "error");
+        return;
+      }
+
+      // Resolve user profile safely without auto-promotion
+      const profile = await getOrCreateUserProfile(res.user);
 
       if (!isAdminRole(profile.role)) {
-        // Sign out non-admin and block access
         await auth.signOut();
         const accessDeniedMsg = "This account does not have Admin access.";
         setErrorMsg(accessDeniedMsg);
@@ -53,7 +98,7 @@ export default function AdminLogin({
       }
 
       showToast(`Administrator authenticated successfully: ${profile.name}`, "success");
-      console.log(`[Trace Login] Admin login success - UID: ${profile.uid}, Role: ${profile.role}, Normalized: ${normalizeRole(profile.role)}`);
+      console.log(`[Trace Login] Admin login success - UID: ${profile.uid}, Role: ${profile.role}`);
       onAdminLoginSuccess(profile);
     } catch (err: any) {
       if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password" || err.code === "auth/invalid-credential" || err.code === "auth/invalid-email") {

@@ -64,22 +64,27 @@ export async function initializeUserCollectionsAndDocs(
   const name = displayName || fbUser.displayName || (fbUser.email ? fbUser.email.split("@")[0] : "Candidate");
   const isoDate = new Date().toISOString();
 
-  // 1. Prepare User Profile
+  // 1. Prepare User Profile based on registration flow
+  const isPendingKycRole = role === "consultancy" || role === "employer" || role === "recruiter";
+  
   const userProfile: UserProfile = {
     uid: userId,
     name,
     email,
     phone: fbUser.phoneNumber || "",
-    role,
+    role: (role === "admin" || role === "superadmin") ? "candidate" : role,
     profileImage: fbUser.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}`,
     photoURL: fbUser.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}`,
     createdAt: isoDate,
     lastLogin: isoDate,
-    status: "active",
+    status: isPendingKycRole ? "pending_kyc" : "active",
+    accountStatus: isPendingKycRole ? "pending_kyc" : "active",
+    isActive: !isPendingKycRole,
+    isApproved: !isPendingKycRole,
     subscription: role === "consultancy" ? "Pro Agency" : "Enterprise Access",
     resumeURL: "",
     profileCompleted: false,
-    companyId: role === "employer" || role === "recruiter" ? userId : "",
+    companyId: (role === "employer" || role === "recruiter") ? userId : "",
     subscriptionPlan: role === "consultancy" ? "Pro Agency" : "Enterprise Access"
   };
 
@@ -424,60 +429,15 @@ export async function getOrCreateUserProfile(
     console.warn("[getOrCreateUserProfile] Claims check skipped or failed:", claimErr);
   }
 
-  // 4. Handle admin login source or explicitly requested admin preferredRole
-  if (loginSource === "admin" || preferredRole === "admin" || preferredRole === "superadmin" || (fbUser.email && fbUser.email.toLowerCase().includes("admin"))) {
-    const resolvedRole: "admin" | "superadmin" = preferredRole === "superadmin" ? "superadmin" : "admin";
-    const adminName = fbUser.displayName || fbUser.email?.split("@")[0] || "AIJobs Super Admin";
+  // 4. Safe fallback for new public user profile creation
+  // IMPORTANT: Public registration flows can NEVER create admin or superadmin roles automatically.
+  let targetRole: "candidate" | "consultancy" | "employer" | "recruiter" = "candidate";
 
-    const userPayload: UserProfile = {
-      uid: userId,
-      name: adminName,
-      email: fbUser.email || "",
-      phone: fbUser.phoneNumber || "",
-      role: resolvedRole,
-      profileImage: fbUser.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(adminName)}`,
-      photoURL: fbUser.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(adminName)}`,
-      createdAt: new Date().toISOString(),
-      lastLogin: new Date().toISOString(),
-      accountStatus: "active",
-      status: "active",
-      isActive: true,
-      isApproved: true,
-      onboardingCompleted: true,
-      internalAccess: true,
-      isBetaTester: true,
-      updatedAt: new Date().toISOString()
-    };
-
-    const adminDocPayload = {
-      uid: userId,
-      email: fbUser.email || "",
-      name: adminName,
-      role: resolvedRole,
-      level: resolvedRole === "superadmin" ? "Super Admin" : "Administrator",
-      status: "active",
-      isActive: true,
-      updatedAt: new Date().toISOString()
-    };
-
-    console.log(`[Trace dbInitService] Admin fallback initialization for UID: ${userId}, Resolved Role: ${resolvedRole}`);
-
-    await Promise.all([
-      safeSetDoc("users", userId, userPayload),
-      safeSetDoc("admins", userId, adminDocPayload)
-    ]);
-
-    return userPayload;
-  }
-
-  // Deduce or assign role for genuinely new registration
-  let targetRole: "candidate" | "consultancy" | "employer" | "recruiter" | "admin" | "superadmin" = preferredRole || "candidate";
-
-  if (!preferredRole) {
+  if (preferredRole && preferredRole !== "admin" && preferredRole !== "superadmin") {
+    targetRole = preferredRole as "candidate" | "consultancy" | "employer" | "recruiter";
+  } else {
     const emailLower = (fbUser.email || "").toLowerCase();
-    if (emailLower.includes("admin")) {
-      targetRole = "admin";
-    } else if (loginSource === "candidate") {
+    if (loginSource === "candidate") {
       targetRole = "candidate";
     } else if (emailLower.includes("employer") || emailLower.includes("company") || emailLower.includes("corporate") || emailLower.includes("recruiter")) {
       targetRole = "employer";
@@ -496,6 +456,7 @@ export async function getOrCreateUserProfile(
   } catch (initErr) {
     console.error("[getOrCreateUserProfile] Auto-initialization error during document creation:", initErr);
     const defaultName = fbUser.displayName || fbUser.email?.split("@")[0] || "User Desk";
+    const isPendingKycRole = targetRole === "consultancy" || targetRole === "employer" || targetRole === "recruiter";
     return {
       uid: userId,
       name: defaultName,
@@ -506,7 +467,10 @@ export async function getOrCreateUserProfile(
       photoURL: fbUser.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(defaultName)}`,
       createdAt: new Date().toISOString(),
       lastLogin: new Date().toISOString(),
-      status: "active",
+      status: isPendingKycRole ? "pending_kyc" : "active",
+      accountStatus: isPendingKycRole ? "pending_kyc" : "active",
+      isActive: !isPendingKycRole,
+      isApproved: !isPendingKycRole,
       subscription: targetRole === "consultancy" ? "Pro Agency" : "Enterprise Access",
       resumeURL: "",
       profileCompleted: false,

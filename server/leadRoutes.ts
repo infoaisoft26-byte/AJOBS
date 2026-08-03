@@ -38,32 +38,45 @@ async function checkAdminAuthorization(req: Request): Promise<{ authorized: bool
     }
 
     const db = getFirestoreDb();
+    
+    // Check admins collection
+    let adminDocExists = false;
+    try {
+      const adminDoc = await db.collection("admins").doc(uid).get();
+      if (adminDoc.exists && adminDoc.data()?.status !== "suspended" && adminDoc.data()?.status !== "disabled") {
+        adminDocExists = true;
+      }
+    } catch (e) {}
+
+    if (adminDocExists) {
+      return { authorized: true };
+    }
+
     const userDoc = await db.collection("users").doc(uid).get();
+    if (userDoc.exists) {
+      const userData = userDoc.data() || {};
+      const role = (userData.role || "").toLowerCase();
+      const isUserAdmin =
+        (role === "admin" || role === "superadmin" || role === "super_admin") &&
+        userData.isActive !== false &&
+        userData.accountStatus !== "suspended" &&
+        userData.accountStatus !== "disabled";
 
-    if (!userDoc.exists) {
-      try {
-        const fbUser = await getFirebaseAuth().getUser(uid);
-        if (fbUser.email && (fbUser.email === "infoaisoft26@gmail.com" || fbUser.customClaims?.role === "admin")) {
-          return { authorized: true };
-        }
-      } catch (e) {}
-      return { authorized: false, reason: "User account not found.", statusCode: 403 };
+      if (isUserAdmin) {
+        return { authorized: true };
+      }
     }
 
-    const userData = userDoc.data() || {};
-    const role = (userData.role || "").toLowerCase();
-    const isAdmin =
-      role === "admin" ||
-      role === "superadmin" ||
-      role === "super_admin" ||
-      userData.isAdmin === true ||
-      userData.email === "infoaisoft26@gmail.com";
+    // Check Firebase custom claims
+    try {
+      const fbUser = await getFirebaseAuth().getUser(uid);
+      const claims = fbUser.customClaims || {};
+      if (claims.admin === true || claims.role === "admin" || claims.role === "superadmin" || claims.role === "super_admin") {
+        return { authorized: true };
+      }
+    } catch (e) {}
 
-    if (!isAdmin) {
-      return { authorized: false, reason: "Access denied: Admin or Superadmin privileges required.", statusCode: 403 };
-    }
-
-    return { authorized: true };
+    return { authorized: false, reason: "Access denied: Admin or Superadmin privileges required.", statusCode: 403 };
   } catch (err: any) {
     console.error("[Lead API] Admin authorization check exception:", err?.message || err);
     return { authorized: false, reason: "Unable to verify admin authorization.", statusCode: 403 };

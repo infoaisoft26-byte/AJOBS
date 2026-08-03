@@ -14,7 +14,7 @@ interface AuthModalProps {
   onClose: () => void;
   onAuthSuccess: (user: UserProfile) => void;
   initialMode?: "signin" | "signup";
-  initialRole?: "candidate" | "consultancy" | "employer" | "recruiter" | "admin" | "superadmin";
+  initialRole?: "candidate" | "consultancy" | "employer" | "recruiter";
 }
 
 type AuthMode = "signin" | "signup" | "forgot-password" | "complete-profile" | "phone-otp";
@@ -35,7 +35,9 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
   const { showToast } = useToast();
   const [mode, setMode] = useState<AuthMode>(initialMode === "signup" ? "signup" : "signin");
   const [authMethod, setAuthMethod] = useState<"email" | "phone">("email");
-  const [role, setRole] = useState<"candidate" | "consultancy" | "employer" | "recruiter" | "admin" | "superadmin">(initialRole || "candidate");
+  const safeInitialRole: "candidate" | "consultancy" | "employer" | "recruiter" = 
+    (initialRole === "consultancy" || initialRole === "employer" || initialRole === "recruiter") ? initialRole : "candidate";
+  const [role, setRole] = useState<"candidate" | "consultancy" | "employer" | "recruiter">(safeInitialRole);
   
   // Inputs
   const [name, setName] = useState("");

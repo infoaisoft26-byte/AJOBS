@@ -3610,6 +3610,24 @@ app.get("/api/admin/sms-logs", async (req, res) => {
 
 // ==================== ENTERPRISE SECURITY & ACCOUNT MANAGEMENT ROUTES ====================
 
+// Temporary debug endpoint to list users
+app.get("/api/admin/list-all-users-debug", async (req, res) => {
+  try {
+    const db = getFirestoreDb();
+    const usersSnap = await db.collection("users").get();
+    const users: any[] = [];
+    usersSnap.forEach(d => users.push({ id: d.id, ...d.data() }));
+
+    const adminsSnap = await db.collection("admins").get();
+    const admins: any[] = [];
+    adminsSnap.forEach(d => admins.push({ id: d.id, ...d.data() }));
+
+    return res.json({ success: true, users, admins });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // Bootstrap Super Admin
 app.post("/api/bootstrap-superadmin", async (req, res) => {
   try {
