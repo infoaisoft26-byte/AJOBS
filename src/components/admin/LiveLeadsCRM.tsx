@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, Contact, Edit, Edit3, Facebook, Filter, Instagram, Mail, Phone, Save, Search, Table, Type, Users } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Contact, Edit, Edit3, Facebook, Filter, Instagram, Mail, Phone, Save, Search, Table, Type, Users } from "lucide-react";
 import { CrmLead } from "../../types";
+import { auth } from "../../firebase";
 
 export default function LiveLeadsCRM() {
   const [leads, setLeads] = useState<CrmLead[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [hasRetried, setHasRetried] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterSource, setFilterSource] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -22,21 +25,74 @@ export default function LiveLeadsCRM() {
     fetchLeads();
   }, []);
 
-  const fetchLeads = async () => {
+  const fetchLeads = async (isRetry = false) => {
     setLoading(true);
+    setErrorMessage(null);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
     try {
-      const res = await fetch("/api/leads/list");
-      const contentType = res.headers.get("content-type") || "";
-      if (res.ok && contentType.includes("application/json")) {
-        const data = await res.json();
-        if (data.success) {
-          setLeads(data.leads || []);
+      const headers: Record<string, string> = {};
+      if (auth.currentUser) {
+        try {
+          const token = await auth.currentUser.getIdToken();
+          headers["Authorization"] = `Bearer ${token}`;
+          headers["x-user-id"] = auth.currentUser.uid;
+        } catch (tokenErr) {
+          console.warn("[LiveLeadsCRM] Token fetch warning:", tokenErr);
         }
-      } else {
-        console.warn("[LiveLeadsCRM] Non-JSON response or request failed:", res.status);
       }
-    } catch (err) {
-      console.error("Failed to load CRM leads:", err);
+
+      const res = await fetch("/api/leads/list", {
+        headers,
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      const contentType = res.headers.get("content-type") || "";
+      const rawText = await res.text();
+      let data: any = null;
+
+      if (rawText && contentType.includes("application/json")) {
+        try {
+          data = JSON.parse(rawText);
+        } catch (jsonErr) {
+          console.warn("[LiveLeadsCRM] JSON parsing failed:", jsonErr);
+        }
+      }
+
+      if (res.ok && data && data.success) {
+        setLeads(data.leads || []);
+      } else {
+        const errorText = data?.error || data?.message || "Lead service is temporarily unavailable.";
+        setErrorMessage(errorText);
+
+        // Retry at most once
+        if (!isRetry && !hasRetried) {
+          setHasRetried(true);
+          console.log("[LiveLeadsCRM] First fetch failed, retrying once...");
+          setTimeout(() => fetchLeads(true), 1200);
+          return;
+        }
+      }
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      const isAbort = err.name === "AbortError";
+      const errStr = isAbort
+        ? "Lead fetch request timed out."
+        : (err.message || "Failed to load CRM leads.");
+
+      console.error("[LiveLeadsCRM] Lead fetch error:", err);
+      setErrorMessage(errStr);
+
+      if (!isRetry && !hasRetried) {
+        setHasRetried(true);
+        console.log("[LiveLeadsCRM] First fetch errored, retrying once...");
+        setTimeout(() => fetchLeads(true), 1200);
+        return;
+      }
     } finally {
       setLoading(false);
     }
@@ -96,6 +152,21 @@ export default function LiveLeadsCRM() {
 
   return (
     <div className="space-y-6">
+      {errorMessage && (
+        <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-300 text-xs flex items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+          <button
+            onClick={() => fetchLeads(true)}
+            className="px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/30 rounded-lg text-xs font-semibold transition-all cursor-pointer shrink-0"
+          >
+            Retry Sync
+          </button>
+        </div>
+      )}
+
       {toastMsg && (
         <div className="p-4 bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-emerald-300 text-xs font-semibold flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-400" />

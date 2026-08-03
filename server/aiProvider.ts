@@ -85,11 +85,16 @@ export class GeminiProvider implements AIProvider {
       ];
     }
 
-    const primaryModel = model || "gemini-3.6-flash";
-    const modelsToTry = [primaryModel];
-    if (!model || model === "gemini-3.6-flash") {
-      modelsToTry.push("gemini-2.5-flash", "gemini-1.5-flash");
-    }
+    const primaryModel = model || "gemini-2.5-flash";
+    const candidateList = [
+      primaryModel,
+      "gemini-2.5-flash",
+      "gemini-2.0-flash",
+      "gemini-1.5-flash",
+      "gemini-2.5-flash-lite",
+      "gemini-flash-latest"
+    ];
+    const modelsToTry = Array.from(new Set(candidateList.filter(Boolean)));
 
     let lastError: any = null;
     for (let i = 0; i < modelsToTry.length; i++) {
@@ -137,7 +142,7 @@ export class GeminiProvider implements AIProvider {
           errMsg.includes("UNAVAILABLE");
 
         if (isQuotaOrDemand && i < modelsToTry.length - 1) {
-          console.warn(`[GeminiProvider] ${modelCandidate} hit quota/demand limits (${errMsg.slice(0, 100)}). Trying fallback model ${modelsToTry[i + 1]}...`);
+          console.warn(`[GeminiProvider] Model ${modelCandidate} hit quota/demand limit. Swapping to fallback candidate ${modelsToTry[i + 1]}...`);
           continue;
         }
         throw err;
@@ -238,7 +243,13 @@ export class AIOrchestrator {
         return result;
 
       } catch (err: any) {
-        console.error(`[AIOrchestrator] Attempt ${attempt} failed: ${err.message || err}`);
+        const errMsg = String(err?.message || err);
+        const isQuota = errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED");
+        const summary = isQuota
+          ? "Quota limit exceeded (429 / RESOURCE_EXHAUSTED)"
+          : errMsg.slice(0, 150);
+
+        console.error(`[AIOrchestrator] Attempt ${attempt}/${maxRetries} failed: ${summary}`);
         telemetryStore.errorsCount++;
 
         if (attempt >= maxRetries) {
@@ -246,10 +257,11 @@ export class AIOrchestrator {
           throw err; // Bubbles up to route handler to trigger graceful fallback logic
         }
 
-        // Exponential backoff
-        console.log(`[AIOrchestrator] Retrying in ${delay}ms...`);
-        await new Promise((res) => setTimeout(res, delay));
-        delay *= 2; // double the backoff delay
+        // Exponential backoff (longer backoff if quota exceeded)
+        const backoffDelay = isQuota ? Math.max(delay, 2500) : delay;
+        console.log(`[AIOrchestrator] Retrying in ${backoffDelay}ms...`);
+        await new Promise((res) => setTimeout(res, backoffDelay));
+        delay *= 2;
       }
     }
 

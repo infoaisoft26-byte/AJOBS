@@ -4,9 +4,16 @@ import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import * as admin from "firebase-admin";
 
 export * from "./agreement";
+export * from "./leads";
 
 if (!admin.apps.length) {
   admin.initializeApp();
+}
+
+const targetDbId = process.env.FIRESTORE_DATABASE_ID || "ai-studio-aijobs-1424b91d-989e-47eb-a336-779ca0dbfc42";
+
+function getDb() {
+  return targetDbId ? getFirestore(targetDbId) : getFirestore();
 }
 
 interface CandidatePrefs {
@@ -286,7 +293,7 @@ async function processWeeklyJobDigest(db: admin.firestore.Firestore) {
  * Automatically transitions any job to 'Closed' if the applyDeadline field has passed.
  */
 export const closeExpiredJobsDaily = onSchedule("0 0 * * *", async () => {
-  const db = getFirestore();
+  const db = getDb();
   const todayStr = new Date().toISOString().split("T")[0];
 
   console.log(`[Scheduled Cloud Function] Starting check for expired jobs. Current Date: ${todayStr}`);
@@ -324,7 +331,7 @@ export const closeExpiredJobsDaily = onSchedule("0 0 * * *", async () => {
  * Scheduled Cloud Function: Weekly Job Digest (Runs every Monday at 09:00 AM UTC)
  */
 export const weeklyJobDigestScheduled = onSchedule("0 9 * * 1", async () => {
-  const db = getFirestore();
+  const db = getDb();
   try {
     await processWeeklyJobDigest(db);
   } catch (error) {
@@ -337,7 +344,7 @@ export const weeklyJobDigestScheduled = onSchedule("0 9 * * 1", async () => {
  * Scans for newly approved/live jobs that haven't been broadcast yet
  */
 export const processNewJobAlertsScheduled = onSchedule("*/15 * * * *", async () => {
-  const db = getFirestore();
+  const db = getDb();
   try {
     const jobsSnap = await db.collection("jobs").get();
 
@@ -370,7 +377,7 @@ export const onJobStatusChanged = onDocumentUpdated("jobs/{jobId}", async (event
     ["approved", "live", "open", "published"].includes(newStatus);
 
   if (isNewlyApproved && !afterData.jobAlertProcessed) {
-    const db = getFirestore();
+    const db = getDb();
     try {
       await processJobAlertForJob(db, event.params.jobId, afterData);
     } catch (err) {

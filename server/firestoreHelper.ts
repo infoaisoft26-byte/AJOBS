@@ -44,7 +44,11 @@ const initAdminApp = () => {
 
 const adminApp = initAdminApp();
 
-export const adminDb: Firestore = getFirestore(adminApp);
+const targetDatabaseId = config.firestoreDatabaseId || process.env.FIRESTORE_DATABASE_ID;
+
+export const adminDb: Firestore = targetDatabaseId
+  ? getFirestore(adminApp, targetDatabaseId)
+  : getFirestore(adminApp);
 
 export function getAdminApp() {
   return adminApp;

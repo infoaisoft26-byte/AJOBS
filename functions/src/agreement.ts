@@ -7,6 +7,12 @@ if (!getApps().length) {
   initializeApp();
 }
 
+const targetDbId = process.env.FIRESTORE_DATABASE_ID || "ai-studio-aijobs-1424b91d-989e-47eb-a336-779ca0dbfc42";
+
+function getDb() {
+  return targetDbId ? getFirestore(targetDbId) : getFirestore();
+}
+
 const DEFAULT_SELLER_INFO = {
   legalEntityName: "THE FLX FORCE SERVICES",
   gstin: "27LRTPS5257E1ZV",
@@ -25,7 +31,7 @@ export async function generateAgreementHandler(req: Request, res: Response): Pro
   }
 
   try {
-    const db = getFirestore();
+    const db = getDb();
     const {
       userId,
       role = "consultancy",
@@ -136,7 +142,7 @@ export async function sendAgreementOtpHandler(req: Request, res: Response): Prom
   }
 
   try {
-    const db = getFirestore();
+    const db = getDb();
     const { userId, agreementId, phone } = req.body || {};
 
     let targetPhone = phone;
@@ -188,7 +194,7 @@ export async function acceptAgreementHandler(req: Request, res: Response): Promi
   }
 
   try {
-    const db = getFirestore();
+    const db = getDb();
     const {
       agreementId,
       userId,
