@@ -4462,8 +4462,6 @@ app.get("/zohochallenge.html", (req, res) => {
 
 const isVercel = Boolean(process.env.VERCEL);
 
-// Vercel imports this Express application as a serverless handler.
-// A listener must only be opened when running the project as a standalone server.
 if (!isVercel) {
   if (process.env.NODE_ENV !== "production") {
     const startVite = async () => {
@@ -4471,6 +4469,7 @@ if (!isVercel) {
         server: { middlewareMode: true },
         appType: "spa",
       });
+
       app.use(vite.middlewares);
 
       app.listen(PORT, "0.0.0.0", () => {
@@ -4482,26 +4481,9 @@ if (!isVercel) {
   } else {
     const distPath = path.join(process.cwd(), "dist");
 
-    app.use(express.static(distPath, {
-      maxAge: "1y",
-      immutable: true,
-      setHeaders: (res, filepath) => {
-        if (filepath.endsWith(".html")) {
-          res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
-        } else {
-          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-        }
-      },
-    }));
+    app.use(express.static(distPath));
 
-    app.all("/api/*", (req, res) => {
-      res.status(404).json({
-        success: false,
-        error: `API endpoint not found: ${req.method} ${req.path}`,
-      });
-    });
-
-    app.get("*", (req, res) => {
+    app.get("*", (_req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
 
