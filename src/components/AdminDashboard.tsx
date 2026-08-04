@@ -4,6 +4,7 @@ import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
 import { motion } from "motion/react";
 import { BarChart2, Baseline, Bell, Brain, Briefcase, Check, CheckCircle, ChevronLeft, ChevronRight, CreditCard, Database, FileText, Funnel, Globe, HelpCircle, Layers, Lock, Mail, MessageSquare, Navigation, RefreshCw, Scale, Settings, ShieldAlert, ShieldCheck, Sidebar, Store, Terminal, Tickets, User, Users, Verified } from "lucide-react";
 import { auth, db } from "../firebase";
+import { parseJsonResponse } from "../utils/apiHelper";
 
 import { recordActivityLog } from "../services/activityLogService";
 
@@ -316,7 +317,7 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
     try {
       const telRes = await fetch("/api/telemetry");
       if (telRes.ok) {
-        telemetryData = await telRes.json();
+        telemetryData = await parseJsonResponse(telRes);
       }
     } catch (telErr) {
       console.warn("Failed to fetch live API telemetry:", telErr);

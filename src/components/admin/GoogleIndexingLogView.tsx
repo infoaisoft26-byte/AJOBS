@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Timestamp } from "firebase/firestore";
 import { AlertCircle, CheckCircle2, Clock, Code, ExternalLink, Globe, Logs, Monitor, RefreshCw, Search, Send, Table, Type, View } from "lucide-react";
 import { IndexingLogRecord } from "../../../server/googleIndexingService";
+import { parseJsonResponse } from "../../utils/apiHelper";
 
 export function GoogleIndexingLogView() {
   const [logs, setLogs] = useState<IndexingLogRecord[]>([]);
@@ -15,7 +16,7 @@ export function GoogleIndexingLogView() {
     setLoading(true);
     try {
       const resp = await fetch("/api/indexing/logs");
-      const data = await resp.json();
+      const data = await parseJsonResponse(resp);
       if (data.success && Array.isArray(data.logs)) {
         setLogs(data.logs);
       }
@@ -39,7 +40,7 @@ export function GoogleIndexingLogView() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ logId })
       });
-      const data = await resp.json();
+      const data = await parseJsonResponse(resp);
       if (data.success) {
         setMsg(`Successfully resubmitted log ${logId} to Google Indexing API!`);
         fetchLogs();

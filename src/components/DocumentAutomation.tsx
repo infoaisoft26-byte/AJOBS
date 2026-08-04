@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Cloud, Code, Copy, FileCheck, Laptop, Printer, RefreshCw, Sparkles, Text, Type } from "lucide-react";
 import { useGlobalMarketplace } from "../context/GlobalMarketplaceContext";
+import { parseJsonResponse } from "../utils/apiHelper";
 
 export default function DocumentAutomation() {
   const { formatCurrency } = useGlobalMarketplace();
@@ -32,7 +33,7 @@ export default function DocumentAutomation() {
         }),
       });
 
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
       if (data.success && data.documentText) {
         setGeneratedDocumentText(data.documentText);
       } else {

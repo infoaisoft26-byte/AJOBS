@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { parseJsonResponse } from "../../utils/apiHelper";
 import {
   Mail,
   Send,
@@ -98,7 +99,7 @@ export default function AdminEmailCenter() {
     setIsStatsLoading(true);
     try {
       const res = await fetch("/api/email/stats");
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (data.success && data.stats) {
         setStats({
           totalSent: data.stats.totalSent || 0,
@@ -121,8 +122,8 @@ export default function AdminEmailCenter() {
         fetch("/api/email/logs"),
         fetch("/api/email/deliveries")
       ]);
-      const logsData = await logsRes.json();
-      const delData = await delRes.json();
+      const logsData = await parseJsonResponse(logsRes);
+      const delData = await parseJsonResponse(delRes);
 
       if (logsData.success) {
         setLogs(logsData.logs || []);
@@ -168,7 +169,7 @@ export default function AdminEmailCenter() {
           }
         })
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (data.success && data.html) {
         setPreviewHtml(data.html);
       } else {
@@ -204,7 +205,7 @@ export default function AdminEmailCenter() {
           templateName: selectedTemplate
         })
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (data.success) {
         setSendFeedback({ type: "success", msg: data.message || "Email broadcast sent successfully!" });
         fetchTelemetry();
@@ -263,7 +264,7 @@ export default function AdminEmailCenter() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
 
       if (data.success) {
         setAutoFeedback({ type: "success", msg: data.message || "Automated workflow email dispatched via Nodemailer!" });
@@ -288,7 +289,7 @@ export default function AdminEmailCenter() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ deliveryId })
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (data.success) {
         alert("🎉 Email delivery retried and sent successfully via Gmail SMTP!");
         fetchTelemetry();

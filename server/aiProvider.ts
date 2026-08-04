@@ -85,13 +85,14 @@ export class GeminiProvider implements AIProvider {
       ];
     }
 
-    const primaryModel = model || "gemini-2.5-flash";
+    const primaryModel = model || "gemini-3.6-flash";
     const candidateList = [
       primaryModel,
+      "gemini-3.6-flash",
       "gemini-2.5-flash",
-      "gemini-2.0-flash",
-      "gemini-flash-latest",
-      "gemini-2.5-flash-lite"
+      "gemini-1.5-flash",
+      "gemini-2.5-flash-lite",
+      "gemini-flash-latest"
     ];
     const modelsToTry = Array.from(new Set(candidateList.filter(Boolean)));
 

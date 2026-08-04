@@ -1,5 +1,6 @@
 import React, { FormEvent, useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2, Send, Type, UserCheck, X } from "lucide-react";
+import { parseJsonResponse } from "../utils/apiHelper";
 interface CandidateAssignmentModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -35,7 +36,7 @@ export default function CandidateAssignmentModal({
     setLoading(true);
     try {
       const res = await fetch(`/api/consultancy/recruiters-list?consultancyId=${consultancyId}`);
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (data.success) {
         setRecruiters(data.recruiters);
       }
@@ -70,7 +71,7 @@ export default function CandidateAssignmentModal({
         })
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!data.success) {
         throw new Error(data.error || "Failed to assign candidate to recruiter.");
       }

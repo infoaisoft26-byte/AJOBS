@@ -3,6 +3,7 @@ import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } fro
 import { ref } from "firebase/storage";
 import { AlertCircle, AlertTriangle, ArrowRight, Award, Badge, BarChart3, Brain, Calendar, Camera, Check, CheckCircle, CheckCircle2, ChevronRight, Circle, Clock, Cloud, Download, HelpCircle, History, Key, List, Lock, Mic, Monitor, Navigation, Pause, Play, RefreshCw, Route, Save, Section, Share, ShieldCheck, Sidebar, Sparkles, Speech, Square, Tag, Text, Timer, Type, Unlock, User, Verified, Video, View, Volume2, Webcam, X } from "lucide-react";
 import { db } from "../firebase";
+import { parseJsonResponse } from "../utils/apiHelper";
 
 
 import D3PerformanceCharts from "./D3PerformanceCharts";
@@ -223,7 +224,7 @@ export default function CandidateInterviewSection({
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await parseJsonResponse(response);
         return data.questions;
       }
     } catch (e) {
@@ -456,7 +457,7 @@ export default function CandidateInterviewSection({
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await parseJsonResponse(response);
         setRealtimeSentimentFeedback(data);
       }
     } catch (err) {
@@ -665,7 +666,7 @@ export default function CandidateInterviewSection({
 
       let evaluationData: any = {};
       if (response.ok) {
-        evaluationData = await response.json();
+        evaluationData = await parseJsonResponse(response);
       }
 
       // Generate fully fleshed Step 8 scores

@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, Box, Building, Cloud, Contact, File, Info, Layout, Loader2, LogIn, Mail, Phone, Sparkles, Type, Upload } from "lucide-react";
 import { auth, db, storage } from "../firebase";
 import { uploadToCloudinary } from "../services/cloudinaryService";
+import { parseJsonResponse } from "../utils/apiHelper";
 import { useToast } from "./GlobalToast";
 import { UserProfile } from "../types";
 
@@ -97,7 +98,7 @@ export default function LandingPage({
         });
 
         if (parseRes.ok) {
-          parseJson = await parseRes.json().catch(() => null);
+          parseJson = await parseJsonResponse(parseRes).catch(() => null);
         }
       } catch (pErr) {
         console.warn("Resume parse request warning:", pErr);
@@ -161,7 +162,7 @@ export default function LandingPage({
 
       let onboardData: any = null;
       if (onboardingResponse.ok) {
-        onboardData = await onboardingResponse.json().catch(() => null);
+        onboardData = await parseJsonResponse(onboardingResponse).catch(() => null);
       }
 
       if (!onboardData || !onboardData.success) {

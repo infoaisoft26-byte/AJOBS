@@ -92,16 +92,8 @@ export async function initializeUserCollectionsAndDocs(
   await safeSetDocIfNotExists("users", userId, userProfile);
 
   // --- Collection 2: admins ---
-  if (role === "admin" || role === "superadmin") {
-    await safeSetDocIfNotExists("admins", userId, {
-      userId,
-      name,
-      email,
-      level: role === "superadmin" ? "Super Admin" : "System Admin",
-      status: "active",
-      createdAt: isoDate,
-    });
-  }
+  // SECURITY REQUIREMENT: Admin documents must NEVER be created automatically during user registration.
+  // Admin access is strictly manual provision only.
 
   // --- Collection 3: companies ---
   if (role === "employer" || role === "recruiter") {

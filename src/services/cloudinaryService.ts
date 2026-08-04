@@ -1,5 +1,6 @@
 import { increment } from "firebase/firestore";
 import { File, Network, Type, Upload } from "lucide-react";
+import { parseJsonResponse } from "../utils/apiHelper";
 export interface CloudinaryUploadResult {
   secure_url: string;
   public_id: string;
@@ -104,7 +105,7 @@ async function attemptSingleUpload(
       })
     });
     if (sigRes.ok) {
-      const data = await sigRes.json();
+      const data = await parseJsonResponse(sigRes);
       if (data.signature) {
         signedParams = data;
       }

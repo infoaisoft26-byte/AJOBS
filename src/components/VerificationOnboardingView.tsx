@@ -1,6 +1,7 @@
 import React, { Dispatch, FormEvent, SetStateAction, useEffect, useState } from "react";
 import { AlertCircle, Building, Camera, CheckCircle2, Clock, Code, Contact, CreditCard, Database, File, FileCheck, FileText, KeyRound, Lock, LogOut, Phone, Search, ShieldCheck, Type, Upload, Vault, Webcam } from "lucide-react";
 import { uploadToCloudinary } from "../services/cloudinaryService";
+import { parseJsonResponse } from "../utils/apiHelper";
 import LiveSelfieCaptureModal from "./LiveSelfieCaptureModal";
 import AadhaarOfflineModal from "./AadhaarOfflineModal";
 import AgreementAndCheckoutModal from "./AgreementAndCheckoutModal";
@@ -62,7 +63,7 @@ export default function VerificationOnboardingView({ user, onLogout, onStatusUpd
     async function fetchVerificationStatus() {
       try {
         const res = await fetch(`/api/verification/my-status?userId=${user.uid}`);
-        const data = await res.json();
+        const data = await parseJsonResponse(res);
         if (data.request) {
           setExistingRequest(data.request);
           if (data.request.paymentStatus === "paid") {
@@ -177,7 +178,7 @@ export default function VerificationOnboardingView({ user, onLogout, onStatusUpd
         body: JSON.stringify(payload)
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!data.success) {
         throw new Error(data.error || "Failed to submit verification request.");
       }
@@ -210,7 +211,7 @@ export default function VerificationOnboardingView({ user, onLogout, onStatusUpd
         })
       });
 
-      const payData = await res.json();
+      const payData = await parseJsonResponse(res);
       if (payData.success) {
         setPaymentDone(true);
         alert(`🎉 Payment of ₹${payData.paymentDetails.amount} verified! Verification request will now be queued for Admin Review.`);

@@ -1,6 +1,7 @@
 import React, { FormEvent, useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2, ChevronRight, Clock, History, Send, Type, User, X } from "lucide-react";
 import { auth } from "../firebase";
+import { parseJsonResponse } from "../utils/apiHelper";
 
 import { ApplicationTimelineEntry, JobApplication } from "../types";
 
@@ -53,7 +54,7 @@ export default function ApplicationStatusTimelineModal({
     setLoading(true);
     try {
       const res = await fetch(`/api/applications/timeline?applicationId=${application.id}`);
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (data.success) {
         setHistory(data.history);
       }
@@ -92,7 +93,7 @@ export default function ApplicationStatusTimelineModal({
         })
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!data.success) {
         throw new Error(data.error || "Failed to update application status.");
       }

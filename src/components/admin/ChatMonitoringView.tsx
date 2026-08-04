@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { collection, getDocs, limit, query } from "firebase/firestore";
 import { AlertTriangle, Check, CheckCircle, Eye, Filter, History, Info, List, Lock, MessageSquare, RefreshCw, Search, ShieldAlert, ShieldCheck, Target, Text, Type, User, XCircle } from "lucide-react";
 import { auth, db } from "../../firebase";
+import { parseJsonResponse } from "../../utils/apiHelper";
 
 interface ChatSession {
   id: string;
@@ -170,7 +171,7 @@ export default function ChatMonitoringView() {
         })
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!data.success) {
         throw new Error(data.error || "Action execution failed.");
       }

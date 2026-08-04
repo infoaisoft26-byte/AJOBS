@@ -3,6 +3,7 @@ import { ref } from "firebase/storage";
 import { AnimatePresence, motion } from "motion/react";
 import { AlertCircle, ArrowRight, Badge, CheckCircle2, Code, Edit, Edit2, Loader2, Mail, Phone, RefreshCw, Save, ShieldCheck, Smartphone, Sparkles, Type, Verified, X } from "lucide-react";
 import { auth } from "../firebase";
+import { parseJsonResponse } from "../utils/apiHelper";
 
 
 export interface CandidateParsedData {
@@ -95,7 +96,7 @@ export default function SmartResumeOtpModal({
         })
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
 
       if (!data.success) {
         throw new Error(data.message || "Invalid verification code. Please check SMS and try again.");
@@ -144,7 +145,7 @@ export default function SmartResumeOtpModal({
         body: JSON.stringify({ phone: currentPhone })
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!data.success) {
         throw new Error(data.error || data.message || "Failed to dispatch resend OTP.");
       }

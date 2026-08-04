@@ -1,6 +1,7 @@
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup } from "firebase/auth";
 import { Loader, Type, User } from "lucide-react";
 import { auth } from "../firebase";
+import { parseJsonResponse } from "../utils/apiHelper";
 
 
 // Scopes we requested and got authorized for:
@@ -128,7 +129,7 @@ export const listGoogleFormsFromDrive = async (token: string) => {
     throw new Error(`Failed to list forms from Drive: ${res.statusText}. Details: ${errText}`);
   }
   
-  const data = await res.json();
+  const data = await parseJsonResponse(res);
   return data.files || [];
 };
 
@@ -217,7 +218,7 @@ export const addDefaultQuestionsToForm = async (token: string, formId: string) =
     throw new Error(`Failed to add default questions: ${res.statusText}. Details: ${errText}`);
   }
   
-  return await res.json();
+  return await parseJsonResponse(res);
 };
 
 // Create a new Google Form
@@ -244,7 +245,7 @@ export const createGoogleForm = async (token: string, title: string, description
     throw new Error(`Failed to create form: ${res.statusText}. Details: ${errText}`);
   }
   
-  const form = await res.json();
+  const form = await parseJsonResponse(res);
   
   // Let's also add some default items (e.g. Name, Email, Experience level)
   try {
@@ -268,7 +269,7 @@ export const getGoogleFormDetails = async (token: string, formId: string) => {
     throw new Error(`Failed to fetch form details: ${res.statusText}. Details: ${errText}`);
   }
   
-  return await res.json();
+  return await parseJsonResponse(res);
 };
 
 // Fetch responses for a form
@@ -283,6 +284,6 @@ export const getGoogleFormResponses = async (token: string, formId: string) => {
     throw new Error(`Failed to fetch form responses: ${res.statusText}. Details: ${errText}`);
   }
   
-  const data = await res.json();
+  const data = await parseJsonResponse(res);
   return data.responses || [];
 };

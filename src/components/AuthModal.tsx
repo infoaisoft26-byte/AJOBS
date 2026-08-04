@@ -9,6 +9,7 @@ import { UserProfile } from "../types";
 import { initializeUserCollectionsAndDocs, getOrCreateUserProfile } from "../services/dbInitService";
 import { trackLeadSubmission } from "../utils/leadAttribution";
 import { useToast } from "./GlobalToast";
+import { parseJsonResponse } from "../utils/apiHelper";
 
 interface AuthModalProps {
   onClose: () => void;
@@ -330,7 +331,7 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
         throw new Error("Failed to communicate with Twilio OTP service backend.");
       }
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!data.success) {
         throw new Error(data.error || "Failed to dispatch mobile OTP.");
       }
@@ -369,7 +370,7 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
         throw new Error("Failed to communicate with Twilio OTP service backend.");
       }
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!data.success) {
         throw new Error(data.error || "Failed to resend mobile OTP.");
       }
@@ -415,7 +416,7 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
         throw new Error("Failed to communicate with OTP verify backend.");
       }
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!data.success) {
         console.log("OTP verification failed on backend for:", fullPhone);
         throw new Error(data.error || "Incorrect verification code.");
@@ -455,16 +456,44 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
           console.warn("Failed to trigger registration SMS notification:", smsErr);
         }
 
-        if (role === "candidate" && fbUser?.email) {
-          fetch("/api/email/welcome-candidate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email: fbUser.email,
-              candidateName: displayName,
-              candidateId: fbUser.uid
-            })
-          }).catch((eErr) => console.warn("[AuthModal] Candidate welcome email trigger notice:", eErr));
+        // Trigger Role Welcome Email (Candidate / Recruiter / Consultancy)
+        if (fbUser?.email) {
+          if (role === "candidate") {
+            fetch("/api/email/candidate-welcome", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                email: fbUser.email,
+                candidateName: displayName,
+                candidateId: fbUser.uid,
+                userId: fbUser.uid
+              })
+            }).catch((eErr) => console.warn("[AuthModal] Candidate welcome email trigger notice:", eErr));
+          } else if (role === "employer" || role === "recruiter") {
+            fetch("/api/email/trigger", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                triggerType: "recruiter_welcome",
+                email: fbUser.email,
+                recipientName: displayName,
+                recipientRole: "recruiter",
+                userId: fbUser.uid
+              })
+            }).catch((eErr) => console.warn("[AuthModal] Recruiter welcome email trigger notice:", eErr));
+          } else if (role === "consultancy") {
+            fetch("/api/email/trigger", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                triggerType: "consultancy_welcome",
+                email: fbUser.email,
+                recipientName: displayName,
+                recipientRole: "consultancy",
+                userId: fbUser.uid
+              })
+            }).catch((eErr) => console.warn("[AuthModal] Consultancy welcome email trigger notice:", eErr));
+          }
         }
 
         setSuccess("Account registered successfully!");
@@ -535,7 +564,7 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
         throw new Error("Failed to communicate with Twilio Password Reset OTP service.");
       }
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!data.success) {
         throw new Error(data.error || "Failed to dispatch password reset OTP.");
       }
@@ -588,7 +617,7 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
         throw new Error("Failed to communicate with password reset verify service.");
       }
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!data.success) {
         throw new Error(data.error || "Incorrect or expired verification code.");
       }
@@ -689,17 +718,44 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
           console.warn("[AuthModal] Lead attribution capture warning:", leadErr);
         }
 
-        // Trigger Candidate Welcome Email if Candidate
-        if (role === "candidate" && email.trim()) {
-          fetch("/api/email/welcome-candidate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email: email.trim(),
-              candidateName: displayName,
-              candidateId: fbUser.uid
-            })
-          }).catch((eErr) => console.warn("[AuthModal] Candidate welcome email trigger notice:", eErr));
+        // Trigger Role Welcome Email (Candidate / Recruiter / Consultancy)
+        if (email.trim()) {
+          if (role === "candidate") {
+            fetch("/api/email/candidate-welcome", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                email: email.trim(),
+                candidateName: displayName,
+                candidateId: fbUser.uid,
+                userId: fbUser.uid
+              })
+            }).catch((eErr) => console.warn("[AuthModal] Candidate welcome email trigger notice:", eErr));
+          } else if (role === "employer" || role === "recruiter") {
+            fetch("/api/email/trigger", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                triggerType: "recruiter_welcome",
+                email: email.trim(),
+                recipientName: displayName,
+                recipientRole: "recruiter",
+                userId: fbUser.uid
+              })
+            }).catch((eErr) => console.warn("[AuthModal] Recruiter welcome email trigger notice:", eErr));
+          } else if (role === "consultancy") {
+            fetch("/api/email/trigger", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                triggerType: "consultancy_welcome",
+                email: email.trim(),
+                recipientName: displayName,
+                recipientRole: "consultancy",
+                userId: fbUser.uid
+              })
+            }).catch((eErr) => console.warn("[AuthModal] Consultancy welcome email trigger notice:", eErr));
+          }
         }
 
         console.log("Registration successfully finalized. User Profile:", userProfile);

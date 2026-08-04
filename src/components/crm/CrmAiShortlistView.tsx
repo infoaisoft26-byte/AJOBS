@@ -1,6 +1,7 @@
 import React, { FormEvent, useState } from "react";
 import { limit, query } from "firebase/firestore";
 import { AlertTriangle, CheckCircle2, Figma, List, RefreshCw, Search, ShieldCheck, Sparkles, Star, Type, Weight } from "lucide-react";
+import { parseJsonResponse } from "../../utils/apiHelper";
 import { ConsultancyJobModel, ConsultancyCandidateModel } from "./CrmTypes";
 
 interface CrmAiShortlistViewProps {
@@ -60,14 +61,14 @@ export default function CrmAiShortlistView({
       });
 
       if (response.status === 403) {
-        const errData = await response.json();
+        const errData = await parseJsonResponse(response);
         alert(`🔒 ABAC Access Denied: ${errData.reason || "Subscription limit restriction."}\n\nPlease visit the "ABAC Security Guard" tab to adjust your pricing plan!`);
         setIsNaturalSearching(false);
         return;
       }
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await parseJsonResponse(response);
         setNaturalResults(data.rankedCandidates || []);
         setExtractedQueryInfo(data.queriesExtracted || "");
       } else {

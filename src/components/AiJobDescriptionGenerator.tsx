@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CheckCircle2, Key, Package, PlusCircle, RefreshCw, Sparkles, Tags, Target, Type } from "lucide-react";
 import { useGlobalMarketplace } from "../context/GlobalMarketplaceContext";
+import { parseJsonResponse } from "../utils/apiHelper";
 
 interface AiJobDescriptionGeneratorProps {
   onPostGeneratedJob?: (jobData: any) => void;
@@ -34,7 +35,7 @@ export default function AiJobDescriptionGenerator({ onPostGeneratedJob }: AiJobD
         }),
       });
 
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
       if (data.success && data.jobDescription) {
         setGeneratedJd(data.jobDescription);
       } else {

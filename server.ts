@@ -6,7 +6,7 @@ import crypto from "crypto";
 import mammoth from "mammoth";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
-import { getFirestoreDb, getFirebaseAuth } from "./server/firestoreHelper.ts";
+import { getFirestoreDb, getFirebaseAuth } from "./server/firestoreHelper";
 import { aiOrchestrator, telemetryStore } from "./server/aiProvider.js";
 import { evaluateAbacPolicy, SubjectAttributes, ResourceAttributes } from "./src/services/abacService.js";
 import { 
@@ -23,14 +23,14 @@ import {
   testSMS, 
   getTwilioConfig 
 } from "./server/twilioService.js";
-import { parsePaymentThreat, logChatSessionAndMessage } from "./server/chatService.ts";
-import { sendGoogleIndexingNotification } from "./server/googleIndexingService.ts";
-import emailRoutes from "./server/emailRoutes.ts";
-import { dispatchEmail, sendCandidateWelcomeEmail } from "./server/emailService.ts";
-import kycRoutes from "./server/kycRoutes.ts";
-import leadRoutes from "./server/leadRoutes.ts";
-import applicationRoutes from "./server/applicationRoutes.ts";
-import subscriptionRoutes from "./server/subscriptionRoutes.ts";
+import { parsePaymentThreat, logChatSessionAndMessage } from "./server/chatService";
+import { sendGoogleIndexingNotification } from "./server/googleIndexingService";
+import emailRoutes from "./server/emailRoutes";
+import { dispatchEmail, sendCandidateWelcomeEmail } from "./server/emailService";
+import kycRoutes from "./server/kycRoutes";
+import leadRoutes from "./server/leadRoutes";
+import applicationRoutes from "./server/applicationRoutes";
+import subscriptionRoutes from "./server/subscriptionRoutes";
 
 dotenv.config();
 
@@ -93,18 +93,37 @@ const csrfMitigator = (req: any, res: any, next: any) => {
 
 app.use("/api/", apiRateLimiter);
 app.use("/api/", csrfMitigator);
+
+// Log before every API response
+app.use("/api/", (req: any, res: any, next: any) => {
+  const originalJson = res.json;
+  res.json = function (body: any) {
+    console.log("[API RESPONSE]", req.originalUrl || req.url);
+    return originalJson.call(this, body);
+  };
+  next();
+});
+
 app.use("/api/email", emailRoutes);
 app.use("/api/kyc", kycRoutes);
 app.use("/api/leads", leadRoutes);
+app.use("/api/lead", leadRoutes);
 app.use("/api/applications", applicationRoutes);
+app.use("/api/application", applicationRoutes);
 app.use("/api/candidates", applicationRoutes);
+app.use("/api/candidate", applicationRoutes);
 app.use("/api/consultancy", applicationRoutes);
 app.use("/api/plans", subscriptionRoutes);
+app.use("/api/plan", subscriptionRoutes);
 app.use("/api/agreements", subscriptionRoutes);
+app.use("/api/agreement", subscriptionRoutes);
 app.use("/api/payments", subscriptionRoutes);
+app.use("/api/payment", subscriptionRoutes);
 app.use("/api/subscriptions", subscriptionRoutes);
+app.use("/api/subscription", subscriptionRoutes);
 app.use("/api/data-access", subscriptionRoutes);
 app.use("/api/invoices", subscriptionRoutes);
+app.use("/api/invoice", subscriptionRoutes);
 app.use("/api", subscriptionRoutes);
 
 // Track unique active users and errors
@@ -3236,7 +3255,7 @@ app.post("/api/auth/smart-onboard", async (req, res) => {
 });
 
 async function callGeminiWithModelFallback(aiClient: any, payload: { contents: any; config?: any }) {
-  const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest", "gemini-2.5-flash-lite"];
+  const modelsToTry = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.5-flash-lite", "gemini-flash-latest"];
   let lastErr: any = null;
   for (const modelCandidate of modelsToTry) {
     try {
@@ -3610,21 +3629,139 @@ app.get("/api/admin/sms-logs", async (req, res) => {
 
 // ==================== ENTERPRISE SECURITY & ACCOUNT MANAGEMENT ROUTES ====================
 
-// Temporary debug endpoint to list users
-app.get("/api/admin/list-all-users-debug", async (req, res) => {
+// Audit Logger Helper for Role Changes & Security Events
+async function recordRoleAuditLog(params: {
+  userId: string;
+  userEmail?: string;
+  userName?: string;
+  previousRole?: string;
+  newRole: string;
+  changedBy: string;
+  reason: string;
+}) {
   try {
     const db = getFirestoreDb();
+    const logId = `audit_role_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const now = new Date().toISOString();
+    const payload = {
+      id: logId,
+      userId: params.userId,
+      userEmail: params.userEmail || "",
+      userName: params.userName || "",
+      previousRole: params.previousRole || "unknown",
+      newRole: params.newRole,
+      changedBy: params.changedBy,
+      reason: params.reason,
+      action: "ROLE_CHANGE",
+      category: "Security",
+      createdAt: now
+    };
+
+    await Promise.all([
+      db.collection("role_audit_logs").doc(logId).set(payload),
+      db.collection("audit_logs").doc(logId).set(payload)
+    ]);
+  } catch (e) {
+    console.warn("[RoleAuditLogger] Failed to write audit log:", e);
+  }
+}
+
+// Remediation Endpoint: Repair any non-owner user incorrectly granted Admin privileges
+app.post("/api/admin/repair-wrong-users", async (req, res) => {
+  try {
+    const db = getFirestoreDb();
+    const authAdmin = getFirebaseAuth();
+    const { reqAdminUid } = req.body;
+
     const usersSnap = await db.collection("users").get();
-    const users: any[] = [];
-    usersSnap.forEach(d => users.push({ id: d.id, ...d.data() }));
+    const repairedUsers: any[] = [];
 
-    const adminsSnap = await db.collection("admins").get();
-    const admins: any[] = [];
-    adminsSnap.forEach(d => admins.push({ id: d.id, ...d.data() }));
+    for (const docSnap of usersSnap.docs) {
+      const data = docSnap.data();
+      const uid = docSnap.id;
+      const role = (data.role || "").toLowerCase();
 
-    return res.json({ success: true, users, admins });
+      // Skip genuine superadmin or owner accounts
+      if (role === "super_admin" || data.isOwner === true) {
+        continue;
+      }
+
+      // Check if user has an unauthorized admin role or flags
+      const isUnauthorizedAdmin =
+        role === "admin" ||
+        role === "superadmin" ||
+        data.isAdmin === true ||
+        data.isSuperAdmin === true;
+
+      if (isUnauthorizedAdmin) {
+        // Determine legitimate role based on user fields
+        let newRole = "candidate";
+        if (data.companyName || data.agencyName || data.companyId) {
+          newRole = data.agencyName ? "consultancy" : "employer";
+        }
+
+        const isPendingKycRole = newRole === "consultancy" || newRole === "employer" || newRole === "recruiter";
+
+        const updatePayload: any = {
+          role: newRole,
+          isAdmin: false,
+          isSuperAdmin: false,
+          accountStatus: isPendingKycRole ? "pending_kyc" : "active",
+          status: isPendingKycRole ? "pending_kyc" : "active",
+          isActive: !isPendingKycRole,
+          isApproved: !isPendingKycRole,
+          updatedAt: new Date().toISOString()
+        };
+
+        // Update user doc
+        await db.collection("users").doc(uid).update(updatePayload);
+
+        // Delete from admins collection
+        try {
+          await db.collection("admins").doc(uid).delete();
+        } catch (e) {}
+
+        // Reset custom claims in Firebase Auth
+        try {
+          await authAdmin.setCustomUserClaims(uid, { role: newRole, admin: false });
+        } catch (e) {}
+
+        // Audit Log
+        await recordRoleAuditLog({
+          userId: uid,
+          userEmail: data.email,
+          userName: data.name,
+          previousRole: data.role,
+          newRole,
+          changedBy: reqAdminUid || "SYSTEM_REMEDIATION",
+          reason: "Auto-remediation of unauthorized admin role assignment"
+        });
+
+        repairedUsers.push({ uid, email: data.email, oldRole: data.role, newRole });
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: `Role remediation completed. Repaired ${repairedUsers.length} account(s).`,
+      repairedUsers
+    });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    console.error("Error running role repair:", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Role Audit Logs Retrieval
+app.get("/api/admin/role-audit-logs", async (req, res) => {
+  try {
+    const db = getFirestoreDb();
+    const snap = await db.collection("role_audit_logs").orderBy("createdAt", "desc").limit(100).get();
+    const logs: any[] = [];
+    snap.forEach(d => logs.push(d.data()));
+    return res.json({ success: true, logs });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -4447,11 +4584,8 @@ async function startExpiredJobsScheduler() {
   }
 }
 
-// Boot the scheduler only on a persistent standalone server.
-// Vercel functions must not create background intervals during module import.
-if (!process.env.VERCEL) {
-  startExpiredJobsScheduler();
-}
+// Boot the scheduler background task
+startExpiredJobsScheduler();
 
 // ==================== ZOHO DOMAIN VERIFICATION ROUTE ====================
 app.get("/zohochallenge.html", (req, res) => {
@@ -4460,37 +4594,41 @@ app.get("/zohochallenge.html", (req, res) => {
 
 // ==================== DEV / PROD HOSTING ====================
 
-const isVercel = Boolean(process.env.VERCEL);
-
-if (!isVercel) {
-  if (process.env.NODE_ENV !== "production") {
-    const startVite = async () => {
-      const vite = await createViteServer({
-        server: { middlewareMode: true },
-        appType: "spa",
-      });
-
-      app.use(vite.middlewares);
-
-      app.listen(PORT, "0.0.0.0", () => {
-        console.log(`Full-Stack dev server running on http://localhost:${PORT}`);
-      });
-    };
-
-    startVite();
-  } else {
-    const distPath = path.join(process.cwd(), "dist");
-
-    app.use(express.static(distPath));
-
-    app.get("*", (_req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
+if (process.env.NODE_ENV !== "production") {
+  const startVite = async () => {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: "spa",
     });
+    app.use(vite.middlewares);
 
     app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Full-Stack production server running on port ${PORT}`);
+      console.log(`Full-Stack dev server running on http://localhost:${PORT}`);
     });
-  }
-}
+  };
+  startVite();
+} else {
+  const distPath = path.join(process.cwd(), "dist");
+  app.use(express.static(distPath, {
+    maxAge: "1y",
+    immutable: true,
+    setHeaders: (res, filepath) => {
+      if (filepath.endsWith(".html")) {
+        res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+      } else {
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      }
+    }
+  }));
+  app.all("/api/*", (req, res) => {
+    res.status(404).json({ success: false, error: `API endpoint not found: ${req.method} ${req.path}` });
+  });
 
-export default app;
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(distPath, "index.html"));
+  });
+
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Full-Stack production server running on port ${PORT}`);
+  });
+}

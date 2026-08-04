@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Timestamp } from "firebase/firestore";
 import { Archive, CheckCircle, Clock, Contact, Download, FileText, Lock, Logs, ShieldCheck, Trash2, Type, User, Video } from "lucide-react";
 import { auth } from "../firebase";
+import { parseJsonResponse } from "../utils/apiHelper";
 
 
 export default function ComplianceGdprCenter() {
@@ -25,7 +26,7 @@ export default function ComplianceGdprCenter() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

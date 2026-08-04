@@ -72,7 +72,7 @@ export default function CandidateRegister({
 
     await setDoc(doc(db, "candidates", uid), candidateData, { merge: true });
 
-    // 3. Save Email Preferences
+    // 3. Save Email Preferences & Dispatch Candidate Welcome Email
     try {
       await fetch(`/api/email/preferences/${uid}`, {
         method: "POST",
@@ -84,17 +84,20 @@ export default function CandidateRegister({
           preferredJobRoles: targetRole ? [targetRole.trim()] : [],
           preferredLocations: location ? [location.trim()] : []
         })
-      });
+      }).catch(() => {});
 
       // Dispatch Candidate Welcome Email
-      await fetch("/api/email/send-test", {
+      await fetch("/api/email/candidate-welcome", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          to: userEmail,
-          templateName: "candidate-registration",
-          data: { candidateName: nameToSave }
+          email: userEmail,
+          candidateName: nameToSave,
+          candidateId: uid,
+          userId: uid
         })
+      }).catch((emailErr) => {
+        console.warn("[CandidateRegister] Notice: Welcome email trigger failed non-blockingly:", emailErr);
       });
     } catch (e) {
       console.warn("Notice: Candidate registration email preferences sync handled gracefully", e);

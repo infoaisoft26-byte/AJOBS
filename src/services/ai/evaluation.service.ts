@@ -1,4 +1,5 @@
 import { Book, Database, Focus, Scaling, Type } from "lucide-react";
+import { parseJsonResponse } from "../../utils/apiHelper";
 export interface AIEvaluationResponse {
   overallScore: number;
   technicalScore: number;
@@ -40,7 +41,7 @@ export const EvaluationAIService = {
         throw new Error("Evaluation API request failed");
       }
 
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
       return data;
     } catch (error) {
       console.warn("Evaluation API failed, running high-fidelity local AI evaluator:", error);

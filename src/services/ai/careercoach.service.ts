@@ -1,5 +1,6 @@
 import { storage } from "../../firebase";
 import React from "react";
+import { parseJsonResponse } from "../../utils/apiHelper";
 import { motion } from "motion/react";
 import { Building, Cloud, Cross, Database, Figma, Frame, Framer, Milestone, Scaling, Server, Star, Type, User } from "lucide-react";
 export interface AICareerCoachResponse {
@@ -28,7 +29,7 @@ export const CareerCoachAIService = {
         throw new Error("Career Coach API failure");
       }
 
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
       return data;
     } catch (err) {
       console.warn("Career Coach full API failed, using fallback coach data engine:", err);

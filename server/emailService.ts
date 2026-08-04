@@ -10,55 +10,331 @@ const getSenderAddress = () => {
 };
 
 const REPLY_TO = process.env.EMAIL_FROM_ADDRESS || "aijobs1401@gmail.com";
-const APP_URL = process.env.VITE_SITE_URL || process.env.APP_URL || "https://aijobs.in";
+const APP_URL = process.env.VITE_SITE_URL || process.env.APP_URL || "https://aijobs1.vercel.app";
 
 let transporter: nodemailer.Transporter | null = null;
 const inMemoryEmailLogs: Map<string, any> = new Map();
 
-export function getEmailLogs() {
+export function getEmailLogsFromMemory() {
   return Array.from(inMemoryEmailLogs.values());
 }
 
+/**
+ * Initialize Nodemailer transport using SMTP credentials
+ */
 function getTransporter(): nodemailer.Transporter | null {
-  if (!transporter) {
-    const host = process.env.SMTP_HOST || "smtp.gmail.com";
-    const user = process.env.SMTP_USER || process.env.EMAIL_FROM_ADDRESS || "aijobs1401@gmail.com";
-    const pass = process.env.SMTP_APP_PASSWORD || process.env.SMTP_PASS;
-    const port = Number(process.env.SMTP_PORT || 587);
-    const secure = process.env.SMTP_SECURE === "true" || port === 465;
+  const host = process.env.SMTP_HOST || "smtp.gmail.com";
+  const port = Number(process.env.SMTP_PORT || 465);
+  const secure = process.env.SMTP_SECURE !== "false";
+  const user = process.env.SMTP_USER || process.env.EMAIL_FROM_ADDRESS || "aijobs1401@gmail.com";
+  const pass = process.env.SMTP_APP_PASSWORD || process.env.SMTP_PASS;
 
-    if (user && pass) {
-      try {
-        transporter = nodemailer.createTransport({
-          host,
-          port,
-          secure,
-          auth: { user, pass },
-          tls: { rejectUnauthorized: false }
-        });
-        console.log(`[EmailService] Nodemailer SMTP initialized with host: ${host}, user: ${user}`);
-      } catch (err) {
-        console.error("[EmailService] Failed to initialize Nodemailer transporter:", err);
-      }
-    } else {
-      console.warn("[EmailService] SMTP credentials missing (SMTP_USER/SMTP_APP_PASSWORD not set). Will fallback to Firestore mail queue.");
+  if (!user || !pass) {
+    console.warn("[EmailService] SMTP credentials missing (SMTP_USER / SMTP_APP_PASSWORD not set).");
+    return null;
+  }
+
+  if (!transporter) {
+    try {
+      transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure,
+        auth: { user, pass },
+        tls: { rejectUnauthorized: false }
+      });
+      console.log(`[EmailService] Nodemailer transport initialized for host: ${host}, user: ${user}`);
+    } catch (err: any) {
+      console.error("[EmailService] Failed to create Nodemailer transport:", err.message);
+      return null;
     }
   }
+
   return transporter;
 }
 
-export interface SendEmailOptions {
+export interface DispatchEmailParams {
   to: string;
   templateName: string;
   data: EmailTemplateData;
-  category?: 'transactional' | 'job_alert' | 'marketing' | 'weekly_digest';
   userId?: string;
-  jobId?: string;
-  campaignId?: string;
+  recipientName?: string;
+  recipientRole?: string;
+  createdBy?: string;
+  category?: "transactional" | "job_alert" | "marketing" | "weekly_digest";
+}
+
+export interface DispatchEmailResult {
+  success: boolean;
+  messageId?: string;
+  emailId?: string;
+  alreadySent?: boolean;
+  message?: string;
+  error?: string;
 }
 
 /**
- * Ensures user email preferences exist at users/{uid}/email_preferences/settings
+ * Check if a welcome email was already sent to this user / email
+ */
+export async function checkIfAlreadySent(userId: string, recipientEmail: string, templateName: string): Promise<boolean> {
+  const db = getFirestoreDb();
+  if (!db || !db.collection) {
+    // Check in-memory logs
+    for (const log of inMemoryEmailLogs.values()) {
+      if (
+        (log.userId === userId || log.recipient === recipientEmail) &&
+        log.template === templateName &&
+        log.status === "sent"
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  try {
+    const snapByUid = await db.collection("email_logs")
+      .where("userId", "==", userId || "none")
+      .where("template", "==", templateName)
+      .where("status", "==", "sent")
+      .get();
+
+    if (!snapByUid.empty) return true;
+
+    const snapByEmail = await db.collection("email_logs")
+      .where("recipient", "==", recipientEmail)
+      .where("template", "==", templateName)
+      .where("status", "==", "sent")
+      .get();
+
+    if (!snapByEmail.empty) return true;
+  } catch (err: any) {
+    console.warn(`[EmailService] Duplicate check query notice: ${err.message}`);
+  }
+
+  return false;
+}
+
+/**
+ * Dispatch Email via Nodemailer SMTP and save email log to Firestore email_logs/{emailId}
+ */
+export async function dispatchEmail(params: DispatchEmailParams): Promise<DispatchEmailResult> {
+  const { to, templateName, data, userId = "anonymous", recipientName, recipientRole = "candidate", createdBy = "system", category = "transactional" } = params;
+
+  const recipient = (to || "").trim();
+  if (!recipient) {
+    return { success: false, error: "Recipient email address is required." };
+  }
+
+  const templateFn = EMAIL_TEMPLATES[templateName];
+  if (!templateFn) {
+    return { success: false, error: `Invalid email template name: ${templateName}` };
+  }
+
+  // Duplicate Welcome Email Check (Requirement 11)
+  const isWelcomeTemplate = ["candidate_welcome", "candidate-registration", "recruiter_welcome", "consultancy_welcome"].includes(templateName);
+  if (isWelcomeTemplate) {
+    const alreadySent = await checkIfAlreadySent(userId, recipient, templateName);
+    if (alreadySent) {
+      console.log(`[EmailService] Welcome email already sent to ${recipient} [template: ${templateName}]`);
+      return {
+        success: true,
+        alreadySent: true,
+        message: "Welcome email was already sent."
+      };
+    }
+  }
+
+  const emailId = `eml_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const now = new Date().toISOString();
+
+  // Inject defaults
+  const templateData: EmailTemplateData = {
+    ...data,
+    email: recipient,
+    recipientName: recipientName || data.recipientName || data.candidateName || recipient.split("@")[0],
+    appUrl: APP_URL
+  };
+
+  const rendered = templateFn(templateData);
+
+  const smtpTransporter = getTransporter();
+  if (!smtpTransporter) {
+    const errorMsg = "SMTP configuration is incomplete.";
+    // Log failed attempt to Firestore
+    await recordEmailLog({
+      emailId,
+      userId,
+      recipient,
+      recipientName: templateData.recipientName || recipient.split("@")[0],
+      recipientRole,
+      template: templateName,
+      subject: rendered.subject,
+      status: "failed",
+      provider: "gmail_smtp",
+      messageId: null,
+      errorMessage: errorMsg,
+      createdBy,
+      createdAt: now,
+      updatedAt: now
+    });
+
+    return { success: false, emailId, error: errorMsg };
+  }
+
+  let sentStatus: "sent" | "failed" = "failed";
+  let messageId: string | null = null;
+  let errorMessage: string | null = null;
+
+  try {
+    const mailHeader: any = {
+      from: getSenderAddress(),
+      to: recipient,
+      replyTo: REPLY_TO,
+      subject: rendered.subject,
+      html: rendered.html,
+      text: rendered.text
+    };
+
+    if (templateData.unsubscribeToken) {
+      const unsubUrl = `${APP_URL}/unsubscribe?token=${templateData.unsubscribeToken}`;
+      mailHeader.headers = {
+        'List-Unsubscribe': `<${unsubUrl}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
+      };
+    }
+
+    const info = await smtpTransporter.sendMail(mailHeader);
+    messageId = info.messageId || `msg_${Date.now()}`;
+    sentStatus = "sent";
+    console.log(`[EmailService] Email sent successfully to ${recipient} [Subject: "${rendered.subject}"] [MessageID: ${messageId}]`);
+  } catch (sendErr: any) {
+    sentStatus = "failed";
+    errorMessage = sendErr.message || "Failed to send email via SMTP.";
+    console.error(`[EmailService] SMTP send error to ${recipient}:`, errorMessage);
+  }
+
+  // Record Email Log in Firestore email_logs/{emailId} (Requirement 8)
+  await recordEmailLog({
+    emailId,
+    userId,
+    recipient,
+    recipientName: templateData.recipientName || recipient.split("@")[0],
+    recipientRole,
+    template: templateName,
+    subject: rendered.subject,
+    status: sentStatus,
+    provider: "gmail_smtp",
+    messageId,
+    errorMessage,
+    createdBy,
+    createdAt: now,
+    updatedAt: now
+  });
+
+  if (sentStatus === "sent") {
+    return {
+      success: true,
+      emailId,
+      messageId: messageId || undefined,
+      message: "Email sent successfully"
+    };
+  } else {
+    return {
+      success: false,
+      emailId,
+      error: errorMessage || "Email could not be sent."
+    };
+  }
+}
+
+/**
+ * Record Log Doc in Firestore 'email_logs/{emailId}'
+ */
+async function recordEmailLog(logRecord: any) {
+  inMemoryEmailLogs.set(logRecord.emailId, logRecord);
+
+  const db = getFirestoreDb();
+  if (db && db.collection) {
+    try {
+      await db.collection("email_logs").doc(logRecord.emailId).set(logRecord);
+    } catch (fsErr: any) {
+      console.warn(`[EmailService] Error writing to email_logs in Firestore:`, fsErr.message);
+    }
+  }
+}
+
+/**
+ * Trigger Candidate Welcome Email
+ */
+export async function sendCandidateWelcomeEmail(
+  candidateEmail: string,
+  candidateName: string = "Candidate",
+  userId?: string
+): Promise<DispatchEmailResult> {
+  return dispatchEmail({
+    to: candidateEmail,
+    templateName: "candidate_welcome",
+    data: {
+      candidateName,
+      recipientName: candidateName
+    },
+    userId: userId || "anonymous",
+    recipientName: candidateName,
+    recipientRole: "candidate",
+    createdBy: "registration_flow",
+    category: "transactional"
+  });
+}
+
+/**
+ * Trigger Recruiter Welcome Email
+ */
+export async function sendRecruiterWelcomeEmail(
+  recruiterEmail: string,
+  recruiterName: string = "Recruiter",
+  userId?: string
+): Promise<DispatchEmailResult> {
+  return dispatchEmail({
+    to: recruiterEmail,
+    templateName: "recruiter_welcome",
+    data: {
+      recipientName: recruiterName,
+      candidateName: recruiterName
+    },
+    userId: userId || "anonymous",
+    recipientName: recruiterName,
+    recipientRole: "recruiter",
+    createdBy: "registration_flow",
+    category: "transactional"
+  });
+}
+
+/**
+ * Trigger Consultancy Welcome Email
+ */
+export async function sendConsultancyWelcomeEmail(
+  consultancyEmail: string,
+  consultancyName: string = "Consultancy",
+  userId?: string
+): Promise<DispatchEmailResult> {
+  return dispatchEmail({
+    to: consultancyEmail,
+    templateName: "consultancy_welcome",
+    data: {
+      recipientName: consultancyName,
+      candidateName: consultancyName
+    },
+    userId: userId || "anonymous",
+    recipientName: consultancyName,
+    recipientRole: "consultancy",
+    createdBy: "registration_flow",
+    category: "transactional"
+  });
+}
+
+/**
+ * Helper to get user email preferences
  */
 export async function getOrCreateUserEmailPreferences(uid: string, userEmail: string, initialConsent: boolean = false) {
   const db = getFirestoreDb();
@@ -86,7 +362,6 @@ export async function getOrCreateUserEmailPreferences(uid: string, userEmail: st
 
   await prefRef.set(newPrefs, { merge: true });
 
-  // Store token mapping in root collection for easy token lookup
   await db.collection("unsubscribe_tokens").doc(unsubscribeToken).set({
     uid,
     email: userEmail,
@@ -96,503 +371,35 @@ export async function getOrCreateUserEmailPreferences(uid: string, userEmail: st
   return newPrefs;
 }
 
-/**
- * Dispatch Email via Nodemailer (if configured) AND store in Firestore 'mail' collection for Firebase Trigger Email Extension.
- */
-export async function dispatchEmail(options: SendEmailOptions): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const { to, templateName, data, category = 'transactional', userId, jobId, campaignId } = options;
-
-  const templateFn = EMAIL_TEMPLATES[templateName];
-  if (!templateFn) {
-    return { success: false, error: `Invalid email template name: ${templateName}` };
-  }
-
-  // Inject default appUrl and recipient data
-  const templateData: EmailTemplateData = {
-    ...data,
-    email: to,
-    appUrl: APP_URL
-  };
-
-  const rendered = templateFn(templateData);
-  const db = getFirestoreDb();
-
-  let sentViaSmtp = false;
-  let messageId = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-
-  // 1. Try sending via Nodemailer SMTP if transporter exists
-  const smtpTransporter = getTransporter();
-  if (smtpTransporter) {
-    try {
-      const mailHeader: any = {
-        from: getSenderAddress(),
-        to,
-        replyTo: REPLY_TO,
-        subject: rendered.subject,
-        html: rendered.html,
-        text: rendered.text
-      };
-
-      if (templateData.unsubscribeToken) {
-        const unsubUrl = `${APP_URL}/unsubscribe?token=${templateData.unsubscribeToken}`;
-        mailHeader.headers = {
-          'List-Unsubscribe': `<${unsubUrl}>`,
-          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
-        };
-      }
-
-      const info = await smtpTransporter.sendMail(mailHeader);
-      messageId = info.messageId || messageId;
-      sentViaSmtp = true;
-      console.log(`[EmailService] SMTP Email sent successfully to ${to} [Template: ${templateName}]`);
-    } catch (smtpErr: any) {
-      console.warn(`[EmailService] SMTP send warning (fallback to Firestore trigger):`, smtpErr.message);
-    }
-  }
-
-  // 2. Always write to Firestore 'mail' collection (Firebase Trigger Email Extension)
-  if (db && db.collection) {
-    try {
-      const mailDoc = {
-        to: [to],
-        message: {
-          subject: rendered.subject,
-          html: rendered.html,
-          text: rendered.text,
-          replyTo: REPLY_TO
-        },
-        template: {
-          name: templateName,
-          data: templateData
-        },
-        category,
-        userId: userId || "anonymous",
-        sentViaSmtp,
-        createdAt: new Date().toISOString()
-      };
-
-      await db.collection("mail").add(mailDoc);
-      console.log(`[EmailService] Document queued in Firestore 'mail' collection for ${to}`);
-    } catch (fsErr: any) {
-      console.error(`[EmailService] Error writing to Firestore 'mail' collection:`, fsErr.message);
-    }
-
-    // 3. Log to message_logs
-    try {
-      await db.collection("message_logs").add({
-        userId: userId || "anonymous",
-        event: templateName,
-        medium: "email",
-        recipient: to,
-        subject: rendered.subject,
-        category,
-        status: sentViaSmtp ? "SENT_SMTP" : "QUEUED_FIRESTORE",
-        createdAt: new Date().toISOString()
-      });
-    } catch (logErr) {
-      // Non-blocking log error
-    }
-  }
-
-  return { success: true, messageId };
-}
-
-/**
- * Sends Candidate Welcome Email via Gmail Nodemailer SMTP and logs delivery status to Firestore email_logs/{emailId}
- */
-export async function sendCandidateWelcomeEmail(
-  candidateEmail: string,
-  candidateName: string = "Candidate",
-  userId?: string
-): Promise<{ success: boolean; emailId: string; error?: string }> {
-  const recipient = (candidateEmail || "").trim();
-  const subject = "Welcome to AIJobs – Registration Successful";
-  const emailId = `wel_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-  const createdAt = new Date().toISOString();
-
-  if (!recipient) {
-    const error = "Missing candidate email address";
-    console.error(`[Welcome Email] Failed: empty recipient email`);
-    return { success: false, emailId, error };
-  }
-
-  // Requirement 11: Server log: [Welcome Email] Sending to:
-  console.log(`[Welcome Email] Sending to: ${recipient}`);
-
-  let sentStatus: "sent" | "failed" = "failed";
-  let errorMessage: string | null = null;
-
-  try {
-    const dispatchRes = await dispatchEmail({
-      to: recipient,
-      templateName: "candidate-registration",
-      data: {
-        candidateName: candidateName || "Candidate",
-        email: recipient,
-        customSubject: subject
-      },
-      category: "transactional",
-      userId: userId || "anonymous"
-    });
-
-    if (dispatchRes.success) {
-      sentStatus = "sent";
-      // Requirement 11: Server log: [Welcome Email] Sent successfully:
-      console.log(`[Welcome Email] Sent successfully: ${recipient}`);
-    } else {
-      sentStatus = "failed";
-      errorMessage = dispatchRes.error || "Failed to dispatch email via Nodemailer/SMTP";
-      // Requirement 11: Server log: [Welcome Email] Failed:
-      console.error(`[Welcome Email] Failed: ${recipient} - ${errorMessage}`);
-    }
-  } catch (err: any) {
-    sentStatus = "failed";
-    errorMessage = err?.message || String(err);
-    // Requirement 11: Server log: [Welcome Email] Failed:
-    console.error(`[Welcome Email] Failed: ${recipient} - ${errorMessage}`);
-  }
-
-  const logRecord = {
-    emailId,
-    userId: userId || "anonymous",
-    recipient,
-    subject,
-    template: "candidate_welcome",
-    status: sentStatus,
-    errorMessage: errorMessage || null,
-    createdAt
-  };
-
-  inMemoryEmailLogs.set(emailId, logRecord);
-
-  // Requirement 10: Save email delivery logs in Firestore: email_logs/{emailId}
-  const db = getFirestoreDb();
-  if (db && db.collection) {
-    try {
-      await db.collection("email_logs").doc(emailId).set(logRecord);
-    } catch (logErr: any) {
-      console.warn(`[Welcome Email] Notice: could not record email_logs doc: ${logErr.message}`);
-    }
-  }
-
-  return {
-    success: sentStatus === "sent",
-    emailId,
-    error: errorMessage || undefined
-  };
-}
-
-/**
- * Checks if a candidate's email preferences match a target job posting.
- */
-export function checkCandidateMatchesJob(prefs: any, job: any, isWeeklyDigest: boolean = false): boolean {
-  if (!prefs) return false;
-
-  // 1. Consent Check
-  if (isWeeklyDigest) {
-    if (!prefs.weeklyDigest) return false;
-  } else {
-    if (!prefs.jobAlerts) return false;
-  }
-
-  // Normalize job fields
-  const jobTitle = (job.title || job.role || job.category || "").toLowerCase();
-  const jobLocation = (job.location || "").toLowerCase();
-
-  let jobSkills: string[] = [];
-  if (Array.isArray(job.skills)) {
-    jobSkills = job.skills.map((s: any) => String(s).toLowerCase());
-  } else if (typeof job.skills === "string") {
-    jobSkills = job.skills.split(",").map((s: string) => s.trim().toLowerCase());
-  }
-  if (Array.isArray(job.requiredSkills)) {
-    const extra = job.requiredSkills.map((s: any) => String(s).toLowerCase());
-    jobSkills.push(...extra);
-  }
-
-  // 2. Role matching
-  const roles: string[] = prefs.preferredJobRoles || [];
-  if (roles.length > 0) {
-    const roleMatch = roles.some((role) => {
-      const r = role.toLowerCase().trim();
-      return r && (jobTitle.includes(r) || r.includes(jobTitle));
-    });
-    if (!roleMatch) return false;
-  }
-
-  // 3. Location matching
-  const locations: string[] = prefs.preferredLocations || [];
-  if (locations.length > 0) {
-    const locMatch = locations.some((loc) => {
-      const l = loc.toLowerCase().trim();
-      if (!l) return false;
-      if (jobLocation.includes("remote") || l.includes("remote")) return true;
-      return jobLocation.includes(l) || l.includes(jobLocation);
-    });
-    if (!locMatch) return false;
-  }
-
-  // 4. Skills matching
-  const skills: string[] = prefs.preferredSkills || [];
-  if (skills.length > 0 && jobSkills.length > 0) {
-    const skillMatch = skills.some((skill) => {
-      const sk = skill.toLowerCase().trim();
-      return sk && jobSkills.some((js) => js.includes(sk) || sk.includes(js));
-    });
-    if (!skillMatch) return false;
-  }
-
-  return true;
-}
-
-/**
- * Triggers job alerts for candidates who opted into jobAlerts and match job criteria
- */
-export async function triggerJobAlertCampaign(jobId: string, jobData: any): Promise<{ queued: number; skipped: number; errors: number }> {
-  const db = getFirestoreDb();
-  if (!db || !db.collection) return { queued: 0, skipped: 0, errors: 0 };
-
-  let queued = 0;
-  let skipped = 0;
-  let errors = 0;
-
-  try {
-    const campaignId = `campaign_job_${jobId}_${Date.now()}`;
-    const usersSnap = await db.collection("users").get();
-
-    for (const userDoc of usersSnap.docs) {
-      const userData = userDoc.data();
-      if (userData.role && userData.role !== "candidate" && userData.role !== "user") continue;
-
-      const uid = userDoc.id;
-      const userEmail = userData.email;
-      if (!userEmail) continue;
-
-      // Check candidate preferences
-      const prefs = await getOrCreateUserEmailPreferences(uid, userEmail, false);
-      if (!prefs || !prefs.jobAlerts) {
-        skipped++;
-        continue;
-      }
-
-      // Check preference matching
-      if (!checkCandidateMatchesJob(prefs, jobData, false)) {
-        skipped++;
-        continue;
-      }
-
-      // Check duplicate delivery
-      const existingDelivery = await db.collection("email_campaign_deliveries")
-        .where("jobId", "==", jobId)
-        .where("candidateId", "==", uid)
-        .get();
-
-      if (!existingDelivery.empty) {
-        skipped++;
-        continue;
-      }
-
-      const deliveryId = `del_${jobId}_${uid}`;
-      const deliveryRef = db.collection("email_campaign_deliveries").doc(deliveryId);
-
-      await deliveryRef.set({
-        id: deliveryId,
-        campaignId,
-        jobId,
-        candidateId: uid,
-        email: userEmail,
-        status: "PROCESSING",
-        queuedAt: new Date().toISOString(),
-        unsubscribeStatus: false
-      });
-
-      const jobUrl = `${APP_URL}/jobs/${jobData.slug || jobId}`;
-      const res = await dispatchEmail({
-        to: userEmail,
-        templateName: "new-job-alert",
-        data: {
-          candidateName: userData.name || "Candidate",
-          jobTitle: jobData.title || "Job Opportunity",
-          companyName: jobData.companyName || jobData.hiringOrganizationName || "Partner Enterprise",
-          location: jobData.location || "Remote / Pan-India",
-          salary: jobData.salary || "Competitive Salary",
-          jobUrl,
-          unsubscribeToken: prefs.unsubscribeToken
-        },
-        category: "job_alert",
-        userId: uid,
-        jobId,
-        campaignId
-      });
-
-      if (res.success) {
-        queued++;
-        await deliveryRef.update({
-          status: "SUCCESS",
-          sentAt: new Date().toISOString()
-        });
-      } else {
-        errors++;
-        await deliveryRef.update({
-          status: "ERROR",
-          failedAt: new Date().toISOString(),
-          error: res.error || "Delivery failed"
-        });
-      }
-    }
-  } catch (err: any) {
-    console.error("[EmailService] Error running job alert campaign:", err.message);
-  }
-
-  return { queued, skipped, errors };
-}
-
-/**
- * Triggers Weekly Job Digest for opted-in candidates based on matching preferences
- */
-export async function runWeeklyJobDigest(): Promise<{ processed: number; sent: number; skipped: number }> {
-  const db = getFirestoreDb();
-  if (!db || !db.collection) return { processed: 0, sent: 0, skipped: 0 };
-
-  let processed = 0;
-  let sent = 0;
-  let skipped = 0;
-
-  try {
-    // Fetch live jobs
-    const jobsSnap = await db.collection("jobs").limit(20).get();
-    const liveJobsData: any[] = [];
-
-    jobsSnap.forEach((docSnap) => {
-      const data = docSnap.data();
-      data.id = docSnap.id;
-      if (["open", "published", "approved", "live"].includes((data.status || "").toLowerCase())) {
-        liveJobsData.push(data);
-      }
-    });
-
-    if (liveJobsData.length === 0) {
-      console.log("[EmailService] Weekly digest skipped: No active live jobs available.");
-      return { processed: 0, sent: 0, skipped: 0 };
-    }
-
-    const usersSnap = await db.collection("users").get();
-
-    for (const userDoc of usersSnap.docs) {
-      processed++;
-      const userData = userDoc.data();
-      if (userData.role && userData.role !== "candidate" && userData.role !== "user") continue;
-
-      const uid = userDoc.id;
-      const userEmail = userData.email;
-
-      if (!userEmail) continue;
-
-      const prefs = await getOrCreateUserEmailPreferences(uid, userEmail, false);
-      if (!prefs || !prefs.weeklyDigest) {
-        skipped++;
-        continue;
-      }
-
-      // Filter live jobs for candidate matching preferences
-      const candidateMatchingJobs = liveJobsData
-        .filter((j) => checkCandidateMatchesJob(prefs, j, true))
-        .slice(0, 10);
-
-      if (candidateMatchingJobs.length === 0) {
-        skipped++;
-        continue;
-      }
-
-      const formattedJobs = candidateMatchingJobs.map((j) => ({
-        title: j.title || "Software Opportunity",
-        company: j.companyName || j.hiringOrganizationName || "AIJobs Partner",
-        location: j.location || "Remote / India",
-        salary: j.salary || "As per industry standards",
-        url: `${APP_URL}/jobs/${j.slug || j.id}`
-      }));
-
-      const res = await dispatchEmail({
-        to: userEmail,
-        templateName: "weekly-job-digest",
-        data: {
-          candidateName: userData.name || "Candidate",
-          jobsList: formattedJobs,
-          unsubscribeToken: prefs.unsubscribeToken
-        },
-        category: "weekly_digest",
-        userId: uid
-      });
-
-      if (res.success) {
-        sent++;
-      }
-    }
-  } catch (err: any) {
-    console.error("[EmailService] Error running weekly job digest:", err.message);
-  }
-
-  return { processed, sent, skipped };
-}
-
-/**
- * Handles Candidate Unsubscribe Action
- */
 export async function processUnsubscribe(token: string, options: { jobAlerts?: boolean; promotionalEmails?: boolean; weeklyDigest?: boolean; unsubscribeAll?: boolean }) {
   const db = getFirestoreDb();
   if (!db || !db.collection) return { success: false, error: "Database unavailable" };
 
   try {
-    // Look up token
     const tokenSnap = await db.collection("unsubscribe_tokens").doc(token).get();
     if (!tokenSnap.exists) {
-      // Fallback: search preferences by token
-      const usersSnap = await db.collection("users").get();
-      let targetUid: string | null = null;
-
-      for (const userDoc of usersSnap.docs) {
-        const prefRef = db.collection("users").doc(userDoc.id).collection("email_preferences").doc("settings");
-        const prefSnap = await prefRef.get();
-        if (prefSnap.exists && prefSnap.data()?.unsubscribeToken === token) {
-          targetUid = userDoc.id;
-          break;
-        }
-      }
-
-      if (!targetUid) {
-        return { success: false, error: "Invalid or expired unsubscribe link token." };
-      }
-
-      return updatePreferencesDoc(targetUid, options);
+      return { success: false, error: "Invalid or expired unsubscribe token." };
     }
 
     const uid = tokenSnap.data()?.uid;
     if (!uid) return { success: false, error: "User ID not associated with token" };
 
-    return updatePreferencesDoc(uid, options);
+    const prefRef = db.collection("users").doc(uid).collection("email_preferences").doc("settings");
+    let updates: any = { updatedAt: new Date().toISOString() };
+
+    if (options.unsubscribeAll) {
+      updates.jobAlerts = false;
+      updates.promotionalEmails = false;
+      updates.weeklyDigest = false;
+    } else {
+      if (typeof options.jobAlerts === "boolean") updates.jobAlerts = options.jobAlerts;
+      if (typeof options.promotionalEmails === "boolean") updates.promotionalEmails = options.promotionalEmails;
+      if (typeof options.weeklyDigest === "boolean") updates.weeklyDigest = options.weeklyDigest;
+    }
+
+    await prefRef.set(updates, { merge: true });
+    return { success: true, message: "Email preferences updated successfully." };
   } catch (err: any) {
     return { success: false, error: err.message };
   }
-}
-
-async function updatePreferencesDoc(uid: string, options: { jobAlerts?: boolean; promotionalEmails?: boolean; weeklyDigest?: boolean; unsubscribeAll?: boolean }) {
-  const db = getFirestoreDb();
-  const prefRef = db.collection("users").doc(uid).collection("email_preferences").doc("settings");
-
-  let updates: any = {
-    updatedAt: new Date().toISOString()
-  };
-
-  if (options.unsubscribeAll) {
-    updates.jobAlerts = false;
-    updates.promotionalEmails = false;
-    updates.weeklyDigest = false;
-  } else {
-    if (typeof options.jobAlerts === "boolean") updates.jobAlerts = options.jobAlerts;
-    if (typeof options.promotionalEmails === "boolean") updates.promotionalEmails = options.promotionalEmails;
-    if (typeof options.weeklyDigest === "boolean") updates.weeklyDigest = options.weeklyDigest;
-  }
-
-  await prefRef.set(updates, { merge: true });
-  return { success: true, message: "Email preferences updated successfully." };
 }

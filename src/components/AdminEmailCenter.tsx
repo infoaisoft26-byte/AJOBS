@@ -1,4 +1,5 @@
 import { Dispatch, useEffect, useState } from "react";
+import { parseJsonResponse } from "../utils/apiHelper";
 import { CheckCircle2, Container, FileText, Grid, Inbox, Inspect, Layers, Library, List, Logs, Mail, Navigation, Package, Play, RefreshCw, RotateCw, Send, Sparkles, Type, Users, XCircle } from "lucide-react";
 interface TemplateInfo {
   id: string;
@@ -78,12 +79,9 @@ export default function AdminEmailCenter() {
   const fetchTemplates = async () => {
     try {
       const res = await fetch("/api/email/templates");
-      const contentType = res.headers.get("content-type") || "";
-      if (res.ok && contentType.includes("application/json")) {
-        const data = await res.json();
-        if (data.success) {
-          setTemplates(data.templates || []);
-        }
+      const data = await parseJsonResponse(res);
+      if (data.success) {
+        setTemplates(data.templates || []);
       }
     } catch (e) {
       console.warn("Failed to fetch templates:", e);
@@ -93,12 +91,9 @@ export default function AdminEmailCenter() {
   const fetchStats = async () => {
     try {
       const res = await fetch("/api/email/stats");
-      const contentType = res.headers.get("content-type") || "";
-      if (res.ok && contentType.includes("application/json")) {
-        const data = await res.json();
-        if (data.success && data.stats) {
-          setOverallStats(data.stats);
-        }
+      const data = await parseJsonResponse(res);
+      if (data.success && data.stats) {
+        setOverallStats(data.stats);
       }
     } catch (e) {
       console.warn("Failed to fetch stats:", e);
@@ -109,12 +104,9 @@ export default function AdminEmailCenter() {
     setLogsLoading(true);
     try {
       const res = await fetch("/api/email/deliveries");
-      const contentType = res.headers.get("content-type") || "";
-      if (res.ok && contentType.includes("application/json")) {
-        const data = await res.json();
-        if (data.success) {
-          setDeliveries(data.deliveries || []);
-        }
+      const data = await parseJsonResponse(res);
+      if (data.success) {
+        setDeliveries(data.deliveries || []);
       }
     } catch (e) {
       console.warn("Failed to fetch delivery logs:", e);
@@ -144,7 +136,7 @@ export default function AdminEmailCenter() {
           }
         })
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (data.success) {
         setPreviewData({ subject: data.subject, html: data.html });
       }
@@ -174,7 +166,7 @@ export default function AdminEmailCenter() {
           }
         })
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (data.success) {
         setTestResultMsg(`Success! Test email queued/sent to ${testEmailAddress}`);
         fetchStats();
@@ -208,7 +200,7 @@ export default function AdminEmailCenter() {
           }
         })
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (data.success) {
         setCampaignStats(data.stats);
         fetchStats();
@@ -230,7 +222,7 @@ export default function AdminEmailCenter() {
         method: "POST",
         headers: { "Content-Type": "application/json" }
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (data.success) {
         setDigestResult(data.result);
         fetchStats();
@@ -251,7 +243,7 @@ export default function AdminEmailCenter() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ deliveryId })
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (data.success) {
         fetchLogs();
         fetchStats();

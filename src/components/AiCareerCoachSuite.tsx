@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { parseJsonResponse } from "../utils/apiHelper";
 import { ArrowRight, Brain, CheckCircle, Cloud, Compass, Cross, DollarSign, FileText, Focus, MessageSquare, Navigation, Server, Target, TrendingUp, Type } from "lucide-react";
 import { CandidateProfile } from "../types";
 import { useGlobalMarketplace } from "../context/GlobalMarketplaceContext";
@@ -30,7 +31,7 @@ export default function AiCareerCoachSuite({ candidateProfile }: AiCareerCoachSu
         }),
       });
 
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
       if (data.success && data.coachAdvice) {
         setAiCoachOutput(data.coachAdvice);
       } else {

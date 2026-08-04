@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AlertTriangle, CheckCircle2, Layers, RefreshCw, Scan, Trash2, Type } from "lucide-react";
+import { parseJsonResponse } from "../../utils/apiHelper";
 export default function DemoDataCleanupTool({ adminUserId }: { adminUserId: string }) {
   const [loading, setLoading] = useState(false);
   const [dryRunResult, setDryRunResult] = useState<any>(null);
@@ -20,7 +21,7 @@ export default function DemoDataCleanupTool({ adminUserId }: { adminUserId: stri
         body: JSON.stringify({ dryRun: true, adminUserId })
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Failed to scan demo data.");
       }
@@ -53,7 +54,7 @@ export default function DemoDataCleanupTool({ adminUserId }: { adminUserId: stri
         })
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Failed to execute demo data cleanup.");
       }

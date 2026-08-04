@@ -1,4 +1,5 @@
 import { Type, Weight } from "lucide-react";
+import { parseJsonResponse } from "../../utils/apiHelper";
 export interface JobMatchResponse {
   matchPercentage: number;
   skillsMatchPercentage: number;
@@ -34,7 +35,7 @@ export const JobMatchAIService = {
         throw new Error("Job Match API failure");
       }
 
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
       return data;
     } catch (error) {
       console.warn("Job Match API failed, executing adaptive local comparison engine:", error);

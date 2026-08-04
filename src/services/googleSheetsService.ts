@@ -1,6 +1,7 @@
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { Type } from "lucide-react";
 import { auth } from "../firebase";
+import { parseJsonResponse } from "../utils/apiHelper";
 
 
 // In-memory cache for the Google OAuth access token
@@ -97,7 +98,7 @@ export async function exportToGoogleSheets(
     throw new Error(`Google Sheets creation failed: ${createResponse.statusText}`);
   }
 
-  const spreadsheet = await createResponse.json();
+  const spreadsheet = await parseJsonResponse(createResponse);
   const spreadsheetId = spreadsheet.spreadsheetId;
   const spreadsheetUrl = spreadsheet.spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
 

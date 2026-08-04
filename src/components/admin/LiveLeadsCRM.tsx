@@ -33,7 +33,9 @@ export default function LiveLeadsCRM() {
     const timeoutId = setTimeout(() => controller.abort(), 8000);
 
     try {
-      const headers: Record<string, string> = {};
+      const headers: Record<string, string> = {
+        "Accept": "application/json"
+      };
       if (auth.currentUser) {
         try {
           const token = await auth.currentUser.getIdToken();
@@ -65,6 +67,10 @@ export default function LiveLeadsCRM() {
 
       if (res.ok && data && data.success) {
         setLeads(data.leads || []);
+      } else if (res.status === 401) {
+        setErrorMessage(data?.error || "Authentication required.");
+      } else if (res.status === 403) {
+        setErrorMessage(data?.error || "Access denied: Admin privileges required.");
       } else {
         const errorText = data?.error || data?.message || "Lead service is temporarily unavailable.";
         setErrorMessage(errorText);
@@ -110,9 +116,21 @@ export default function LiveLeadsCRM() {
     if (!selectedLead) return;
     setUpdating(true);
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      };
+      if (auth.currentUser) {
+        try {
+          const token = await auth.currentUser.getIdToken();
+          headers["Authorization"] = `Bearer ${token}`;
+          headers["x-user-id"] = auth.currentUser.uid;
+        } catch (tErr) {}
+      }
+
       const res = await fetch("/api/leads/update", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           leadId: selectedLead.leadId,
           status: editStatus,
@@ -122,12 +140,20 @@ export default function LiveLeadsCRM() {
         })
       });
 
-      const data = await res.json();
-      if (data.success) {
+      const contentType = res.headers.get("content-type") || "";
+      const text = await res.text();
+      let data: any = null;
+      if (text && contentType.includes("application/json")) {
+        try { data = JSON.parse(text); } catch (e) {}
+      }
+
+      if (data && data.success) {
         setToastMsg("Lead record updated successfully!");
         setTimeout(() => setToastMsg(""), 3000);
         setSelectedLead(null);
         fetchLeads();
+      } else {
+        alert(data?.error || "Failed to update lead record.");
       }
     } catch (err) {
       console.error("Failed to update lead:", err);

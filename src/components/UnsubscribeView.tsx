@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { AlertCircle, BellOff, CheckCircle2, RefreshCw, Save, ShieldCheck, Type } from "lucide-react";
 import AIJobsLogo from "./AIJobsLogo";
+import { parseJsonResponse } from "../utils/apiHelper";
 
 export default function UnsubscribeView() {
   const [token, setToken] = useState("");
@@ -28,7 +29,7 @@ export default function UnsubscribeView() {
     const fetchInfo = async () => {
       try {
         const res = await fetch(`/api/email/unsubscribe-info?token=${encodeURIComponent(tok)}`);
-        const data = await res.json();
+        const data = await parseJsonResponse(res);
 
         if (data.success) {
           setEmail(data.email || "");
@@ -66,7 +67,7 @@ export default function UnsubscribeView() {
         body: JSON.stringify(payload)
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (data.success) {
         if (unsubscribeAll) {
           setJobAlerts(false);

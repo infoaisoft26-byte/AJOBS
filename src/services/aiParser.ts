@@ -2,6 +2,7 @@ import { doc, setDoc } from "firebase/firestore";
 import { Server, Type, User } from "lucide-react";
 import { auth, db } from "../firebase";
 import { ResumeAIService } from "./ai/resume.service";
+import { parseJsonResponse } from "../utils/apiHelper";
 
 export interface ParsedResumeMetadata {
   name: string;
@@ -65,7 +66,7 @@ export async function parseResumeData(
     });
 
     if (response.ok) {
-      rawResponseData = await response.json();
+      rawResponseData = await parseJsonResponse(response);
       if (rawResponseData && rawResponseData.parsed) {
         const p = rawResponseData.parsed;
         parsed = {

@@ -10,6 +10,7 @@ import { getLiveJobs } from "../services/jobService";
 import { applyToJob } from "../services/applicationService";
 import { useToast } from "./GlobalToast";
 import { saveJobToBookmarks, removeJobFromBookmarks, getSavedJobIdsFromBookmarks } from "../services/savedJobsService";
+import { parseJsonResponse } from "../utils/apiHelper";
 
 // Import modular panels
 import { NotificationCenterView } from "./NotificationCenter";
@@ -325,7 +326,7 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ resumeText, candidateName: userName })
       });
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
       setAnalysisResult(data);
 
       const updatedProfile = {
@@ -398,7 +399,7 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
           skillsRequired: job.skillsRequired
         })
       });
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
       setMatchResult(data);
 
       // Save to job_recommendations collection in Firestore
@@ -523,7 +524,7 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
           answer: userAnswer
         })
       });
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
       
       const evalItem = {
         ...interviewSession.questions[currentQuestionIndex],
@@ -587,7 +588,7 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ chatHistory: nextHistory, userMessage: userMsg })
       });
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
 
       const aiMsg: ChatMessage = {
         id: "msg_" + Math.random().toString(36).substr(2, 9),

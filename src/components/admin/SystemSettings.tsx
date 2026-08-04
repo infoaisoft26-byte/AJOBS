@@ -2,6 +2,7 @@ import React, { Dispatch, FormEvent, useEffect, useState } from "react";
 import { Timestamp, collection, doc, setDoc, where } from "firebase/firestore";
 import { Activity, Asterisk, Ban, Check, Chrome, Cloud, Contact, Database, Eye, EyeOff, Globe, Icon, Lock, Logs, Mail, Package, Phone, RefreshCw, Save, Search, Send, Server, Settings, Sliders, Type, View } from "lucide-react";
 import { db } from "../../firebase";
+import { parseJsonResponse } from "../../utils/apiHelper";
 
 
 interface SystemSettingsProps {
@@ -38,7 +39,7 @@ export default function SystemSettings({
     try {
       const res = await fetch("/api/admin/get-twilio-settings");
       if (res.ok) {
-        const data = await res.json();
+        const data = await parseJsonResponse(res);
         if (data.success && data.settings) {
           setTwilioAccountSid(data.settings.accountSid || "");
           setTwilioAuthToken(data.settings.authToken || "");
@@ -57,7 +58,7 @@ export default function SystemSettings({
     try {
       const res = await fetch("/api/admin/sms-logs");
       if (res.ok) {
-        const data = await res.json();
+        const data = await parseJsonResponse(res);
         if (data.success) {
           setSmsLogs(data.logs || []);
         }
@@ -95,7 +96,7 @@ export default function SystemSettings({
       });
 
       if (res.ok) {
-        const data = await res.json();
+        const data = await parseJsonResponse(res);
         if (data.success) {
           alert("🎉 Twilio Integration Settings synchronized successfully.");
           fetchTwilioSettings();
@@ -133,7 +134,7 @@ export default function SystemSettings({
       });
 
       if (res.ok) {
-        const data = await res.json();
+        const data = await parseJsonResponse(res);
         if (data.success) {
           alert("🎉 Test SMS dispatch triggered successfully! Check logs table below.");
           fetchSmsLogs();

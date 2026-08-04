@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { collection, getDocs, limit, orderBy, query, where } from "firebase/firestore";
 import { Activity, ArrowRight, ArrowUpRight, Briefcase, Building, Clock, Contact, Container, FileText, Flame, Grid, HelpCircle, IndianRupee, Layers, List, Phone, RefreshCw, ShieldAlert, Sparkles, Sun, Target, Tickets, TrendingUp, Type, User, Users, View, Volume, X } from "lucide-react";
 import { auth, db } from "../../firebase";
+import { parseJsonResponse } from "../../utils/apiHelper";
 import { LiveStats, SystemAuditLog } from "./AdminTypes";
 import DashboardAnalyticsCharts from "../DashboardAnalyticsCharts";
 
@@ -129,7 +130,7 @@ export default function LiveDashboard({
       });
 
       if (response.status === 403) {
-        const errData = await response.json();
+        const errData = await parseJsonResponse(response);
         setInsights({
           talentSupplyInsight: "❌ ABAC BLOCKED: Realtime advisory streams are encrypted for non-Super Admins.",
           conversionForecast: `Policy Reason: ${errData.reason || "Access restricted by ABAC configuration."}`,
@@ -142,7 +143,7 @@ export default function LiveDashboard({
       }
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await parseJsonResponse(response);
         setInsights(data);
       } else {
         throw new Error();

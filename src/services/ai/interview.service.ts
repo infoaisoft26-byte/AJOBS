@@ -1,5 +1,6 @@
 import { collection, where } from "firebase/firestore";
 import { Play, Type } from "lucide-react";
+import { parseJsonResponse } from "../../utils/apiHelper";
 export interface InterviewQuestionItem {
   id: string;
   type: "MCQ" | "Technical Questions" | "Scenario Questions" | "Behavioral Questions" | "Role Play";
@@ -60,7 +61,7 @@ export const InterviewAIService = {
         throw new Error("Question generation API failure");
       }
 
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
       return data.questions;
     } catch (err) {
       console.warn("API Question generation failed, utilizing adaptive fallback simulator:", err);

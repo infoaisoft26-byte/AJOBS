@@ -1,5 +1,6 @@
 import { storage } from "../firebase";
 import React, { ChangeEvent, FormEvent, HTMLInputElement, useState } from "react";
+import { parseJsonResponse } from "../utils/apiHelper";
 import { AlertCircle, CheckCircle2, Code, File, FileCode, Key, Lock, Share, ShieldCheck, Signature, Upload, X } from "lucide-react";
 interface AadhaarOfflineModalProps {
   isOpen: boolean;
@@ -73,7 +74,7 @@ export default function AadhaarOfflineModal({
         body: formData
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!data.success) {
         throw new Error(data.error || "Aadhaar e-KYC validation failed.");
       }

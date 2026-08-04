@@ -2,6 +2,7 @@ import { HTMLDivElement, useEffect, useRef, useState } from "react";
 import { where } from "firebase/firestore";
 import { ref } from "firebase/storage";
 import { AlertCircle, Building2, CheckCircle2, Container, CreditCard, Database, KeyRound, ScrollText, Send, ShieldCheck, Signature, Table, Type, Verified, X } from "lucide-react";
+import { parseJsonResponse } from "../utils/apiHelper";
 interface AgreementAndCheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -66,7 +67,7 @@ export default function AgreementAndCheckoutModal({
       try {
         setLoadingPlan(true);
         const res = await fetch("/api/plans/list");
-        const data = await res.json();
+        const data = await parseJsonResponse(res);
         if (data.success && data.plans) {
           setPlans(data.plans);
           const current = data.plans.find((p: any) => p.planId === planId) || data.plans[0];

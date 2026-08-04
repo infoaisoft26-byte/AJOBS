@@ -2,6 +2,7 @@ import React, { MouseEvent, useState } from "react";
 import { query } from "firebase/firestore";
 import { Bot, Cross, Drill, Filter, Grid, Milestone, Ratio, Search, Send, ShieldCheck, Sparkles, Star, Store, ToggleLeft, ToggleRight, Type, X } from "lucide-react";
 import { GoogleGenAI } from "@google/genai";
+import { parseJsonResponse } from "../utils/apiHelper";
 
 export interface AgentDef {
   id: string;
@@ -200,7 +201,7 @@ export default function AiAgentMarketplace({ userRole = "candidate", isAdmin = f
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await parseJsonResponse(response);
         const responseText = data.coachAdvice?.responseText || data.responseText || `I have processed your request regarding **${userMsg}**. Here are my strategic recommendations:\n\n1. Ensure complete alignment with market standards.\n2. Keep metrics quantified.\n3. Leverage automated AI tools on AIJobs for immediate feedback.`;
         setMessages(prev => [...prev, { sender: "agent", text: responseText }]);
       } else {

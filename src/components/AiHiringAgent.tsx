@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { parseJsonResponse } from "../utils/apiHelper";
 import { Award, Brain, Calendar, CheckCircle2, Code, Database, Grid, ListFilter, RefreshCw, Sparkles, Target, Type, UserCheck, Verified } from "lucide-react";
 import { JobPosting, CandidateProfile } from "../types";
 import { useGlobalMarketplace } from "../context/GlobalMarketplaceContext";
@@ -43,7 +44,7 @@ export default function AiHiringAgent({ jobs = [], candidates = [] }: AiHiringAg
         }),
       });
 
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
       if (data.success) {
         setAnalysisResult(data.agentResult);
       } else {

@@ -2,6 +2,7 @@ import React, { FormEvent, useEffect, useState } from "react";
 import { collection, doc, getDocs } from "firebase/firestore";
 import { AlertCircle, CheckCircle, Contact, Download, Eye, EyeOff, Info, Key, Pause, PauseCircle, Phone, Plus, RefreshCw, Table, Trash2, Type, User, View } from "lucide-react";
 import { db } from "../../firebase";
+import { parseJsonResponse } from "../../utils/apiHelper";
 
 
 export interface ResumeAccessGrant {
@@ -57,7 +58,7 @@ export default function PaidResumeAccessManager({ adminUserId }: { adminUserId: 
       // Fetch active resume access grants from server
       const res = await fetch(`/api/resumes/grants?adminId=${encodeURIComponent(adminUserId)}`);
       if (res.ok) {
-        const data = await res.json();
+        const data = await parseJsonResponse(res);
         if (data.success && data.grants) {
           setGrants(data.grants);
         }
@@ -105,7 +106,7 @@ export default function PaidResumeAccessManager({ adminUserId }: { adminUserId: 
         })
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Failed to grant resume access.");
       }
@@ -128,7 +129,7 @@ export default function PaidResumeAccessManager({ adminUserId }: { adminUserId: 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ grantId, status: nextStatus, adminId: adminUserId })
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (res.ok && data.success) {
         setSuccess(`Grant ${grantId} status updated to ${nextStatus}.`);
         fetchGrantsAndUsers();
@@ -148,7 +149,7 @@ export default function PaidResumeAccessManager({ adminUserId }: { adminUserId: 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ grantId, status: "revoked", adminId: adminUserId })
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (res.ok && data.success) {
         setSuccess(`Grant ${grantId} revoked.`);
         fetchGrantsAndUsers();

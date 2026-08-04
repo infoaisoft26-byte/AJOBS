@@ -1,6 +1,7 @@
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup } from "firebase/auth";
 import { Calendar, Delete, Type, User } from "lucide-react";
 import { auth } from "../firebase";
+import { parseJsonResponse } from "../utils/apiHelper";
 
 
 let cachedAccessToken: string | null = null;
@@ -103,7 +104,7 @@ export const GoogleCalendarService = {
         throw new Error(`Google API returned status ${response.status}: ${errDetail}`);
       }
 
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
       console.log("[Google Calendar] Event successfully created on remote server:", data.id);
       return data;
     } catch (err) {
@@ -168,7 +169,7 @@ export const GoogleCalendarService = {
         throw new Error(`Google API update error status ${response.status}`);
       }
 
-      return await response.json();
+      return await parseJsonResponse(response);
     } catch (err) {
       console.error("Failed to update Google Calendar Event:", err);
       throw err;

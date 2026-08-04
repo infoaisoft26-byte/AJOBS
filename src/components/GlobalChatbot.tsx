@@ -4,6 +4,7 @@ import { ref } from "firebase/storage";
 import { AnimatePresence, motion } from "motion/react";
 import { Award, Bot, Briefcase, Check, Chrome, Database, DollarSign, Expand, Mic, MicOff, Minimize, Minus, Navigation, RefreshCw, RotateCcw, Search, Send, Server, Speech, TrendingUp, Type, User, Verified, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { parseJsonResponse } from "../utils/apiHelper";
 
 interface GlobalChatbotProps {
   user: any; // UserProfile or null
@@ -96,7 +97,7 @@ How can I accelerate your professional journey today?`
     const loadHistory = async () => {
       try {
         const response = await fetch(`/api/ai/chat-history?sessionId=${sessionId}`);
-        const data = await response.json();
+        const data = await parseJsonResponse(response);
         if (data.messages && data.messages.length > 0) {
           const formatted = data.messages.map((m: any) => ({
             sender: m.sender,
@@ -166,7 +167,7 @@ How can I accelerate your professional journey today?`
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
+        const errJson = await parseJsonResponse(response).catch(() => ({}));
         throw new Error(errJson.error || `Server returned HTTP status ${response.status}`);
       }
 

@@ -2,6 +2,7 @@ import React, { FormEvent, MouseEvent, useEffect, useState } from "react";
 import { addDoc, collection, deleteDoc, doc, getDocs, query, setDoc, where } from "firebase/firestore";
 import { Activity, AlertCircle, Award, Badge, BookOpen, Calendar, Check, CheckCircle, Clock, Cloud, Computer, Database, DollarSign, Dot, Download, FileText, Focus, Frame, Goal, Grid, History, Languages, Layout, Logs, Phone, Ratio, RefreshCw, Save, Server, Settings, Sparkles, Star, Target, Trash, TrendingUp, Type, University, View } from "lucide-react";
 import { db } from "../firebase";
+import { parseJsonResponse } from "../utils/apiHelper";
 
 
 interface CareerCenterProps {
@@ -160,7 +161,7 @@ export default function CandidateCareerCenter({
           userMessage: `Analyze career switch roadmap and goals for transitioning into: "${coachTargetRole}". Additional Context: ${coachGoal}`
         })
       });
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
       setCoachResponse(data);
 
       // Save goal to firestore
@@ -221,7 +222,7 @@ export default function CandidateCareerCenter({
           skillsRequired: predSkills ? predSkills.split(",").map(s => s.trim()) : []
         })
       });
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
       setPredictorResult(data);
 
       // Save to firestore success_predictions
@@ -429,7 +430,7 @@ export default function CandidateCareerCenter({
           position: clPosition
         })
       });
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
       setCoverLetterResult(data);
 
       // Save to firestore
@@ -506,7 +507,7 @@ export default function CandidateCareerCenter({
           skills: profile?.skills || []
         })
       });
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
       setLearningPathData(data);
 
       // Save learning path to Firestore

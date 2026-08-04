@@ -1,5 +1,6 @@
 import React from "react";
 import { Cloud, Computer, Type } from "lucide-react";
+import { parseJsonResponse } from "../../utils/apiHelper";
 import { ResumeAnalysis } from "../../types";
 
 export interface AIResumeAnalysisResult {
@@ -72,7 +73,7 @@ export const ResumeAIService = {
         throw new Error("Resume analysis request failed");
       }
 
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
       return data;
     } catch (error) {
       console.warn("API Call failed, running fallback resume parser:", error);

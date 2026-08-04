@@ -4,6 +4,7 @@ import { ref } from "firebase/storage";
 import { AnimatePresence, motion } from "motion/react";
 import { AlertCircle, ArrowRight, Briefcase, Building, Check, CheckCircle2, CheckSquare, Code, Copy, CreditCard, Currency, Disc, FileText, Gift, Grid, Hash, History, Key, Logs, Navigation, Phone, Printer, Receipt, RefreshCw, Save, Scaling, ShieldCheck, Sparkles, Table, Tag, Type, Unlock, View, Wallet } from "lucide-react";
 import { db } from "../firebase";
+import { parseJsonResponse } from "../utils/apiHelper";
 
 
 interface SubscriptionBillingHubProps {
@@ -467,7 +468,7 @@ export default function SubscriptionBillingHub({
         throw new Error("Unable to establish communication with PayU gateway.");
       }
 
-      const orderData = await res.json();
+      const orderData = await parseJsonResponse(res);
       
       // 2. Open interactive high-fidelity PayU Secure Sandbox overlay
       setPayuModalData({
@@ -530,7 +531,7 @@ export default function SubscriptionBillingHub({
         throw new Error("PayU webhook checksum validation failed.");
       }
 
-      const verifyResult = await verifyRes.json();
+      const verifyResult = await parseJsonResponse(verifyRes);
 
       if (verifyResult.success) {
         // Activate pricing and billing structures in Firestore

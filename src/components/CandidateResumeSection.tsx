@@ -13,6 +13,7 @@ import {
 } from "../services/workspaceService";
 import { useToast } from "./GlobalToast";
 import ResumeRadarChart from "./ResumeRadarChart";
+import { parseJsonResponse } from "../utils/apiHelper";
 
 declare const google: any;
 
@@ -500,7 +501,7 @@ export default function CandidateResumeSection({
         throw new Error("Analysis failed");
       }
 
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
       const timestamp = new Date().toISOString();
 
       // 1. Structure detailed analysis record for collection "resume_analysis"

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Award, Bookmark, Briefcase, Cloud, FileCheck, FileText, Package, Printer, Save, Signature, Sparkles, Type, User } from "lucide-react";
+import { parseJsonResponse } from "../../utils/apiHelper";
 interface EnterpriseDocumentEngineProps {
   companyName: string;
 }
@@ -50,7 +51,7 @@ export default function EnterpriseDocumentEngine({ companyName }: EnterpriseDocu
         })
       });
       if (res.ok) {
-        const data = await res.json();
+        const data = await parseJsonResponse(res);
         setAiGeneratedText(data.content);
       } else {
         console.error("AI Generation failed");

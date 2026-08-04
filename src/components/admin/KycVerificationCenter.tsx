@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { doc } from "firebase/firestore";
 import { CheckCircle2, ExternalLink, Eye, File, Inspect, List, Search, Section, ShieldCheck, Table, Type, User, Verified, View } from "lucide-react";
 import { auth } from "../../firebase";
+import { parseJsonResponse } from "../../utils/apiHelper";
 
 import { VerificationRequest, KycDocument } from "../../types";
 
@@ -25,9 +26,8 @@ export default function KycVerificationCenter() {
     setLoading(true);
     try {
       const res = await fetch(`/api/kyc/admin-pending-list?status=${statusFilter}`);
-      const contentType = res.headers.get("content-type") || "";
-      if (res.ok && contentType.includes("application/json")) {
-        const data = await res.json();
+      if (res.ok) {
+        const data = await parseJsonResponse(res);
         if (data.success) {
           setRequests(data.requests || []);
         } else {
@@ -66,7 +66,7 @@ export default function KycVerificationCenter() {
         })
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (data.success) {
         setToast(`KYC Verification ${decision} for ${selectedReq.userEmail || selectedReq.userId}`);
         setTimeout(() => setToast(""), 3000);

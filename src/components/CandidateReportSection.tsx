@@ -3,6 +3,7 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 import { AnimatePresence, motion } from "motion/react";
 import { AlertTriangle, Award, BookOpen, Brain, CheckCircle2, Circle, Cpu, Database, Info, Key, LineChart, Map, Menu, Navigation, Ratio, RefreshCw, Scan, Section, ShieldCheck, Text, Type, Verified, Zap } from "lucide-react";
 import { db } from "../firebase";
+import { parseJsonResponse } from "../utils/apiHelper";
 
 
 interface CandidateReportSectionProps {
@@ -131,7 +132,7 @@ export default function CandidateReportSection({ userId, profile, triggerNotific
         throw new Error("Job matching API failed");
       }
 
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
       setMatchResult(data);
       if (triggerNotification) {
         triggerNotification("🎯 AI Job Recommendation Ready!", `Compatibility scored at ${data.matchPercentage}%.`);
