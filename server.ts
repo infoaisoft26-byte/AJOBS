@@ -6,7 +6,7 @@ import crypto from "crypto";
 import mammoth from "mammoth";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
-import { getFirestoreDb, getFirebaseAuth } from "./server/firestoreHelper";
+import { getFirestoreDb, getFirebaseAuth } from "./server/firestoreHelper.ts";
 import { aiOrchestrator, telemetryStore } from "./server/aiProvider.js";
 import { evaluateAbacPolicy, SubjectAttributes, ResourceAttributes } from "./src/services/abacService.js";
 import { 
@@ -23,14 +23,14 @@ import {
   testSMS, 
   getTwilioConfig 
 } from "./server/twilioService.js";
-import { parsePaymentThreat, logChatSessionAndMessage } from "./server/chatService";
-import { sendGoogleIndexingNotification } from "./server/googleIndexingService";
-import emailRoutes from "./server/emailRoutes";
-import { dispatchEmail, sendCandidateWelcomeEmail } from "./server/emailService";
-import kycRoutes from "./server/kycRoutes";
-import leadRoutes from "./server/leadRoutes";
-import applicationRoutes from "./server/applicationRoutes";
-import subscriptionRoutes from "./server/subscriptionRoutes";
+import { parsePaymentThreat, logChatSessionAndMessage } from "./server/chatService.ts";
+import { sendGoogleIndexingNotification } from "./server/googleIndexingService.ts";
+import emailRoutes from "./server/emailRoutes.ts";
+import { dispatchEmail, sendCandidateWelcomeEmail } from "./server/emailService.ts";
+import kycRoutes from "./server/kycRoutes.ts";
+import leadRoutes from "./server/leadRoutes.ts";
+import applicationRoutes from "./server/applicationRoutes.ts";
+import subscriptionRoutes from "./server/subscriptionRoutes.ts";
 
 dotenv.config();
 
