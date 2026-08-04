@@ -4447,8 +4447,11 @@ async function startExpiredJobsScheduler() {
   }
 }
 
-// Boot the scheduler background task
-startExpiredJobsScheduler();
+// Boot the scheduler only on a persistent standalone server.
+// Vercel functions must not create background intervals during module import.
+if (!process.env.VERCEL) {
+  startExpiredJobsScheduler();
+}
 
 // ==================== ZOHO DOMAIN VERIFICATION ROUTE ====================
 app.get("/zohochallenge.html", (req, res) => {
@@ -4457,41 +4460,55 @@ app.get("/zohochallenge.html", (req, res) => {
 
 // ==================== DEV / PROD HOSTING ====================
 
-if (process.env.NODE_ENV !== "production") {
-  const startVite = async () => {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
+const isVercel = Boolean(process.env.VERCEL);
+
+// Vercel imports this Express application as a serverless handler.
+// A listener must only be opened when running the project as a standalone server.
+if (!isVercel) {
+  if (process.env.NODE_ENV !== "production") {
+    const startVite = async () => {
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+
+      app.listen(PORT, "0.0.0.0", () => {
+        console.log(`Full-Stack dev server running on http://localhost:${PORT}`);
+      });
+    };
+
+    startVite();
+  } else {
+    const distPath = path.join(process.cwd(), "dist");
+
+    app.use(express.static(distPath, {
+      maxAge: "1y",
+      immutable: true,
+      setHeaders: (res, filepath) => {
+        if (filepath.endsWith(".html")) {
+          res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+        } else {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        }
+      },
+    }));
+
+    app.all("/api/*", (req, res) => {
+      res.status(404).json({
+        success: false,
+        error: `API endpoint not found: ${req.method} ${req.path}`,
+      });
     });
-    app.use(vite.middlewares);
+
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
+    });
 
     app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Full-Stack dev server running on http://localhost:${PORT}`);
+      console.log(`Full-Stack production server running on port ${PORT}`);
     });
-  };
-  startVite();
-} else {
-  const distPath = path.join(process.cwd(), "dist");
-  app.use(express.static(distPath, {
-    maxAge: "1y",
-    immutable: true,
-    setHeaders: (res, filepath) => {
-      if (filepath.endsWith(".html")) {
-        res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
-      } else {
-        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-      }
-    }
-  }));
-  app.all("/api/*", (req, res) => {
-    res.status(404).json({ success: false, error: `API endpoint not found: ${req.method} ${req.path}` });
-  });
-
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(distPath, "index.html"));
-  });
-
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Full-Stack production server running on port ${PORT}`);
-  });
+  }
 }
+
+export default app;
