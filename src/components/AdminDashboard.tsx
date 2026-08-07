@@ -2,7 +2,7 @@ import AIJobsLogo from "./AIJobsLogo";
 import React, { useEffect, useState } from "react";
 import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
 import { motion } from "motion/react";
-import { BarChart2, Baseline, Bell, Brain, Briefcase, Check, CheckCircle, ChevronLeft, ChevronRight, CreditCard, Database, FileText, Funnel, Globe, HelpCircle, Layers, Lock, Mail, MessageSquare, Navigation, RefreshCw, Scale, Settings, ShieldAlert, ShieldCheck, Sidebar, Store, Terminal, Tickets, User, Users, Verified } from "lucide-react";
+import { BarChart2, Baseline, Bell, BookOpen, Brain, Briefcase, Check, CheckCircle, ChevronLeft, ChevronRight, CreditCard, Database, FileText, Funnel, Globe, HelpCircle, Layers, Lock, LogOut, Mail, Menu, MessageSquare, Navigation, RefreshCw, Scale, Settings, ShieldAlert, ShieldCheck, Sidebar, Store, Terminal, Tickets, User, Users, Verified, X } from "lucide-react";
 import { auth, db } from "../firebase";
 import { parseJsonResponse } from "../utils/apiHelper";
 
@@ -30,6 +30,8 @@ import AbacControlInspector from "./AbacControlInspector";
 import LeadManagement from "./LeadManagement";
 import LiveLeadsCRM from "./admin/LiveLeadsCRM";
 import KycVerificationCenter from "./admin/KycVerificationCenter";
+import OnboardingControlCenter from "./admin/OnboardingControlCenter";
+import FinanceAndAccountingModule from "./admin/FinanceAndAccountingModule";
 import ApplicationManagement from "./admin/ApplicationManagement";
 import HiringFunnelAnalytics from "./admin/HiringFunnelAnalytics";
 import ExportActivityCsvButton from "./ExportActivityCsvButton";
@@ -71,6 +73,7 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
   }, []);
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   // Role Based Access state (Simulated active role override)
   const [activeRole, setActiveRole] = useState<"Super Admin" | "Support Desk" | "Finance Officer" | "Moderator" | "Read Only">("Super Admin");
@@ -452,12 +455,14 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
     { id: "users", label: "User Management", icon: Users, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "internal-access", label: "Internal Access Management", icon: ShieldCheck, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "leads", label: "Live Leads CRM", icon: Users, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
+    { id: "onboarding-pipeline", label: "Onboarding & Verification Pipeline", icon: ShieldCheck, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "kyc-verification", label: "KYC Verification Center", icon: ShieldCheck, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "approvals", label: "Approval Center", icon: ShieldCheck, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "chat-monitoring", label: "Chat & Anti-Fraud Center", icon: MessageSquare, authorizedRoles: ["Super Admin", "Support Desk", "Moderator", "Read Only"] },
     { id: "jobs", label: "Job Postings", icon: Briefcase, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "ai", label: "AI Control Center", icon: Brain, authorizedRoles: ["Super Admin", "Read Only"] },
     { id: "payments", label: "Payments & Billings", icon: CreditCard, authorizedRoles: ["Super Admin", "Finance Officer", "Read Only"] },
+    { id: "finance-accounting", label: "Finance & Accounting", icon: BookOpen, authorizedRoles: ["Super Admin", "Finance Officer", "Read Only"] },
     { id: "cms", label: "Content (CMS)", icon: Globe, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "support", label: "Support Desk", icon: HelpCircle, authorizedRoles: ["Super Admin", "Support Desk", "Read Only"] },
     { id: "notifications", label: "Broadcasts", icon: Bell, authorizedRoles: ["Super Admin", "Read Only"] },
@@ -498,12 +503,110 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
       initial={{ opacity: 0.85 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.45, ease: "easeInOut" }}
-      className="flex min-h-screen bg-[#050508] relative transition-all duration-500" 
+      className="flex flex-col lg:flex-row min-h-screen bg-[#050508] relative transition-all duration-500" 
       id="super-admin-root-workspace"
     >
-      
-      {/* Premium Sidebar layout */}
-      <aside className={`bg-[#0a0a0f] border-r border-white/5 flex flex-col justify-between transition-all duration-300 z-10 shrink-0 ${
+      {/* Mobile Top Navigation Header */}
+      <div className="lg:hidden flex items-center justify-between p-4 bg-[#0a0a0f] border-b border-white/10 sticky top-0 z-30">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setMobileDrawerOpen(true)}
+            className="p-2 bg-indigo-600/20 border border-indigo-500/30 rounded-xl text-indigo-300 cursor-pointer"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <div className="flex items-center gap-2">
+            <AIJobsLogo variant="icon" size="sm" />
+            <span className="font-extrabold text-xs text-white">AIJOBS ADMIN</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-mono bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-2 py-0.5 rounded font-bold">
+            {activeRole}
+          </span>
+        </div>
+      </div>
+
+      {/* Mobile Sidebar Navigation Drawer */}
+      {mobileDrawerOpen && (
+        <div className="lg:hidden">
+          <div
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm"
+            onClick={() => setMobileDrawerOpen(false)}
+          />
+          <aside className="fixed inset-y-0 left-0 z-50 w-[85vw] max-w-[320px] bg-[#0a0a0f] border-r border-white/10 flex flex-col h-full overflow-y-auto shadow-2xl">
+            <div className="p-4 border-b border-white/10 flex items-center justify-between bg-black/40">
+              <div className="flex items-center gap-2">
+                <AIJobsLogo variant="icon" size="sm" />
+                <span className="font-extrabold text-xs text-white">AIJOBS CONSOLE</span>
+              </div>
+              <button
+                onClick={() => setMobileDrawerOpen(false)}
+                className="p-1.5 rounded-xl bg-white/5 text-gray-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-1">
+              <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider block pb-2">
+                SUPER ADMIN NAVIGATION
+              </span>
+              {navigationItems.map((item) => {
+                const isSelected = activeView === item.id;
+                const isRoleAuthorized = item.authorizedRoles.includes(activeRole);
+                const Icon = item.icon;
+
+                return (
+                  <button
+                    key={item.id}
+                    disabled={!isRoleAuthorized}
+                    onClick={() => {
+                      setActiveTab(item.id);
+                      setMobileDrawerOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-xs text-left transition-all ${
+                      isSelected 
+                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/15" 
+                        : isRoleAuthorized 
+                          ? "text-gray-400 hover:text-white hover:bg-white/5 cursor-pointer" 
+                          : "text-gray-600 opacity-30 cursor-not-allowed"
+                    }`}
+                  >
+                    <Icon className={`w-4 h-4 shrink-0 ${isSelected ? "text-white" : "text-gray-400"}`} />
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-auto p-4 border-t border-white/10 bg-black/60 space-y-2">
+              <button
+                onClick={handleSeedMockDatabase}
+                disabled={seeding}
+                className="w-full py-2 px-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-xs font-extrabold text-white rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all cursor-pointer disabled:opacity-50"
+              >
+                <Database className="w-4 h-4" />
+                <span>{seeding ? "Initializing..." : "Seed Platform Data"}</span>
+              </button>
+              <button
+                onClick={async () => {
+                  setMobileDrawerOpen(false);
+                  await auth.signOut();
+                  window.location.reload();
+                }}
+                className="w-full flex items-center justify-center space-x-2 py-2.5 px-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 text-xs font-bold transition-all cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Logout</span>
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {/* Desktop Sidebar layout */}
+      <aside className={`hidden lg:flex bg-[#0a0a0f] border-r border-white/5 flex-col justify-between transition-all duration-300 z-10 shrink-0 ${
         isSidebarCollapsed ? "w-20" : "w-64"
       }`}>
         
@@ -666,6 +769,10 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
                 <LiveLeadsCRM />
               )}
 
+              {activeView === "onboarding-pipeline" && (
+                <OnboardingControlCenter />
+              )}
+
               {activeView === "kyc-verification" && (
                 <KycVerificationCenter />
               )}
@@ -699,6 +806,13 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
                 <PaymentManagement
                   transactions={paymentsList}
                   onRefresh={fetchWorkspaceData}
+                />
+              )}
+
+              {activeView === "finance-accounting" && (
+                <FinanceAndAccountingModule
+                  userRole="admin"
+                  adminUserId={currentUserId}
                 />
               )}
 

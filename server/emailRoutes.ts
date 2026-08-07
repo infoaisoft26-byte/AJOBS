@@ -52,6 +52,10 @@ router.get("/stats", async (req: Request, res: Response) => {
     return res.json({
       success: true,
       stats: {
+        total: totalSent,
+        sent: successCount,
+        failed: failedCount,
+        pending: pendingCount,
         totalSent,
         successCount,
         failedCount,
@@ -63,6 +67,10 @@ router.get("/stats", async (req: Request, res: Response) => {
     return res.json({
       success: true,
       stats: {
+        total: 0,
+        sent: 0,
+        failed: 0,
+        pending: 0,
         totalSent: 0,
         successCount: 0,
         failedCount: 0,
@@ -161,8 +169,8 @@ router.post("/preview", (req: Request, res: Response) => {
   }
 });
 
-// 5. POST /api/email/candidate-welcome
-router.post("/candidate-welcome", async (req: Request, res: Response) => {
+// 5. POST /api/email/candidate-welcome and /api/email/welcome-candidate
+const handleCandidateWelcome = async (req: Request, res: Response) => {
   const { email, candidateName, candidateId, userId } = req.body;
   const recipient = (email || "").trim();
 
@@ -185,7 +193,10 @@ router.post("/candidate-welcome", async (req: Request, res: Response) => {
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }
-});
+};
+
+router.post("/candidate-welcome", handleCandidateWelcome);
+router.post("/welcome-candidate", handleCandidateWelcome);
 
 // 6. POST /api/email/trigger
 router.post("/trigger", async (req: Request, res: Response) => {

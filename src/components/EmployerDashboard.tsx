@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import { motion } from "motion/react";
-import { Activity, AlertTriangle, Award, BarChart2, Bell, Brain, Briefcase, Building2, Calendar, CloudLightning, CreditCard, Database, FileText, MessageSquare, Navigation, Plus, PlusCircle, RefreshCw, Search, ShieldCheck, Sidebar, TrendingUp, Users, Vault, Verified, Video } from "lucide-react";
-import { db } from "../firebase";
+import { Activity, AlertTriangle, Award, BarChart2, Bell, Brain, Briefcase, Building2, Calendar, CloudLightning, Contact, CreditCard, Database, FileText, LogOut, Menu, MessageSquare, Navigation, Plus, PlusCircle, RefreshCw, Search, Settings, ShieldCheck, Sidebar, TrendingUp, User, Users, Vault, Verified, Video, X } from "lucide-react";
+import { auth, db } from "../firebase";
 
 import SubscriptionBillingHub from "./SubscriptionBillingHub";
 import { NotificationCenterView } from "./NotificationCenter";
@@ -52,6 +52,7 @@ interface EmployerDashboardProps {
 }
 
 export default function EmployerDashboard({ userId, userName, userRole }: EmployerDashboardProps) {
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   // Navigation active tab routing
   const [activeTab, setActiveTab] = useState<
     "overview" | "post-job" | "registration" | "jobs" | "discovery" | "pipeline" | "recruiter-table" | "leads" | "interviews" | "offers" | "reports" | "subscription" | "agreements" | "notifications" | "documents" | "chat" | "talent-search" | "performance" | "workspace"
@@ -70,6 +71,7 @@ export default function EmployerDashboard({ userId, userName, userRole }: Employ
 
   const handleSelectTab = (tabId: string) => {
     setActiveTab(tabId as any);
+    setMobileDrawerOpen(false);
     const prefix = userRole === "recruiter" ? "/recruiter" : "/employer";
     let targetPath = prefix;
     if (tabId === "post-job") targetPath = `${prefix}/post-job`;
@@ -298,6 +300,13 @@ export default function EmployerDashboard({ userId, userName, userRole }: Employ
 
         {/* Action Buttons & Sync Badges */}
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setMobileDrawerOpen(true)}
+            className="lg:hidden flex items-center gap-2 px-3.5 py-2 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-bold cursor-pointer"
+          >
+            <Menu className="w-4 h-4 text-indigo-400" />
+            <span>Workspace Navigation</span>
+          </button>
           {["recruiter", "employer", "admin", "superadmin", "corporate", "consultancy", "agency"].includes((userRole || "").toLowerCase()) ? (
             <button
               onClick={() => handleSelectTab("post-job")}
@@ -331,11 +340,111 @@ export default function EmployerDashboard({ userId, userName, userRole }: Employ
         </div>
       </div>
 
+      {/* Mobile Navigation Drawer */}
+      {mobileDrawerOpen && (
+        <div className="lg:hidden">
+          <div
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm"
+            onClick={() => setMobileDrawerOpen(false)}
+          />
+          <aside className="fixed inset-y-0 left-0 z-50 w-[85vw] max-w-[320px] bg-[#050508] border-r border-white/10 flex flex-col h-full overflow-y-auto shadow-2xl">
+            <div className="p-4 border-b border-white/10 flex items-center justify-between bg-black/40">
+              <div className="flex items-center gap-3 truncate">
+                <img
+                  src={companyLogo}
+                  alt={corpName}
+                  referrerPolicy="no-referrer"
+                  className="w-8 h-8 rounded-lg object-cover border border-white/10"
+                />
+                <span className="font-extrabold text-xs text-white truncate">{corpName}</span>
+              </div>
+              <button
+                onClick={() => setMobileDrawerOpen(false)}
+                className="p-1.5 rounded-xl bg-white/5 text-gray-400 hover:text-white cursor-pointer shrink-0"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-1">
+              <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider block pb-2">
+                RECRUITER NAVIGATION SUITE
+              </span>
+              {[
+                { id: "overview", label: "Dashboard", icon: TrendingUp },
+                { id: "post-job", label: "Post Job", icon: PlusCircle },
+                { id: "ai-hiring-agent", label: "Autonomous AI Hiring Agent", icon: Brain },
+                { id: "jd-generator", label: "AI Job Spec Generator", icon: FileText },
+                { id: "jobs", label: "Manage Jobs", icon: Briefcase },
+                { id: "recruiter-table", label: "Applications", icon: Users },
+                { id: "discovery", label: "Candidate Database", icon: Brain },
+                { id: "interviews", label: "Interviews", icon: Calendar },
+                { id: "video-interview", label: "Video Interview Center", icon: Calendar },
+                { id: "reports", label: "Reports", icon: BarChart2 },
+                { id: "executive-analytics", label: "Executive BI Analytics", icon: BarChart2 },
+                { id: "doc-automation", label: "Offer & Document Suite", icon: FileText },
+                { id: "compliance-gdpr", label: "GDPR & Compliance", icon: ShieldCheck },
+                { id: "subscription", label: "Payments", icon: CreditCard },
+                { id: "agreements", label: "Legal Agreements", icon: FileText },
+                { id: "registration", label: "Company Registry", icon: Building2 },
+                { id: "talent-search", label: "Talent Search", icon: Search },
+                { id: "pipeline", label: "Hiring Pipeline", icon: Users },
+                { id: "leads", label: "Lead Management", icon: Users },
+                { id: "offers", label: "Acceptance & Offers", icon: Award },
+                { id: "documents", label: "Enterprise Documents", icon: FileText },
+                { id: "workspace", label: "Google Workspace Hub", icon: CloudLightning },
+                { id: "chat", label: "Secure Live Chat", icon: MessageSquare },
+                { id: "performance", label: "Hiring Performance", icon: TrendingUp },
+                { id: "notifications", label: "Notification Hub", icon: Bell }
+              ].map((item) => {
+                const IconComp = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleSelectTab(item.id)}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-bold text-xs text-left transition-all cursor-pointer ${
+                      isActive
+                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/15"
+                        : "text-gray-400 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    <IconComp className="w-4 h-4 shrink-0" />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-auto p-4 border-t border-white/10 bg-black/60 space-y-2">
+              <button
+                onClick={() => handleSelectTab("registration")}
+                className="w-full flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-semibold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer"
+              >
+                <Building2 className="w-4 h-4 text-indigo-400" />
+                <span>Company Registry</span>
+              </button>
+              <button
+                onClick={async () => {
+                  setMobileDrawerOpen(false);
+                  await auth.signOut();
+                  window.location.reload();
+                }}
+                className="w-full flex items-center justify-center space-x-2 py-2.5 px-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 text-xs font-bold transition-all cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Logout</span>
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
+
       {/* Navigation and Tab switcher Row */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         
-        {/* Sidebar Navigation */}
-        <div className="lg:col-span-1 glass p-4 rounded-2xl border border-white/5 h-fit space-y-2 text-xs">
+        {/* Desktop Sidebar Navigation */}
+        <div className="hidden lg:block lg:col-span-1 glass p-4 rounded-2xl border border-white/5 h-fit space-y-2 text-xs">
           <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider block px-2 pb-2">
             Navigation Suite
           </span>

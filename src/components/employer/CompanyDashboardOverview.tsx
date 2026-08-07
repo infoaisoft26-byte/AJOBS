@@ -82,7 +82,7 @@ export default function CompanyDashboardOverview({
       </div>
 
       {/* Stats Cards grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <HolographicCard 
           glowColor="rgba(99, 102, 241, 0.25)"
           onClick={() => onNavigateToTab("jobs")}

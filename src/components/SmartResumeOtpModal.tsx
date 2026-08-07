@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { AlertCircle, ArrowRight, Badge, CheckCircle2, Code, Edit, Edit2, Loader2, Mail, Phone, RefreshCw, Save, ShieldCheck, Smartphone, Sparkles, Type, Verified, X } from "lucide-react";
 import { auth } from "../firebase";
 import { parseJsonResponse } from "../utils/apiHelper";
+import { formatPhoneNumber } from "../utils/phoneUtils";
 
 
 export interface CandidateParsedData {
@@ -70,7 +71,8 @@ export default function SmartResumeOtpModal({
 
   if (!isOpen || !candidateData) return null;
 
-  const currentPhone = editedPhone || candidateData.phone || "+919876543210";
+  const rawPhone = editedPhone || candidateData.phone || "9876543210";
+  const currentPhone = formatPhoneNumber(rawPhone);
 
   const handleVerifyOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();

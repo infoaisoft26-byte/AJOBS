@@ -191,9 +191,9 @@ export default function AiControlCenter({
                     onChange={e => setModelConfig({ ...modelConfig, analyzerModel: e.target.value })}
                     className="w-full bg-neutral-900 border border-white/10 rounded-lg px-2.5 py-2 text-white font-mono"
                   >
-                    <option value="gemini-3.6-flash">Gemini 3.6 Flash (Recommended)</option>
-                    <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Deep Research)</option>
-                    <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+                    <option value="gemini-3.6-flash">Gemini 3.6 Flash (Recommended Primary)</option>
+                    <option value="gemini-3.5-flash">Gemini 3.5 Flash (Standard)</option>
+                    <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite (Fast Fallback)</option>
                   </select>
                 </div>
 
@@ -205,7 +205,8 @@ export default function AiControlCenter({
                     className="w-full bg-neutral-900 border border-white/10 rounded-lg px-2.5 py-2 text-white font-mono"
                   >
                     <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
-                    <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Complex Reasoning)</option>
+                    <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+                    <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
                   </select>
                 </div>
               </div>

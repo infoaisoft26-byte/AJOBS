@@ -668,5 +668,385 @@ export const EMAIL_TEMPLATES: Record<string, (data: EmailTemplateData) => { subj
       </div>
     `;
     return wrapBaseLayout(subject, body, false, undefined, appUrl);
+  },
+
+  // 14. ONBOARDING EMAIL TEMPLATES
+  'registration_received': (data) => {
+    const name = escapeHtml(data.recipientName || 'Valued Partner');
+    const appUrl = data.appUrl || DEFAULT_APP_URL;
+    const subject = "AIJobs Registration Received – Onboarding Verification Pending";
+    const body = `
+      <div style="text-align: left;">
+        <h2 style="color: #ffffff; font-size: 22px; font-weight: 800; margin-top: 0; margin-bottom: 12px;">
+          Registration Received, ${name}! 📋
+        </h2>
+        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+          Thank you for registering your recruiter/consultancy profile on AIJobs India. Your account is currently in <strong>Verification Pending</strong> state.
+        </p>
+        <div style="background-color: rgba(30, 41, 59, 0.8); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+          <h3 style="color: #60a5fa; font-size: 14px; font-weight: 700; margin: 0 0 10px 0;">Onboarding Pipeline Overview:</h3>
+          <ol style="margin: 0; padding-left: 20px; color: #cbd5e1; font-size: 13px; line-height: 1.8;">
+            <li><strong>KYC Verification:</strong> Submit owner/company ID documents.</li>
+            <li><strong>Service Agreement:</strong> Digitally sign database terms & access limits.</li>
+            <li><strong>Subscription Payment:</strong> Complete plan fee authorization.</li>
+            <li><strong>Admin Final Clearance:</strong> Admin team approves and activates your account.</li>
+          </ol>
+        </div>
+        <div style="text-align: center;">
+          <a href="${appUrl}" style="background-color: #2563eb; color: #ffffff; padding: 14px 28px; border-radius: 10px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 14px;">
+            Start Verification →
+          </a>
+        </div>
+      </div>
+    `;
+    return wrapBaseLayout(subject, body, false, undefined, appUrl);
+  },
+
+  'kyc_link': (data) => {
+    const name = escapeHtml(data.recipientName || 'Partner');
+    const link = data.jobUrl || data.customMessage || `${data.appUrl || DEFAULT_APP_URL}/#kyc`;
+    const appUrl = data.appUrl || DEFAULT_APP_URL;
+    const subject = "Action Required: Complete Your KYC Verification – AIJobs";
+    const body = `
+      <div style="text-align: left;">
+        <h2 style="color: #60a5fa; font-size: 22px; font-weight: 800; margin-top: 0; margin-bottom: 12px;">
+          Secure KYC Verification Link 🔐
+        </h2>
+        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+          Hello ${name}, an Admin has generated a secure KYC document submission link for your account. This link is valid for 24 hours.
+        </p>
+        <div style="background-color: rgba(30, 41, 59, 0.8); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+          <p style="color: #cbd5e1; font-size: 13px; margin: 0;">
+            Please click below to securely upload your Identity Card (Aadhaar/Passport), Corporate PAN, GSTIN, or Business Incorporation certificate.
+          </p>
+        </div>
+        <div style="text-align: center;">
+          <a href="${link}" style="background-color: #2563eb; color: #ffffff; padding: 14px 28px; border-radius: 10px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 14px;">
+            Open Secure KYC Verification Link →
+          </a>
+        </div>
+      </div>
+    `;
+    return wrapBaseLayout(subject, body, false, undefined, appUrl);
+  },
+
+  'kyc_reminder': (data) => {
+    const name = escapeHtml(data.recipientName || 'Partner');
+    const link = data.jobUrl || `${data.appUrl || DEFAULT_APP_URL}/#kyc`;
+    const appUrl = data.appUrl || DEFAULT_APP_URL;
+    const subject = "Reminder: Complete Your KYC Verification on AIJobs";
+    const body = `
+      <div style="text-align: left;">
+        <h2 style="color: #f59e0b; font-size: 22px; font-weight: 800; margin-top: 0; margin-bottom: 12px;">
+          KYC Verification Reminder ⏰
+        </h2>
+        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+          Hi ${name}, your KYC verification link is pending submission. Complete your KYC now to avoid onboarding delays.
+        </p>
+        <div style="text-align: center;">
+          <a href="${link}" style="background-color: #d97706; color: #ffffff; padding: 14px 28px; border-radius: 10px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 14px;">
+            Complete KYC Documents →
+          </a>
+        </div>
+      </div>
+    `;
+    return wrapBaseLayout(subject, body, false, undefined, appUrl);
+  },
+
+  'kyc_submitted': (data) => {
+    const name = escapeHtml(data.recipientName || 'Partner');
+    const appUrl = data.appUrl || DEFAULT_APP_URL;
+    const subject = "KYC Documents Received – AIJobs Review in Progress";
+    const body = `
+      <div style="text-align: left;">
+        <h2 style="color: #38bdf8; font-size: 22px; font-weight: 800; margin-top: 0; margin-bottom: 12px;">
+          KYC Documents Received 📥
+        </h2>
+        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+          Hello ${name}, your uploaded legal identity documents have been queued for Admin Review. Our team typically inspects credentials within 2-4 business hours.
+        </p>
+      </div>
+    `;
+    return wrapBaseLayout(subject, body, false, undefined, appUrl);
+  },
+
+  'kyc_approved': (data) => {
+    const name = escapeHtml(data.recipientName || 'Partner');
+    const appUrl = data.appUrl || DEFAULT_APP_URL;
+    const subject = "KYC Approved! Next Step: Service Agreement – AIJobs";
+    const body = `
+      <div style="text-align: left;">
+        <h2 style="color: #4ade80; font-size: 22px; font-weight: 800; margin-top: 0; margin-bottom: 12px;">
+          KYC Verification Approved! ✅
+        </h2>
+        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+          Congratulations ${name}, your identity and corporate credentials passed compliance review.
+        </p>
+        <p style="color: #cbd5e1; font-size: 13px; margin-bottom: 24px;">
+          Next step: Review and digitally sign your AIJobs Service Agreement to proceed to plan subscription.
+        </p>
+        <div style="text-align: center;">
+          <a href="${appUrl}" style="background-color: #16a34a; color: #ffffff; padding: 14px 28px; border-radius: 10px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 14px;">
+            Review Service Agreement →
+          </a>
+        </div>
+      </div>
+    `;
+    return wrapBaseLayout(subject, body, false, undefined, appUrl);
+  },
+
+  'kyc_rejected': (data) => {
+    const name = escapeHtml(data.recipientName || 'Partner');
+    const reason = escapeHtml(data.customMessage || 'Document unreadable or invalid formatting');
+    const appUrl = data.appUrl || DEFAULT_APP_URL;
+    const subject = "KYC Documents Update Required – AIJobs Compliance";
+    const body = `
+      <div style="text-align: left;">
+        <h2 style="color: #f87171; font-size: 22px; font-weight: 800; margin-top: 0; margin-bottom: 12px;">
+          KYC Document Action Needed ⚠️
+        </h2>
+        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+          Hello ${name}, your KYC document submission requires re-upload.
+        </p>
+        <div style="background-color: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 24px;">
+          <p style="color: #fca5a5; font-size: 13px; margin: 0;">
+            <strong>Reason:</strong> ${reason}
+          </p>
+        </div>
+        <div style="text-align: center;">
+          <a href="${appUrl}" style="background-color: #dc2626; color: #ffffff; padding: 14px 28px; border-radius: 10px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 14px;">
+            Re-upload KYC Documents →
+          </a>
+        </div>
+      </div>
+    `;
+    return wrapBaseLayout(subject, body, false, undefined, appUrl);
+  },
+
+  'agreement_ready': (data) => {
+    const name = escapeHtml(data.recipientName || 'Partner');
+    const appUrl = data.appUrl || DEFAULT_APP_URL;
+    const subject = "Service Agreement Ready for Digital Signature – AIJobs";
+    const body = `
+      <div style="text-align: left;">
+        <h2 style="color: #c084fc; font-size: 22px; font-weight: 800; margin-top: 0; margin-bottom: 12px;">
+          Service Agreement Generated 📜
+        </h2>
+        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+          Hello ${name}, your AIJobs Database Service Agreement is ready for digital signature and OTP authorization.
+        </p>
+        <div style="text-align: center;">
+          <a href="${appUrl}" style="background-color: #9333ea; color: #ffffff; padding: 14px 28px; border-radius: 10px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 14px;">
+            Sign Agreement Now →
+          </a>
+        </div>
+      </div>
+    `;
+    return wrapBaseLayout(subject, body, false, undefined, appUrl);
+  },
+
+  'agreement_reminder': (data) => {
+    const name = escapeHtml(data.recipientName || 'Partner');
+    const appUrl = data.appUrl || DEFAULT_APP_URL;
+    const subject = "Reminder: Sign Your AIJobs Service Agreement";
+    const body = `
+      <div style="text-align: left;">
+        <h2 style="color: #f59e0b; font-size: 22px; font-weight: 800; margin-top: 0; margin-bottom: 12px;">
+          Agreement Signature Pending ⏰
+        </h2>
+        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+          Hi ${name}, please review and sign your service agreement to complete your account setup.
+        </p>
+        <div style="text-align: center;">
+          <a href="${appUrl}" style="background-color: #d97706; color: #ffffff; padding: 14px 28px; border-radius: 10px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 14px;">
+            Sign Agreement →
+          </a>
+        </div>
+      </div>
+    `;
+    return wrapBaseLayout(subject, body, false, undefined, appUrl);
+  },
+
+  'agreement_accepted': (data) => {
+    const name = escapeHtml(data.recipientName || 'Partner');
+    const appUrl = data.appUrl || DEFAULT_APP_URL;
+    const subject = "Agreement Signed! Proceed to Payment Authorization – AIJobs";
+    const body = `
+      <div style="text-align: left;">
+        <h2 style="color: #4ade80; font-size: 22px; font-weight: 800; margin-top: 0; margin-bottom: 12px;">
+          Service Agreement Signed Successfully! 🖊️
+        </h2>
+        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+          Thank you ${name}. Your digital signature and timestamp have been permanently recorded in audit logs.
+        </p>
+        <p style="color: #cbd5e1; font-size: 13px; margin-bottom: 24px;">
+          Next Step: Complete plan fee checkout to submit for final Admin clearance.
+        </p>
+        <div style="text-align: center;">
+          <a href="${appUrl}" style="background-color: #16a34a; color: #ffffff; padding: 14px 28px; border-radius: 10px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 14px;">
+            Proceed to Payment →
+          </a>
+        </div>
+      </div>
+    `;
+    return wrapBaseLayout(subject, body, false, undefined, appUrl);
+  },
+
+  'payment_link': (data) => {
+    const name = escapeHtml(data.recipientName || 'Partner');
+    const appUrl = data.appUrl || DEFAULT_APP_URL;
+    const subject = "Payment Authorization Link – AIJobs Subscription";
+    const body = `
+      <div style="text-align: left;">
+        <h2 style="color: #38bdf8; font-size: 22px; font-weight: 800; margin-top: 0; margin-bottom: 12px;">
+          Subscription Payment Authorization 💳
+        </h2>
+        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+          Hello ${name}, complete your subscription payment to unlock full database search access.
+        </p>
+        <div style="text-align: center;">
+          <a href="${appUrl}" style="background-color: #0284c7; color: #ffffff; padding: 14px 28px; border-radius: 10px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 14px;">
+            Complete Payment Checkout →
+          </a>
+        </div>
+      </div>
+    `;
+    return wrapBaseLayout(subject, body, false, undefined, appUrl);
+  },
+
+  'payment_success': (data) => {
+    const name = escapeHtml(data.recipientName || 'Partner');
+    const appUrl = data.appUrl || DEFAULT_APP_URL;
+    const subject = "Payment Verified – Awaiting Final Admin Approval";
+    const body = `
+      <div style="text-align: left;">
+        <h2 style="color: #4ade80; font-size: 22px; font-weight: 800; margin-top: 0; margin-bottom: 12px;">
+          Payment Verified! 🎉
+        </h2>
+        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+          Dear ${name}, your subscription payment has been successfully verified. Your account is now in <strong>Admin Approval Pending</strong> stage.
+        </p>
+        <p style="color: #cbd5e1; font-size: 13px; margin-bottom: 24px;">
+          An Admin will conduct final verification and activate full workspace privileges shortly.
+        </p>
+      </div>
+    `;
+    return wrapBaseLayout(subject, body, false, undefined, appUrl);
+  },
+
+  'payment_failed': (data) => {
+    const name = escapeHtml(data.recipientName || 'Partner');
+    const appUrl = data.appUrl || DEFAULT_APP_URL;
+    const subject = "Payment Authorization Failed – AIJobs";
+    const body = `
+      <div style="text-align: left;">
+        <h2 style="color: #f87171; font-size: 22px; font-weight: 800; margin-top: 0; margin-bottom: 12px;">
+          Payment Unsuccessful ⚠️
+        </h2>
+        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+          Hello ${name}, your payment attempt could not be verified or was declined by the bank.
+        </p>
+        <div style="text-align: center;">
+          <a href="${appUrl}" style="background-color: #dc2626; color: #ffffff; padding: 14px 28px; border-radius: 10px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 14px;">
+            Retry Payment →
+          </a>
+        </div>
+      </div>
+    `;
+    return wrapBaseLayout(subject, body, false, undefined, appUrl);
+  },
+
+  'admin_approval_pending': (data) => {
+    const name = escapeHtml(data.recipientName || 'Partner');
+    const appUrl = data.appUrl || DEFAULT_APP_URL;
+    const subject = "Onboarding Complete – Final Admin Approval Pending";
+    const body = `
+      <div style="text-align: left;">
+        <h2 style="color: #38bdf8; font-size: 22px; font-weight: 800; margin-top: 0; margin-bottom: 12px;">
+          Final Clearance Queue ⏳
+        </h2>
+        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+          Hello ${name}, all onboarding prerequisites (KYC, Agreement, Payment) are completed! An Admin will activate your account shortly.
+        </p>
+      </div>
+    `;
+    return wrapBaseLayout(subject, body, false, undefined, appUrl);
+  },
+
+  'account_activated': (data) => {
+    const name = escapeHtml(data.recipientName || 'Partner');
+    const appUrl = data.appUrl || DEFAULT_APP_URL;
+    const subject = "🎉 Account Activated! Full Access Unlocked – AIJobs";
+    const body = `
+      <div style="text-align: left;">
+        <h2 style="color: #4ade80; font-size: 22px; font-weight: 800; margin-top: 0; margin-bottom: 12px;">
+          Your AIJobs Account is Active! 🚀
+        </h2>
+        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+          Dear ${name}, Admin has granted full activation clearance for your recruiter/consultancy portal!
+        </p>
+        <div style="background-color: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+          <h3 style="color: #4ade80; font-size: 14px; font-weight: 700; margin: 0 0 8px 0;">Unlocked Capabilities:</h3>
+          <ul style="margin: 0; padding-left: 20px; color: #cbd5e1; font-size: 13px; line-height: 1.8;">
+            <li>Post Unlimited Job Openings</li>
+            <li>Search Verified Candidates Database</li>
+            <li>Unlock Direct Phone & Email Contact Info</li>
+            <li>Schedule Interviews & Release Offer Letters</li>
+          </ul>
+        </div>
+        <div style="text-align: center;">
+          <a href="${appUrl}" style="background-color: #16a34a; color: #ffffff; padding: 14px 28px; border-radius: 10px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 14px;">
+            Access Dashboard Now →
+          </a>
+        </div>
+      </div>
+    `;
+    return wrapBaseLayout(subject, body, false, undefined, appUrl);
+  },
+
+  'account_rejected': (data) => {
+    const name = escapeHtml(data.recipientName || 'Partner');
+    const reason = escapeHtml(data.customMessage || 'Does not meet corporate verification criteria');
+    const appUrl = data.appUrl || DEFAULT_APP_URL;
+    const subject = "Account Onboarding Notice – AIJobs";
+    const body = `
+      <div style="text-align: left;">
+        <h2 style="color: #f87171; font-size: 22px; font-weight: 800; margin-top: 0; margin-bottom: 12px;">
+          Account Request Denied ❌
+        </h2>
+        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+          Hello ${name}, your corporate account request was reviewed and rejected.
+        </p>
+        <div style="background-color: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 24px;">
+          <p style="color: #fca5a5; font-size: 13px; margin: 0;">
+            <strong>Reason:</strong> ${reason}
+          </p>
+        </div>
+      </div>
+    `;
+    return wrapBaseLayout(subject, body, false, undefined, appUrl);
+  },
+
+  'account_suspended': (data) => {
+    const name = escapeHtml(data.recipientName || 'Partner');
+    const reason = escapeHtml(data.customMessage || 'Policy violation or security review');
+    const appUrl = data.appUrl || DEFAULT_APP_URL;
+    const subject = "Urgent: Account Suspended – AIJobs Administration";
+    const body = `
+      <div style="text-align: left;">
+        <h2 style="color: #f87171; font-size: 22px; font-weight: 800; margin-top: 0; margin-bottom: 12px;">
+          Account Suspended 🔒
+        </h2>
+        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+          Hello ${name}, your AIJobs account access has been suspended by Administration.
+        </p>
+        <div style="background-color: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 24px;">
+          <p style="color: #fca5a5; font-size: 13px; margin: 0;">
+            <strong>Details:</strong> ${reason}
+          </p>
+        </div>
+      </div>
+    `;
+    return wrapBaseLayout(subject, body, false, undefined, appUrl);
   }
 };

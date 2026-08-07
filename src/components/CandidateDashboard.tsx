@@ -697,6 +697,7 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
           isOpen={sidebarOpen}
           setIsOpen={setSidebarOpen}
           unreadCount={notifications.filter(n => !n.read).length}
+          onLogout={handleLogout}
         />
 
         {/* Scrolling Work Content Area */}

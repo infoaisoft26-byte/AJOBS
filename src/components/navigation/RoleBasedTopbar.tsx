@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Contact, Database, Home, LayoutDashboard, LogOut, Logs, Moon, PlusCircle, RotateCcw, Shield, Sun, User, Volume2, VolumeX } from "lucide-react";
+import { Contact, Database, Home, LayoutDashboard, LogOut, Logs, Menu, Moon, PlusCircle, RotateCcw, Settings, Shield, ShieldCheck, Sun, User, Volume2, VolumeX, X } from "lucide-react";
 import { auth } from "../../firebase";
 
 import { UserProfile } from "../../types";
@@ -40,6 +40,7 @@ export default function RoleBasedTopbar({
   onOpenCompanyPage
 }: RoleBasedTopbarProps) {
   const [isMuted, setIsMuted] = useState(soundSynth.getMuted());
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const userRole = (user?.role || "guest").toLowerCase();
   const isAdmin = userRole === "admin" || userRole === "superadmin" || userRole === "super_admin";
@@ -58,6 +59,7 @@ export default function RoleBasedTopbar({
 
   const scrollToSection = (id: string) => {
     soundSynth.playClick();
+    setMobileMenuOpen(false);
     if (activeView !== "home") {
       setActiveView("home");
       setTimeout(() => {
@@ -75,20 +77,28 @@ export default function RoleBasedTopbar({
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-black/80 backdrop-blur-xl border-b border-white/10 px-4 py-3 md:px-8 transition-all duration-300">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
-        
-        {/* Brand Logo */}
-        <div id="topbar-logo">
-          <AIJobsLogo
-            variant="compact"
-            size="sm"
-            onClick={() => {
-              soundSynth.playClick();
-              setActiveView("home");
-            }}
-          />
-        </div>
+    <>
+      <header className="sticky top-0 z-40 w-full bg-black/80 backdrop-blur-xl border-b border-white/10 px-3 sm:px-4 py-3 md:px-8 transition-all duration-300">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          
+          {/* Brand Logo & Mobile Menu Toggle */}
+          <div className="flex items-center space-x-2" id="topbar-logo">
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="p-2 lg:hidden text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all cursor-pointer"
+              aria-label="Open Navigation Drawer"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <AIJobsLogo
+              variant="compact"
+              size="sm"
+              onClick={() => {
+                soundSynth.playClick();
+                setActiveView("home");
+              }}
+            />
+          </div>
 
         {/* ROLE-BASED CENTER NAVIGATION */}
         <nav className="hidden lg:flex items-center space-x-4 text-xs font-bold text-gray-300 uppercase tracking-wider font-mono">
@@ -321,5 +331,215 @@ export default function RoleBasedTopbar({
         </div>
       </div>
     </header>
+
+      {/* MOBILE NAVIGATION DRAWER */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden">
+          {/* Backdrop Overlay */}
+          <div
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm transition-opacity"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+
+          {/* Drawer Panel */}
+          <aside className="fixed inset-y-0 left-0 z-50 w-[85vw] max-w-[320px] bg-[#050508] border-r border-white/10 flex flex-col h-full overflow-y-auto shadow-2xl transition-transform duration-300">
+            {/* Header */}
+            <div className="p-4 border-b border-white/10 flex items-center justify-between bg-black/40">
+              <AIJobsLogo
+                variant="compact"
+                size="sm"
+                onClick={() => {
+                  soundSynth.playClick();
+                  setActiveView("home");
+                  setMobileMenuOpen(false);
+                }}
+              />
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-1.5 rounded-xl bg-white/5 text-gray-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Menu Items */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <span className="text-[10px] font-mono font-bold tracking-widest text-gray-500 uppercase block">
+                {user ? `${userRole.toUpperCase()} NAVIGATION` : "NAVIGATION"}
+              </span>
+
+              <nav className="space-y-1">
+                {!user && (
+                  <>
+                    <button onClick={() => scrollToSection("hero-section")} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Home</button>
+                    <button onClick={() => scrollToSection("how-it-works-section")} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Find Jobs</button>
+                    <button onClick={() => scrollToSection("ai-features-section")} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">AI Interview</button>
+                    <button onClick={() => scrollToSection("why-aijobs-section")} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Companies</button>
+                    <button onClick={() => { setMobileMenuOpen(false); onOpenCompanyPage?.("consultancies"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Consultancies</button>
+                    <button onClick={() => scrollToSection("pricing-section")} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Pricing</button>
+                    <button onClick={() => { setMobileMenuOpen(false); onOpenCompanyPage?.("about"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">About</button>
+                    <button onClick={() => { setMobileMenuOpen(false); onOpenCompanyPage?.("contact"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Contact</button>
+                  </>
+                )}
+
+                {user && isCandidate && (
+                  <>
+                    <button onClick={() => { soundSynth.playClick(); setActiveView("dashboard"); setMobileMenuOpen(false); }} className="w-full flex items-center space-x-2 px-3 py-2.5 rounded-xl text-xs font-bold text-blue-400 bg-blue-500/10 cursor-pointer">
+                      <LayoutDashboard className="w-4 h-4" />
+                      <span>Dashboard</span>
+                    </button>
+                    <button onClick={() => { soundSynth.playClick(); setActiveView("dashboard"); window.dispatchEvent(new CustomEvent("candidate-nav", { detail: "jobs" })); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">
+                      Find Jobs
+                    </button>
+                    <button onClick={() => { soundSynth.playClick(); setActiveView("dashboard"); window.dispatchEvent(new CustomEvent("candidate-nav", { detail: "resume" })); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">
+                      Resume & ATS
+                    </button>
+                    <button onClick={() => { soundSynth.playClick(); setActiveView("dashboard"); window.dispatchEvent(new CustomEvent("candidate-nav", { detail: "interviews" })); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">
+                      AI Interview Arena
+                    </button>
+                    <button onClick={() => { soundSynth.playClick(); setActiveView("dashboard"); window.dispatchEvent(new CustomEvent("candidate-nav", { detail: "profile" })); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">
+                      Profile
+                    </button>
+                  </>
+                )}
+
+                {user && (isRecruiter || isConsultancy) && (
+                  <>
+                    <button onClick={() => { soundSynth.playClick(); setActiveView("dashboard"); setMobileMenuOpen(false); }} className="w-full flex items-center space-x-2 px-3 py-2.5 rounded-xl text-xs font-bold text-indigo-400 bg-indigo-500/10 cursor-pointer">
+                      <LayoutDashboard className="w-4 h-4" />
+                      <span>Recruiter Panel</span>
+                    </button>
+                    <button onClick={() => { soundSynth.playClick(); setActiveView("dashboard"); window.dispatchEvent(new CustomEvent("recruiter-nav", { detail: "post-job" })); setMobileMenuOpen(false); }} className="w-full flex items-center space-x-2 px-3 py-2.5 rounded-xl text-xs font-bold text-emerald-400 hover:bg-emerald-500/10 cursor-pointer">
+                      <PlusCircle className="w-4 h-4" />
+                      <span>Post Job</span>
+                    </button>
+                    <button onClick={() => { soundSynth.playClick(); setActiveView("dashboard"); window.dispatchEvent(new CustomEvent("recruiter-nav", { detail: "candidates" })); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">
+                      Candidate Database
+                    </button>
+                    <button onClick={() => { soundSynth.playClick(); setActiveView("dashboard"); window.dispatchEvent(new CustomEvent("recruiter-nav", { detail: "applications" })); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">
+                      Applications
+                    </button>
+                    <button onClick={() => { soundSynth.playClick(); setActiveView("dashboard"); window.dispatchEvent(new CustomEvent("recruiter-nav", { detail: "interviews" })); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">
+                      Interviews
+                    </button>
+                  </>
+                )}
+
+                {user && isAdmin && (
+                  <>
+                    <button onClick={() => { soundSynth.playClick(); setActiveView("dashboard"); setMobileMenuOpen(false); }} className="w-full flex items-center space-x-2 px-3 py-2.5 rounded-xl text-xs font-bold text-amber-400 bg-amber-500/10 cursor-pointer">
+                      <Shield className="w-4 h-4" />
+                      <span>Admin Console</span>
+                    </button>
+                    <button onClick={() => { soundSynth.playClick(); setActiveView("dashboard"); window.dispatchEvent(new CustomEvent("admin-nav", { detail: "users" })); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">
+                      User Management
+                    </button>
+                    <button onClick={() => { soundSynth.playClick(); setActiveView("dashboard"); window.dispatchEvent(new CustomEvent("admin-nav", { detail: "jobs" })); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">
+                      Jobs Management
+                    </button>
+                    <button onClick={() => { soundSynth.playClick(); setActiveView("dashboard"); window.dispatchEvent(new CustomEvent("admin-nav", { detail: "crm" })); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">
+                      CRM
+                    </button>
+                    <button onClick={() => { soundSynth.playClick(); setActiveView("dashboard"); window.dispatchEvent(new CustomEvent("admin-nav", { detail: "audit" })); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">
+                      Audit Logs
+                    </button>
+                  </>
+                )}
+              </nav>
+            </div>
+
+            {/* Bottom Actions Area: Profile, Settings, Support & Logout */}
+            <div className="mt-auto p-4 border-t border-white/10 bg-black/60 space-y-2">
+              {user ? (
+                <>
+                  <div className="flex items-center space-x-3 pb-3 border-b border-white/5">
+                    <div className="w-9 h-9 rounded-full bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-sm font-bold text-blue-300">
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex flex-col truncate">
+                      <span className="text-xs font-bold text-white truncate">{user.name}</span>
+                      <span className="text-[10px] text-gray-400 capitalize font-mono truncate">{user.role}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      soundSynth.playClick();
+                      setActiveView("dashboard");
+                      if (isCandidate) window.dispatchEvent(new CustomEvent("candidate-nav", { detail: "profile" }));
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-semibold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer"
+                  >
+                    <User className="w-4 h-4 text-indigo-400" />
+                    <span>Profile</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      soundSynth.playClick();
+                      setActiveView("dashboard");
+                      if (isCandidate) window.dispatchEvent(new CustomEvent("candidate-nav", { detail: "settings" }));
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-semibold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer"
+                  >
+                    <Settings className="w-4 h-4 text-gray-400" />
+                    <span>Settings</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      soundSynth.playClick();
+                      setMobileMenuOpen(false);
+                      onOpenCompanyPage?.("contact");
+                    }}
+                    className="w-full flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-semibold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer"
+                  >
+                    <Contact className="w-4 h-4 text-emerald-400" />
+                    <span>Support & Contact</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      soundSynth.playClick();
+                      setMobileMenuOpen(false);
+                      onLogout();
+                    }}
+                    className="w-full flex items-center justify-center space-x-2 py-2.5 px-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 text-xs font-bold transition-all mt-2 cursor-pointer"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Logout</span>
+                  </button>
+                </>
+              ) : (
+                <div className="space-y-2 pt-1">
+                  <button
+                    onClick={() => {
+                      soundSynth.playClick();
+                      setMobileMenuOpen(false);
+                      setActiveView("candidate-login");
+                    }}
+                    className="w-full py-2.5 text-xs font-bold text-gray-200 border border-white/10 rounded-xl hover:bg-white/5 cursor-pointer"
+                  >
+                    Login to Account
+                  </button>
+                  <button
+                    onClick={() => {
+                      soundSynth.playClick();
+                      setMobileMenuOpen(false);
+                      setActiveView("candidate-register");
+                    }}
+                    className="w-full py-2.5 text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-lg cursor-pointer"
+                  >
+                    Register as Candidate
+                  </button>
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
+      )}
+    </>
   );
 }

@@ -803,12 +803,12 @@ export default function AdminEmailCenter() {
                       </td>
                     </tr>
                   ) : (
-                    filteredLogs.map(log => {
+                    filteredLogs.map((log, idx) => {
                       const isSmtp = log.status === "SENT_SMTP";
-                      const isFailed = log.status.includes("FAIL") || log.status.includes("ERROR");
+                      const isFailed = (log.status || "").includes("FAIL") || (log.status || "").includes("ERROR");
 
                       return (
-                        <tr key={log.id} className="hover:bg-white/5 transition-all">
+                        <tr key={log.id || log.emailId || `log-${idx}-${log.recipient}`} className="hover:bg-white/5 transition-all">
                           <td className="p-4 font-mono font-bold text-white">
                             {log.recipient || "N/A"}
                           </td>

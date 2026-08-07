@@ -27,11 +27,14 @@ const initAdminApp = () => {
     return getApps()[0];
   }
 
-  const isValidCert =
+const isValidCert =
     Boolean(projectId) &&
     Boolean(clientEmail) &&
     Boolean(privateKey) &&
-    privateKey!.includes("BEGIN PRIVATE KEY");
+    (privateKey!.includes("BEGIN PRIVATE KEY") || privateKey!.includes("BEGIN RSA PRIVATE KEY")) &&
+    (privateKey!.includes("END PRIVATE KEY") || privateKey!.includes("END RSA PRIVATE KEY")) &&
+    !projectId!.toLowerCase().includes("your_") &&
+    !clientEmail!.toLowerCase().includes("your_");
 
   if (isValidCert) {
     try {
@@ -43,7 +46,7 @@ const initAdminApp = () => {
         })
       });
     } catch (err: any) {
-      console.warn("[Firebase Admin] Service account cert initialization fallback:", err?.message || err);
+      console.info("[Firebase Admin] Service account cert fallback to project ID initialization:", err?.message || err);
     }
   }
 

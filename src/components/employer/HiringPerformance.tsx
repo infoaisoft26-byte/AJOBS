@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AreaChart, ArrowUpRight, Award, BarChart, Box, CheckCircle, Clock, Filter, Funnel, Map, PieChart as PieIcon, Slice, Sparkles, Table, Target, TrendingUp, Users, Volume, Zap } from "lucide-react";
+import { AreaChart, ArrowUpRight, Award, BarChart, Box, CheckCircle, Clock, Filter, Funnel, Map as MapIcon, PieChart as PieIcon, Slice, Sparkles, Table, Target, TrendingUp, Users, Volume, Zap } from "lucide-react";
 import { Area, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, ComposedChart } from "recharts";
 import { CompanyJob, CompanyApplication, CompanyInterview, CompanyOffer } from "./EmployerTypes";
 

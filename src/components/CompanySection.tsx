@@ -1,6 +1,6 @@
 import React, { Dispatch, FormEvent, lazy, useEffect, useState } from "react";
 import { collection, doc, getDocs, setDoc } from "firebase/firestore";
-import { AlertCircle, Award, BookOpen, CheckCircle, Clock, Cloud, Contact, Container, Cookie, Database, Download, FileText, Info, Mail, Map, MapPin, Phone, Play, Scale, Scaling, Search, Send, Settings, Shield, Sparkles, Store, Target, Ticket, Video, X } from "lucide-react";
+import { AlertCircle, Award, BookOpen, CheckCircle, Clock, Cloud, Contact, Container, Cookie, Database, Download, FileText, Info, Mail, Map as MapIcon, MapPin, Phone, Play, Scale, Scaling, Search, Send, Settings, Shield, Sparkles, Store, Target, Ticket, Video, X } from "lucide-react";
 import { auth, db, storage } from "../firebase";
 
 

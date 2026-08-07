@@ -1,13 +1,14 @@
-import { Activity, Award, Bell, BookOpen, Bot, Brain, Briefcase, Calendar, CheckCircle2, Clock, CloudLightning, Compass, Container, Database, FileText, Gift, GraduationCap, Heart, LayoutDashboard, Menu, MessageSquare, Mic, Navigation, Search, Settings, ShieldCheck, Sidebar, Smartphone, Sparkles, Store, User, Verified, Video, X } from "lucide-react";
+import { Activity, Award, Bell, BookOpen, Bot, Brain, Briefcase, Calendar, CheckCircle2, Clock, CloudLightning, Compass, Container, Database, FileText, Gift, GraduationCap, Heart, LayoutDashboard, LogOut, Menu, MessageSquare, Mic, Navigation, Search, Settings, ShieldCheck, Sidebar, Smartphone, Sparkles, Store, User, Verified, Video, X } from "lucide-react";
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: any) => void;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   unreadCount: number;
+  onLogout?: () => void;
 }
 
-export default function CandidateSidebar({ activeTab, setActiveTab, isOpen, setIsOpen, unreadCount }: SidebarProps) {
+export default function CandidateSidebar({ activeTab, setActiveTab, isOpen, setIsOpen, unreadCount, onLogout }: SidebarProps) {
   const menuItems = [
     { id: "overview", label: "Dashboard", icon: LayoutDashboard },
     { id: "profile", label: "Profile Details", icon: User },
@@ -61,7 +62,7 @@ export default function CandidateSidebar({ activeTab, setActiveTab, isOpen, setI
 
       {/* Sidebar Container */}
       <aside 
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col w-64 bg-[#050508]/95 border-r border-white/5 transition-transform duration-300 transform lg:translate-x-0 lg:static lg:h-[calc(100vh-73px)] ${
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col w-[85vw] max-w-[320px] lg:w-64 bg-[#050508] border-r border-white/10 transition-transform duration-300 transform lg:translate-x-0 lg:static lg:h-[calc(100vh-73px)] ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         id="candidate-sidebar"
@@ -178,10 +179,24 @@ export default function CandidateSidebar({ activeTab, setActiveTab, isOpen, setI
           </div>
         </div>
 
-        {/* Quick status footer */}
-        <div className="p-4 border-t border-white/5 bg-black/20 text-[10px] font-mono text-gray-500 space-y-1 select-none">
-          <p>Local node status: <span className="text-emerald-400">Secure</span></p>
-          <p>Database: <span className="text-indigo-400">Firestore</span></p>
+        {/* Quick status & mobile logout footer */}
+        <div className="mt-auto p-4 border-t border-white/5 bg-black/40 text-[10px] font-mono text-gray-500 space-y-2 select-none">
+          <div className="flex justify-between items-center text-gray-400">
+            <span>Node Status: <strong className="text-emerald-400 font-bold">Secure</strong></span>
+            <span>Firestore</span>
+          </div>
+          {onLogout && (
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                onLogout();
+              }}
+              className="lg:hidden w-full flex items-center justify-center space-x-2 py-2 px-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 text-xs font-bold transition-all cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Logout</span>
+            </button>
+          )}
         </div>
       </aside>
     </>

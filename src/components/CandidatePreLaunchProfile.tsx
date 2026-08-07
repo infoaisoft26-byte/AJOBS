@@ -5,6 +5,7 @@ import { db } from "../firebase";
 
 
 import { useToast } from "./GlobalToast";
+import { formatPhoneNumber } from "../utils/phoneUtils";
 
 interface CandidatePreLaunchProfileProps {
   user: UserProfile;
@@ -108,9 +109,10 @@ export default function CandidatePreLaunchProfile({
         .map((s) => s.trim())
         .filter(Boolean);
 
+      const formattedPhone = formatPhoneNumber(editPhone.trim());
       const updatedFields = {
         name: editName.trim(),
-        phone: editPhone.trim(),
+        phone: formattedPhone,
         targetRole: editTargetRole.trim(),
         location: editLocation.trim(),
         experience: editExperience.trim(),
@@ -124,7 +126,7 @@ export default function CandidatePreLaunchProfile({
       // 2. Update user profile record (without modifying security attributes: role, isBetaTester, internalAccess)
       await updateDoc(doc(db, "users", user.uid), {
         name: editName.trim(),
-        phone: editPhone.trim(),
+        phone: formattedPhone,
         updatedAt: new Date().toISOString()
       });
 

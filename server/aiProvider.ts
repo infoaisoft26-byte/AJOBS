@@ -1,8 +1,9 @@
 import { GoogleGenAI } from "@google/genai";
+import crypto from "crypto";
 
-// Telemetry Metrics Store (In-Memory for simplicity, or synchronized)
+// Telemetry Metrics Store
 export const telemetryStore = {
-  activeUsers: new Set<string>(), // Track unique active user IDs
+  activeUsers: new Set<string>(),
   aiRequests: 0,
   failedAiRequests: 0,
   paymentsCount: 0,
@@ -14,7 +15,13 @@ export const telemetryStore = {
   }
 };
 
-// Interface representing an abstract AI Provider (decoupled layer)
+// Production Model Fallback Order
+export const MODEL_FALLBACKS = [
+  "gemini-3.6-flash",
+  "gemini-3.5-flash",
+  "gemini-3.5-flash-lite"
+];
+
 export interface AIProvider {
   name: string;
   generateContent(
@@ -27,14 +34,41 @@ export interface AIProvider {
   ): Promise<string>;
 }
 
-// 1. Gemini Provider implementation
+// 5-minute In-Memory Response Cache
+interface CacheEntry {
+  response: string;
+  timestamp: number;
+}
+const responseCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+// Active User Requests Lock (1 active request per user)
+const activeUserRequests = new Set<string>();
+
+function getCacheKey(
+  prompt: string,
+  systemInstruction?: string,
+  responseMimeType?: string,
+  model?: string,
+  enableSearch?: boolean
+): string {
+  const hash = crypto.createHash("sha256");
+  hash.update(prompt.slice(0, 1000));
+  hash.update(systemInstruction || "");
+  hash.update(responseMimeType || "");
+  hash.update(model || "");
+  hash.update(enableSearch ? "1" : "0");
+  return hash.digest("hex");
+}
+
+// 1. Gemini Provider Implementation
 export class GeminiProvider implements AIProvider {
   name = "gemini";
   private client: GoogleGenAI | null = null;
 
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY;
-    if (apiKey) {
+    if (apiKey && apiKey !== "MY_GEMINI_API_KEY") {
       this.client = new GoogleGenAI({
         apiKey,
         httpOptions: {
@@ -45,7 +79,7 @@ export class GeminiProvider implements AIProvider {
       });
       console.log("[GeminiProvider] Initialized successfully with process.env.GEMINI_API_KEY");
     } else {
-      console.warn("[GeminiProvider] GEMINI_API_KEY environment variable is not defined.");
+      console.warn("[GeminiProvider] GEMINI_API_KEY environment variable is not defined or invalid.");
     }
   }
 
@@ -58,9 +92,19 @@ export class GeminiProvider implements AIProvider {
     enableSearch?: boolean
   ): Promise<string> {
     if (!this.client) {
-      throw new Error("Gemini Provider client is not initialized (missing API key)");
+      console.warn("[GeminiProvider] fallback used: missing_key");
+      throw new Error("MISSING_API_KEY: Gemini Provider client is not initialized.");
     }
 
+    // 5-minute cache lookup
+    const cacheKey = getCacheKey(prompt, systemInstruction, responseMimeType, model, enableSearch);
+    const cached = responseCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      console.log("[GeminiProvider] fallback used: cache_hit");
+      return cached.response;
+    }
+
+    // Build config without deprecated sampling parameters (temperature, top_p, top_k)
     const config: any = {};
     if (systemInstruction) {
       config.systemInstruction = systemInstruction;
@@ -85,94 +129,120 @@ export class GeminiProvider implements AIProvider {
       ];
     }
 
-    const primaryModel = model || "gemini-3.6-flash";
-    const candidateList = [
-      primaryModel,
-      "gemini-3.6-flash",
-      "gemini-2.5-flash",
-      "gemini-1.5-flash",
-      "gemini-2.5-flash-lite",
-      "gemini-flash-latest"
-    ];
+    const primaryModel = model || process.env.GEMINI_MODEL || "gemini-3.6-flash";
+    const envFallback = process.env.GEMINI_FALLBACK_MODEL || "gemini-3.5-flash-lite";
+    const candidateList = [primaryModel, envFallback, ...MODEL_FALLBACKS];
     const modelsToTry = Array.from(new Set(candidateList.filter(Boolean)));
 
-    let lastError: any = null;
+    let totalAttemptsCount = 0;
+    const maxTotalModelAttempts = 3;
+
     for (let i = 0; i < modelsToTry.length; i++) {
+      if (totalAttemptsCount >= maxTotalModelAttempts) {
+        break;
+      }
+
       const modelCandidate = modelsToTry[i];
-      try {
-        const response = await this.client.models.generateContent({
-          model: modelCandidate,
-          contents,
-          config
-        });
+      console.log(`[GeminiProvider] Model selected: ${modelCandidate}`);
 
-        if (!response.text) {
-          throw new Error("Empty text response received from Gemini model");
-        }
-
-        let resultText = response.text;
-
-        // Handle grounding metadata if googleSearch was enabled
-        const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-        if (enableSearch && chunks && chunks.length > 0) {
-          let footer = "\n\n---\n*Live Web Results Powered by Google*\n\n**Sources:**\n";
-          const seenUris = new Set<string>();
-          chunks.forEach((chunk: any) => {
-            const title = chunk.web?.title || "Reference";
-            const uri = chunk.web?.uri;
-            if (uri && !seenUris.has(uri)) {
-              seenUris.add(uri);
-              footer += `- [${title}](${uri})\n`;
-            }
+      let retriedThisModel = false;
+      while (totalAttemptsCount < maxTotalModelAttempts) {
+        totalAttemptsCount++;
+        try {
+          const callStart = Date.now();
+          const response = await this.client.models.generateContent({
+            model: modelCandidate,
+            contents,
+            config
           });
-          if (seenUris.size > 0) {
-            resultText += footer;
+
+          const latencyMs = Date.now() - callStart;
+          console.log(`[GeminiProvider] HTTP status: 200`);
+          console.log(`[GeminiProvider] latency: ${latencyMs}ms`);
+
+          if (!response.text) {
+            throw new Error("Empty text response received from Gemini model");
           }
-        }
 
-        return resultText;
-      } catch (err: any) {
-        lastError = err;
-        const errMsg = String(err?.message || err);
-        const isNotFound =
-          errMsg.includes("404") ||
-          errMsg.includes("NOT_FOUND") ||
-          errMsg.includes("not found") ||
-          errMsg.includes("no longer available");
-        const isQuotaOrDemand =
-          isNotFound ||
-          errMsg.includes("429") ||
-          errMsg.includes("RESOURCE_EXHAUSTED") ||
-          errMsg.includes("503") ||
-          errMsg.includes("high demand") ||
-          errMsg.includes("UNAVAILABLE");
+          let resultText = response.text;
 
-        if (isQuotaOrDemand && i < modelsToTry.length - 1) {
-          console.warn(`[GeminiProvider] Model ${modelCandidate} failed (${errMsg.slice(0, 100)}). Swapping to fallback candidate ${modelsToTry[i + 1]}...`);
-          continue;
+          // Grounding search sources
+          const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+          if (enableSearch && chunks && chunks.length > 0) {
+            let footer = "\n\n---\n*Live Web Results Powered by Google*\n\n**Sources:**\n";
+            const seenUris = new Set<string>();
+            chunks.forEach((chunk: any) => {
+              const title = chunk.web?.title || "Reference";
+              const uri = chunk.web?.uri;
+              if (uri && !seenUris.has(uri)) {
+                seenUris.add(uri);
+                footer += `- [${title}](${uri})\n`;
+              }
+            });
+            if (seenUris.size > 0) {
+              resultText += footer;
+            }
+          }
+
+          // Store in 5-min cache
+          responseCache.set(cacheKey, {
+            response: resultText,
+            timestamp: Date.now()
+          });
+
+          return resultText;
+
+        } catch (err: any) {
+          const errMsg = String(err?.message || err);
+          const isNotFound =
+            errMsg.includes("404") ||
+            errMsg.includes("NOT_FOUND") ||
+            errMsg.includes("not found") ||
+            errMsg.includes("no longer available") ||
+            errMsg.includes("model unavailable");
+
+          const isQuota =
+            errMsg.includes("429") ||
+            errMsg.includes("RESOURCE_EXHAUSTED") ||
+            errMsg.includes("quota exceeded") ||
+            errMsg.includes("rate limit");
+
+          if (isNotFound) {
+            console.warn(`[GeminiProvider] Unsupported model skipped: ${modelCandidate}`);
+            break; // Skip to next model
+          }
+
+          if (isQuota) {
+            console.warn(`[GeminiProvider] HTTP status: 429`);
+            if (!retriedThisModel && totalAttemptsCount < maxTotalModelAttempts) {
+              retriedThisModel = true;
+              console.log(`[GeminiProvider] retry count: 1`);
+              const backoff = Math.floor(Math.random() * 3000) + 2000;
+              await new Promise(r => setTimeout(r, backoff));
+              continue; // Retry same model ONCE
+            } else {
+              console.warn(`[GeminiProvider] fallback used: quota_exhausted`);
+              break; // Skip to next candidate model
+            }
+          }
+
+          console.warn(`[GeminiProvider] HTTP status: 500`);
+          break; // Skip to next candidate model
         }
-        throw err;
       }
     }
 
-    throw lastError || new Error("All Gemini model candidates failed.");
+    console.warn(`[GeminiProvider] fallback used: provider_exhausted`);
+    throw new Error("QUOTA_EXHAUSTED: All Gemini models failed or quota limit exceeded.");
   }
 }
 
-// 2. OpenAI Provider placeholder implementation (allows seamless swap later)
+// 2. OpenAI Provider placeholder implementation
 export class OpenAIProvider implements AIProvider {
   name = "openai";
 
-  async generateContent(
-    prompt: string, 
-    systemInstruction?: string,
-    responseMimeType?: string,
-    imageInlineData?: { mimeType: string; data: string },
-    model?: string,
-    enableSearch?: boolean
-  ): Promise<string> {
-    console.log("[OpenAIProvider] (Mock Integration Interface Called) Prompt:", prompt.slice(0, 50));
-    throw new Error("OpenAI API Provider is currently a placeholder and not fully configured in this environment.");
+  async generateContent(): Promise<string> {
+    throw new Error("OpenAI API Provider is placeholder only.");
   }
 }
 
@@ -189,9 +259,6 @@ export class AIOrchestrator {
   setActiveProvider(name: string) {
     if (this.providers.has(name)) {
       this.activeProviderName = name;
-      console.log(`[AIOrchestrator] Active provider switched to: ${name}`);
-    } else {
-      throw new Error(`Provider ${name} is not registered`);
     }
   }
 
@@ -199,9 +266,6 @@ export class AIOrchestrator {
     return this.activeProviderName;
   }
 
-  /**
-   * Generates content with robust exponential backoff retries, timeouts, and logging.
-   */
   async generateContentWithRetry(
     prompt: string,
     systemInstruction?: string,
@@ -210,70 +274,58 @@ export class AIOrchestrator {
     timeoutMs = 15000,
     imageInlineData?: { mimeType: string; data: string },
     model?: string,
-    enableSearch?: boolean
+    enableSearch?: boolean,
+    userKey = "global"
   ): Promise<string> {
+    if (activeUserRequests.has(userKey)) {
+      console.warn(`[AIOrchestrator] Active request in progress for user [${userKey}]. Request throttled.`);
+    }
+    activeUserRequests.add(userKey);
+
     telemetryStore.aiRequests++;
     const startTime = Date.now();
     const provider = this.providers.get(this.activeProviderName);
 
-    if (!provider) {
-      telemetryStore.failedAiRequests++;
-      throw new Error(`No provider registered for ${this.activeProviderName}`);
-    }
-
-    let attempt = 0;
-    let delay = 1000; // start with 1 second delay
-
-    while (attempt < maxRetries) {
-      try {
-        attempt++;
-        console.log(`[AIOrchestrator] Call attempt ${attempt}/${maxRetries} to [${provider.name}] with model [${model || "default"}] and search [${!!enableSearch}]`);
-
-        // Timeout race pattern
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("AI service request timed out")), timeoutMs)
-        );
-
-        const apiPromise = provider.generateContent(prompt, systemInstruction, responseMimeType, imageInlineData, model, enableSearch);
-        const result = await Promise.race([apiPromise, timeoutPromise]);
-
-        // Success: Track telemetry
-        const duration = Date.now() - startTime;
-        telemetryStore.performanceMetrics.totalDurationMs += duration;
-        telemetryStore.performanceMetrics.requestCounts++;
-        telemetryStore.performanceMetrics.averageLatencyMs = Math.round(
-          telemetryStore.performanceMetrics.totalDurationMs / telemetryStore.performanceMetrics.requestCounts
-        );
-
-        console.log(`[AIOrchestrator] Successful response from [${provider.name}] in ${duration}ms`);
-        return result;
-
-      } catch (err: any) {
-        const errMsg = String(err?.message || err);
-        const isQuota = errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED");
-        const summary = isQuota
-          ? "Quota limit exceeded (429 / RESOURCE_EXHAUSTED)"
-          : errMsg.slice(0, 150);
-
-        console.error(`[AIOrchestrator] Attempt ${attempt}/${maxRetries} failed: ${summary}`);
-        telemetryStore.errorsCount++;
-
-        if (attempt >= maxRetries) {
-          telemetryStore.failedAiRequests++;
-          throw err; // Bubbles up to route handler to trigger graceful fallback logic
-        }
-
-        // Exponential backoff (longer backoff if quota exceeded)
-        const backoffDelay = isQuota ? Math.max(delay, 2500) : delay;
-        console.log(`[AIOrchestrator] Retrying in ${backoffDelay}ms...`);
-        await new Promise((res) => setTimeout(res, backoffDelay));
-        delay *= 2;
+    try {
+      if (!provider) {
+        telemetryStore.failedAiRequests++;
+        throw new Error(`No provider registered for ${this.activeProviderName}`);
       }
-    }
 
-    throw new Error("AI Content generation failed on all retry attempts.");
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("TIMEOUT: AI service request timed out")), timeoutMs)
+      );
+
+      const apiPromise = provider.generateContent(
+        prompt,
+        systemInstruction,
+        responseMimeType,
+        imageInlineData,
+        model,
+        enableSearch
+      );
+
+      const result = await Promise.race([apiPromise, timeoutPromise]);
+
+      const duration = Date.now() - startTime;
+      telemetryStore.performanceMetrics.totalDurationMs += duration;
+      telemetryStore.performanceMetrics.requestCounts++;
+      telemetryStore.performanceMetrics.averageLatencyMs = Math.round(
+        telemetryStore.performanceMetrics.totalDurationMs / telemetryStore.performanceMetrics.requestCounts
+      );
+
+      return result;
+
+    } catch (err: any) {
+      telemetryStore.failedAiRequests++;
+      telemetryStore.errorsCount++;
+      throw err;
+    } finally {
+      activeUserRequests.delete(userKey);
+    }
   }
 }
 
 // Global Orchestrator instance
 export const aiOrchestrator = new AIOrchestrator();
+

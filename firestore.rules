@@ -461,5 +461,11 @@ service cloud.firestore {
     match /referrals/{referralId} {
       allow read, write: if isSignedIn();
     }
+    match /email_logs/{logId} {
+      allow read, write: if isSignedIn();
+    }
+    match /leads/{leadId} {
+      allow read, write: if isSignedIn();
+    }
   }
 }

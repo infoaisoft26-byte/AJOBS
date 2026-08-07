@@ -398,9 +398,9 @@ export default function AdminEmailCenter() {
               Select Email Template to Inspect
             </div>
 
-            {templates.map((temp) => (
+            {templates.map((temp, idx) => (
               <button
-                key={temp.id}
+                key={temp.id || `temp-${idx}`}
                 onClick={() => setSelectedTemplate(temp.id)}
                 className={`w-full text-left p-3.5 rounded-2xl border transition-all cursor-pointer block ${
                   selectedTemplate === temp.id
@@ -650,8 +650,8 @@ export default function AdminEmailCenter() {
                     </td>
                   </tr>
                 ) : (
-                  deliveries.map((del) => (
-                    <tr key={del.id} className="hover:bg-white/5">
+                  deliveries.map((del, idx) => (
+                    <tr key={del.id || del.emailId || `del-${idx}-${del.email}`} className="hover:bg-white/5">
                       <td className="p-3 font-mono text-white">{del.email}</td>
                       <td className="p-3 font-mono text-gray-400">{del.jobId || del.campaignId || "Direct"}</td>
                       <td className="p-3">

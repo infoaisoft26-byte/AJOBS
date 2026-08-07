@@ -2,6 +2,7 @@ import { useState } from "react";
 import { doc, setDoc } from "firebase/firestore";
 import { AlertCircle, ArrowRight, CheckCircle2, Code, Lock, Mail, Phone, Send, ShieldCheck, Verified, X } from "lucide-react";
 import { db } from "../firebase";
+import { formatPhoneNumber } from "../utils/phoneUtils";
 
 
 interface AccountVerificationModalProps {
@@ -118,18 +119,19 @@ export default function AccountVerificationModal({
     }
 
     setLoading(true);
+    const formatted = formatPhoneNumber(phoneInput);
     try {
       if (userId && db) {
         await setDoc(doc(db, "users", userId), {
           isMobileVerified: true,
-          mobileNumber: phoneInput,
+          mobileNumber: formatted,
           mobileVerifiedAt: new Date().toISOString(),
           verified: true
         }, { merge: true });
 
         await setDoc(doc(db, "candidates", userId), {
           isMobileVerified: true,
-          mobileNumber: phoneInput,
+          mobileNumber: formatted,
           mobileVerifiedAt: new Date().toISOString(),
           verified: true
         }, { merge: true });

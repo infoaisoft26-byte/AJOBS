@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { getFirestoreDb } from "./firestoreHelper.js";
 import { sendOTP, verifyOTP, isTwilioConfigured } from "./twilioService.js";
+import { processPaymentAccounting } from "./accountingEngine.js";
 import crypto from "crypto";
 
 const router = Router();
@@ -534,38 +535,28 @@ router.post("/payments/webhook", async (req, res) => {
       updatedAt: paidAt
     });
 
-    // 2. Generate Tax Invoice
-    const invoiceNumber = `INV-AIJOBS-2026-${Math.floor(100000 + Math.random() * 900000)}`;
-    const invoiceId = `inv_${paymentId}`;
-
+    // 2. Trigger Double-Entry Accounting Engine & Tax Invoice Generation
     const agreementSnap = await db.collection("agreements").doc(payData.agreementId).get();
     const agreementData = agreementSnap.exists ? agreementSnap.data() : {};
 
-    const invoiceDoc = {
-      invoiceId,
-      invoiceNumber,
+    const accRes = await processPaymentAccounting({
       paymentId,
-      orderId: payData.orderId,
       userId: payData.userId,
-      agreementId: payData.agreementId,
-      agreementNumber: agreementData?.agreementNumber || "",
-      supplier: DEFAULT_SELLER_INFO,
-      buyer: agreementData?.buyer || {},
-      planSummary: agreementData?.planSummary || {},
-      baseAmount: payData.baseAmount,
-      gstPercentage: payData.gstPercentage,
+      userEmail: agreementData?.buyer?.email || "",
+      role: payData.role || "recruiter",
+      planName: agreementData?.planSummary?.planName || "AIJOBS Database Access Plan",
+      baseAmount: payData.baseAmount || 499,
+      gstAmount: payData.gstAmount || 89.82,
+      totalAmount: payData.totalAmount || 588.82,
       cgst: payData.cgst,
       sgst: payData.sgst,
       igst: payData.igst,
-      gstAmount: payData.gstAmount,
-      totalAmount: payData.totalAmount,
-      paymentMethod: "Online Gateway (Razorpay/PayU)",
-      invoiceDate: paidAt,
-      placeOfSupply: "Karnataka",
-      createdAt: paidAt
-    };
+      customerState: agreementData?.buyer?.state || "Karnataka",
+      sellerState: "Karnataka"
+    });
 
-    await db.collection("invoices").doc(invoiceId).set(invoiceDoc);
+    const invoiceNumber = accRes.invoiceNumber || `AIJ/2026-27/${Math.floor(100000 + Math.random() * 900000)}`;
+    const invoiceId = accRes.invoiceId || `inv_${paymentId}`;
 
     // 3. Update agreement status to 'payment_completed'
     if (payData.agreementId) {

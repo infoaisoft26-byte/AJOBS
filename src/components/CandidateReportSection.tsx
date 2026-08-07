@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertTriangle, Award, BookOpen, Brain, CheckCircle2, Circle, Cpu, Database, Info, Key, LineChart, Map, Menu, Navigation, Ratio, RefreshCw, Scan, Section, ShieldCheck, Text, Type, Verified, Zap } from "lucide-react";
+import { AlertTriangle, Award, BookOpen, Brain, CheckCircle2, Circle, Cpu, Database, Info, Key, LineChart, Map as MapIcon, Menu, Navigation, Ratio, RefreshCw, Scan, Section, ShieldCheck, Text, Type, Verified, Zap } from "lucide-react";
 import { db } from "../firebase";
 import { parseJsonResponse } from "../utils/apiHelper";
 
@@ -252,7 +252,7 @@ export default function CandidateReportSection({ userId, profile, triggerNotific
               {[
                 { id: "scores", label: "Skills Scorecard", icon: LineChart },
                 { id: "skills", label: "Strengths & Gaps", icon: Award },
-                { id: "roadmap", label: "Learning Roadmap", icon: Map },
+                { id: "roadmap", label: "Learning Roadmap", icon: MapIcon },
                 { id: "match", label: "AI Job Match Engine", icon: Cpu }
               ].map((tab) => {
                 const Icon = tab.icon;

@@ -3,10 +3,12 @@ import { collection, doc, getDocs, limit, onSnapshot, orderBy, query, setDoc, up
 import { ref } from "firebase/storage";
 import { motion } from "motion/react";
 import { Check, CheckCheck, Circle, Download, FileText, Filter, Image, List, MessageSquare, Paperclip, RefreshCw, Save, Scroll, Search, Send, Sidebar, Type, User, X } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import { db } from "../firebase";
 
 import { detectPaymentRequest, ANTI_FRAUD_CANDIDATE_WARNING } from "../utils/fraudDetection";
 import { uploadToCloudinary } from "../services/cloudinaryService";
+import { parseJsonResponse } from "../utils/apiHelper";
 
 interface LiveChatSectionProps {
   currentUserId: string;
@@ -61,6 +63,7 @@ export default function LiveChatSection({
   // Attachment attachment state
   const [attachment, setAttachment] = useState<{ name: string; type: string; size: string; url: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isAiProcessing, setIsAiProcessing] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -134,13 +137,13 @@ export default function LiveChatSection({
         const d = docSnap.data();
         msgList.push({
           id: docSnap.id,
-          chatId: d.chatId,
-          senderId: d.senderId,
-          senderName: d.senderName,
-          senderRole: d.senderRole,
-          content: d.content,
+          chatId: d.chatId || activeChat.id,
+          senderId: d.senderId || d.userId || (d.sender === "assistant" ? "assistant" : "unknown"),
+          senderName: d.senderName || (d.sender === "assistant" || d.senderRole === "ai" ? "AI Assistant" : "User"),
+          senderRole: d.senderRole || d.role || (d.sender === "assistant" ? "ai" : "user"),
+          content: d.content || d.message || d.response || "",
           read: d.read || false,
-          createdAt: d.createdAt,
+          createdAt: d.createdAt || d.timestamp || new Date().toISOString(),
           attachment: d.attachment
         });
       });
@@ -391,6 +394,31 @@ export default function LiveChatSection({
       setNewMessage("");
       setAttachment(null);
       setIsTyping(false);
+
+      // Trigger AI Assistant automatic response
+      if (!isPaymentDemand && currentUserRole !== "ai") {
+        setIsAiProcessing(true);
+        try {
+          const respondRes = await fetch("/api/chat/respond", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              conversationId: activeChat.id,
+              userId: currentUserId,
+              userRole: currentUserRole,
+              message: messageContent
+            })
+          });
+          const resData = await parseJsonResponse(respondRes).catch(() => ({}));
+          if (!resData.success) {
+            console.warn("[LiveChatSection] AI respond notice:", resData.error);
+          }
+        } catch (respondErr) {
+          console.error("[LiveChatSection] AI respond trigger failed:", respondErr);
+        } finally {
+          setIsAiProcessing(false);
+        }
+      }
     } catch (err) {
       console.error("Failed to send message:", err);
       alert("Message delivery failure.");
@@ -451,7 +479,13 @@ export default function LiveChatSection({
   const fetchDirectory = async () => {
     try {
       const snap = await getDocs(collection(db, "users"));
-      const list: any[] = [];
+      const list: any[] = [
+        {
+          id: "ai_assistant",
+          name: "AI Jobs Career Assistant",
+          role: "ai"
+        }
+      ];
       snap.forEach((docSnap) => {
         const data = docSnap.data();
         if (docSnap.id !== currentUserId) {
@@ -662,9 +696,12 @@ export default function LiveChatSection({
               })}
               
               {/* Typing indicators */}
-              {typingUsers.length > 0 && (
+              {(typingUsers.length > 0 || isAiProcessing) && (
                 <div className="flex justify-start">
-                  <div className="p-3 bg-white/5 border border-white/5 rounded-2xl rounded-tl-none flex items-center gap-1.5 text-gray-400">
+                  <div className="p-3 bg-white/5 border border-white/5 rounded-2xl rounded-tl-none flex items-center gap-2 text-gray-400">
+                    <span className="text-[10px] text-indigo-400 font-bold font-mono">
+                      {isAiProcessing ? "AI Assistant is typing..." : `${typingUsers[0]} is typing...`}
+                    </span>
                     <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce"></span>
                     <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce [animation-delay:0.2s]"></span>
                     <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce [animation-delay:0.4s]"></span>
@@ -700,8 +737,8 @@ export default function LiveChatSection({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className="p-2.5 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 rounded-xl transition-all cursor-pointer relative"
+                disabled={isUploading || isAiProcessing}
+                className="p-2.5 bg-white/5 hover:bg-white/10 disabled:opacity-50 text-gray-300 hover:text-white border border-white/10 rounded-xl transition-all cursor-pointer relative"
                 title="Attach file / image"
               >
                 {isUploading ? <RefreshCw className="w-4 h-4 animate-spin text-indigo-400" /> : <Paperclip className="w-4 h-4 text-indigo-400" />}
@@ -718,15 +755,17 @@ export default function LiveChatSection({
                 type="text"
                 value={newMessage}
                 onChange={handleTypingChange}
-                placeholder="Type your message securely..."
-                className="flex-1 bg-neutral-900 border border-white/10 rounded-xl px-4 py-2.5 text-white outline-none focus:border-indigo-500 placeholder-gray-500 text-xs"
+                disabled={isAiProcessing}
+                placeholder={isAiProcessing ? "AI Assistant is thinking..." : "Type your message securely..."}
+                className="flex-1 bg-neutral-900 border border-white/10 rounded-xl px-4 py-2.5 text-white outline-none focus:border-indigo-500 placeholder-gray-500 text-xs disabled:opacity-60"
               />
 
               <button
                 type="submit"
-                className="p-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all cursor-pointer font-bold shadow-lg flex items-center justify-center"
+                disabled={isUploading || isAiProcessing || (!newMessage.trim() && !attachment)}
+                className="p-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition-all cursor-pointer font-bold shadow-lg flex items-center justify-center"
               >
-                <Send className="w-4 h-4" />
+                {isAiProcessing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </button>
             </form>
           </>

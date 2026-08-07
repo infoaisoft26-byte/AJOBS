@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, Contact, Edit, Edit3, Facebook, Filter, Instagram, Mail, Phone, Save, Search, Table, Type, Users } from "lucide-react";
 import { CrmLead } from "../../types";
 import { auth } from "../../firebase";
+import { parseJsonResponse } from "../../utils/apiHelper";
 
 export default function LiveLeadsCRM() {
   const [leads, setLeads] = useState<CrmLead[]>([]);
@@ -23,6 +24,10 @@ export default function LiveLeadsCRM() {
 
   useEffect(() => {
     fetchLeads();
+    const unsubscribe = auth.onAuthStateChanged(() => {
+      fetchLeads();
+    });
+    return () => unsubscribe();
   }, []);
 
   const fetchLeads = async (isRetry = false) => {
@@ -41,6 +46,9 @@ export default function LiveLeadsCRM() {
           const token = await auth.currentUser.getIdToken();
           headers["Authorization"] = `Bearer ${token}`;
           headers["x-user-id"] = auth.currentUser.uid;
+          if (auth.currentUser.email) {
+            headers["x-user-email"] = auth.currentUser.email;
+          }
         } catch (tokenErr) {
           console.warn("[LiveLeadsCRM] Token fetch warning:", tokenErr);
         }
@@ -52,43 +60,19 @@ export default function LiveLeadsCRM() {
       });
 
       clearTimeout(timeoutId);
-
-      const contentType = res.headers.get("content-type") || "";
-      const rawText = await res.text();
-      let data: any = null;
-
-      if (rawText && contentType.includes("application/json")) {
-        try {
-          data = JSON.parse(rawText);
-        } catch (jsonErr) {
-          console.warn("[LiveLeadsCRM] JSON parsing failed:", jsonErr);
-        }
-      }
-
-      if (res.ok && data && data.success) {
+      const data = await parseJsonResponse(res);
+      if (data && data.success) {
         setLeads(data.leads || []);
-      } else if (res.status === 401) {
-        setErrorMessage(data?.error || "Authentication required.");
-      } else if (res.status === 403) {
-        setErrorMessage(data?.error || "Access denied: Admin privileges required.");
       } else {
-        const errorText = data?.error || data?.message || "Lead service is temporarily unavailable.";
-        setErrorMessage(errorText);
-
-        // Retry at most once
-        if (!isRetry && !hasRetried) {
-          setHasRetried(true);
-          console.log("[LiveLeadsCRM] First fetch failed, retrying once...");
-          setTimeout(() => fetchLeads(true), 1200);
-          return;
-        }
+        const msg = data?.error || "Lead service is temporarily unavailable.";
+        setErrorMessage(msg);
       }
     } catch (err: any) {
       clearTimeout(timeoutId);
       const isAbort = err.name === "AbortError";
       const errStr = isAbort
         ? "Lead fetch request timed out."
-        : (err.message || "Failed to load CRM leads.");
+        : (err.message || "Lead service is temporarily unavailable.");
 
       console.error("[LiveLeadsCRM] Lead fetch error:", err);
       setErrorMessage(errStr);
