@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
-import { getFirestoreDb } from "./firestoreHelper";
-import { EMAIL_TEMPLATES, EmailTemplateData } from "./emailTemplates";
+import { getFirestoreDb } from "./firestoreHelper.js";
+import { EMAIL_TEMPLATES, EmailTemplateData } from "./emailTemplates.js";
 import {
   dispatchEmail,
   sendCandidateWelcomeEmail,
@@ -10,7 +10,7 @@ import {
   getOrCreateUserEmailPreferences,
   processUnsubscribe,
   checkIfAlreadySent
-} from "./emailService";
+} from "./emailService.js";
 
 const router = Router();
 

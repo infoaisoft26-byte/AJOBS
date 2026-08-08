@@ -1,6 +1,6 @@
 import { Router } from "express";
 import crypto from "crypto";
-import { getFirestoreDb } from "./firestoreHelper";
+import { getFirestoreDb } from "./firestoreHelper.js";
 
 const router = Router();
 
@@ -553,7 +553,7 @@ router.get("/admin-pending-list", async (req, res) => {
       requests
     });
   } catch (error: any) {
-    console.error("[KYC API] Admin pending list error:", error);
+    console.warn("[KYC API] Admin pending list warning:", error?.message || error);
     return res.json({ success: true, count: 0, requests: [] });
   }
 });

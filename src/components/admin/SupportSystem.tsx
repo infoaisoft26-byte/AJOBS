@@ -122,12 +122,14 @@ export default function SupportSystem({
   };
 
   // Filter tickets
-  const filteredTickets = tickets.filter((t) => {
+  const filteredTickets = (tickets || []).filter((t) => {
+    if (!t) return false;
+    const query = (searchQuery || "").toLowerCase();
     const matchesSearch = 
-      t.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.userEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.id.toLowerCase().includes(searchQuery.toLowerCase());
+      (t.userName || "").toLowerCase().includes(query) ||
+      (t.userEmail || "").toLowerCase().includes(query) ||
+      (t.subject || "").toLowerCase().includes(query) ||
+      (t.id || "").toLowerCase().includes(query);
     
     const matchesStatus = selectedStatus === "all" || t.status === selectedStatus;
 
@@ -221,8 +223,8 @@ export default function SupportSystem({
                     <p className="text-gray-400 text-[11px] leading-relaxed line-clamp-2">{t.message}</p>
 
                     <div className="flex justify-between items-center pt-2.5 border-t border-white/5 font-mono text-[9px] text-gray-500">
-                      <span>Billed Client: <strong className="text-gray-300">{t.userName} ({t.role})</strong></span>
-                      <span>Last Activity: {new Date(t.updatedAt).toLocaleDateString()}</span>
+                      <span>Billed Client: <strong className="text-gray-300">{t.userName || "User"} ({t.role || "candidate"})</strong></span>
+                      <span>Last Activity: {t.updatedAt ? new Date(t.updatedAt).toLocaleDateString() : "Recent"}</span>
                     </div>
                   </div>
                 ))

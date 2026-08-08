@@ -14,7 +14,11 @@ export default function EnterpriseSecurityCenter() {
     { id: "audit-104", timestamp: "2026-07-28 10:45:10", user: "unknown", ip: "185.220.101.5", action: "RATE_LIMIT_BLOCKED", status: "BLOCKED", severity: "WARNING" }
   ];
 
-  const filteredLogs = auditLogs.filter(l => l.user.toLowerCase().includes(searchLog.toLowerCase()) || l.action.toLowerCase().includes(searchLog.toLowerCase()));
+  const q = (searchLog || "").toLowerCase();
+  const filteredLogs = auditLogs.filter(l => 
+    (l.user || "").toLowerCase().includes(q) || 
+    (l.action || "").toLowerCase().includes(q)
+  );
 
   return (
     <div className="space-y-6">

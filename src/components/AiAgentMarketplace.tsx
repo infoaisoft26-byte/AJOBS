@@ -222,9 +222,10 @@ export default function AiAgentMarketplace({ userRole = "candidate", isAdmin = f
 
   const filteredAgents = agents.filter(agent => {
     const matchesCategory = activeCategoryFilter === "all" || agent.category === activeCategoryFilter;
-    const matchesSearch = agent.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          agent.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          agent.role.toLowerCase().includes(searchQuery.toLowerCase());
+    const q = (searchQuery || "").toLowerCase();
+    const matchesSearch = (agent.name || "").toLowerCase().includes(q) || 
+                          (agent.description || "").toLowerCase().includes(q) ||
+                          (agent.role || "").toLowerCase().includes(q);
     return matchesCategory && matchesSearch;
   });
 

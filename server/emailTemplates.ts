@@ -347,6 +347,52 @@ export const EMAIL_TEMPLATES: Record<string, (data: EmailTemplateData) => { subj
     return wrapBaseLayout(subject, body, false, undefined, appUrl);
   },
 
+  // 5b. CANDIDATE SHORTLISTED
+  'candidate_shortlisted': (data) => {
+    const name = escapeHtml(data.candidateName || data.recipientName || 'Candidate');
+    const jobTitle = escapeHtml(data.jobTitle || 'Software Engineering Role');
+    const companyName = escapeHtml(data.companyName || 'AIJobs Enterprise Partner');
+    const customMessage = escapeHtml(data.customMessage || 'Next step: Shortlist verification and assessment review.');
+    const appUrl = data.appUrl || DEFAULT_APP_URL;
+    const subject = `AIJobs – You Have Been Shortlisted for ${jobTitle}`;
+
+    const body = `
+      <div style="text-align: left;">
+        <h2 style="color: #10b981; font-size: 22px; font-weight: 800; margin-top: 0; margin-bottom: 12px;">
+          Congratulations! You Have Been Shortlisted 🎉
+        </h2>
+        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+          Dear ${name},
+        </p>
+        <p style="color: #cbd5e1; font-size: 14px; margin-bottom: 20px;">
+          Your profile has been shortlisted for the <strong>${jobTitle}</strong> opportunity at <strong>${companyName}</strong>.
+        </p>
+
+        <div style="background-color: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+          <h3 style="color: #10b981; font-size: 14px; font-weight: 700; margin: 0 0 8px 0;">
+            Next Steps & Instructions:
+          </h3>
+          <p style="color: #cbd5e1; font-size: 13px; margin: 0;">
+            ${customMessage}
+          </p>
+        </div>
+
+        <p style="color: #94a3b8; font-size: 13px; margin-bottom: 24px;">
+          Please log in to your AIJobs candidate portal to track your application status in real time.
+        </p>
+
+        <div style="text-align: center;">
+          <a href="${appUrl}" style="background-color: #059669; color: #ffffff; padding: 14px 28px; border-radius: 10px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 14px;">
+            View Application Dashboard →
+          </a>
+        </div>
+      </div>
+    `;
+    return wrapBaseLayout(subject, body, false, undefined, appUrl);
+  },
+
+  'candidate-shortlisted': (data) => EMAIL_TEMPLATES['candidate_shortlisted'](data),
+
   // 6. INTERVIEW INVITATION
   'interview_invitation': (data) => {
     const name = escapeHtml(data.candidateName || 'Candidate');

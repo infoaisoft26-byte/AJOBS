@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { getFirestoreDb } from "./firestoreHelper";
+import { getFirestoreDb } from "./firestoreHelper.js";
 
 export interface IndexingLogRecord {
   id: string;

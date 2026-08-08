@@ -1,352 +1,184 @@
-import React, { FormEvent, HTMLDivElement, useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { signOut } from "firebase/auth";
 import { collection, doc, getDoc, getDocs, onSnapshot, query, setDoc, updateDoc, where } from "firebase/firestore";
-import { motion } from "motion/react";
-import { AlertTriangle, Badge, Bookmark, Contact, Focus, Frame, Import, Menu, Navigation, Save, Sidebar, Type } from "lucide-react";
 import { auth, db } from "../firebase";
 
-import { CandidateProfile, JobPosting, JobApplication, InterviewSession, ChatMessage, NotificationRecord } from "../types";
+import { CandidateProfile, JobPosting, JobApplication, NotificationRecord } from "../types";
 import { getLiveJobs } from "../services/jobService";
-import { applyToJob } from "../services/applicationService";
 import { useToast } from "./GlobalToast";
-import { saveJobToBookmarks, removeJobFromBookmarks, getSavedJobIdsFromBookmarks } from "../services/savedJobsService";
-import { parseJsonResponse } from "../utils/apiHelper";
+import { saveJobToBookmarks, removeJobFromBookmarks } from "../services/savedJobsService";
+import { SupportedLanguage } from "../utils/candidateTranslations";
 
-// Import modular panels
-import { NotificationCenterView } from "./NotificationCenter";
-import CandidateSidebar from "./CandidateSidebar";
+// Simplified Candidate Portal Views
 import CandidateHeader from "./CandidateHeader";
+import CandidateSidebar from "./CandidateSidebar";
 import CandidateDashboardOverview from "./CandidateDashboardOverview";
+import CandidateJobsSection from "./CandidateJobsSection";
 import CandidateProfileSection from "./CandidateProfileSection";
 import CandidateResumeSection from "./CandidateResumeSection";
-import CandidateJobsSection from "./CandidateJobsSection";
-import CandidateSettings from "./CandidateSettings";
-import CandidateInterviewSection from "./CandidateInterviewSection";
-import CandidateReportSection from "./CandidateReportSection";
-import CandidateCareerCenter from "./CandidateCareerCenter";
-import LiveChatSection from "./LiveChatSection";
 import CandidateRecruiterInterviews from "./CandidateRecruiterInterviews";
-import AbacControlInspector from "./AbacControlInspector";
-import GoogleWorkspaceHub from "./GoogleWorkspaceHub";
-import AiCareerCoachSuite from "./AiCareerCoachSuite";
-import VideoInterviewCenter from "./VideoInterviewCenter";
-import ComplianceGdprCenter from "./ComplianceGdprCenter";
-import AiAgentMarketplace from "./AiAgentMarketplace";
-import AiVoiceRecruiter from "./AiVoiceRecruiter";
-import SkillAssessmentPlatform from "./SkillAssessmentPlatform";
-import LearningPlatform from "./LearningPlatform";
-import VerifiedProfiles from "./VerifiedProfiles";
-import ReferralEcosystem from "./ReferralEcosystem";
-import GigMarketplace from "./GigMarketplace";
-import MobileBackendHub from "./MobileBackendHub";
-import EnterpriseSecurityCenter from "./EnterpriseSecurityCenter";
-import ObservabilityHub from "./ObservabilityHub";
-import PlatformCertificationSuite from "./PlatformCertificationSuite";
+import CandidateApplicationsView from "./CandidateApplicationsView";
+import CandidateHelpView from "./CandidateHelpView";
+import EasyApplyModal from "./EasyApplyModal";
+import CandidateMobileBottomNav from "./CandidateMobileBottomNav";
+import { NotificationCenterView } from "./NotificationCenter";
 
 interface CandidateDashboardProps {
   userId: string;
   userName: string;
 }
 
+export type CandidateTab = 
+  | "overview" 
+  | "explore-jobs" 
+  | "applied-jobs" 
+  | "resume" 
+  | "interviews" 
+  | "saved-jobs" 
+  | "notifications" 
+  | "profile" 
+  | "help";
+
 export default function CandidateDashboard({ userId, userName }: CandidateDashboardProps) {
   const { showToast } = useToast();
-  // Main Navigation state
-  const [activeTab, setActiveTab] = useState<
-    "overview" | "profile" | "education" | "experience" | "skills" | 
-    "resume" | "explore-jobs" | "saved-jobs" | "applied-jobs" | "interviews" | "notifications" | "settings" | "interview" | "coach" | "ai-report" | "chat" | "workspace"
-  >(() => {
+
+  // Navigation State
+  const [activeTab, setActiveTab] = useState<CandidateTab>(() => {
     const path = window.location.pathname;
     if (path === "/candidate/profile") return "profile";
+    if (path === "/candidate/jobs") return "explore-jobs";
+    if (path === "/candidate/applications") return "applied-jobs";
     return "overview";
   });
-  
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [searchQuery, setSearchQuery] = useState("");
+  const [lang, setLang] = useState<SupportedLanguage>("en");
 
-  // Sync URL Path when activeTab changes
-  useEffect(() => {
-    if (activeTab === "profile") {
-      if (window.location.pathname !== "/candidate/profile") {
-        window.history.pushState({}, "", "/candidate/profile");
-      }
-    } else if (activeTab === "overview") {
-      if (window.location.pathname !== "/candidate/dashboard") {
-        window.history.pushState({}, "", "/candidate/dashboard");
-      }
-    }
-  }, [activeTab]);
-
-  // Sync activeTab when window popstate / path changes
-  useEffect(() => {
-    const handlePop = () => {
-      const path = window.location.pathname;
-      if (path === "/candidate/profile") {
-        setActiveTab("profile");
-      } else if (path === "/candidate/dashboard") {
-        setActiveTab("overview");
-      }
-    };
-    window.addEventListener("popstate", handlePop);
-    return () => window.removeEventListener("popstate", handlePop);
-  }, []);
-
-  // Listen to dashboard navigation event (e.g. from global shortcut Ctrl+D / Cmd+D)
-  useEffect(() => {
-    const handleResetToOverview = () => {
-      setActiveTab("overview");
-    };
-    window.addEventListener("navigate-to-dashboard-overview", handleResetToOverview);
-    return () => window.removeEventListener("navigate-to-dashboard-overview", handleResetToOverview);
-  }, []);
-
+  // Loading & Data State
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // DB Sync state
   const [profile, setProfile] = useState<any | null>(null);
   const [jobs, setJobs] = useState<JobPosting[]>([]);
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
 
-  // AI Resume Auditor state
+  // Apply Modal state
+  const [applyModalJob, setApplyModalJob] = useState<JobPosting | null>(null);
+  const [showMobileMoreMenu, setShowMobileMoreMenu] = useState(false);
+
+  // Resume state
   const [resumeText, setResumeText] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
 
-  // AI Matcher state
-  const [selectedJobForMatch, setSelectedJobForMatch] = useState<JobPosting | null>(null);
-  const [isMatching, setIsMatching] = useState(false);
-  const [matchResult, setMatchResult] = useState<any>(null);
+  // 1. URL Path Syncing
+  useEffect(() => {
+    let targetPath = "/candidate/dashboard";
+    if (activeTab === "profile") targetPath = "/candidate/profile";
+    if (activeTab === "explore-jobs") targetPath = "/candidate/jobs";
+    if (activeTab === "applied-jobs") targetPath = "/candidate/applications";
 
-  // AI Interview Simulator state
-  const [selectedJobForInterview, setSelectedJobForInterview] = useState<JobPosting | null>(null);
-  const [interviewSession, setInterviewSession] = useState<InterviewSession | null>(null);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [userAnswer, setUserAnswer] = useState("");
-  const [isEvaluatingAnswer, setIsEvaluatingAnswer] = useState(false);
-  const [evaluations, setEvaluations] = useState<any[]>([]);
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState({}, "", targetPath);
+    }
+  }, [activeTab]);
 
-  // Career Coach state
-  const [coachHistory, setCoachHistory] = useState<ChatMessage[]>([]);
-  const [coachInput, setCoachInput] = useState("");
-  const [coachLoading, setCoachLoading] = useState(false);
-  const coachEndRef = useRef<HTMLDivElement>(null);
+  // 2. Fetch Data on Mount
+  useEffect(() => {
+    let isMounted = true;
 
-  // Fetch initial Firestore documents
-  const fetchAllData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      // 1. Candidate document
-      const docRef = doc(db, "candidates", userId);
-      const [docSnap, savedFromBookmarks] = await Promise.all([
-        getDoc(docRef),
-        getSavedJobIdsFromBookmarks(userId)
-      ]);
-
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        const mergedSavedIds = Array.from(new Set([...(data.savedJobIds || []), ...savedFromBookmarks]));
-        const updatedProfile = { ...data, savedJobIds: mergedSavedIds };
-        setProfile(updatedProfile);
-        setResumeText(data.resumeText || "");
-        setCoachHistory(data.careerCoachChat || [
-          { id: "1", sender: "ai", text: `Hi ${userName}! I am your dedicated AI Career Coach. Tell me about your dream job, or let's prepare for an upcoming interview.`, timestamp: new Date().toISOString() }
-        ]);
-      } else {
-        // Bootstrap template document
-        const bootstrap = {
-          userId,
-          name: userName,
-          email: userEmail || "",
-          resumeText: "",
-          resumeScore: 0,
-          aiInterviewScore: 0,
-          savedJobIds: savedFromBookmarks,
-          skills: { technical: [], soft: [], languages: [], level: "Entry" },
-          education: {
-            tenth: { board: "", school: "", score: "", year: "" },
-            twelfth: { board: "", school: "", score: "", year: "" },
-            graduation: { degree: "", college: "", score: "", year: "" },
-            certifications: []
-          },
-          workExperience: [],
-          createdAt: new Date().toISOString()
-        };
-        await setDoc(docRef, bootstrap);
-        setProfile(bootstrap);
-      }
-
-      // 2. Jobs Postings (Retrieve only Live jobs sorted by createdAt desc)
-      let jobsList: JobPosting[] = [];
+    async function loadData() {
       try {
-        jobsList = await getLiveJobs();
+        setLoading(true);
+
+        // Fetch candidate profile
+        if (userId) {
+          const pDoc = await getDoc(doc(db, "candidates", userId));
+          if (pDoc.exists() && isMounted) {
+            const data = pDoc.data();
+            setProfile({ id: pDoc.id, userId, ...data });
+            if (data.resumeText) setResumeText(data.resumeText);
+          }
+        }
+
+        // Fetch live jobs
+        const liveJobs = await getLiveJobs();
+        if (isMounted) setJobs(liveJobs);
+
+        // Fetch candidate applications
+        if (userId) {
+          const appsRef = collection(db, "applications");
+          const q = query(appsRef, where("candidateId", "==", userId));
+          const appSnap = await getDocs(q);
+          const appList: JobApplication[] = [];
+          appSnap.forEach(d => appList.push({ id: d.id, ...d.data() } as JobApplication));
+          if (isMounted) setApplications(appList);
+        }
+
+        // Realtime notifications
+        if (userId) {
+          const nRef = collection(db, "notifications");
+          const nQ = query(nRef, where("userId", "==", userId));
+          const unsub = onSnapshot(nQ, (snap) => {
+            const list: NotificationRecord[] = [];
+            snap.forEach(d => list.push({ id: d.id, ...d.data() } as NotificationRecord));
+            list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            if (isMounted) setNotifications(list);
+          }, (err) => console.warn("Notifications listener note:", err));
+
+          return () => unsub();
+        }
+
       } catch (err) {
-        console.warn("Could not fetch live jobs, fallback to manual getDocs:", err);
-        const jobsSnap = await getDocs(collection(db, "jobs"));
-        jobsSnap.forEach(doc => {
-          jobsList.push({ id: doc.id, ...doc.data() } as JobPosting);
-        });
+        console.warn("Candidate dashboard load note:", err);
+      } finally {
+        if (isMounted) setLoading(false);
       }
-      setJobs(jobsList);
-
-      // 3. Applications
-      const appsSnap = await getDocs(collection(db, "applications"));
-      const appsList: JobApplication[] = [];
-      appsSnap.forEach(doc => {
-        const app = doc.data() as JobApplication;
-        if (app.candidateId === userId) {
-          appsList.push({ id: doc.id, ...app });
-        }
-      });
-      setApplications(appsList);
-
-    } catch (err: any) {
-      if (err?.message?.includes("permissions") || err?.code === "permission-denied" || err?.message?.includes("permission-denied")) {
-        console.warn("Candidate workspace synchronization redirected to local memory sandbox due to Firestore rules validation:", err.message);
-      } else {
-        console.error("Error synchronizing candidate workspace:", err);
-        setError(err?.message || "Workspace synchronization issue detected. Please retry.");
-      }
-    } finally {
-      setLoading(false);
     }
-  };
 
-  useEffect(() => {
-    fetchAllData();
-  }, [userId, userName]);
+    loadData();
 
-  // Real-time listener for user's notifications
-  useEffect(() => {
-    if (!userId) return;
-
-    const q = query(
-      collection(db, "notifications"),
-      where("userId", "==", userId)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const items: NotificationRecord[] = [];
-      snapshot.forEach((doc) => {
-        items.push({ id: doc.id, ...doc.data() } as NotificationRecord);
-      });
-      
-      // Sort newest first
-      items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setNotifications(items);
-    }, (error) => {
-      console.error("Error listening to notifications collection:", error);
-    });
-
-    return () => unsubscribe();
+    return () => { isMounted = false; };
   }, [userId]);
 
-  // Real-time listener for candidate applications status updates
-  useEffect(() => {
-    if (!userId) return;
-
-    const q = query(
-      collection(db, "applications"),
-      where("candidateId", "==", userId)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const items: JobApplication[] = [];
-      snapshot.forEach((docSnap) => {
-        items.push({ id: docSnap.id, ...docSnap.data() } as JobApplication);
-      });
-      items.sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime());
-      setApplications(items);
-    }, (error) => {
-      console.warn("Real-time application listener notice:", error);
-    });
-
-    return () => unsubscribe();
-  }, [userId]);
-
-  useEffect(() => {
-    coachEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [coachHistory, coachLoading]);
-
-  // General Notification Trigger Helper
+  // Notification Trigger
   const triggerNotification = async (title: string, message: string) => {
-    const notifId = "notif_" + Math.random().toString(36).substr(2, 9);
-    const newNotif: NotificationRecord = {
-      id: notifId,
-      userId,
-      title,
-      message,
-      read: false,
-      createdAt: new Date().toISOString()
-    };
+    if (!userId) return;
     try {
-      await setDoc(doc(db, "notifications", notifId), newNotif);
-      setNotifications(prev => [newNotif, ...prev]);
+      const notifId = `notif_${Math.random().toString(36).substr(2, 9)}`;
+      const notifData: NotificationRecord = {
+        id: notifId,
+        userId,
+        title,
+        message,
+        read: false,
+        createdAt: new Date().toISOString()
+      };
+      await setDoc(doc(db, "notifications", notifId), notifData);
+      setNotifications(prev => [notifData, ...prev]);
     } catch (err) {
-      console.error("Error triggers log:", err);
+      console.warn("Notification error:", err);
     }
   };
 
-  // Header notifications clearers
   const handleMarkAllRead = async () => {
-    try {
-      const batchPromises = notifications.map(n => {
-        if (!n.read) {
-          return updateDoc(doc(db, "notifications", n.id), { read: true });
-        }
-        return Promise.resolve();
-      });
-      await Promise.all(batchPromises);
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    } catch (err) {
-      console.error(err);
-    }
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
   const handleClearNotification = async (notifId: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== notifId));
+  };
+
+  const handleLogout = async () => {
     try {
-      await updateDoc(doc(db, "notifications", notifId), { read: true }); // Mock mark read
-      setNotifications(prev => prev.filter(n => n.id !== notifId));
+      await signOut(auth);
+      window.location.href = "/login";
     } catch (err) {
       console.error(err);
     }
   };
 
-  // 1. Analyze Resume Handler
-  const handleAnalyzeResume = async () => {
-    if (!resumeText.trim()) return;
-    setIsAnalyzing(true);
-    setAnalysisResult(null);
-
-    try {
-      const response = await fetch("/api/analyze-resume", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resumeText, candidateName: userName })
-      });
-      const data = await parseJsonResponse(response);
-      setAnalysisResult(data);
-
-      const updatedProfile = {
-        resumeText,
-        resumeScore: data.score || 80,
-        summary: data.summary || "Web developer and software architect.",
-        resumeFileName: "Scanned_Resume_Profile.pdf"
-      };
-
-      await updateDoc(doc(db, "candidates", userId), updatedProfile);
-      setProfile(prev => prev ? { ...prev, ...updatedProfile } : null);
-      triggerNotification("📄 Resume Audit Completed!", `ATS score verified at ${data.score || 80}%. Compliance verified.`);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  // 2. Job Save / Bookmark Handler
+  // Job Save / Unsave
   const handleSaveJob = async (jobId: string, remove: boolean) => {
     try {
       const currentSaved = profile?.savedJobIds || [];
@@ -361,592 +193,192 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
       }
 
       await updateDoc(doc(db, "candidates", userId), { savedJobIds: updatedSaved });
-      setProfile(prev => prev ? { ...prev, savedJobIds: updatedSaved } : null);
-      triggerNotification(
-        remove ? "💔 Bookmark Removed" : "❤️ Position Bookmarked", 
-        remove ? "Job removed from saved pool." : "Job saved for direct ATS matching."
-      );
-      showToast(
-        remove ? "Bookmark removed successfully!" : "Position bookmarked successfully!",
-        "success"
-      );
+      setProfile((prev: any) => prev ? { ...prev, savedJobIds: updatedSaved } : null);
+      showToast(remove ? "Job unsaved" : "Job saved to bookmarks", "success");
     } catch (err) {
       console.error(err);
-      showToast("Could not update bookmark. Please try again.", "error");
     }
   };
 
-  // 3. AI Job Matching Compatibility
-  const handleCheckMatch = async (job: JobPosting) => {
-    if (!profile || !profile.resumeText) {
-      alert("Please upload/paste your Resume text under the 'Resume & ATS Audit' tab first so the AI matcher has details to align!");
-      setActiveTab("resume");
-      return;
-    }
-
-    setSelectedJobForMatch(job);
-    setIsMatching(true);
-    setMatchResult(null);
-
-    try {
-      const response = await fetch("/api/ai-job-matching", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resumeText: profile.resumeText,
-          jobTitle: job.title,
-          jobDescription: job.description,
-          skillsRequired: job.skillsRequired
-        })
-      });
-      const data = await parseJsonResponse(response);
-      setMatchResult(data);
-
-      // Save to job_recommendations collection in Firestore
-      const recDocId = `rec_${userId}_${job.id}`;
-      await setDoc(doc(db, "job_recommendations", recDocId), {
-        id: recDocId,
-        userId,
-        jobId: job.id,
-        jobTitle: job.title,
-        companyName: job.companyName,
-        matchPercentage: data.matchPercentage || 80,
-        compatibilitySummary: data.compatibilitySummary || "High alignment based on technical criteria.",
-        missingSkills: data.missingSkills || [],
-        interviewTip: data.interviewTip || "Focus on articulating past distributed system scale parameters.",
-        generatedAt: new Date().toISOString()
-      });
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsMatching(false);
-    }
-  };
-
-  // 4. One Click Apply Handler
-  const handleOneClickApply = async (job: JobPosting) => {
-    // 1. Verify authentication
-    if (!userId || !auth.currentUser) {
-      showToast("Authentication is required. Please sign in or register to apply for jobs.", "warning");
-      return;
-    }
-
-    // 2. Verify candidate profile exists
-    if (!profile) {
-      showToast("Candidate profile is required to apply. Redirecting to Profile section...", "warning");
-      setActiveTab("profile");
-      return;
-    }
-
-    // 3. Verify resume exists
-    const hasResume = (resumeText && resumeText.trim().length > 0) || (profile?.resumeText && profile.resumeText.trim().length > 0) || profile?.resumeFileName;
-    if (!hasResume) {
-      showToast("A resume is required to apply for this job. Redirecting you to the Resume & ATS Audit tab to upload or paste your resume.", "warning");
-      setActiveTab("resume");
-      return;
-    }
-
-    // Prevent duplicate applications
+  // Open Easy Apply Modal
+  const handleOpenApplyModal = (job: JobPosting) => {
     const alreadyApplied = applications.some(a => a.jobId === job.id);
     if (alreadyApplied) {
-      showToast(`You have already applied for the position of "${job.title}" at ${job.companyName}!`, "warning");
+      showToast(`You have already applied for "${job.title}"!`, "warning");
       return;
     }
-
-    try {
-      const result = await applyToJob(job, userId, profile, resumeText);
-      if (result.success) {
-        const appId = result.applicationId || `app_${Math.random().toString(36).substring(2, 11)}`;
-        const newApp: JobApplication = {
-          id: appId,
-          jobId: job.id,
-          candidateId: userId,
-          candidateName: profile?.name || userName,
-          jobTitle: job.title,
-          companyName: job.companyName,
-          status: "Applied",
-          appliedAt: new Date().toISOString(),
-          resumeScore: profile?.resumeScore || 70
-        };
-        setApplications(prev => [newApp, ...prev]);
-        triggerNotification("💼 Application Filed", `Submitted to "${job.title}" at ${job.companyName} with ATS compliant profile.`);
-        showToast("🎉 " + result.message, "success");
-      } else {
-        showToast(result.message, "error");
-      }
-    } catch (err) {
-      console.error("Error submitting application via service:", err);
-      showToast("There was an error filing your application. Please check console logs.", "error");
-    }
+    setApplyModalJob(job);
   };
 
-  // 5. Start AI Interview Simulation
-  const handleStartInterview = (job: JobPosting) => {
-    setSelectedJobForInterview(job);
-    setCurrentQuestionIndex(0);
-    setEvaluations([]);
-    setUserAnswer("");
-
-    const mockQuestions = [
-      { id: "q1", question: `Explain your experience with ${job.skillsRequired?.[0] || 'frontend systems'}, specifically addressing your approach to scaling state routing and Vite bundles.` },
-      { id: "q2", question: `What is your standard debugging sequence when a production API returns an unexpected error, and how do you ensure zero client-side crashes?` },
-      { id: "q3", question: `Describe a collaborative timeline obstacle you faced in a past engineering cycle, and how you communicated to realign stakeholders.` }
-    ];
-
-    const session: InterviewSession = {
-      id: "interview_" + Math.random().toString(36).substr(2, 9),
-      candidateId: userId,
-      jobId: job.id,
-      jobTitle: job.title,
-      questions: mockQuestions,
-      status: "scheduled",
-      createdAt: new Date().toISOString()
-    };
-
-    setInterviewSession(session);
-    setActiveTab("interview");
-  };
-
-  // 6. Submit Interview Answer
-  const handleNextInterviewQuestion = async () => {
-    if (!userAnswer.trim() || !interviewSession) return;
-    setIsEvaluatingAnswer(true);
-
-    const currentQuestion = interviewSession.questions[currentQuestionIndex].question;
-
-    try {
-      const response = await fetch("/api/ai-interview-feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jobTitle: interviewSession.jobTitle,
-          question: currentQuestion,
-          answer: userAnswer
-        })
-      });
-      const data = await parseJsonResponse(response);
-      
-      const evalItem = {
-        ...interviewSession.questions[currentQuestionIndex],
-        answer: userAnswer,
-        score: data.score || 75,
-        feedback: data.feedback || "Strategic answering. Technical approach verified.",
-        modelAnswer: data.modelAnswer || "A complete industry-expert response."
-      };
-
-      const nextEvals = [...evaluations, evalItem];
-      setEvaluations(nextEvals);
-      setUserAnswer("");
-
-      if (currentQuestionIndex < interviewSession.questions.length - 1) {
-        setCurrentQuestionIndex(prev => prev + 1);
-      } else {
-        const totalScore = Math.round(nextEvals.reduce((acc, curr) => acc + (curr.score || 0), 0) / nextEvals.length);
-        
-        const completedSession: InterviewSession = {
-          ...interviewSession,
-          overallScore: totalScore,
-          questions: nextEvals,
-          feedback: `Simulator assessment finalized. Demonstrated secure technical architectural layouts. Ready for employer routing.`,
-          status: "completed"
-        };
-
-        await setDoc(doc(db, "interviews", interviewSession.id), completedSession);
-        await updateDoc(doc(db, "candidates", userId), { aiInterviewScore: totalScore });
-        setProfile(prev => prev ? { ...prev, aiInterviewScore: totalScore } : null);
-        triggerNotification("🤖 Interview Evaluated", `AI hiring rating completed at ${totalScore}%. Badge verification updated.`);
-        setInterviewSession(completedSession);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsEvaluatingAnswer(false);
-    }
-  };
-
-  // 7. Career Coach Chat
-  const handleSendCoachMsg = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!coachInput.trim()) return;
-
-    const userMsg = coachInput;
-    const chatMsg: ChatMessage = {
-      id: "msg_" + Math.random().toString(36).substr(2, 9),
-      sender: "user",
-      text: userMsg,
-      timestamp: new Date().toISOString()
-    };
-
-    const nextHistory = [...coachHistory, chatMsg];
-    setCoachHistory(nextHistory);
-    setCoachInput("");
-    setCoachLoading(true);
-
-    try {
-      const response = await fetch("/api/ai-career-coach", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chatHistory: nextHistory, userMessage: userMsg })
-      });
-      const data = await parseJsonResponse(response);
-
-      const aiMsg: ChatMessage = {
-        id: "msg_" + Math.random().toString(36).substr(2, 9),
-        sender: "ai",
-        text: data.responseText,
-        timestamp: new Date().toISOString()
-      };
-
-      const finalHistory = [...nextHistory, aiMsg];
-      setCoachHistory(finalHistory);
-
-      await updateDoc(doc(db, "candidates", userId), { careerCoachChat: finalHistory });
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setCoachLoading(false);
-    }
-  };
-
-  // Logged-out callback
-  const handleLogout = async () => {
-    try {
-      await auth.signOut();
-      window.location.reload();
-    } catch (err) {
-      console.error(err);
-    }
+  const handleAppliedSuccess = (newApp: JobApplication) => {
+    setApplications(prev => [newApp, ...prev]);
+    triggerNotification("Application Submitted", `Your application for "${newApp.jobTitle}" at ${newApp.companyName} has been received.`);
   };
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen space-y-4 py-24 bg-[#030305] text-white" id="candidate-dashboard-loader">
-        <div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
-        <div className="text-xs font-mono text-gray-400 animate-pulse uppercase tracking-widest">Initializing Candidate Workspace...</div>
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 space-y-3">
+        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm font-semibold text-gray-600">Loading Candidate Portal...</p>
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className="p-8 max-w-lg mx-auto text-center space-y-4 glass rounded-2xl border border-red-500/20 my-24 bg-[#030305] text-white" id="candidate-dashboard-error">
-        <AlertTriangle className="w-12 h-12 text-red-400 mx-auto animate-bounce" />
-        <h3 className="font-bold text-white text-lg">Candidate Workspace Error</h3>
-        <p className="text-xs text-gray-400">{error}</p>
-        <div className="flex justify-center space-x-4 pt-4">
-          <button 
-            onClick={() => fetchAllData()}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white rounded-xl transition-all cursor-pointer"
-          >
-            Retry Workspace Sync
-          </button>
-          <button 
-            onClick={handleLogout}
-            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-xs font-bold text-gray-300 rounded-xl transition-all cursor-pointer"
-          >
-            Sign Out
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <div 
-      className={`min-h-screen font-sans flex flex-col transition-colors duration-500 ease-in-out ${
-        theme === "dark" ? "bg-[#030305] text-white" : "bg-gray-50 text-gray-900"
-      }`} 
-      id="candidate-workspace-root"
-    >
-      
+    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans flex flex-col" id="candidate-portal-root">
       {/* Top Header */}
-      <CandidateHeader 
+      <CandidateHeader
         userName={userName}
-        userEmail={auth.currentUser?.email || ""}
+        userEmail={auth.currentUser?.email || profile?.email || ""}
         onLogout={handleLogout}
         toggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-        theme={theme}
-        toggleTheme={() => setTheme(prev => prev === "dark" ? "light" : "dark")}
         notifications={notifications}
         onMarkAllRead={handleMarkAllRead}
         onClearNotification={handleClearNotification}
-        onSelectTab={(tab) => setActiveTab(tab as any)}
+        onSelectTab={(tab) => setActiveTab(tab as CandidateTab)}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        lang={lang}
+        setLang={setLang}
       />
 
-      {/* Main Workspace Frame with Smooth Theme Fade Transition */}
-      <motion.div 
-        key={`candidate-theme-${theme}`}
-        initial={{ opacity: 0.82 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.45, ease: "easeInOut" }}
-        className="flex-1 flex max-w-7xl w-full mx-auto relative transition-all duration-500"
-      >
-        
-        {/* Left Sidebar Menu */}
-        <CandidateSidebar 
+      <div className="flex-1 flex max-w-7xl w-full mx-auto relative pb-16 lg:pb-0">
+        {/* Sidebar Navigation */}
+        <CandidateSidebar
           activeTab={activeTab}
-          setActiveTab={(tab) => {
-            setActiveTab(tab);
-            // Auto reset search query on certain tabs
-            if (tab !== "saved-jobs" && tab !== "applied-jobs") {
-              setSearchQuery("");
-            }
-          }}
+          setActiveTab={(tab) => setActiveTab(tab as CandidateTab)}
           isOpen={sidebarOpen}
           setIsOpen={setSidebarOpen}
-          unreadCount={notifications.filter(n => !n.read).length}
+          unreadCount={unreadCount}
           onLogout={handleLogout}
+          lang={lang}
         />
 
-        {/* Scrolling Work Content Area */}
-        <main className="flex-1 p-4 md:p-8 overflow-y-auto max-w-full">
-          
-          {/* TAB 1: OVERVIEW */}
+        {/* Main Work Area */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto max-w-full">
+          {/* 1. HOME / OVERVIEW */}
           {activeTab === "overview" && (
-            <CandidateDashboardOverview 
+            <CandidateDashboardOverview
               userName={userName}
               profile={profile}
               applications={applications}
               jobsCount={jobs.length}
               notifications={notifications}
-              onSelectTab={(tab) => setActiveTab(tab)}
+              onSelectTab={(tab) => setActiveTab(tab as CandidateTab)}
+              jobs={jobs}
+              onSaveJob={handleSaveJob}
+              onApplyJob={handleOpenApplyModal}
+              lang={lang}
+              onSearchSubmit={(title, location) => {
+                setSearchQuery(title);
+                setActiveTab("explore-jobs");
+              }}
             />
           )}
 
-          {/* TAB 2, 3, 4, 5: PROFILE INTEGRATION (Contact, Edu, Exp, Skills) */}
-          {(activeTab === "profile" || activeTab === "education" || activeTab === "experience" || activeTab === "skills") && (
-            <CandidateProfileSection 
+          {/* 2. FIND JOBS & SAVED JOBS */}
+          {(activeTab === "explore-jobs" || activeTab === "saved-jobs") && (
+            <CandidateJobsSection
               userId={userId}
               profile={profile}
-              setProfile={setProfile}
-              triggerNotification={triggerNotification}
-              activeSubTab={activeTab as any}
+              jobs={jobs}
+              applications={applications}
+              activeTab={activeTab === "saved-jobs" ? "saved-jobs" : "explore-jobs"}
+              onSaveJob={handleSaveJob}
+              onApplyJob={handleOpenApplyModal}
+              searchQuery={searchQuery}
+              lang={lang}
             />
           )}
 
-          {/* TAB 6: RESUME & ATS AUDIT */}
+          {/* 3. MY APPLICATIONS */}
+          {activeTab === "applied-jobs" && (
+            <CandidateApplicationsView
+              applications={applications}
+              onNavigateToFindJobs={() => setActiveTab("explore-jobs")}
+              lang={lang}
+            />
+          )}
+
+          {/* 4. RESUME */}
           {activeTab === "resume" && (
-            <CandidateResumeSection 
+            <CandidateResumeSection
               resumeText={resumeText}
               setResumeText={setResumeText}
               isAnalyzing={isAnalyzing}
-              handleAnalyzeResume={handleAnalyzeResume}
+              handleAnalyzeResume={async () => {}}
               analysisResult={analysisResult}
               profile={profile}
               setProfile={setProfile}
             />
           )}
 
-          {/* TAB 7, 8 & Explore: JOBS SECTION (Explore, Saved, Applied, Active Jobs list) */}
-          {(activeTab === "explore-jobs" || activeTab === "saved-jobs" || activeTab === "applied-jobs") && (
-            <CandidateJobsSection 
+          {/* 5. INTERVIEWS */}
+          {activeTab === "interviews" && (
+            <CandidateRecruiterInterviews
               userId={userId}
+              userName={userName}
               profile={profile}
-              jobs={jobs}
-              applications={applications}
-              activeTab={activeTab as any}
-              onSaveJob={handleSaveJob}
-              onOneClickApply={handleOneClickApply}
-              onStartInterview={handleStartInterview}
-              onCheckMatch={handleCheckMatch}
-              selectedJobForMatch={selectedJobForMatch}
-              isMatching={isMatching}
-              matchResult={matchResult}
-              searchQuery={searchQuery}
+              triggerNotification={triggerNotification}
             />
           )}
 
-          {/* TAB 9: NOTIFICATIONS LOGS PAGE */}
+          {/* 6. NOTIFICATIONS */}
           {activeTab === "notifications" && (
-            <div className="animate-in fade-in duration-300">
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs">
               <NotificationCenterView userId={userId} userRole="candidate" userName={userName} />
             </div>
           )}
 
-          {/* TAB 10: SETTINGS PAGE */}
-          {activeTab === "settings" && (
-            <CandidateSettings 
+          {/* 7. PROFILE */}
+          {activeTab === "profile" && (
+            <CandidateProfileSection
               userId={userId}
-              triggerNotification={triggerNotification}
-            />
-          )}
-
-          {/* TAB 10B: ABAC SECURITY GUARD CONTROL */}
-          {activeTab === "abac" && (
-            <div className="animate-in fade-in duration-300">
-              <AbacControlInspector 
-                userId={userId} 
-                userRole="candidate" 
-                onAttributeUpdated={async () => {
-                  // Reload candidate profile state
-                  const docSnap = await getDoc(doc(db, "candidates", userId));
-                  if (docSnap.exists()) {
-                    setProfile(docSnap.data() as CandidateProfile);
-                  }
-                }}
-              />
-            </div>
-          )}
-
-          {/* TAB 11: AI INTERVIEW SIMULATION */}
-          {activeTab === "interview" && (
-            <CandidateInterviewSection 
               profile={profile}
               setProfile={setProfile}
               triggerNotification={triggerNotification}
+              activeSubTab="profile"
             />
           )}
 
-          {/* TAB 11b: AI REPORT PORTAL */}
-          {activeTab === "ai-report" && (
-            <CandidateReportSection 
-              userId={userId}
-              profile={profile}
-              triggerNotification={triggerNotification}
+          {/* 8. HELP */}
+          {activeTab === "help" && (
+            <CandidateHelpView
+              lang={lang}
+              onNavigateToJobs={() => setActiveTab("explore-jobs")}
+              onNavigateToResume={() => setActiveTab("resume")}
             />
           )}
-
-          {/* TAB 12: AI CAREER COACH SESSION */}
-          {activeTab === "coach" && (
-            <CandidateCareerCenter 
-              userId={userId}
-              userName={userName}
-              profile={profile}
-              triggerNotification={(title, message) => triggerNotification(title, message)}
-              onSelectTab={(tab) => setActiveTab(tab as any)}
-            />
-          )}
-
-          {/* TAB 13: SECURE LIVE CHAT WORKSPACE */}
-          {activeTab === "chat" && (
-            <LiveChatSection 
-              currentUserId={userId}
-              currentUserRole="candidate"
-              currentUserName={userName}
-            />
-          )}
-
-          {/* TAB 14: RECRUITER INTERVIEW SCHEDULER */}
-          {activeTab === "interviews" && (
-            <CandidateRecruiterInterviews 
-              userId={userId}
-              userName={userName}
-              profile={profile}
-              triggerNotification={triggerNotification}
-            />
-          )}
-
-          {/* TAB 15: GOOGLE WORKSPACE HUB */}
-          {activeTab === "workspace" && (
-            <GoogleWorkspaceHub 
-              userId={userId}
-              userName={userName}
-              userRole="candidate"
-            />
-          )}
-
-          {/* TAB 16: ENTERPRISE AI CAREER COACH SUITE */}
-          {activeTab === "career-coach-suite" && (
-            <div className="animate-in fade-in duration-300">
-              <AiCareerCoachSuite candidateName={userName} />
-            </div>
-          )}
-
-          {/* TAB 17: VIDEO INTERVIEW CENTER */}
-          {activeTab === "video-center" && (
-            <div className="animate-in fade-in duration-300">
-              <VideoInterviewCenter candidateName={userName} />
-            </div>
-          )}
-
-          {/* TAB 18: GDPR & COMPLIANCE CENTER */}
-          {activeTab === "compliance" && (
-            <div className="animate-in fade-in duration-300">
-              <ComplianceGdprCenter />
-            </div>
-          )}
-
-          {/* ECOSYSTEM MODULE 1: AI AGENT MARKETPLACE */}
-          {activeTab === "agent-store" && (
-            <div className="animate-in fade-in duration-300">
-              <AiAgentMarketplace userRole="candidate" />
-            </div>
-          )}
-
-          {/* ECOSYSTEM MODULE 2: AI VOICE RECRUITER */}
-          {activeTab === "voice-recruiter" && (
-            <div className="animate-in fade-in duration-300">
-              <AiVoiceRecruiter candidateName={userName} />
-            </div>
-          )}
-
-          {/* ECOSYSTEM MODULE 4: SKILL ASSESSMENT PLATFORM */}
-          {activeTab === "skill-assessments" && (
-            <div className="animate-in fade-in duration-300">
-              <SkillAssessmentPlatform />
-            </div>
-          )}
-
-          {/* ECOSYSTEM MODULE 5: CANDIDATE LEARNING CENTER */}
-          {activeTab === "learning-center" && (
-            <div className="animate-in fade-in duration-300">
-              <LearningPlatform />
-            </div>
-          )}
-
-          {/* ECOSYSTEM MODULE 6: VERIFIED PROFILES */}
-          {activeTab === "verified-profile" && (
-            <div className="animate-in fade-in duration-300">
-              <VerifiedProfiles />
-            </div>
-          )}
-
-          {/* ECOSYSTEM MODULE 7: REFERRAL ECOSYSTEM */}
-          {activeTab === "referrals" && (
-            <div className="animate-in fade-in duration-300">
-              <ReferralEcosystem />
-            </div>
-          )}
-
-          {/* ECOSYSTEM MODULE 8: GIG MARKETPLACE */}
-          {activeTab === "gig-marketplace" && (
-            <div className="animate-in fade-in duration-300">
-              <GigMarketplace />
-            </div>
-          )}
-
-          {/* ECOSYSTEM MODULE 9: MOBILE BACKEND HUB */}
-          {activeTab === "mobile-backend" && (
-            <div className="animate-in fade-in duration-300">
-              <MobileBackendHub />
-            </div>
-          )}
-
-          {/* ECOSYSTEM MODULE 10: ENTERPRISE SECURITY CENTER */}
-          {activeTab === "security-center" && (
-            <div className="animate-in fade-in duration-300">
-              <EnterpriseSecurityCenter />
-            </div>
-          )}
-
-          {/* ECOSYSTEM MODULE 11: OBSERVABILITY HUB */}
-          {activeTab === "observability" && (
-            <div className="animate-in fade-in duration-300">
-              <ObservabilityHub />
-            </div>
-          )}
-
-          {/* ECOSYSTEM MODULE 12: PLATFORM CERTIFICATION SUITE */}
-          {activeTab === "platform-cert" && (
-            <div className="animate-in fade-in duration-300">
-              <PlatformCertificationSuite />
-            </div>
-          )}
-
         </main>
-      </motion.div>
+      </div>
+
+      {/* Easy Apply Modal */}
+      {applyModalJob && (
+        <EasyApplyModal
+          job={applyModalJob}
+          userId={userId}
+          userName={userName}
+          profile={profile}
+          resumeText={resumeText}
+          onClose={() => setApplyModalJob(null)}
+          onAppliedSuccess={handleAppliedSuccess}
+          onNavigateToApplications={() => setActiveTab("applied-jobs")}
+          onNavigateToFindJobs={() => setActiveTab("explore-jobs")}
+          lang={lang}
+          onUploadResumeClick={() => setActiveTab("resume")}
+        />
+      )}
+
+      {/* Mobile Bottom Navigation Bar */}
+      <CandidateMobileBottomNav
+        activeTab={activeTab}
+        setActiveTab={(tab) => setActiveTab(tab as CandidateTab)}
+        lang={lang}
+        unreadCount={unreadCount}
+        onOpenMoreMenu={() => setSidebarOpen(true)}
+      />
     </div>
   );
 }

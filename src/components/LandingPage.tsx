@@ -5,7 +5,7 @@ import React, { ChangeEvent, HTMLInputElement, useRef, useState } from "react";
 import { doc } from "firebase/firestore";
 import { ref } from "firebase/storage";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowRight, Box, Building, Cloud, Contact, File, Info, Layout, Loader2, LogIn, Mail, Phone, Sparkles, Type, Upload } from "lucide-react";
+import { ArrowRight, Box, Briefcase, Building, Cloud, Contact, File, Info, Layout, Loader2, LogIn, Mail, Phone, Search, ShieldCheck, Sparkles, Type, Upload, UserCheck } from "lucide-react";
 import { auth, db, storage } from "../firebase";
 import { uploadToCloudinary } from "../services/cloudinaryService";
 import { parseJsonResponse } from "../utils/apiHelper";
@@ -271,9 +271,9 @@ export default function LandingPage({
               transition={{ duration: 0.7, delay: 0.1 }}
               className="text-4xl sm:text-5xl lg:text-6xl font-black font-sans tracking-tight leading-[1.08] text-white"
             >
-              India’s AI-Powered Hiring Platform <br />
+              AIJOBS <br />
               <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400">
-                Is Launching Soon
+                AI-Powered Recruitment & Job Matching Platform
               </span>
             </motion.h1>
 
@@ -284,32 +284,54 @@ export default function LandingPage({
               transition={{ duration: 0.7, delay: 0.2 }}
               className="text-gray-300 text-base sm:text-xl font-medium max-w-2xl leading-relaxed"
             >
-              Connect talent, consultancies and opportunities through one intelligent hiring ecosystem.
+              AIJOBS connects candidates, recruiters, employers and consultancies through AI-powered job matching, recruitment workflows and candidate management tools.
             </motion.p>
 
-            {/* Action CTAs: Candidate & Consultancy Registration */}
+            {/* Action CTAs: Find Jobs, Candidate Reg, Recruiter Login, Consultancy Reg */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.6, delay: 0.3 }}
-              className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl"
+              className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl"
             >
-              {/* Candidate CTA */}
+              {/* Find Jobs Button */}
               <button
-                onClick={handleCandidateRegisterClick}
-                className="w-full px-6 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-mono font-bold tracking-wider uppercase shadow-[0_0_30px_rgba(6,182,212,0.4)] flex items-center justify-center gap-2 transition-all cursor-pointer hover:scale-[1.02]"
+                onClick={() => {
+                  soundSynth.playClick();
+                  const el = document.getElementById("how-it-works-section");
+                  if (el) el.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="w-full px-5 py-3.5 rounded-2xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/50 text-cyan-300 text-xs font-mono font-bold tracking-wider uppercase shadow-[0_0_20px_rgba(6,182,212,0.2)] flex items-center justify-center gap-2 transition-all cursor-pointer hover:scale-[1.02]"
               >
-                <span>Register as Candidate</span>
-                <ArrowRight className="w-4 h-4" />
+                <Search className="w-4 h-4 text-cyan-400" />
+                <span>Find Jobs</span>
               </button>
 
-              {/* Consultancy CTA */}
+              {/* Candidate Registration */}
+              <button
+                onClick={handleCandidateRegisterClick}
+                className="w-full px-5 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-mono font-bold tracking-wider uppercase shadow-[0_0_30px_rgba(6,182,212,0.4)] flex items-center justify-center gap-2 transition-all cursor-pointer hover:scale-[1.02]"
+              >
+                <UserCheck className="w-4 h-4" />
+                <span>Candidate Registration</span>
+              </button>
+
+              {/* Recruiter Login */}
+              <button
+                onClick={handleRecruiterLoginClick}
+                className="w-full px-5 py-3.5 rounded-2xl bg-indigo-600/30 hover:bg-indigo-600/40 border border-indigo-400/50 text-indigo-200 text-xs font-mono font-bold tracking-wider uppercase shadow-[0_0_20px_rgba(99,102,241,0.2)] flex items-center justify-center gap-2 transition-all cursor-pointer hover:scale-[1.02]"
+              >
+                <Briefcase className="w-4 h-4 text-indigo-400" />
+                <span>Recruiter Login</span>
+              </button>
+
+              {/* Consultancy Registration */}
               <button
                 onClick={handleConsultancyRegisterClick}
-                className="w-full px-6 py-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-purple-500/40 hover:border-purple-400 text-white text-xs font-mono font-bold tracking-wider uppercase backdrop-blur-md shadow-[0_0_20px_rgba(124,58,237,0.2)] flex items-center justify-center gap-2 transition-all cursor-pointer hover:scale-[1.02]"
+                className="w-full px-5 py-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-purple-500/40 hover:border-purple-400 text-white text-xs font-mono font-bold tracking-wider uppercase backdrop-blur-md shadow-[0_0_20px_rgba(124,58,237,0.2)] flex items-center justify-center gap-2 transition-all cursor-pointer hover:scale-[1.02]"
               >
                 <Building className="w-4 h-4 text-purple-400" />
-                <span>Register as Consultancy</span>
+                <span>Consultancy Registration</span>
               </button>
             </motion.div>
 
@@ -382,13 +404,97 @@ export default function LandingPage({
         onConsultancyLogin={handleConsultancyLoginClick}
       />
 
-      {/* 5. LIVE LAUNCH COUNTDOWN */}
-      <LaunchCountdown3D />
+      {/* 5. ABOUT AIJOBS SECTION */}
+      <section id="about-aijobs-section" className="relative py-20 px-4 sm:px-6 lg:px-8 bg-[#020617] border-t border-cyan-500/10 text-white">
+        <div className="max-w-5xl mx-auto space-y-6 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono font-bold uppercase tracking-widest">
+            <Info className="w-3.5 h-3.5" />
+            <span>Platform Overview</span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-black font-sans tracking-tight text-white">
+            About AIJOBS
+          </h2>
+          <p className="text-gray-300 text-base sm:text-lg leading-relaxed max-w-3xl mx-auto font-sans font-medium">
+            AIJOBS is an AI-powered recruitment platform designed to connect job seekers with recruiters, employers and recruitment consultancies. The platform provides job discovery, candidate applications, AI-assisted matching, recruitment management, interview workflows and hiring communication tools.
+          </p>
+        </div>
+      </section>
 
-      {/* 6. TRUST AND SAFETY SECTION */}
+      {/* 6. HOW AIJOBS WORKS SECTION */}
+      <section id="how-it-works-section" className="relative py-20 px-4 sm:px-6 lg:px-8 bg-[#030a1c] border-t border-cyan-500/10 text-white">
+        <div className="max-w-7xl mx-auto space-y-12">
+          <div className="text-center space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-400 text-xs font-mono font-bold uppercase tracking-widest">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Simplified Hiring Process</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-black font-sans tracking-tight text-white">
+              How AIJOBS Works
+            </h2>
+            <p className="text-gray-400 text-sm sm:text-base max-w-2xl mx-auto font-sans">
+              Empowering candidates, recruiters, and consultancies with tailored tools for seamless hiring.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* For Candidates */}
+            <div className="p-8 rounded-3xl bg-[#07152E]/80 border border-cyan-500/20 backdrop-blur-xl space-y-4 hover:border-cyan-400/40 transition-all">
+              <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-400">
+                <UserCheck className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-white font-sans">For Candidates</h3>
+              <p className="text-gray-300 text-sm leading-relaxed font-sans">
+                Search jobs, create a profile, upload a resume, apply for opportunities and track application progress.
+              </p>
+            </div>
+
+            {/* For Recruiters */}
+            <div className="p-8 rounded-3xl bg-[#07152E]/80 border border-indigo-500/20 backdrop-blur-xl space-y-4 hover:border-indigo-400/40 transition-all">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-400">
+                <Briefcase className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-white font-sans">For Recruiters</h3>
+              <p className="text-gray-300 text-sm leading-relaxed font-sans">
+                Manage recruitment workflows, review authorized candidate information, track applications and coordinate hiring activities.
+              </p>
+            </div>
+
+            {/* For Consultancies */}
+            <div className="p-8 rounded-3xl bg-[#07152E]/80 border border-purple-500/20 backdrop-blur-xl space-y-4 hover:border-purple-400/40 transition-all">
+              <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-400/40 flex items-center justify-center text-purple-400">
+                <Building className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-white font-sans">For Consultancies</h3>
+              <p className="text-gray-300 text-sm leading-relaxed font-sans">
+                Manage recruitment operations, candidates, job requirements and authorized hiring workflows.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 7. CANDIDATE SAFETY NOTICE */}
+      <section className="relative py-12 px-4 sm:px-6 lg:px-8 bg-[#020617] border-t border-cyan-500/10">
+        <div className="max-w-4xl mx-auto p-6 sm:p-8 rounded-3xl bg-amber-500/10 border border-amber-500/30 text-amber-200 flex flex-col sm:flex-row items-center gap-6 shadow-[0_0_30px_rgba(245,158,11,0.1)]">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400 shrink-0">
+            <ShieldCheck className="w-8 h-8" />
+          </div>
+          <div className="space-y-2 text-center sm:text-left">
+            <h3 className="text-lg font-bold font-sans text-amber-300 uppercase tracking-wider">
+              Candidate Safety Notice
+            </h3>
+            <p className="text-sm font-sans text-amber-100 leading-relaxed font-medium">
+              AIJOBS does not charge candidates for job applications or job placement. Selection depends on the employer's recruitment and interview process.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* 8. LIVE LAUNCH COUNTDOWN & SAFETY */}
+      <LaunchCountdown3D />
       <TrustSafetySection />
 
-      {/* 7. FINAL CTA SECTION */}
+      {/* 9. FINAL CTA SECTION */}
       <section className="relative py-24 bg-gradient-to-b from-[#020617] via-[#07152E] to-[#020617] text-white border-t border-cyan-500/10 overflow-hidden text-center">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full bg-cyan-500/10 blur-[160px] pointer-events-none" />
 
@@ -399,8 +505,8 @@ export default function LandingPage({
             <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-white">
               The Future of Hiring Is Almost Here
             </h2>
-            <p className="text-gray-300 text-base sm:text-xl max-w-2xl mx-auto">
-              Join AIJobs before the official launch and prepare for a smarter recruitment experience.
+            <p className="text-gray-300 text-base sm:text-xl max-w-2xl mx-auto font-sans">
+              Join AIJOBS today and experience smarter recruitment.
             </p>
           </div>
 
@@ -424,7 +530,7 @@ export default function LandingPage({
         </div>
       </section>
 
-      {/* 8. PUBLIC FOOTER */}
+      {/* 10. PUBLIC FOOTER */}
       <footer className="relative bg-[#020617] border-t border-white/10 py-12 px-4 sm:px-6 lg:px-8 text-gray-400 text-xs">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
           {/* Brand Info */}
@@ -434,7 +540,7 @@ export default function LandingPage({
               Find Smarter. Hire Faster.
             </p>
             <p className="text-gray-500 text-[11px]">
-              © {new Date().getFullYear()} AIJobs India. All rights reserved.
+              © {new Date().getFullYear()} AIJOBS. All rights reserved.
             </p>
           </div>
 
@@ -455,24 +561,65 @@ export default function LandingPage({
           </div>
 
           {/* Public Legal Links */}
-          <div className="flex flex-wrap justify-center gap-6 font-mono">
+          <div className="flex flex-wrap justify-center gap-6 font-mono text-xs font-bold uppercase tracking-wider">
             <button
-              onClick={() => setActiveLegalDoc("privacy")}
+              onClick={() => {
+                soundSynth.playClick();
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className="hover:text-cyan-400 transition-colors cursor-pointer"
+            >
+              Home
+            </button>
+            <button
+              onClick={() => {
+                soundSynth.playClick();
+                const el = document.getElementById("about-aijobs-section");
+                if (el) el.scrollIntoView({ behavior: "smooth" });
+                else setActiveLegalDoc("about");
+              }}
+              className="hover:text-cyan-400 transition-colors cursor-pointer"
+            >
+              About AIJOBS
+            </button>
+            <button
+              onClick={() => {
+                soundSynth.playClick();
+                setActiveLegalDoc("privacy");
+              }}
               className="hover:text-cyan-400 transition-colors cursor-pointer"
             >
               Privacy Policy
             </button>
             <button
-              onClick={() => setActiveLegalDoc("terms")}
+              onClick={() => {
+                soundSynth.playClick();
+                setActiveLegalDoc("terms");
+              }}
               className="hover:text-cyan-400 transition-colors cursor-pointer"
             >
-              Terms and Conditions
+              Terms of Service
             </button>
             <button
-              onClick={() => setActiveLegalDoc("contact")}
+              onClick={() => {
+                soundSynth.playClick();
+                setActiveLegalDoc("contact");
+              }}
               className="hover:text-cyan-400 transition-colors cursor-pointer"
             >
               Contact
+            </button>
+            <button
+              onClick={handleCandidateLoginClick}
+              className="text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
+            >
+              Login
+            </button>
+            <button
+              onClick={handleCandidateRegisterClick}
+              className="text-purple-400 hover:text-purple-300 transition-colors cursor-pointer"
+            >
+              Register
             </button>
           </div>
         </div>

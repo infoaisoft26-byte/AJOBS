@@ -10,8 +10,13 @@ const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
 const formatPrivateKey = (key?: string) => {
   if (!key) return undefined;
   let cleaned = key.trim();
-  if ((cleaned.startsWith('"') && cleaned.endsWith('"')) || (cleaned.startsWith("'") && cleaned.endsWith("'"))) {
-    cleaned = cleaned.slice(1, -1);
+  cleaned = cleaned.replace(/[,;]+$/, "").trim();
+  while (
+    (cleaned.startsWith('"') && cleaned.endsWith('"')) ||
+    (cleaned.startsWith("'") && cleaned.endsWith("'"))
+  ) {
+    cleaned = cleaned.slice(1, -1).trim();
+    cleaned = cleaned.replace(/[,;]+$/, "").trim();
   }
   return cleaned.replace(/\\n/g, "\n");
 };

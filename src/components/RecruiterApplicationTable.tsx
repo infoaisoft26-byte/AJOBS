@@ -260,8 +260,8 @@ export default function RecruiterApplicationTable({
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const matchName = app.candidateName.toLowerCase().includes(q);
-        const matchTitle = app.jobTitle.toLowerCase().includes(q);
+        const matchName = (app.candidateName || "").toLowerCase().includes(q);
+        const matchTitle = (app.jobTitle || "").toLowerCase().includes(q);
         const matchEmail = (app.candidateEmail || "").toLowerCase().includes(q);
         if (!matchName && !matchTitle && !matchEmail) return false;
       }
@@ -272,14 +272,14 @@ export default function RecruiterApplicationTable({
       let valB: any = b[sortBy];
 
       if (sortBy === "appliedAt") {
-        valA = new Date(a.appliedAt).getTime();
-        valB = new Date(b.appliedAt).getTime();
+        valA = a.appliedAt ? new Date(a.appliedAt).getTime() : 0;
+        valB = b.appliedAt ? new Date(b.appliedAt).getTime() : 0;
       } else if (sortBy === "resumeScore") {
         valA = a.resumeScore || 0;
         valB = b.resumeScore || 0;
       } else if (sortBy === "candidateName") {
-        valA = a.candidateName.toLowerCase();
-        valB = b.candidateName.toLowerCase();
+        valA = (a.candidateName || "").toLowerCase();
+        valB = (b.candidateName || "").toLowerCase();
       }
 
       if (valA < valB) return sortOrder === "asc" ? -1 : 1;

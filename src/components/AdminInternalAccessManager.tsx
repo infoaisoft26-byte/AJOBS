@@ -80,10 +80,11 @@ export default function AdminInternalAccessManager() {
   };
 
   const filteredUsers = users.filter((u) => {
+    const q = (searchQuery || "").toLowerCase();
     const matchesSearch =
-      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.role.toLowerCase().includes(searchQuery.toLowerCase());
+      (u.name || "").toLowerCase().includes(q) ||
+      (u.email || "").toLowerCase().includes(q) ||
+      (u.role || "").toLowerCase().includes(q);
 
     if (!matchesSearch) return false;
 

@@ -1,34 +1,31 @@
 import React, { useState } from "react";
-import { query } from "firebase/firestore";
-import { AnimatePresence, motion } from "motion/react";
-import { Badge, Bell, Cloud, Icon, Infinity, LogOut, Menu, MessageSquare, Moon, Search, Settings, ShieldCheck, Sun, User, View, X } from "lucide-react";
-import { ExportActivityCsvButton } from "./ExportActivityCsvButton";
-import { OfflineSyncBadge } from "./OfflineSyncBadge";
-
-const SAMPLE_SUGGESTIONS = [
-  "React Developer",
-  "Fullstack Engineer (Node.js)",
-  "AI & ML Research Specialist",
-  "Cloud Solutions Architect",
-  "DevOps Engineer (Kubernetes)",
-  "Python Backend Developer",
-  "Data Scientist",
-  "UI/UX Design Lead"
-];
+import { 
+  Search, 
+  Bell, 
+  User, 
+  LogOut, 
+  Menu, 
+  X, 
+  Globe, 
+  HelpCircle,
+  ShieldCheck,
+  Check
+} from "lucide-react";
+import { SupportedLanguage, getTranslation } from "../utils/candidateTranslations";
 
 interface HeaderProps {
   userName: string;
   userEmail: string;
   onLogout: () => void;
   toggleSidebar: () => void;
-  theme: "dark" | "light";
-  toggleTheme: () => void;
-  notifications: NotificationRecord[];
+  notifications: any[];
   onMarkAllRead: () => void;
   onClearNotification: (id: string) => void;
   onSelectTab: (tab: string) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  lang: SupportedLanguage;
+  setLang: (lang: SupportedLanguage) => void;
 }
 
 export default function CandidateHeader({
@@ -36,199 +33,175 @@ export default function CandidateHeader({
   userEmail,
   onLogout,
   toggleSidebar,
-  theme,
-  toggleTheme,
   notifications,
   onMarkAllRead,
   onClearNotification,
   onSelectTab,
   searchQuery,
-  setSearchQuery
+  setSearchQuery,
+  lang,
+  setLang
 }: HeaderProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [inputFocused, setInputFocused] = useState(false);
+  const [showLangMenu, setShowLangMenu] = useState(false);
 
+  const t = (key: string) => getTranslation(lang, key);
   const unreadCount = notifications.filter(n => !n.read).length;
-  
-  const filteredSuggestions = SAMPLE_SUGGESTIONS.filter(item => 
-    searchQuery && item.toLowerCase().includes(searchQuery.toLowerCase())
-  ).slice(0, 4);
+
+  const languages = [
+    { code: "en", label: "English" },
+    { code: "hi", label: "हिंदी (Hindi)" },
+    { code: "mr", label: "मराठी (Marathi)" }
+  ];
 
   return (
-    <div className="sticky top-[73px] z-30 w-full bg-[#030305]/85 backdrop-blur-md border-b border-white/5 py-3.5 px-4 md:px-8 flex items-center justify-between gap-4">
-      {/* Search Bar / Menu Toggler */}
-      <div className="flex items-center space-x-3 flex-1 max-w-md">
+    <header className="sticky top-0 z-30 w-full bg-white border-b border-gray-200 py-3 px-4 md:px-6 flex items-center justify-between gap-4 shadow-xs">
+      {/* Sidebar Toggle & Quick Search */}
+      <div className="flex items-center space-x-3 flex-1 max-w-lg">
         <button 
           onClick={toggleSidebar}
-          className="lg:hidden p-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl transition-all cursor-pointer"
+          className="lg:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all cursor-pointer"
           id="toggle-candidate-sidebar-btn"
+          aria-label="Toggle menu"
         >
           <Menu className="w-5 h-5" />
         </button>
 
-        <div className="relative w-full max-w-sm hidden sm:block">
-          <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-gray-500" />
+        <div className="relative w-full hidden sm:block">
+          <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-gray-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            onFocus={() => setInputFocused(true)}
-            onBlur={() => setTimeout(() => setInputFocused(false), 250)}
-            placeholder="Search open positions or technology stack..."
-            className="w-full pl-9 pr-12 py-2 text-xs bg-[#11111a]/80 border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 text-white transition-all font-mono"
+            placeholder={t("searchPlaceholderTitle")}
+            className="w-full pl-9 pr-10 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:bg-white text-gray-900 transition-all placeholder:text-gray-400"
             id="candidate-search-jobs-input"
-            autoComplete="off"
           />
           {searchQuery && (
             <button 
               onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-2.5 text-gray-500 hover:text-white text-xs cursor-pointer"
+              className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 text-xs cursor-pointer font-medium"
             >
               Clear
             </button>
           )}
-
-          {/* Holographic suggestions dropdown with upward-floating particle animation */}
-          <AnimatePresence>
-            {inputFocused && filteredSuggestions.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 15, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                transition={{ duration: 0.25, ease: "easeOut" }}
-                className="absolute top-12 left-0 w-full bg-zinc-950/95 border border-indigo-500/40 backdrop-blur-3xl rounded-2xl p-3.5 z-50 shadow-[0_15px_40px_rgba(59,130,246,0.25),0_0_20px_rgba(99,102,241,0.15)] space-y-2 overflow-hidden"
-              >
-                {/* Background Rising Matrix Particles */}
-                <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl z-0">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ y: 90, opacity: 0, scale: 0.6 }}
-                      animate={{ y: -15, opacity: [0, 0.7, 0], scale: [0.6, 1.2, 0.6] }}
-                      transition={{
-                        duration: 2.2 + i * 0.4,
-                        repeat: Infinity,
-                        delay: i * 0.2,
-                        ease: "easeInOut"
-                      }}
-                      className="absolute bg-indigo-500/30 rounded-full"
-                      style={{
-                        width: Math.random() * 5 + 3,
-                        height: Math.random() * 5 + 3,
-                        left: `${15 + i * 18}%`,
-                      }}
-                    />
-                  ))}
-                </div>
-
-                <div className="text-[9px] uppercase font-mono text-indigo-400 tracking-widest mb-1.5 flex justify-between items-center relative z-10">
-                  <span>HOLOGRAPHIC INDEX MATCHES</span>
-                  <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-ping" />
-                </div>
-
-                <div className="space-y-1.5 relative z-10">
-                  {filteredSuggestions.map((suggestion, idx) => (
-                    <motion.button
-                      key={suggestion}
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.2, delay: idx * 0.04 }}
-                      onMouseDown={() => {
-                        setSearchQuery(suggestion);
-                        setInputFocused(false);
-                      }}
-                      className="w-full text-left px-3 py-2 rounded-xl bg-white/5 border border-white/5 hover:border-indigo-500/40 hover:bg-indigo-500/15 text-xs text-gray-300 hover:text-white transition-all flex items-center justify-between group cursor-pointer"
-                    >
-                      <span className="truncate font-mono">{suggestion}</span>
-                      <span className="text-[9px] font-mono opacity-0 group-hover:opacity-100 text-indigo-400 transition-opacity">
-                        QUERY &rarr;
-                      </span>
-                    </motion.button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex items-center space-x-3">
-        {/* Messages / AI Coach Shortcuts */}
-        <button
-          onClick={() => onSelectTab("coach")}
-          className="p-2 text-gray-400 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-xl transition-all cursor-pointer relative"
-          title="AI Career Coach Session"
-          id="messages-shortcut-btn"
-        >
-          <MessageSquare className="w-4.5 h-4.5" />
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-indigo-400 rounded-full animate-ping"></span>
-        </button>
+      {/* Safety Notice Pill (Desktop) */}
+      <div className="hidden xl:flex items-center space-x-1.5 px-3 py-1 bg-blue-50 border border-blue-200 rounded-full text-xs font-medium text-blue-800">
+        <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+        <span className="truncate max-w-md">{t("safetyNotice")}</span>
+      </div>
 
-        {/* Notifications Icon & Dropdown */}
+      {/* Header Actions */}
+      <div className="flex items-center space-x-2 sm:space-x-3">
+        {/* Language Selector */}
         <div className="relative">
           <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            className={`p-2 text-gray-400 hover:text-white rounded-xl transition-all cursor-pointer relative ${
-              showNotifications ? "bg-white/5 text-white" : ""
-            }`}
-            id="notifications-dropdown-btn"
+            onClick={() => {
+              setShowLangMenu(!showLangMenu);
+              setShowNotifications(false);
+              setShowProfileMenu(false);
+            }}
+            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 text-xs font-semibold transition-all cursor-pointer"
+            title="Select Language"
           >
-            <Bell className="w-4.5 h-4.5" />
+            <Globe className="w-4 h-4 text-blue-600" />
+            <span className="uppercase font-bold">{lang}</span>
+          </button>
+
+          {showLangMenu && (
+            <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-lg p-1.5 z-50 animate-in fade-in duration-150">
+              <div className="px-2 py-1 text-[11px] font-semibold text-gray-400 uppercase">
+                Select Language
+              </div>
+              {languages.map((l) => (
+                <button
+                  key={l.code}
+                  onClick={() => {
+                    setLang(l.code as SupportedLanguage);
+                    setShowLangMenu(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all cursor-pointer ${
+                    lang === l.code ? "bg-blue-50 text-blue-700 font-bold" : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <span>{l.label}</span>
+                  {lang === l.code && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Notifications Icon & Popover */}
+        <div className="relative">
+          <button
+            onClick={() => {
+              setShowNotifications(!showNotifications);
+              setShowLangMenu(false);
+              setShowProfileMenu(false);
+            }}
+            className={`p-2 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all cursor-pointer relative ${
+              showNotifications ? "bg-gray-100 text-gray-900" : ""
+            }`}
+          >
+            <Bell className="w-5 h-5" />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 px-1 min-w-[14px] text-[8px] font-mono font-extrabold bg-indigo-500 text-white rounded-full leading-none">
+              <span className="absolute top-1 right-1 w-4 h-4 text-[10px] font-bold bg-blue-600 text-white rounded-full flex items-center justify-center leading-none">
                 {unreadCount}
               </span>
             )}
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 mt-3.5 w-80 bg-gray-950 border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 text-white animate-in fade-in duration-200">
-              <div className="p-3.5 border-b border-white/5 bg-black/40 flex items-center justify-between text-xs">
-                <span className="font-bold">Notifications ({unreadCount} new)</span>
+            <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden z-50 text-gray-900">
+              <div className="p-3.5 border-b border-gray-100 bg-gray-50 flex items-center justify-between text-xs font-semibold">
+                <span>{t("notifications")} ({unreadCount})</span>
                 {unreadCount > 0 && (
                   <button 
                     onClick={() => {
                       onMarkAllRead();
                       setShowNotifications(false);
                     }}
-                    className="text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer"
+                    className="text-blue-600 hover:underline cursor-pointer"
                   >
                     Mark read
                   </button>
                 )}
               </div>
-              <div className="max-h-72 overflow-y-auto divide-y divide-white/5 scrollbar">
+              <div className="max-h-72 overflow-y-auto divide-y divide-gray-100">
                 {notifications.length > 0 ? (
                   notifications.map((n) => (
-                    <div key={n.id} className={`p-3 text-[11px] leading-relaxed relative group ${n.read ? "opacity-70" : "bg-white/5"}`}>
+                    <div key={n.id} className={`p-3 text-xs relative group ${n.read ? "opacity-75" : "bg-blue-50/50"}`}>
                       <button 
                         onClick={() => onClearNotification(n.id)}
-                        className="absolute top-2.5 right-2.5 p-0.5 rounded text-gray-500 hover:text-red-400 hover:bg-white/5 opacity-0 group-hover:opacity-100 transition-all"
+                        className="absolute top-2.5 right-2.5 p-0.5 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
                       >
-                        <X className="w-3 h-3" />
+                        <X className="w-3.5 h-3.5" />
                       </button>
-                      <p className="font-bold text-gray-200 pr-4">{n.title}</p>
-                      <p className="text-gray-400 mt-0.5">{n.message}</p>
-                      <p className="text-[9px] text-gray-500 font-mono mt-1">
+                      <p className="font-semibold text-gray-900 pr-4">{n.title}</p>
+                      <p className="text-gray-600 mt-0.5 text-xs">{n.message}</p>
+                      <p className="text-[10px] text-gray-400 mt-1">
                         {new Date(n.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                       </p>
                     </div>
                   ))
                 ) : (
                   <div className="p-6 text-center text-xs text-gray-500 italic">
-                    No active notification alerts.
+                    No active notifications.
                   </div>
                 )}
               </div>
-              <div className="p-2 border-t border-white/5 bg-black/20 text-center">
+              <div className="p-2.5 border-t border-gray-100 bg-gray-50 text-center">
                 <button
                   onClick={() => {
                     onSelectTab("notifications");
                     setShowNotifications(false);
                   }}
-                  className="text-[10px] text-gray-400 hover:text-white font-mono uppercase tracking-wider font-bold"
+                  className="text-xs font-semibold text-blue-600 hover:underline"
                 >
                   View All Notifications
                 </button>
@@ -237,79 +210,72 @@ export default function CandidateHeader({
           )}
         </div>
 
-        {/* Service Worker Offline Sync Badge */}
-        <div className="hidden sm:block">
-          <OfflineSyncBadge />
-        </div>
-
-        {/* CSV Export Button */}
-        <div className="hidden md:block">
-          <ExportActivityCsvButton role="candidate" variant="compact" label="Export CSV" />
-        </div>
-
-        {/* Dark Mode Toggle */}
+        {/* Help Link */}
         <button
-          onClick={toggleTheme}
-          className="p-2 text-gray-400 hover:text-white rounded-xl transition-all cursor-pointer hover:bg-white/5"
-          id="header-theme-toggle"
+          onClick={() => onSelectTab("help")}
+          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all cursor-pointer hidden sm:block"
+          title={t("help")}
         >
-          {theme === "dark" ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
+          <HelpCircle className="w-5 h-5" />
         </button>
 
-        {/* User Account / Dropdown */}
+        {/* User Menu */}
         <div className="relative">
           <button
-            onClick={() => setShowProfileMenu(!showProfileMenu)}
-            className="flex items-center space-x-2 p-1 rounded-xl hover:bg-white/5 transition-all text-left cursor-pointer"
-            id="profile-dropdown-btn"
+            onClick={() => {
+              setShowProfileMenu(!showProfileMenu);
+              setShowNotifications(false);
+              setShowLangMenu(false);
+            }}
+            className="flex items-center space-x-2 p-1 rounded-xl hover:bg-gray-100 transition-all cursor-pointer"
           >
-            <div className="w-7 h-7 rounded-full bg-gradient-to-r from-indigo-500 to-pink-500 text-white flex items-center justify-center font-bold text-xs shadow shadow-indigo-500/20">
-              {userName.charAt(0).toUpperCase()}
+            <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-xs">
+              {userName ? userName.charAt(0).toUpperCase() : "C"}
             </div>
-            <span className="text-xs font-bold text-gray-300 hidden md:inline-block pr-1">
-              {userName.split(" ")[0]}
+            <span className="text-sm font-semibold text-gray-800 hidden md:inline-block pr-1">
+              {userName ? userName.split(" ")[0] : "Candidate"}
             </span>
           </button>
 
           {showProfileMenu && (
-            <div className="absolute right-0 mt-3 w-52 bg-gray-950 border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 text-white animate-in fade-in duration-200">
-              <div className="p-3 border-b border-white/5 bg-black/40 text-xs">
-                <p className="font-bold text-gray-200 leading-none">{userName}</p>
-                <p className="text-[10px] text-gray-500 mt-1 truncate">{userEmail}</p>
+            <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-lg p-1 z-50 text-gray-900 animate-in fade-in duration-150">
+              <div className="p-3 border-b border-gray-100 bg-gray-50 rounded-t-lg">
+                <p className="font-bold text-sm text-gray-900">{userName}</p>
+                <p className="text-xs text-gray-500 truncate">{userEmail}</p>
               </div>
-              <div className="p-1 text-xs">
+              <div className="p-1 space-y-0.5 text-xs">
                 <button
                   onClick={() => {
                     onSelectTab("profile");
                     setShowProfileMenu(false);
                   }}
-                  className="w-full text-left px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 flex items-center space-x-2"
+                  className="w-full text-left px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 flex items-center space-x-2 font-medium"
                 >
-                  <ShieldCheck className="w-4 h-4 text-indigo-400" />
-                  <span>My Profile</span>
+                  <User className="w-4 h-4 text-blue-600" />
+                  <span>{t("profile")}</span>
                 </button>
                 <button
                   onClick={() => {
-                    onSelectTab("settings");
+                    onSelectTab("help");
                     setShowProfileMenu(false);
                   }}
-                  className="w-full text-left px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 flex items-center space-x-2"
+                  className="w-full text-left px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 flex items-center space-x-2 font-medium"
                 >
-                  <Settings className="w-4 h-4 text-gray-400" />
-                  <span>Account Settings</span>
+                  <HelpCircle className="w-4 h-4 text-gray-500" />
+                  <span>{t("help")}</span>
                 </button>
                 <button
                   onClick={onLogout}
-                  className="w-full text-left px-3 py-2 rounded-lg text-red-400 hover:bg-red-500/10 flex items-center space-x-2"
+                  className="w-full text-left px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 flex items-center space-x-2 font-medium"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span>Sign Out</span>
+                  <span>{t("logout")}</span>
                 </button>
               </div>
             </div>
           )}
         </div>
       </div>
-    </div>
+    </header>
   );
 }

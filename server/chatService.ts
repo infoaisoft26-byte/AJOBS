@@ -1,4 +1,4 @@
-import { getFirestoreDb } from "./firestoreHelper";
+import { getFirestoreDb } from "./firestoreHelper.js";
 
 export interface ThreatAnalysisResult {
   isThreat: boolean;

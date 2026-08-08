@@ -72,13 +72,23 @@ export default function PaymentManagement({
     }
   };
 
-  // Filter transactions
-  const filteredTxns = transactions.filter((t) => {
+  // Filter transactions safely
+  const safeTransactions = Array.isArray(transactions) ? transactions : [];
+  const query = (searchQuery || "").toLowerCase();
+
+  const filteredTxns = safeTransactions.filter((t) => {
+    if (!t) return false;
+
+    const uName = (t.userName || "").toLowerCase();
+    const uEmail = (t.userEmail || "").toLowerCase();
+    const invNum = (t.invoiceNumber || "").toLowerCase();
+    const tId = (t.id || "").toLowerCase();
+
     const matchesSearch = 
-      t.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.userEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.id.toLowerCase().includes(searchQuery.toLowerCase());
+      uName.includes(query) ||
+      uEmail.includes(query) ||
+      invNum.includes(query) ||
+      tId.includes(query);
     
     const matchesStatus = selectedStatus === "all" || t.status === selectedStatus;
 
@@ -159,7 +169,7 @@ export default function PaymentManagement({
                         </td>
                         <td className="py-3 font-mono text-gray-400">{t.invoiceNumber}</td>
                         <td className="py-3 font-mono font-bold text-white">
-                          ₹{t.totalPaid.toLocaleString()}
+                          ₹{(t.totalPaid || 0).toLocaleString()}
                         </td>
                         <td className="py-3">
                           <span className={`px-2 py-0.5 rounded font-mono text-[9px] font-bold uppercase ${
@@ -225,19 +235,19 @@ export default function PaymentManagement({
 
                   <div className="flex justify-between border-b border-gray-100 pb-2 text-[8px] text-gray-500">
                     <div>
-                      <p>INVOICE NO: <strong className="text-neutral-900">{selectedTxnForInvoice.invoiceNumber}</strong></p>
-                      <p>DATE: {new Date(selectedTxnForInvoice.createdAt).toLocaleDateString()}</p>
+                      <p>INVOICE NO: <strong className="text-neutral-900">{selectedTxnForInvoice.invoiceNumber || "N/A"}</strong></p>
+                      <p>DATE: {selectedTxnForInvoice.createdAt ? new Date(selectedTxnForInvoice.createdAt).toLocaleDateString() : "N/A"}</p>
                     </div>
                     <div className="text-right">
-                      <p>CLIENT ID: {selectedTxnForInvoice.userId.substr(0, 8).toUpperCase()}</p>
-                      <p>GATEWAY: {selectedTxnForInvoice.gateway}</p>
+                      <p>CLIENT ID: {(selectedTxnForInvoice.userId || "").slice(0, 8).toUpperCase() || "N/A"}</p>
+                      <p>GATEWAY: {selectedTxnForInvoice.gateway || "RAZORPAY"}</p>
                     </div>
                   </div>
 
                   <div className="space-y-1">
                     <p className="text-gray-500">BILLED TO:</p>
-                    <p className="font-bold text-neutral-900">{selectedTxnForInvoice.userName}</p>
-                    <p className="text-[8px] text-gray-400">{selectedTxnForInvoice.userEmail}</p>
+                    <p className="font-bold text-neutral-900">{selectedTxnForInvoice.userName || "Valued Client"}</p>
+                    <p className="text-[8px] text-gray-400">{selectedTxnForInvoice.userEmail || ""}</p>
                   </div>
 
                   <div className="space-y-1.5 pt-2 border-t border-gray-200">
@@ -246,18 +256,18 @@ export default function PaymentManagement({
                       <span>LINE CHARGES</span>
                     </div>
                     <div className="flex justify-between font-bold text-neutral-900 border-b border-gray-100 pb-1.5">
-                      <span>{selectedTxnForInvoice.planName}</span>
-                      <span>₹{selectedTxnForInvoice.amount.toLocaleString()}</span>
+                      <span>{selectedTxnForInvoice.planName || "Subscription Plan"}</span>
+                      <span>₹{(selectedTxnForInvoice.amount || 0).toLocaleString()}</span>
                     </div>
 
                     <div className="space-y-1 text-right text-gray-500">
-                      <p>Line Subtotal: ₹{selectedTxnForInvoice.amount.toLocaleString()}</p>
-                      <p>Integrated GST (18%): ₹{selectedTxnForInvoice.gstAmount.toLocaleString()}</p>
-                      {selectedTxnForInvoice.discountAmount > 0 && (
-                        <p className="text-rose-600">Discounts/Coupons: -₹{selectedTxnForInvoice.discountAmount.toLocaleString()}</p>
+                      <p>Line Subtotal: ₹{(selectedTxnForInvoice.amount || 0).toLocaleString()}</p>
+                      <p>Integrated GST (18%): ₹{(selectedTxnForInvoice.gstAmount || 0).toLocaleString()}</p>
+                      {(selectedTxnForInvoice.discountAmount || 0) > 0 && (
+                        <p className="text-rose-600">Discounts/Coupons: -₹{(selectedTxnForInvoice.discountAmount || 0).toLocaleString()}</p>
                       )}
                       <p className="font-extrabold text-neutral-900 text-[10px] pt-1.5 border-t border-gray-200">
-                        Total Collected Paid: ₹{selectedTxnForInvoice.totalPaid.toLocaleString()}
+                        Total Collected Paid: ₹{(selectedTxnForInvoice.totalPaid || 0).toLocaleString()}
                       </p>
                     </div>
                   </div>

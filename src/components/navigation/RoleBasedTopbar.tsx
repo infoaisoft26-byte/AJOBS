@@ -106,13 +106,14 @@ export default function RoleBasedTopbar({
           {!user && (
             <>
               <button onClick={() => scrollToSection("hero-section")} className="hover:text-blue-400 transition-colors cursor-pointer">Home</button>
-              <button onClick={() => scrollToSection("how-it-works-section")} className="hover:text-blue-400 transition-colors cursor-pointer">Find Jobs</button>
-              <button onClick={() => scrollToSection("ai-features-section")} className="hover:text-blue-400 transition-colors cursor-pointer">AI Interview</button>
-              <button onClick={() => scrollToSection("why-aijobs-section")} className="hover:text-blue-400 transition-colors cursor-pointer">Companies</button>
+              <button onClick={() => scrollToSection("about-aijobs-section")} className="hover:text-blue-400 transition-colors cursor-pointer">About AIJOBS</button>
+              <button onClick={() => scrollToSection("how-it-works-section")} className="hover:text-blue-400 transition-colors cursor-pointer">How It Works</button>
               <button onClick={() => onOpenCompanyPage?.("consultancies")} className="hover:text-blue-400 transition-colors cursor-pointer">Consultancies</button>
-              <button onClick={() => scrollToSection("pricing-section")} className="hover:text-blue-400 transition-colors cursor-pointer">Pricing</button>
-              <button onClick={() => onOpenCompanyPage?.("about")} className="hover:text-blue-400 transition-colors cursor-pointer">About</button>
+              <button onClick={() => onOpenCompanyPage?.("privacy")} className="hover:text-blue-400 transition-colors cursor-pointer">Privacy Policy</button>
+              <button onClick={() => onOpenCompanyPage?.("terms")} className="hover:text-blue-400 transition-colors cursor-pointer">Terms</button>
               <button onClick={() => onOpenCompanyPage?.("contact")} className="hover:text-blue-400 transition-colors cursor-pointer">Contact</button>
+              <button onClick={() => onShowAuth("signin")} className="px-3 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 font-bold transition-all cursor-pointer">Login</button>
+              <button onClick={() => onShowAuth("signup")} className="px-3 py-1 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold transition-all cursor-pointer">Register</button>
             </>
           )}
 

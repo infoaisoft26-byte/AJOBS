@@ -7,6 +7,8 @@ import { auth, db, storage } from "../firebase";
 import { useToast } from "./GlobalToast";
 import { uploadResumeService } from "../services/resumeUploadService";
 
+import { parseApiResponse } from "../utils/apiHelper";
+
 interface ResumeOnboardingProps {
   user: any;
   setUser: (user: any) => void;
@@ -165,7 +167,7 @@ export default function ResumeOnboarding({ user, setUser, setActiveView }: Resum
         });
 
         if (response.ok) {
-          parseResult = await response.json();
+          parseResult = await parseApiResponse(response);
         }
       } catch (pErr) {
         console.warn("[ResumeOnboarding] Resume parse endpoint notice:", pErr);

@@ -64,6 +64,7 @@ import { CustomCursor } from "@/components/CustomCursor";
 import { ToastProvider, useToast } from "@/components/GlobalToast";
 import Header from "@/components/Header";
 import LandingPage from "@/components/LandingPage";
+import LegalModal from "@/components/LegalModal";
 import { type BackgroundMode } from "@/components/ThreeDBackground";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { GlobalMarketplaceProvider } from "@/context/GlobalMarketplaceContext";
@@ -273,15 +274,31 @@ function MainAppContent() {
   useEffect(() => {
     const metaMap: Record<string, { title: string; desc: string }> = {
       home: {
-        title: "AIJobs | Premium AI-Powered Recruitment Platform & Talent Matchmaker",
-        desc: "Connect instantly with top global recruiters using deep semantic matching, AI-driven evaluation models, and automated interview management pipelines."
+        title: "AIJOBS | AI-Powered Recruitment Platform",
+        desc: "AIJOBS is an AI-powered recruitment and job matching platform connecting candidates, recruiters, employers and consultancies."
+      },
+      "privacy-policy": {
+        title: "Privacy Policy | AIJOBS",
+        desc: "AIJOBS Privacy Policy - Learn how candidate and recruiter data is protected and handled securely on AIJOBS."
+      },
+      terms: {
+        title: "Terms of Service | AIJOBS",
+        desc: "AIJOBS Terms of Service and User Conduct Guidelines for candidates, recruiters, employers, and consultancies."
+      },
+      about: {
+        title: "About AIJOBS | AI-Powered Recruitment Platform",
+        desc: "Learn about AIJOBS, an AI-powered recruitment platform connecting job seekers with recruiters, employers and consultancies."
+      },
+      contact: {
+        title: "Contact Us | AIJOBS",
+        desc: "Get in touch with the AIJOBS support team for inquiries, support, and platform assistance."
       },
       dashboard: {
-        title: "Recruitment Workspace Dashboard | AIJobs",
+        title: "Recruitment Workspace Dashboard | AIJOBS",
         desc: "Manage candidate evaluation stages, resumes, active matches, and live communications seamlessly on your private dashboard."
       },
       notifications: {
-        title: "Secure Communication Gateways | AIJobs",
+        title: "Secure Communication Gateways | AIJOBS",
         desc: "Access instant updates from system endpoints and automated email notifications dispatch logs."
       }
     };
@@ -425,6 +442,14 @@ function MainAppContent() {
         setActiveView("dashboard");
       } else if (p.startsWith("/recruiter/") || p.startsWith("/employer/") || p === "/recruiter" || p === "/employer") {
         setActiveView("dashboard");
+      } else if (p === "/privacy-policy" || p === "/privacy") {
+        setActiveView("privacy-policy");
+      } else if (p === "/terms" || p === "/terms-of-service") {
+        setActiveView("terms");
+      } else if (p === "/about" || p === "/about-us") {
+        setActiveView("about");
+      } else if (p === "/contact" || p === "/contact-us") {
+        setActiveView("contact");
       } else if (p === "/") {
         setActiveView("home");
       }
@@ -725,6 +750,26 @@ function MainAppContent() {
                   <Suspense fallback={<GeneralLoading />}>
                     <UnsubscribeViewLazy />
                   </Suspense>
+                ) : activeView === "privacy-policy" ? (
+                  <div className="min-h-[80vh] flex items-center justify-center p-4">
+                    <LegalModal docType="privacy" onClose={() => { setActiveView("home"); window.history.pushState({}, "", "/"); }} />
+                  </div>
+                ) : activeView === "terms" ? (
+                  <div className="min-h-[80vh] flex items-center justify-center p-4">
+                    <LegalModal docType="terms" onClose={() => { setActiveView("home"); window.history.pushState({}, "", "/"); }} />
+                  </div>
+                ) : activeView === "about" ? (
+                  <div className="min-h-[80vh] flex items-center justify-center p-4">
+                    <Suspense fallback={<GeneralLoading />}>
+                      <CompanySectionLazy pageType="about" onClose={() => { setActiveView("home"); window.history.pushState({}, "", "/"); }} />
+                    </Suspense>
+                  </div>
+                ) : activeView === "contact" ? (
+                  <div className="min-h-[80vh] flex items-center justify-center p-4">
+                    <Suspense fallback={<GeneralLoading />}>
+                      <CompanySectionLazy pageType="contact" onClose={() => { setActiveView("home"); window.history.pushState({}, "", "/"); }} />
+                    </Suspense>
+                  </div>
                 ) : activeView === "home" ? (
                   <LandingPage
                     onGetStarted={() => {

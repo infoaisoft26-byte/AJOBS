@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
 import crypto from "crypto";
-import { getFirestoreDb } from "./firestoreHelper";
-import { EMAIL_TEMPLATES, EmailTemplateData } from "./emailTemplates";
+import { getFirestoreDb } from "./firestoreHelper.js";
+import { EMAIL_TEMPLATES, EmailTemplateData } from "./emailTemplates.js";
 
 const getSenderAddress = () => {
   const fromName = process.env.EMAIL_FROM_NAME || "AIJobs";

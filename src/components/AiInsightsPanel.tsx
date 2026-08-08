@@ -48,64 +48,40 @@ export default function AiInsightsPanel({ userId, userRole }: { userId?: string;
 
       const defaultRecs: AiRecommendation[] = [
         {
-          id: "rec_1",
-          candidateName: "Ananya Iyer",
-          candidateId: "demo_candidate_ananya",
+          id: "rec_rahul",
+          candidateName: "Rahul Sharma",
+          candidateId: "cand_rahul",
           jobId: "cjob_1",
           jobTitle: "Senior Full Stack Engineer",
-          matchScore: 94,
-          recommendedRole: "Lead Full Stack Engineer",
-          fitAnalysis: "Exceptional depth in React 18, TypeScript micro-services, and concurrent database synchronization processes. Exhibits strong structural reasoning.",
-          skillsMatch: ["React", "TypeScript", "Node.js", "Firebase"],
-          timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          id: "rec_2",
-          candidateName: "Aryan Sharma",
-          candidateId: "demo_candidate_aryan",
-          jobId: "cjob_1",
-          jobTitle: "Senior Full Stack Engineer",
-          matchScore: 88,
-          recommendedRole: "Senior Systems Engineer",
-          fitAnalysis: "Solid command over backend systems architecture and cloud hosting pipelines. Highly proficient in offline-first data caching layers.",
-          skillsMatch: ["Node.js", "TypeScript", "PostgreSQL", "Firebase"],
-          timestamp: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          id: "rec_3",
-          candidateName: "Sneha Rao",
-          candidateId: "demo_candidate_sneha",
-          jobId: "cjob_2",
-          jobTitle: "AI Product Designer",
           matchScore: 92,
-          recommendedRole: "Lead AI/UX Designer",
-          fitAnalysis: "Stellar design system logic and Framer Motion micro-interactions. Strongly recommended for high-fidelity client-side aesthetic platforms.",
-          skillsMatch: ["Figma", "Tailwind CSS", "Framer Motion", "UI Design"],
-          timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
+          recommendedRole: "Senior Full Stack Engineer",
+          fitAnalysis: "5/5 core skills (React, Node.js, TypeScript, PostgreSQL, AWS) + 6 years experience.",
+          skillsMatch: ["React", "Node.js", "TypeScript", "PostgreSQL", "AWS"],
+          timestamp: new Date().toISOString()
         },
         {
-          id: "rec_4",
-          candidateName: "Rahul Verma",
-          candidateId: "demo_candidate_rahul",
-          jobId: "cjob_2",
-          jobTitle: "AI Product Designer",
-          matchScore: 78,
-          recommendedRole: "Product UI Developer",
-          fitAnalysis: "Strong prototyping foundations and clean responsive design execution, with a slight learning curve regarding advanced layout animations.",
-          skillsMatch: ["Figma", "Tailwind CSS", "User Research"],
-          timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          id: "rec_5",
-          candidateName: "Vikram Malhotra",
-          candidateId: "demo_candidate_vikram",
+          id: "rec_priya",
+          candidateName: "Priya Mehta",
+          candidateId: "cand_priya",
           jobId: "cjob_1",
           jobTitle: "Senior Full Stack Engineer",
-          matchScore: 61,
-          recommendedRole: "Associate Full Stack Developer",
-          fitAnalysis: "Competent basic JavaScript fundamentals, but lacks adequate scale engineering or system design experience required for the Senior Track.",
-          skillsMatch: ["React", "Node.js"],
+          matchScore: 87,
+          recommendedRole: "Senior Full Stack Engineer",
+          fitAnalysis: "4/5 skills + strong AWS background.",
+          skillsMatch: ["React", "Node.js", "PostgreSQL", "AWS"],
           timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+        },
+        {
+          id: "rec_aman",
+          candidateName: "Aman Verma",
+          candidateId: "cand_aman",
+          jobId: "cjob_1",
+          jobTitle: "Senior Full Stack Engineer",
+          matchScore: 81,
+          recommendedRole: "Full Stack Engineer",
+          fitAnalysis: "4/5 skills + location match (Mumbai / Hybrid).",
+          skillsMatch: ["React", "Node.js", "TypeScript", "PostgreSQL"],
+          timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
         }
       ];
 

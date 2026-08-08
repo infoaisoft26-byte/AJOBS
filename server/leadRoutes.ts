@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { getFirestoreDb, getFirebaseAuth } from "./firestoreHelper";
+import { getFirestoreDb, getFirebaseAuth } from "./firestoreHelper.js";
 
 const router = Router();
 
