@@ -221,6 +221,14 @@ export default function LandingPage({
     }
   };
 
+  const handleRecruiterLoginClick = () => {
+    if (onOpenAuth) {
+      onOpenAuth("signin", "employer");
+    } else {
+      setActiveView("candidate-login");
+    }
+  };
+
   return (
     <div className="relative w-full min-h-screen bg-[#020617] text-white overflow-hidden font-sans">
       {/* 1. Cinematic 3D Opening Animation (Runs once per session) */}
