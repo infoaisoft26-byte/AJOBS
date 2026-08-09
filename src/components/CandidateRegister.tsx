@@ -7,6 +7,7 @@ import { UserProfile } from "../types";
 import { useToast } from "./GlobalToast";
 
 const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: "select_account" });
 
 interface CandidateRegisterProps {
   onRegisterSuccess: (userProfile: UserProfile) => void;

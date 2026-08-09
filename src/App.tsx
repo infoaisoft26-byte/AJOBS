@@ -4,56 +4,75 @@ import { AnimatePresence, motion } from "motion/react";
 import { AlertTriangle, Bot, Cookie, Route, Type, User, UserCheck } from "lucide-react";
 import { auth, isFirebaseConfigured } from "./firebase";
 
+// Helper function to dynamically import components with automatic retry logic on chunk/network errors
+function safeLazy<T extends React.ComponentType<any>>(
+  importFn: () => Promise<{ default: T }>,
+  componentName: string = "Component"
+) {
+  return lazy(async () => {
+    let attempts = 0;
+    while (attempts < 3) {
+      try {
+        console.log(`[Trace Lazy] ${componentName} loading (attempt ${attempts + 1})...`);
+        const module = await importFn();
+        console.log(`[Trace Lazy] ${componentName} loaded successfully.`);
+        return module;
+      } catch (err) {
+        attempts++;
+        console.warn(`[Trace Lazy] ${componentName} import failed (attempt ${attempts}/3):`, err);
+        if (attempts < 3) {
+          await new Promise((resolve) => setTimeout(resolve, 800));
+        } else {
+          console.error(`[Trace Lazy] ${componentName} import permanently failed after 3 attempts.`, err);
+          return {
+            default: (() => (
+              <div className="p-8 max-w-md mx-auto text-center space-y-4 bg-gray-900 border border-red-500/30 rounded-2xl my-12 text-white">
+                <AlertTriangle className="w-12 h-12 text-red-500 mx-auto" />
+                <h3 className="font-bold text-lg">Failed to Load {componentName}</h3>
+                <p className="text-xs text-gray-400">A network or module loading error occurred while loading this view.</p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-500 text-xs font-bold text-white rounded-xl cursor-pointer"
+                >
+                  Reload Page
+                </button>
+              </div>
+            )) as unknown as T
+          };
+        }
+      }
+    }
+    throw new Error(`Failed to load ${componentName}`);
+  });
+}
+
 // Lazy-loaded dashboard and view components for minimal initial bundle size
-const CandidateDashboard = lazy(() => import("@/components/CandidateDashboard"));
-const ConsultancyDashboard = lazy(() => import("@/components/ConsultancyDashboard"));
-const EmployerDashboard = lazy(() => import("@/components/EmployerDashboard"));
-const AdminDashboard = lazy(() => {
-  console.log("[Trace Lazy] AdminDashboard lazy import starting...");
-  return import("@/components/AdminDashboard")
-    .then((m) => {
-      console.log("[Trace Lazy] AdminDashboard lazy import success");
-      return m;
-    })
-    .catch((err) => {
-      console.error("[Trace Lazy] AdminDashboard lazy import failed:", err);
-      return {
-        default: () => (
-          <div className="p-8 max-w-md mx-auto text-center space-y-4 bg-gray-900 border border-red-500/30 rounded-2xl my-12 text-white">
-            <AlertTriangle className="w-12 h-12 text-red-500 mx-auto" />
-            <h3 className="font-bold text-lg">Failed to Load Admin Dashboard Module</h3>
-            <p className="text-xs text-gray-400">A network or chunk error occurred while loading the Admin Dashboard component.</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-red-600 hover:bg-red-500 text-xs font-bold text-white rounded-xl cursor-pointer"
-            >
-              Reload Page
-            </button>
-          </div>
-        )
-      };
-    });
-});
-const VerificationOnboardingView = lazy(() => import("@/components/VerificationOnboardingView"));
-const JobDetailsLazy = lazy(() => import("@/components/JobDetails"));
-const NotificationCenterViewLazy = lazy(() =>
-  import("@/components/NotificationCenter").then((m) => ({ default: m.NotificationCenterView }))
+const CandidateDashboard = safeLazy(() => import("@/components/CandidateDashboard"), "CandidateDashboard");
+const ConsultancyDashboard = safeLazy(() => import("@/components/ConsultancyDashboard"), "ConsultancyDashboard");
+const EmployerDashboard = safeLazy(() => import("@/components/EmployerDashboard"), "EmployerDashboard");
+const AdminDashboard = safeLazy(() => import("@/components/AdminDashboard"), "AdminDashboard");
+const VerificationOnboardingView = safeLazy(() => import("@/components/VerificationOnboardingView"), "VerificationOnboardingView");
+const JobDetailsLazy = safeLazy(() => import("@/components/JobDetails"), "JobDetails");
+const NotificationCenterViewLazy = safeLazy(() =>
+  import("@/components/NotificationCenter").then((m) => ({ default: m.NotificationCenterView })),
+  "NotificationCenter"
 );
 
 // Lazy-loaded secondary pages & modals
-const CandidatePreLaunchLoginLazy = lazy(() => import("@/components/CandidatePreLaunchLogin"));
-const CandidateRegisterLazy = lazy(() => import("@/components/CandidateRegister"));
-const CandidatePreLaunchProfileLazy = lazy(() => import("@/components/CandidatePreLaunchProfile"));
-const InternalPlatformLoginLazy = lazy(() => import("@/components/InternalPlatformLogin"));
-const AdminLoginLazy = lazy(() => import("@/components/AdminLogin"));
-const UnsubscribeViewLazy = lazy(() => import("@/components/UnsubscribeView"));
-const ResumeOnboardingLazy = lazy(() => import("@/components/ResumeOnboarding"));
-const AuthModalLazy = lazy(() => import("@/components/AuthModal"));
-const CompanySectionLazy = lazy(() => import("@/components/CompanySection"));
-const AIJobs3DIntroLazy = lazy(() => import("@/components/AIJobs3DIntro"));
-const ThreeDBackgroundLazy = lazy(() => import("@/components/ThreeDBackground"));
-const GlobalChatbotLazy = lazy(() =>
-  import("@/components/GlobalChatbot").then((m) => ({ default: m.GlobalChatbot }))
+const CandidatePreLaunchLoginLazy = safeLazy(() => import("@/components/CandidatePreLaunchLogin"), "CandidatePreLaunchLogin");
+const CandidateRegisterLazy = safeLazy(() => import("@/components/CandidateRegister"), "CandidateRegister");
+const CandidatePreLaunchProfileLazy = safeLazy(() => import("@/components/CandidatePreLaunchProfile"), "CandidatePreLaunchProfile");
+const InternalPlatformLoginLazy = safeLazy(() => import("@/components/InternalPlatformLogin"), "InternalPlatformLogin");
+const AdminLoginLazy = safeLazy(() => import("@/components/AdminLogin"), "AdminLogin");
+const UnsubscribeViewLazy = safeLazy(() => import("@/components/UnsubscribeView"), "UnsubscribeView");
+const ResumeOnboardingLazy = safeLazy(() => import("@/components/ResumeOnboarding"), "ResumeOnboarding");
+const AuthModalLazy = safeLazy(() => import("@/components/AuthModal"), "AuthModal");
+const CompanySectionLazy = safeLazy(() => import("@/components/CompanySection"), "CompanySection");
+const AIJobs3DIntroLazy = safeLazy(() => import("@/components/AIJobs3DIntro"), "AIJobs3DIntro");
+const ThreeDBackgroundLazy = safeLazy(() => import("@/components/ThreeDBackground"), "ThreeDBackground");
+const GlobalChatbotLazy = safeLazy(() =>
+  import("@/components/GlobalChatbot").then((m) => ({ default: m.GlobalChatbot })),
+  "GlobalChatbot"
 );
 
 // Production infrastructure components

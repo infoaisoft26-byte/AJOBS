@@ -250,3 +250,4 @@ export const auth = authInstance;
 export const db = dbInstance;
 export const storage = null;
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: "select_account" });

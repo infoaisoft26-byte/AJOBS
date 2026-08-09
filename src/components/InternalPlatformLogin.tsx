@@ -11,6 +11,7 @@ import { isAdminRole, normalizeRole } from "../utils/roleUtils";
 import { getOrCreateUserProfile } from "../services/dbInitService";
 
 const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: "select_account" });
 
 interface InternalPlatformLoginProps {
   onAuthorizedSuccess: (userProfile: UserProfile, targetInternalRoute: string) => void;

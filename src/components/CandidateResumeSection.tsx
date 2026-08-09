@@ -6,11 +6,6 @@ import { auth, db } from "../firebase";
 
 import { uploadToCloudinary } from "../services/cloudinaryService";
 import { uploadResumeService } from "../services/resumeUploadService";
-import { 
-  loadGooglePickerApi, 
-  getWorkspaceAccessToken, 
-  workspaceSignIn 
-} from "../services/workspaceService";
 import { useToast } from "./GlobalToast";
 import ResumeRadarChart from "./ResumeRadarChart";
 import { parseJsonResponse } from "../utils/apiHelper";
@@ -271,94 +266,6 @@ export default function CandidateResumeSection({
     } finally {
       setIsUploading(false);
       setTimeout(() => setUploadProgress(0), 500);
-    }
-  };
-
-  // Google Drive Picker trigger and file importer
-  const handleImportFromGoogleDrive = async (targetType: "resume" | "document") => {
-    setIsUploading(true);
-    setUploadProgress(10);
-    try {
-      // 1. Ensure Google Picker SDK is loaded
-      await loadGooglePickerApi();
-      setUploadProgress(30);
-
-      // 2. Get Access Token (reuse workspace session token if available)
-      let token = getWorkspaceAccessToken();
-      if (!token) {
-        // If not authenticated, trigger workspaceSignIn popup flow
-        const authResult = await workspaceSignIn();
-        if (authResult) {
-          token = authResult.accessToken;
-        }
-      }
-
-      if (!token) {
-        alert("Google Workspace connection is required to import from Google Drive.");
-        setIsUploading(false);
-        setUploadProgress(0);
-        return;
-      }
-      
-      setUploadProgress(50);
-
-      // 3. Launch Google Picker
-      const pickerOrigin = window.location.origin;
-      const view = new google.picker.DocsView(google.picker.ViewId.DOCS);
-      view.setMimeTypes("application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/png,image/jpeg");
-
-      const picker = new google.picker.PickerBuilder()
-        .addView(view)
-        .setOAuthToken(token)
-        .setOrigin(pickerOrigin)
-        .setTitle(targetType === "resume" ? "Import Resume from Google Drive" : "Import Document from Google Drive")
-        .setCallback(async (data: any) => {
-          if (data.action === google.picker.Action.CANCEL) {
-            setIsUploading(false);
-            setUploadProgress(0);
-          } else if (data.action === google.picker.Action.PICKED) {
-            const docSelected = data.docs[0];
-            try {
-              setIsUploading(true);
-              setUploadProgress(65);
-              console.log("[Google Picker] Selected item details:", docSelected);
-
-              // 4. Download file from Google Drive alt=media using authenticated fetch
-              const downloadResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${docSelected.id}?alt=media`, {
-                headers: {
-                  Authorization: `Bearer ${token}`
-                }
-              });
-
-              if (!downloadResponse.ok) {
-                throw new Error(`Failed to download from Drive: ${downloadResponse.statusText}`);
-              }
-
-              const blob = await downloadResponse.blob();
-              const importedFile = new File([blob], docSelected.name, { type: docSelected.mimeType });
-              
-              // 5. Route to appropriate uploader
-              if (targetType === "resume") {
-                await handleIncomingFile(importedFile, "Google Drive");
-              } else {
-                await handleUploadDocument(importedFile, "Google Drive");
-              }
-            } catch (dlErr: any) {
-              console.error("[Picker Import Error]", dlErr);
-              alert(`Error downloading file from Google Drive: ${dlErr.message}`);
-              setIsUploading(false);
-              setUploadProgress(0);
-            }
-          }
-        })
-        .build();
-
-      picker.setVisible(true);
-    } catch (err: any) {
-      console.error("[Google Picker Launch Failed]", err);
-      alert(`Could not open Google Picker: ${err.message}`);
-      setIsUploading(false);
-      setUploadProgress(0);
     }
   };
 
@@ -1018,22 +925,10 @@ export default function CandidateResumeSection({
                 </div>
                 <h3 className="font-display font-bold text-sm text-white">Drag & Drop Resume File</h3>
                 <p className="text-[10px] text-gray-400 mt-1.5">Supports PDF, DOCX, or TXT formats (Max 5MB)</p>
+                <div className="mt-3 px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 rounded-xl text-xs font-bold transition-all flex items-center space-x-2">
+                  <span>Browse File</span>
+                </div>
               </label>
-
-              <div className="flex items-center space-x-2 w-full max-w-[180px] my-3">
-                <div className="h-[1px] bg-white/10 flex-1"></div>
-                <span className="text-[9px] text-gray-500 uppercase font-bold tracking-widest font-mono">or</span>
-                <div className="h-[1px] bg-white/10 flex-1"></div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => handleImportFromGoogleDrive("resume")}
-                className="px-4 py-2 bg-gradient-to-r from-blue-600/20 to-indigo-600/20 hover:from-blue-600/35 hover:to-indigo-600/35 border border-blue-500/30 hover:border-indigo-500/40 text-blue-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-2 cursor-pointer shadow-lg shadow-indigo-500/5"
-              >
-                <CloudLightning className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
-                <span>Import from Google Drive</span>
-              </button>
             </div>
           )}
 
