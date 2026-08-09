@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+Disallow: /admin
+Disallow: /super-admin
+Disallow: /recruiter/dashboard
+Disallow: /consultancy/dashboard
+Disallow: /candidate/dashboard
+Disallow: /api/
+
+Sitemap: https://aijobs1.vercel.app/sitemap.xml

@@ -161,27 +161,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// -------------------- SEO & PWA ENDPOINTS --------------------
-app.get("/robots.txt", (req, res) => {
-  res.type("text/plain");
-  res.send(`User-agent: *
-Allow: /
-Sitemap: ${process.env.APP_URL || req.protocol + '://' + req.get('host')}/sitemap.xml`);
-});
-
-app.get("/sitemap.xml", (req, res) => {
-  res.type("application/xml");
-  const host = process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
-  res.send(`<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>${host}/</loc>
-    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-</urlset>`);
-});
+// -------------------- HEALTH CHECK & PWA ENDPOINTS --------------------
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
@@ -5372,86 +5352,112 @@ app.get("/api/indexing/logs", async (req, res) => {
 // ==================== SEO: ROBOTS.TXT & SITEMAPS ====================
 
 app.get("/robots.txt", (req, res) => {
-  const siteUrl = process.env.VITE_SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://aijobs1.vercel.app";
+  const siteUrl = process.env.APP_URL || process.env.VITE_SITE_URL || "https://aijobs1.vercel.app";
   const robotsTxt = `User-agent: *
 Allow: /
-Allow: /jobs/
-Allow: /job-sitemap.xml
-Disallow: /admin/
-Disallow: /recruiter/
-Disallow: /consultancy/
-Disallow: /candidate/
+
+Disallow: /admin
+Disallow: /super-admin
+Disallow: /recruiter/dashboard
+Disallow: /consultancy/dashboard
+Disallow: /candidate/dashboard
 Disallow: /api/
 
 Sitemap: ${siteUrl}/sitemap.xml
-Sitemap: ${siteUrl}/job-sitemap.xml
 `;
   res.setHeader("Content-Type", "text/plain");
   return res.status(200).send(robotsTxt);
 });
 
-app.get("/sitemap.xml", (req, res) => {
-  const siteUrl = process.env.VITE_SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://aijobs1.vercel.app";
+app.get("/sitemap.xml", async (req, res) => {
+  const siteUrl = process.env.APP_URL || process.env.VITE_SITE_URL || "https://aijobs1.vercel.app";
+  const today = new Date().toISOString().split("T")[0];
+
+  let jobUrls: string[] = [];
+  try {
+    const db = getFirestoreDb();
+    if (db) {
+      const snap = await db.collection("jobs").get();
+      const currentDate = new Date();
+      snap.forEach((docSnapshot) => {
+        const data = docSnapshot.data();
+        const status = (data.status || "").toLowerCase();
+        const expiry = data.validThrough || data.expiryDate || data.applyDeadline;
+        const isExpired = expiry ? new Date(expiry) < currentDate : false;
+
+        if (["published", "live", "open", "approved", "active"].includes(status) && !isExpired) {
+          const title = data.title || "job";
+          const cleanTitle = title.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
+          const slug = data.slug || `${cleanTitle}-${docSnapshot.id}`;
+          const canonical = data.canonicalUrl || `${siteUrl}/jobs/${slug}`;
+          const lastmod = data.updatedAt ? new Date(data.updatedAt).toISOString().split("T")[0] : today;
+
+          jobUrls.push(`  <url>
+    <loc>${canonical}</loc>
+    <lastmod>${lastmod}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`);
+        }
+      });
+    }
+  } catch (err) {
+    console.warn("[Sitemap] Warning fetching jobs for sitemap.xml:", err);
+  }
+
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <sitemap>
-    <loc>${siteUrl}/job-sitemap.xml</loc>
-    <lastmod>${new Date().toISOString()}</lastmod>
-  </sitemap>
-</sitemapindex>`;
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${siteUrl}/</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>${siteUrl}/about</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>${siteUrl}/how-it-works</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>${siteUrl}/privacy-policy</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>${siteUrl}/terms</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>${siteUrl}/contact</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>${siteUrl}/jobs</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+${jobUrls.join("\n")}
+</urlset>`;
+
   res.setHeader("Content-Type", "application/xml");
   return res.status(200).send(xml);
 });
 
 app.get("/job-sitemap.xml", async (req, res) => {
-  const siteUrl = process.env.VITE_SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://aijobs1.vercel.app";
-  try {
-    const db = getFirestoreDb();
-    const snap = await db.collection("jobs").get();
-    const urls: string[] = [];
-    const currentDate = new Date();
-
-    snap.forEach((docSnapshot) => {
-      const data = docSnapshot.data();
-      const status = (data.status || "").toLowerCase();
-      const expiry = data.validThrough || data.expiryDate || data.applyDeadline;
-      const isExpired = expiry ? new Date(expiry) < currentDate : false;
-
-      if (["published", "live", "open", "approved"].includes(status) && !isExpired) {
-        const title = data.title || "job";
-        const cleanTitle = title.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
-        const slug = data.slug || `${cleanTitle}-${docSnapshot.id}`;
-        const canonical = data.canonicalUrl || `${siteUrl}/jobs/${slug}`;
-        const lastmod = data.updatedAt || data.createdAt || new Date().toISOString();
-
-        urls.push(`  <url>
-    <loc>${canonical}</loc>
-    <lastmod>${new Date(lastmod).toISOString()}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>`);
-      }
-    });
-
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>${siteUrl}</loc>
-    <lastmod>${new Date().toISOString()}</lastmod>
-    <changefreq>always</changefreq>
-    <priority>1.0</priority>
-  </url>
-${urls.join("\n")}
-</urlset>`;
-
-    res.setHeader("Content-Type", "application/xml");
-    return res.status(200).send(xml);
-
-  } catch (err: any) {
-    console.error("Error generating job-sitemap.xml:", err);
-    res.setHeader("Content-Type", "application/xml");
-    return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>`);
-  }
+  return res.redirect(301, "/sitemap.xml");
 });
 
 // ==================== PUBLIC SEO JOB PAGE ROUTE ====================

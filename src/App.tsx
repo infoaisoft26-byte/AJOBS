@@ -274,8 +274,8 @@ function MainAppContent() {
   useEffect(() => {
     const metaMap: Record<string, { title: string; desc: string }> = {
       home: {
-        title: "AIJOBS | AI-Powered Recruitment Platform",
-        desc: "AIJOBS is an AI-powered recruitment and job matching platform connecting candidates, recruiters, employers and consultancies."
+        title: "AIJOBS | AI-Powered Recruitment & Job Matching Platform",
+        desc: "AIJOBS connects candidates, recruiters, employers and consultancies through AI-powered job matching, recruitment workflows and candidate management tools."
       },
       "privacy-policy": {
         title: "Privacy Policy | AIJOBS",
@@ -288,6 +288,14 @@ function MainAppContent() {
       about: {
         title: "About AIJOBS | AI-Powered Recruitment Platform",
         desc: "Learn about AIJOBS, an AI-powered recruitment platform connecting job seekers with recruiters, employers and consultancies."
+      },
+      "how-it-works": {
+        title: "How It Works | AIJOBS",
+        desc: "Learn how AIJOBS simplifies recruitment for candidates, recruiters, employers, and consultancies with AI-powered job matching."
+      },
+      jobs: {
+        title: "Explore Job Openings | AIJOBS",
+        desc: "Discover and apply for top careers and job opportunities on AIJOBS."
       },
       contact: {
         title: "Contact Us | AIJOBS",
@@ -450,6 +458,10 @@ function MainAppContent() {
         setActiveView("about");
       } else if (p === "/contact" || p === "/contact-us") {
         setActiveView("contact");
+      } else if (p === "/how-it-works") {
+        setActiveView("how-it-works");
+      } else if (p === "/jobs" || p === "/jobs/") {
+        setActiveView("jobs");
       } else if (p === "/") {
         setActiveView("home");
       }
@@ -770,7 +782,7 @@ function MainAppContent() {
                       <CompanySectionLazy pageType="contact" onClose={() => { setActiveView("home"); window.history.pushState({}, "", "/"); }} />
                     </Suspense>
                   </div>
-                ) : activeView === "home" ? (
+                ) : (activeView === "home" || activeView === "how-it-works" || activeView === "jobs") ? (
                   <LandingPage
                     onGetStarted={() => {
                       if (user) {
