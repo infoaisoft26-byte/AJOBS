@@ -467,5 +467,63 @@ service cloud.firestore {
     match /leads/{leadId} {
       allow read, write: if isSignedIn();
     }
+
+    // Employee Attendance & Payroll System Collections
+    match /employees/{employeeId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    match /attendance/{attendanceId} {
+      allow read, create, update: if isSignedIn();
+      allow delete: if isAdmin();
+    }
+
+    match /attendance_breaks/{breakId} {
+      allow read, create, update, delete: if isSignedIn();
+    }
+
+    match /attendance_regularization/{requestId} {
+      allow read, create, update, delete: if isSignedIn();
+    }
+
+    match /leaves/{leaveId} {
+      allow read, create, update, delete: if isSignedIn();
+    }
+
+    match /leave_requests/{leaveId} {
+      allow read, create, update, delete: if isSignedIn();
+    }
+
+    match /leave_balances/{balanceId} {
+      allow read, create, update, delete: if isSignedIn();
+    }
+
+    match /office_locations/{locationId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    match /shifts/{shiftId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    match /holidays/{holidayId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    match /payroll_runs/{runId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /employee_payrolls/{payrollId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /employee_audit_logs/{logId} {
+      allow read, create, update, write: if isSignedIn();
+    }
   }
 }

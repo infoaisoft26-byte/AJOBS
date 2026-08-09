@@ -2,7 +2,7 @@ import AIJobsLogo from "./AIJobsLogo";
 import React, { useEffect, useState } from "react";
 import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
 import { motion } from "motion/react";
-import { BarChart2, Baseline, Bell, BookOpen, Brain, Briefcase, Check, CheckCircle, ChevronLeft, ChevronRight, CreditCard, Database, FileText, Funnel, Globe, HelpCircle, Layers, Lock, LogOut, Mail, Menu, MessageSquare, Navigation, RefreshCw, Scale, Settings, ShieldAlert, ShieldCheck, Sidebar, Store, Terminal, Tickets, User, Users, Verified, X } from "lucide-react";
+import { BarChart2, Baseline, Bell, BookOpen, Brain, Briefcase, Building, Check, CheckCircle, ChevronLeft, ChevronRight, Clock, CreditCard, Database, DollarSign, FileText, Funnel, Globe, HelpCircle, Layers, Lock, LogOut, Mail, Menu, MessageSquare, Navigation, RefreshCw, Scale, Settings, ShieldAlert, ShieldCheck, Sidebar, Store, Terminal, Tickets, User, UserCheck, Users, Verified, X } from "lucide-react";
 import { auth, db } from "../firebase";
 import { parseJsonResponse } from "../utils/apiHelper";
 
@@ -10,6 +10,11 @@ import { recordActivityLog } from "../services/activityLogService";
 
 // Sub-components
 import AdminInternalAccessManager from "./AdminInternalAccessManager";
+import EmployeeManagement from "./admin/EmployeeManagement";
+import AttendanceLiveView from "./admin/AttendanceLiveView";
+import ShiftAndOfficeManager from "./admin/ShiftAndOfficeManager";
+import LeaveAndRegularizationAdmin from "./admin/LeaveAndRegularizationAdmin";
+import PayrollManagementModule from "./admin/PayrollManagementModule";
 import { LiveStats, SystemAuditLog, SupportTicket, ApprovalRequest, CMSContent, EmailTemplate, AdminSystemSettings, PaymentTransaction } from "./admin/AdminTypes";
 import { 
   seedSuperAdminDataIfEmpty
@@ -453,6 +458,11 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
     { id: "applications", label: "Applications Directory", icon: FileText, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "funnel", label: "Hiring Funnel Analytics", icon: BarChart2, authorizedRoles: ["Super Admin", "Finance Officer", "Moderator", "Read Only"] },
     { id: "users", label: "User Management", icon: Users, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
+    { id: "emp-directory", label: "Employee Directory", icon: UserCheck, authorizedRoles: ["Super Admin", "Support Desk", "Finance Officer", "Moderator", "Read Only"] },
+    { id: "emp-attendance", label: "Attendance Live View", icon: Clock, authorizedRoles: ["Super Admin", "Support Desk", "Finance Officer", "Moderator", "Read Only"] },
+    { id: "emp-shifts-office", label: "Shifts & Office HQ", icon: Building, authorizedRoles: ["Super Admin", "Support Desk", "Finance Officer", "Moderator", "Read Only"] },
+    { id: "emp-approvals", label: "Leaves & Regularization", icon: CheckCircle, authorizedRoles: ["Super Admin", "Support Desk", "Finance Officer", "Moderator", "Read Only"] },
+    { id: "emp-payroll", label: "Employee Payroll Engine", icon: DollarSign, authorizedRoles: ["Super Admin", "Finance Officer", "Read Only"] },
     { id: "internal-access", label: "Internal Access Management", icon: ShieldCheck, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "leads", label: "Live Leads CRM", icon: Users, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "onboarding-pipeline", label: "Onboarding & Verification Pipeline", icon: ShieldCheck, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
@@ -814,6 +824,26 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
                   userRole="admin"
                   adminUserId={currentUserId}
                 />
+              )}
+
+              {activeView === "emp-directory" && (
+                <EmployeeManagement />
+              )}
+
+              {activeView === "emp-attendance" && (
+                <AttendanceLiveView />
+              )}
+
+              {activeView === "emp-shifts-office" && (
+                <ShiftAndOfficeManager />
+              )}
+
+              {activeView === "emp-approvals" && (
+                <LeaveAndRegularizationAdmin />
+              )}
+
+              {activeView === "emp-payroll" && (
+                <PayrollManagementModule />
               )}
 
               {activeView === "cms" && (

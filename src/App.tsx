@@ -51,6 +51,7 @@ const CandidateDashboard = safeLazy(() => import("@/components/CandidateDashboar
 const ConsultancyDashboard = safeLazy(() => import("@/components/ConsultancyDashboard"), "ConsultancyDashboard");
 const EmployerDashboard = safeLazy(() => import("@/components/EmployerDashboard"), "EmployerDashboard");
 const AdminDashboard = safeLazy(() => import("@/components/AdminDashboard"), "AdminDashboard");
+const EmployeeDashboard = safeLazy(() => import("@/components/employee/EmployeeDashboard"), "EmployeeDashboard");
 const VerificationOnboardingView = safeLazy(() => import("@/components/VerificationOnboardingView"), "VerificationOnboardingView");
 const JobDetailsLazy = safeLazy(() => import("@/components/JobDetails"), "JobDetails");
 const NotificationCenterViewLazy = safeLazy(() =>
@@ -574,6 +575,22 @@ function MainAppContent() {
     const normRole = normalizeRole(user.role);
 
     switch (normRole) {
+      case "employee":
+        return (
+          <ProtectedRoute 
+            user={user} 
+            allowedRoles={["employee", "admin", "super_admin"]} 
+            fallbackView="home" 
+            setActiveView={setActiveView} 
+            setAuthMode={setAuthMode}
+          >
+            <ErrorBoundary componentName="EmployeeDashboard" onLogout={handleLogout}>
+              <Suspense fallback={<DashboardSkeleton />}>
+                <EmployeeDashboard user={user} onLogout={handleLogout} />
+              </Suspense>
+            </ErrorBoundary>
+          </ProtectedRoute>
+        );
       case "candidate":
         return (
           <ProtectedRoute 
