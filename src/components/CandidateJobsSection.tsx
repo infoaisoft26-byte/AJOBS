@@ -248,6 +248,7 @@ export default function CandidateJobsSection({
             <JobCard
               key={job.id}
               job={job}
+              profile={profile}
               applied={appliedJobIds.includes(job.id)}
               isSaved={savedJobIds.includes(job.id)}
               onApply={onApplyJob}

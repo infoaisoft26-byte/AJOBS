@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { SupportedLanguage, getTranslation } from "../utils/candidateTranslations";
 import { JobPosting, JobApplication } from "../types";
+import { calculateProfileCompletion, calculateJobMatchScore, JobMatchResult } from "../services/jobMatchEngine";
 
 interface OverviewProps {
   userName: string;
@@ -53,16 +54,10 @@ export default function CandidateDashboardOverview({
   const [searchLocation, setSearchLocation] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null);
 
-  // Calculate Profile Completion Percentage
+  // Calculate Profile Completion Percentage using standardized Engine
   const [profileCompletion, setProfileCompletion] = useState(0);
   useEffect(() => {
-    let score = 20;
-    if (profile?.name || profile?.profileDetails?.fullName) score += 15;
-    if (profile?.profileDetails?.mobileNumber) score += 15;
-    if (profile?.resumeText || profile?.resumeUrl) score += 20;
-    if (profile?.education && Object.keys(profile.education).length > 0) score += 15;
-    if (profile?.skills && (Array.isArray(profile.skills) ? profile.skills.length > 0 : true)) score += 15;
-    setProfileCompletion(Math.min(score, 100));
+    setProfileCompletion(calculateProfileCompletion(profile));
   }, [profile]);
 
   // Handle Search Submission
@@ -83,11 +78,17 @@ export default function CandidateDashboardOverview({
     onSelectTab("explore-jobs");
   };
 
-  // Job Filtering
+  // Job Filtering & AI Match Ranking
   const savedJobIds = profile?.savedJobIds || [];
-  const recommendedJobs = jobs.slice(0, 3);
+  
+  // Sort jobs by candidate AI match score descending for recommendations
+  const rankedJobs = [...jobs].map(job => ({
+    job,
+    match: calculateJobMatchScore(job, profile)
+  })).sort((a, b) => b.match.totalScore - a.match.totalScore);
+
+  const recommendedJobs = rankedJobs.slice(0, 3);
   const latestJobs = jobs.slice(0, 4);
-  const recentlyPostedJobs = jobs.slice(0, 4);
   const savedJobs = jobs.filter(j => savedJobIds.includes(j.id));
 
   // Application Stats
@@ -302,14 +303,21 @@ export default function CandidateDashboardOverview({
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {recommendedJobs.length > 0 ? (
-            recommendedJobs.map((job) => (
+            recommendedJobs.map(({ job, match }) => (
               <div 
                 key={job.id} 
                 className="p-4 rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-xs transition-all bg-white flex flex-col justify-between"
               >
                 <div className="space-y-2">
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-bold text-gray-900 text-sm line-clamp-1">{job.title}</h3>
+                    <div>
+                      <div className="flex items-center space-x-1.5 mb-1">
+                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full border ${match.badgeColor}`}>
+                          ✨ {match.totalScore}% Match
+                        </span>
+                      </div>
+                      <h3 className="font-bold text-gray-900 text-sm line-clamp-1">{job.title}</h3>
+                    </div>
                     {onSaveJob && (
                       <button
                         onClick={() => onSaveJob(job.id, savedJobIds.includes(job.id))}
@@ -322,7 +330,7 @@ export default function CandidateDashboardOverview({
                   </div>
                   <p className="text-xs font-semibold text-blue-700">{job.companyName}</p>
                   <p className="text-xs text-gray-500 flex items-center space-x-1">
-                    <MapPin className="w-3.5 h-3.5" />
+                    <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                     <span>{job.location || "Remote"}</span>
                   </p>
                   {job.salary && (
@@ -342,7 +350,7 @@ export default function CandidateDashboardOverview({
                   {onApplyJob && (
                     <button
                       onClick={() => onApplyJob(job)}
-                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold cursor-pointer"
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold cursor-pointer shadow-xs"
                     >
                       {t("applyNow")}
                     </button>

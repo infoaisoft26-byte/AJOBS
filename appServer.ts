@@ -2600,53 +2600,114 @@ app.post("/api/payu-initiate", (req, res) => {
 // ----------------------------------------------------------------------
 
 // Cloudinary Signature Generation Endpoint for Direct Frontend Uploads
+// Resume Parser Endpoint: Fetches uploaded resume file (PDF, DOCX, TXT), extracts text, runs Gemini AI analysis, and updates Firestore candidateProfiles
 app.post("/api/parse-resume", async (req, res) => {
   try {
     const { userId, resumeUrl, fileName, fileType, resumeText } = req.body || {};
 
-    let contentToAnalyze = resumeText || "";
-    if (!contentToAnalyze && resumeUrl) {
-      contentToAnalyze = `Resume document URL: ${resumeUrl}\nFile name: ${fileName || "Resume.pdf"}`;
+    let extractedText = resumeText || "";
+
+    // If text was not provided directly, download the file from resumeUrl and extract text dynamically
+    if (!extractedText && resumeUrl) {
+      try {
+        console.log(`[ResumeParser] Downloading file from URL: ${resumeUrl}`);
+        const fileResponse = await fetch(resumeUrl);
+        if (fileResponse.ok) {
+          const arrayBuf = await fileResponse.arrayBuffer();
+          const buffer = Buffer.from(arrayBuf);
+          const lowerName = (fileName || resumeUrl).toLowerCase();
+
+          if (lowerName.endsWith(".pdf") || fileType === "application/pdf") {
+            try {
+              const pdfParse = (await import("pdf-parse")).default;
+              const pdfData = await pdfParse(buffer);
+              extractedText = pdfData.text || "";
+            } catch (pdfErr: any) {
+              console.warn("[ResumeParser] pdf-parse warning:", pdfErr?.message);
+            }
+          } else if (lowerName.endsWith(".docx") || lowerName.endsWith(".doc")) {
+            try {
+              const mammoth = await import("mammoth");
+              const result = await mammoth.extractRawText({ buffer });
+              extractedText = result.value || "";
+            } catch (docErr: any) {
+              console.warn("[ResumeParser] mammoth warning:", docErr?.message);
+            }
+          } else {
+            // Text or fallback decoding
+            extractedText = buffer.toString("utf-8");
+          }
+        }
+      } catch (dlErr: any) {
+        console.warn("[ResumeParser] Could not download resume file buffer:", dlErr?.message);
+      }
     }
 
-    if (!contentToAnalyze) {
-      return res.status(400).json({ success: false, error: "Missing resume text or URL for analysis." });
+    // Clean and normalize extracted text
+    extractedText = (extractedText || "").replace(/\r\n/g, "\n").trim();
+
+    if (!extractedText) {
+      return res.status(200).json({
+        success: false,
+        code: "RESUME_PARSE_FAILED",
+        message: "Resume uploaded, but automatic profile extraction could not be completed."
+      });
     }
 
     const prompt = `
-You are an expert Executive Resume Parser and Talent Profiler.
-Parse the following candidate resume document details into clean structured JSON format.
+You are an expert Executive Talent Profiler.
+Analyze the candidate resume text below and extract structured JSON matching the exact schema.
 
-Resume Text / Context:
+IMPORTANT:
+- Never invent information missing from the resume text.
+- Missing string fields MUST be empty strings ("") or null where specified.
+- Missing array fields MUST be empty arrays ([]).
+
+Candidate Resume Content:
 """
-${contentToAnalyze.slice(0, 10000)}
+${extractedText.slice(0, 15000)}
 """
 
-Required JSON output schema:
+Required JSON output format:
 {
-  "fullName": "Candidate full name (string)",
-  "email": "Candidate email address (string)",
-  "phone": "Candidate phone number (string)",
-  "skills": ["Skill 1", "Skill 2", "Skill 3", "Skill 4", "Skill 5"],
-  "totalExperience": "Total years of experience e.g. 3 years (string)",
-  "education": "Degree and college name e.g. B.Tech Computer Science (string)",
-  "designation": "Current or target designation e.g. Software Engineer (string)",
-  "currentCompany": "Current or previous company name (string)",
-  "location": "City, State or Remote (string)",
-  "city": "City name (string)",
-  "state": "State name (string)",
-  "languages": ["Language 1", "Language 2"],
-  "certificates": ["Certificate 1", "Certificate 2"],
-  "linkedin": "LinkedIn profile URL (string)",
-  "github": "GitHub profile URL (string)",
-  "summary": "Short 2-3 sentence executive professional summary (string)"
+  "fullName": "Candidate full name or empty string",
+  "email": "Candidate email or empty string",
+  "phone": "Candidate phone number or empty string",
+  "city": "City name or empty string",
+  "state": "State name or empty string",
+  "currentJobTitle": "Current or target job title or empty string",
+  "professionalSummary": "2-3 sentence executive professional summary or empty string",
+  "totalExperienceYears": 0,
+  "skills": ["Skill 1", "Skill 2"],
+  "technicalSkills": ["Tech Skill 1"],
+  "softSkills": ["Soft Skill 1"],
+  "workExperience": [
+    {
+      "company": "Company Name",
+      "jobTitle": "Role Title",
+      "startDate": "MM/YYYY",
+      "endDate": "MM/YYYY or Present",
+      "description": "Role responsibilities summary"
+    }
+  ],
+  "education": [
+    {
+      "qualification": "Degree name",
+      "specialization": "Field of study",
+      "institution": "University or College",
+      "year": "Passing year"
+    }
+  ],
+  "certifications": ["Certification name"],
+  "languages": ["Language name"],
+  "projects": ["Project title and summary"]
 }
 
-Output strictly valid JSON only. Do not wrap in markdown or prefix with other text.
+Output strictly valid raw JSON only without markdown formatting.
 `;
 
     try {
-      const text = await aiOrchestrator.generateContentWithRetry(
+      const aiResponse = await aiOrchestrator.generateContentWithRetry(
         prompt,
         undefined,
         undefined,
@@ -2655,61 +2716,70 @@ Output strictly valid JSON only. Do not wrap in markdown or prefix with other te
         undefined,
         "gemini-3.6-flash"
       );
-      const cleanedJson = text.replace(/```json/g, "").replace(/```/g, "").trim();
+      const cleanedJson = aiResponse.replace(/```json/g, "").replace(/```/g, "").trim();
       const parsed = JSON.parse(cleanedJson);
+
+      const structuredResult = {
+        fullName: parsed.fullName || "",
+        email: parsed.email || "",
+        phone: parsed.phone || "",
+        city: parsed.city || "",
+        state: parsed.state || "",
+        currentJobTitle: parsed.currentJobTitle || parsed.designation || "",
+        professionalSummary: parsed.professionalSummary || parsed.summary || "",
+        totalExperienceYears: typeof parsed.totalExperienceYears === "number" ? parsed.totalExperienceYears : (parseFloat(parsed.totalExperience) || null),
+        skills: Array.isArray(parsed.skills) ? parsed.skills : [],
+        technicalSkills: Array.isArray(parsed.technicalSkills) ? parsed.technicalSkills : (Array.isArray(parsed.skills) ? parsed.skills : []),
+        softSkills: Array.isArray(parsed.softSkills) ? parsed.softSkills : [],
+        workExperience: Array.isArray(parsed.workExperience) ? parsed.workExperience : [],
+        education: Array.isArray(parsed.education) ? parsed.education : [],
+        certifications: Array.isArray(parsed.certifications) ? parsed.certifications : [],
+        languages: Array.isArray(parsed.languages) ? parsed.languages : [],
+        projects: Array.isArray(parsed.projects) ? parsed.projects : []
+      };
+
+      // Save extracted draft profile to Firestore if userId is present
+      if (userId) {
+        try {
+          const isoDate = new Date().toISOString();
+          const profileData = {
+            uid: userId,
+            userId: userId,
+            ownerUid: userId,
+            ...structuredResult,
+            resumeUrl: resumeUrl || "",
+            resumeFileName: fileName || "uploaded_resume.pdf",
+            resumeUpdatedAt: isoDate,
+            profileStatus: "draft_extracted",
+            updatedAt: isoDate
+          };
+
+          await db.collection("candidateProfiles").doc(userId).set(profileData, { merge: true });
+          await db.collection("candidates").doc(userId).set(profileData, { merge: true });
+        } catch (dbErr: any) {
+          console.warn("[ResumeParser] Error saving candidate profile draft:", dbErr?.message);
+        }
+      }
 
       return res.json({
         success: true,
-        parsed: {
-          fullName: parsed.fullName || "Candidate",
-          email: parsed.email || "",
-          phone: parsed.phone || "",
-          skills: Array.isArray(parsed.skills) ? parsed.skills : [],
-          totalExperience: parsed.totalExperience || "1-3 years",
-          education: parsed.education || "",
-          designation: parsed.designation || "Software Professional",
-          currentDesignation: parsed.designation || "Software Professional",
-          currentCompany: parsed.currentCompany || "",
-          location: parsed.location || "Remote",
-          city: parsed.city || "",
-          state: parsed.state || "",
-          languages: Array.isArray(parsed.languages) ? parsed.languages : ["English"],
-          certificates: Array.isArray(parsed.certificates) ? parsed.certificates : [],
-          linkedin: parsed.linkedin || "",
-          github: parsed.github || "",
-          summary: parsed.summary || ""
-        }
+        parsed: structuredResult
       });
     } catch (aiErr: any) {
-      console.warn("[ResumeParser] AI parsing fallback triggered:", aiErr?.message);
+      console.warn("[ResumeParser] Gemini parsing error:", aiErr?.message);
+      return res.status(200).json({
+        success: false,
+        code: "RESUME_PARSE_FAILED",
+        message: "Resume uploaded, but automatic profile extraction could not be completed."
+      });
     }
-
-    // Fallback parsing response
-    return res.json({
-      success: true,
-      parsed: {
-        fullName: "Candidate Profile",
-        email: "",
-        phone: "",
-        skills: ["TypeScript", "React", "Node.js", "Tailwind CSS", "REST APIs"],
-        totalExperience: "2+ Years",
-        education: "Bachelor's Degree in Technology",
-        designation: "Software Engineer",
-        currentDesignation: "Software Engineer",
-        currentCompany: "Tech Enterprise",
-        location: "Remote / Hybrid",
-        city: "Bengaluru",
-        state: "Karnataka",
-        languages: ["English"],
-        certificates: ["Certified Software Developer"],
-        linkedin: "",
-        github: "",
-        summary: "Motivated software development professional with strong web engineering background and problem-solving focus."
-      }
-    });
   } catch (err: any) {
     console.error("[ResumeParser] Fatal error in resume parsing endpoint:", err);
-    return res.status(500).json({ success: false, error: err.message || "Failed to parse resume." });
+    return res.status(200).json({
+      success: false,
+      code: "INTERNAL_ERROR",
+      message: "Unable to complete the request."
+    });
   }
 });
 
