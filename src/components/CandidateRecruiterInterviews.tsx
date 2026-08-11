@@ -65,50 +65,6 @@ export default function CandidateRecruiterInterviews({
         list.push({ id: d.id, source: "crm", ...d.data() });
       });
 
-      // Seed mock pending interview if empty so the candidate actually has options to interact and test Google Calendar
-      if (list.length === 0) {
-        const seedInterviews = [
-          {
-            id: "mock_int_1",
-            source: "company",
-            companyId: "employer_google",
-            companyName: "Google AI Labs",
-            jobTitle: "Senior Frontend System Engineer",
-            jobId: "job_google_sde",
-            status: "pending",
-            recruiterName: "Hitesh Choudhary",
-            recruiterEmail: "hiring@google-labs.demo",
-            location: "Google Workspace Meet",
-            description: "Direct engineering deep-dive on TS compilers, React v19 state trees, and high-performance Vite bundles.",
-            suggestedSlots: ["2026-07-10T11:00:00", "2026-07-11T15:00:00"]
-          },
-          {
-            id: "mock_int_2",
-            source: "crm",
-            companyName: "Nexus Talent Partners (Agency)",
-            jobTitle: "Staff React Engineer",
-            jobId: "job_nexus_staff",
-            status: "pending",
-            recruiterName: "Sarah Jenkins",
-            recruiterEmail: "sarah@nexustalent.demo",
-            location: "Nexus Zoom Room 4",
-            description: "Agency partner screening for tier-1 remote product enterprise positions.",
-            suggestedSlots: ["2026-07-08T14:30:00", "2026-07-09T10:00:00"]
-          }
-        ];
-
-        // Save mock interviews to Firestore so they are persistent and fully synchronized
-        for (const item of seedInterviews) {
-          await setDoc(doc(db, "company_interviews", item.id), {
-            candidateId: userId,
-            candidateName: userName,
-            ...item,
-            createdAt: new Date().toISOString()
-          });
-          list.push({ candidateId: userId, candidateName: userName, ...item, createdAt: new Date().toISOString() });
-        }
-      }
-
       setInterviews(list);
     } catch (err) {
       console.error("Failed to fetch recruiter interviews:", err);

@@ -94,65 +94,7 @@ export default function ApplicationManagement({
         console.warn("Company Applications fetch warning:", err);
       }
 
-      // Fallback mock applications if Firestore is clean
-      if (list.length === 0) {
-        setApplications([
-          {
-            id: "app_admin_01",
-            jobId: "job_dev_01",
-            jobTitle: "Senior AI Full Stack Engineer",
-            companyName: "Nexus Labs Global",
-            candidateId: "cand_01",
-            candidateName: "Priya Sharma",
-            candidateEmail: "priya.sharma@techcorp.io",
-            candidatePhone: "+91 98765 43210",
-            status: "Applied",
-            appliedAt: new Date(Date.now() - 3600000 * 5).toISOString(),
-            resumeScore: 92
-          },
-          {
-            id: "app_admin_02",
-            jobId: "job_dev_01",
-            jobTitle: "Senior AI Full Stack Engineer",
-            companyName: "Nexus Labs Global",
-            candidateId: "cand_02",
-            candidateName: "Arjun Verma",
-            candidateEmail: "arjun.v@solutia.com",
-            candidatePhone: "+91 98123 88776",
-            status: "Shortlisted",
-            appliedAt: new Date(Date.now() - 3600000 * 24).toISOString(),
-            resumeScore: 86
-          },
-          {
-            id: "app_admin_03",
-            jobId: "job_arch_02",
-            jobTitle: "Cloud Solutions Architect",
-            companyName: "Aura Systems",
-            candidateId: "cand_03",
-            candidateName: "Rohan Mehta",
-            candidateEmail: "rohan.mehta@cloudlabs.net",
-            candidatePhone: "+91 99001 12233",
-            status: "Interview Scheduled",
-            appliedAt: new Date(Date.now() - 3600000 * 50).toISOString(),
-            resumeScore: 95
-          },
-          {
-            id: "app_admin_04",
-            jobId: "job_product_03",
-            jobTitle: "Lead Product Designer",
-            companyName: "Creative AI Inc",
-            candidateId: "cand_04",
-            candidateName: "Ananya Deshmukh",
-            candidateEmail: "ananya.d@creative.org",
-            candidatePhone: "+91 91122 33445",
-            status: "Joined",
-            appliedAt: new Date(Date.now() - 3600000 * 120).toISOString(),
-            resumeScore: 89
-          }
-        ]);
-      } else {
-        setApplications(list);
-      }
+      setApplications(list);
     } catch (err) {
       console.error("Error loading admin applications:", err);
     } finally {

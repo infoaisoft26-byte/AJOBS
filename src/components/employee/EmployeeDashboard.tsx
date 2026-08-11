@@ -21,8 +21,12 @@ import {
   ChevronRight,
   Eye,
   Shield,
-  Navigation
+  Navigation,
+  Download
 } from "lucide-react";
+import { AttendanceHistory } from "./AttendanceHistory";
+import { LeaveRequestModal } from "./LeaveRequestModal";
+import { generateAttendancePayrollPDF } from "../../utils/generateAttendancePayrollPDF";
 import { auth } from "../../firebase";
 import { 
   AttendanceRecord, 
@@ -310,31 +314,25 @@ export default function EmployeeDashboard({ userId, userName, userEmail, onLogou
     }
   };
 
-  const handleApplyLeaveSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleExportSummaryPDF = async () => {
     if (!employee) return;
-    setActionLoading(true);
     try {
-      const start = new Date(leaveForm.startDate);
-      const end = new Date(leaveForm.endDate);
-      const diffTime = Math.abs(end.getTime() - start.getTime());
-      const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      setActionLoading(true);
+      const currentMonthName = new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" });
+      const records = await EmployeeAttendanceService.getAttendanceHistory(employee.employeeId, 31);
+      const latestPayroll = payrolls.length > 0 ? payrolls[0] : null;
 
-      await submitLeaveRequest({
-        employeeId: employee.employeeId,
-        employeeName: employee.fullName,
-        leaveType: leaveForm.leaveType,
-        startDate: leaveForm.startDate,
-        endDate: leaveForm.endDate,
-        totalDays,
-        reason: leaveForm.reason
+      generateAttendancePayrollPDF({
+        employee,
+        monthName: currentMonthName,
+        attendanceRecords: records,
+        payrollSnapshot: latestPayroll
       });
 
-      setShowLeaveModal(false);
-      setMessage({ type: "success", text: "Leave application submitted to management for review." });
-      await refreshSecondaryData(employee.employeeId);
+      setMessage({ type: "success", text: `Successfully generated and downloaded ${currentMonthName} summary report PDF.` });
     } catch (err: any) {
-      setMessage({ type: "error", text: "Failed to submit leave request." });
+      console.error("Error exporting PDF report:", err);
+      setMessage({ type: "error", text: "Failed to generate PDF report." });
     } finally {
       setActionLoading(false);
     }
@@ -409,6 +407,14 @@ export default function EmployeeDashboard({ userId, userName, userEmail, onLogou
 
           {/* Quick Actions & Logout */}
           <div className="flex items-center gap-3">
+            <button
+              onClick={handleExportSummaryPDF}
+              disabled={actionLoading || !employee}
+              className="px-3.5 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 hover:text-white rounded-xl text-xs font-semibold border border-indigo-500/30 transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+              title="Generate & Download Monthly Attendance & Payroll Summary PDF"
+            >
+              <Download className="w-3.5 h-3.5 text-indigo-400" /> Export Summary PDF
+            </button>
             <span className="hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Internal Employee
             </span>
@@ -669,45 +675,7 @@ export default function EmployeeDashboard({ userId, userName, userEmail, onLogou
 
         {/* TAB 2: ATTENDANCE LOGS HISTORY */}
         {activeTab === "logs" && (
-          <div className="p-6 bg-gray-900/80 border border-gray-800 rounded-2xl space-y-4">
-            <h2 className="text-base font-bold text-white">Monthly Attendance & Punch Logs</h2>
-            <p className="text-xs text-gray-400">Detailed record of daily check-ins, check-outs, net working hours, and late marks.</p>
-            
-            {todayAttendance ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-gray-300">
-                  <thead className="bg-gray-950 text-gray-400 uppercase font-mono">
-                    <tr>
-                      <th className="p-3">Date</th>
-                      <th className="p-3">Check-In</th>
-                      <th className="p-3">Check-Out</th>
-                      <th className="p-3">Work Mode</th>
-                      <th className="p-3">Geofence</th>
-                      <th className="p-3">Net Hours</th>
-                      <th className="p-3">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-800">
-                    <tr className="hover:bg-gray-800/40">
-                      <td className="p-3 font-mono font-bold text-white">{todayAttendance.date}</td>
-                      <td className="p-3">{todayAttendance.checkInTime ? new Date(todayAttendance.checkInTime).toLocaleTimeString() : "-"}</td>
-                      <td className="p-3">{todayAttendance.checkOutTime ? new Date(todayAttendance.checkOutTime).toLocaleTimeString() : "-"}</td>
-                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-gray-800 text-indigo-300">{todayAttendance.workMode}</span></td>
-                      <td className="p-3">{todayAttendance.geofenceStatus}</td>
-                      <td className="p-3 font-mono">{(todayAttendance.netWorkingMinutes / 60).toFixed(2)}h</td>
-                      <td className="p-3">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">
-                          {todayAttendance.status}
-                        </span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-xs text-gray-500 py-6 text-center">No past records for the selected period.</p>
-            )}
-          </div>
+          <AttendanceHistory employeeId={employee?.employeeId || ""} />
         )}
 
         {/* TAB 3: LEAVE MANAGEMENT */}
@@ -897,78 +865,16 @@ export default function EmployeeDashboard({ userId, userName, userEmail, onLogou
       </main>
 
       {/* APPLY LEAVE MODAL */}
-      {showLeaveModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-gray-900 border border-indigo-500/30 rounded-2xl p-6 space-y-4">
-            <h3 className="text-base font-bold text-white">Apply For Leave</h3>
-            <form onSubmit={handleApplyLeaveSubmit} className="space-y-4 text-xs">
-              <div>
-                <label className="text-gray-300 block mb-1">Leave Type</label>
-                <select
-                  value={leaveForm.leaveType}
-                  onChange={(e) => setLeaveForm({ ...leaveForm, leaveType: e.target.value as any })}
-                  className="w-full bg-gray-950 border border-gray-800 rounded-xl p-2.5 text-white"
-                >
-                  <option value="Casual Leave">Casual Leave</option>
-                  <option value="Sick Leave">Sick Leave</option>
-                  <option value="Paid Leave">Paid Leave</option>
-                  <option value="Unpaid Leave">Unpaid Leave</option>
-                  <option value="Comp Off">Comp Off</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-gray-300 block mb-1">Start Date</label>
-                  <input
-                    type="date"
-                    value={leaveForm.startDate}
-                    onChange={(e) => setLeaveForm({ ...leaveForm, startDate: e.target.value })}
-                    className="w-full bg-gray-950 border border-gray-800 rounded-xl p-2.5 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="text-gray-300 block mb-1">End Date</label>
-                  <input
-                    type="date"
-                    value={leaveForm.endDate}
-                    onChange={(e) => setLeaveForm({ ...leaveForm, endDate: e.target.value })}
-                    className="w-full bg-gray-950 border border-gray-800 rounded-xl p-2.5 text-white"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-gray-300 block mb-1">Reason for Leave</label>
-                <textarea
-                  required
-                  rows={3}
-                  value={leaveForm.reason}
-                  onChange={(e) => setLeaveForm({ ...leaveForm, reason: e.target.value })}
-                  placeholder="Provide brief reason for manager approval..."
-                  className="w-full bg-gray-950 border border-gray-800 rounded-xl p-2.5 text-white resize-none"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowLeaveModal(false)}
-                  className="px-4 py-2 bg-gray-800 text-gray-300 rounded-xl font-bold cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={actionLoading}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold cursor-pointer"
-                >
-                  Submit Application
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {showLeaveModal && employee && (
+        <LeaveRequestModal
+          employee={employee}
+          currentUid={currentUid}
+          onClose={() => setShowLeaveModal(false)}
+          onSuccess={(msg) => {
+            setMessage({ type: "success", text: msg });
+            refreshSecondaryData(employee.employeeId);
+          }}
+        />
       )}
 
       {/* REQUEST REGULARIZATION MODAL */}

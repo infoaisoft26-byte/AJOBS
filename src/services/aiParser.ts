@@ -1,4 +1,4 @@
-import { doc, setDoc } from "firebase/firestore";
+import { doc, runTransaction, setDoc } from "firebase/firestore";
 import { Server, Type, User } from "lucide-react";
 import { auth, db } from "../firebase";
 import { ResumeAIService } from "./ai/resume.service";
@@ -157,24 +157,14 @@ export async function parseResumeData(
       const resumeDocRef = doc(db, "resumes", uid);
 
       await runTransaction(db, async (transaction) => {
-        const userSnap = await transaction.get(userDocRef);
-        const existingUserData = userSnap.data() || {};
+        const candidateSnap = await transaction.get(candidateDocRef);
+        const existingCandData = candidateSnap.data() || {};
 
         // Preserve verified primary email and mobile number. Do not overwrite with parser data!
-        const verifiedEmail = auth.currentUser?.email || existingUserData.email || existingUserData.accountEmail || "";
-        const verifiedPhone = existingUserData.phone || existingUserData.mobile || "";
+        const verifiedEmail = auth.currentUser?.email || existingUserData.email || existingCandData.email || existingUserData.accountEmail || "";
+        const verifiedPhone = existingUserData.phone || existingCandData.phone || existingUserData.mobile || "";
 
         const userPayload: Record<string, any> = {
-          skills: parsed.skills,
-          totalExperience: parsed.totalExperience,
-          currentCompany: parsed.currentCompany,
-          currentDesignation: parsed.currentDesignation,
-          education: parsed.education,
-          location: parsed.location,
-          city: parsed.city,
-          state: parsed.state,
-          languages: parsed.languages,
-          certificates: parsed.certificates,
           profileComplete: true,
           profileCompleted: true,
           resumeUploaded: true,
@@ -183,39 +173,34 @@ export async function parseResumeData(
           updatedAt: isoDate
         };
 
+        // Fill EMPTY fields only in user document
+        if ((!existingUserData.skills || existingUserData.skills.length === 0) && parsed.skills?.length) userPayload.skills = parsed.skills;
+        if (!existingUserData.totalExperience && parsed.totalExperience) userPayload.totalExperience = parsed.totalExperience;
+        if (!existingUserData.currentCompany && parsed.currentCompany) userPayload.currentCompany = parsed.currentCompany;
+        if (!existingUserData.currentDesignation && parsed.currentDesignation) userPayload.currentDesignation = parsed.currentDesignation;
+        if (!existingUserData.education && parsed.education) userPayload.education = parsed.education;
+        if (!existingUserData.location && parsed.location) userPayload.location = parsed.location;
+        if (!existingUserData.city && parsed.city) userPayload.city = parsed.city;
+        if (!existingUserData.state && parsed.state) userPayload.state = parsed.state;
+        if ((!existingUserData.languages || existingUserData.languages.length === 0) && parsed.languages?.length) userPayload.languages = parsed.languages;
+        if ((!existingUserData.certificates || existingUserData.certificates.length === 0) && parsed.certificates?.length) userPayload.certificates = parsed.certificates;
+
         // Only update name if existing user name is generic or missing
         if (!existingUserData.name || existingUserData.name === "Candidate" || existingUserData.name === "User") {
-          userPayload.name = parsed.fullName;
-          userPayload.fullName = parsed.fullName;
+          if (parsed.fullName) {
+            userPayload.name = parsed.fullName;
+            userPayload.fullName = parsed.fullName;
+          }
         }
 
-        // Only set email if not already present
-        if (!existingUserData.email && verifiedEmail) {
-          userPayload.email = verifiedEmail;
-        }
-        if (!existingUserData.phone && verifiedPhone) {
-          userPayload.phone = verifiedPhone;
-        }
+        if (!existingUserData.email && verifiedEmail) userPayload.email = verifiedEmail;
+        if (!existingUserData.phone && verifiedPhone) userPayload.phone = verifiedPhone;
 
         const candidatePayload: Record<string, any> = {
           uid: uid,
           userId: uid,
           ownerUid: uid,
           accountEmail: verifiedEmail,
-          skills: parsed.skills,
-          totalExperience: parsed.totalExperience,
-          experience: parsed.experience,
-          currentCompany: parsed.currentCompany,
-          currentDesignation: parsed.currentDesignation,
-          designation: parsed.designation,
-          education: parsed.education,
-          location: parsed.location,
-          city: parsed.city,
-          state: parsed.state,
-          languages: parsed.languages,
-          certificates: parsed.certificates,
-          linkedin: parsed.linkedin || "",
-          github: parsed.github || "",
           resumeUrl: resumeUrl,
           resumeFileName: fileName || "uploaded_resume.pdf",
           resumeUploadedAt: isoDate,
@@ -223,6 +208,22 @@ export async function parseResumeData(
           profileCompleted: true,
           updatedAt: isoDate
         };
+
+        // Fill EMPTY fields only in candidate document
+        if ((!existingCandData.skills || existingCandData.skills.length === 0) && parsed.skills?.length) candidatePayload.skills = parsed.skills;
+        if (!existingCandData.totalExperience && parsed.totalExperience) candidatePayload.totalExperience = parsed.totalExperience;
+        if (!existingCandData.experience && parsed.experience) candidatePayload.experience = parsed.experience;
+        if (!existingCandData.currentCompany && parsed.currentCompany) candidatePayload.currentCompany = parsed.currentCompany;
+        if (!existingCandData.currentDesignation && parsed.currentDesignation) candidatePayload.currentDesignation = parsed.currentDesignation;
+        if (!existingCandData.designation && parsed.designation) candidatePayload.designation = parsed.designation;
+        if (!existingCandData.education && parsed.education) candidatePayload.education = parsed.education;
+        if (!existingCandData.location && parsed.location) candidatePayload.location = parsed.location;
+        if (!existingCandData.city && parsed.city) candidatePayload.city = parsed.city;
+        if (!existingCandData.state && parsed.state) candidatePayload.state = parsed.state;
+        if ((!existingCandData.languages || existingCandData.languages.length === 0) && parsed.languages?.length) candidatePayload.languages = parsed.languages;
+        if ((!existingCandData.certificates || existingCandData.certificates.length === 0) && parsed.certificates?.length) candidatePayload.certificates = parsed.certificates;
+        if (!existingCandData.linkedin && parsed.linkedin) candidatePayload.linkedin = parsed.linkedin;
+        if (!existingCandData.github && parsed.github) candidatePayload.github = parsed.github;
 
         if (verifiedEmail) candidatePayload.email = verifiedEmail;
         if (verifiedPhone) candidatePayload.phone = verifiedPhone;

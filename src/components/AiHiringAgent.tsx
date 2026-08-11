@@ -17,28 +17,13 @@ export default function AiHiringAgent({ jobs = [], candidates = [] }: AiHiringAg
   const { formatCurrency } = useGlobalMarketplace();
 
   // Baseline job preset for Senior Full Stack Engineer
-  const defaultSeniorJob: JobPosting = {
-    id: "preset_senior_fullstack",
-    title: "Senior Full Stack Engineer",
-    companyName: "TechCorp Solutions",
-    location: "Mumbai / Hybrid",
-    skillsRequired: ["React", "Node.js", "TypeScript", "PostgreSQL", "AWS"],
-    experienceRequired: "4–7 Years",
-    salary: "₹18,00,000 - ₹26,00,000 CTC",
-    description: "Looking for a Senior Full Stack Engineer proficient in React, Node.js, TypeScript, PostgreSQL, and AWS cloud architecture for Mumbai / Hybrid work.",
-    status: "Published",
-    createdAt: new Date().toISOString()
-  };
-
-  const allDisplayJobs = jobs.some(j => j.title.toLowerCase().includes("senior full stack"))
-    ? jobs
-    : [defaultSeniorJob, ...jobs];
+  const allDisplayJobs = jobs;
 
   // Active Stepper Step: 1 -> 8 (or 'funnel' / 'audit')
   const [activeStep, setActiveStep] = useState<number | "funnel" | "audit">(1);
 
   // Step 1: Input state
-  const [selectedJobId, setSelectedJobId] = useState<string>(allDisplayJobs[0]?.id || defaultSeniorJob.id);
+  const [selectedJobId, setSelectedJobId] = useState<string>(allDisplayJobs[0]?.id || "");
   const [inputMode, setInputMode] = useState<"upload" | "paste" | "live">("live");
   const [pastedJdText, setPastedJdText] = useState<string>("");
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);

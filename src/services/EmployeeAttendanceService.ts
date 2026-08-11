@@ -277,36 +277,93 @@ export class EmployeeAttendanceService {
   }
 
   /**
-   * Submits a leave application.
+   * Submits a leave application to Firestore collections ('leaveRequests' & 'leaves') linked to employee ID.
    */
-  static async applyLeave(params: {
+  static async submitLeaveRequest(params: {
     employeeId: string;
     employeeName: string;
-    leaveType: any;
+    employeeUid?: string;
+    leaveType: LeaveType;
     startDate: string;
     endDate: string;
     totalDays: number;
+    isHalfDay?: boolean;
+    halfDaySession?: "first_half" | "second_half";
     reason: string;
-  }) {
-    const leaveRef = doc(collection(db, "leaves"));
-    const payload = {
-      leaveId: leaveRef.id,
-      ...params,
+  }): Promise<LeaveRequest> {
+    const leaveDocRef = doc(collection(db, "leaveRequests"));
+    const altLeaveDocRef = doc(db, "leaves", leaveDocRef.id);
+
+    const nowISO = new Date().toISOString();
+    const payload: LeaveRequest = {
+      leaveId: leaveDocRef.id,
+      employeeId: params.employeeId,
+      employeeUid: params.employeeUid || auth.currentUser?.uid || "",
+      employeeName: params.employeeName,
+      leaveType: params.leaveType,
+      startDate: params.startDate,
+      endDate: params.endDate,
+      totalDays: params.totalDays,
+      isHalfDay: params.isHalfDay || false,
+      halfDaySession: params.halfDaySession,
+      reason: params.reason,
       status: "pending",
-      appliedAt: new Date().toISOString(),
-      appliedAtServer: serverTimestamp()
+      appliedAt: nowISO
     };
 
-    await setDoc(leaveRef, payload);
+    // Save to both collections for robust cross-query compatibility
+    await Promise.all([
+      setDoc(leaveDocRef, {
+        ...payload,
+        appliedAtServer: serverTimestamp()
+      }),
+      setDoc(altLeaveDocRef, {
+        ...payload,
+        appliedAtServer: serverTimestamp()
+      })
+    ]);
 
     await createEmployeeAuditLog({
       employeeId: params.employeeId,
       employeeName: params.employeeName,
       action: "LEAVE_APPROVAL",
       performedBy: auth.currentUser?.email || params.employeeId,
-      newValue: `Applied for ${params.leaveType} (${params.startDate} to ${params.endDate}, ${params.totalDays} day(s))`
+      newValue: `Submitted ${params.leaveType} request for ${params.startDate} to ${params.endDate} (${params.totalDays} day(s))`
     });
 
     return payload;
+  }
+
+  /**
+   * Fetches all leave requests submitted by an employee.
+   */
+  static async getEmployeeLeaveRequests(employeeId: string): Promise<LeaveRequest[]> {
+    try {
+      const q = query(
+        collection(db, "leaveRequests"),
+        where("employeeId", "==", employeeId),
+        orderBy("appliedAt", "desc")
+      );
+      const snap = await getDocs(q);
+      const list: LeaveRequest[] = [];
+      snap.forEach(d => list.push(d.data() as LeaveRequest));
+      return list;
+    } catch (err) {
+      console.warn("Query leaveRequests fallback to leaves collection:", err);
+      try {
+        const q2 = query(
+          collection(db, "leaves"),
+          where("employeeId", "==", employeeId),
+          orderBy("appliedAt", "desc")
+        );
+        const snap2 = await getDocs(q2);
+        const list2: LeaveRequest[] = [];
+        snap2.forEach(d => list2.push(d.data() as LeaveRequest));
+        return list2;
+      } catch (err2) {
+        console.error("Error fetching leave requests:", err2);
+        return [];
+      }
+    }
   }
 }

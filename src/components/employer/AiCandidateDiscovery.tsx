@@ -71,74 +71,7 @@ export default function AiCandidateDiscovery({
           });
         }
 
-        // If firebase candidate index is empty, seed highly polished developer profiles so matching is functional
-        if (list.length === 0) {
-          const defaultTalent: DiscoveredCandidate[] = [
-            {
-              id: "cand_1",
-              name: "Ananya Iyer",
-              email: "ananya.iyer@outlook.com",
-              title: "Senior React Systems Lead",
-              skills: ["React", "TypeScript", "Tailwind CSS", "Redux", "Figma", "Node.js"],
-              experience: "Senior (6 Years)",
-              resumeScore: 94,
-              interviewScore: 91,
-              expectedSalary: "₹24,00,000 PA",
-              distance: "Bengaluru",
-              availability: "Immediate",
-              isAiVerified: true,
-              avatarUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=80&q=80"
-            },
-            {
-              id: "cand_2",
-              name: "Aryan Sharma",
-              email: "aryan.sharma@gmail.com",
-              title: "Full Stack Engineer",
-              skills: ["React", "TypeScript", "Node.js", "Firebase", "PostgreSQL", "Next.js"],
-              experience: "Mid-Level (4 Years)",
-              resumeScore: 88,
-              interviewScore: 84,
-              expectedSalary: "₹19,00,000 PA",
-              distance: "Bengaluru (Hybrid)",
-              availability: "15 Days Notice",
-              isAiVerified: true,
-              avatarUrl: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&q=80"
-            },
-            {
-              id: "cand_3",
-              name: "Sneha Rao",
-              email: "sneha.rao@design.io",
-              title: "Product Interaction Designer",
-              skills: ["Figma", "UI Design", "Framer Motion", "Tailwind CSS", "User Sprints"],
-              experience: "Mid-Level (3 Years)",
-              resumeScore: 91,
-              interviewScore: 88,
-              expectedSalary: "₹16,50,000 PA",
-              distance: "Pune (Remote)",
-              availability: "Immediate",
-              isAiVerified: true,
-              avatarUrl: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=80&q=80"
-            },
-            {
-              id: "cand_4",
-              name: "Rahul Verma",
-              email: "rahul.verma@behance.net",
-              title: "Front-End Developer",
-              skills: ["HTML", "CSS", "React", "JavaScript", "Webpack"],
-              experience: "Junior (2 Years)",
-              resumeScore: 78,
-              interviewScore: 80,
-              expectedSalary: "₹11,00,000 PA",
-              distance: "Mumbai",
-              availability: "Immediate",
-              isAiVerified: false,
-              avatarUrl: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=80&q=80"
-            }
-          ];
-          setCandidates(defaultTalent);
-        } else {
-          setCandidates(list);
-        }
+        setCandidates(list);
       } catch (err) {
         console.error("Failed fetching candidates:", err);
       } finally {

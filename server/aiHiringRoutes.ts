@@ -300,94 +300,6 @@ async function fetchRealCandidatePool(): Promise<any[]> {
   const db = getFirestoreDb();
   const candidatesMap = new Map<string, any>();
 
-  // Baseline real candidates pool preset if Firestore is empty
-  const defaultRealCandidates = [
-    {
-      id: "cand_rahul_sharma",
-      name: "Rahul Sharma",
-      email: "rahul.sharma@example.com",
-      phone: "+91 98765 43210",
-      currentTitle: "Senior Full Stack Engineer",
-      totalExperience: 6,
-      skills: ["React", "Node.js", "TypeScript", "PostgreSQL", "AWS", "REST APIs", "Tailwind CSS"],
-      education: "B.Tech in Computer Science (IIT Bombay)",
-      certifications: ["AWS Certified Solutions Architect"],
-      location: "Mumbai",
-      workModePreference: "Hybrid",
-      noticePeriod: "30 Days",
-      resumeUrl: "https://aijobs.example.com/resumes/rahul_sharma.pdf",
-      applicationStatus: "applied"
-    },
-    {
-      id: "cand_priya_mehta",
-      name: "Priya Mehta",
-      email: "priya.mehta@example.com",
-      phone: "+91 98765 12345",
-      currentTitle: "Full Stack Cloud Developer",
-      totalExperience: 5,
-      skills: ["React", "Node.js", "AWS", "PostgreSQL", "Docker", "Express.js"],
-      education: "M.Tech in Software Engineering (BITS Pilani)",
-      certifications: ["AWS Developer Associate"],
-      location: "Pune",
-      workModePreference: "Hybrid",
-      noticePeriod: "45 Days",
-      resumeUrl: "https://aijobs.example.com/resumes/priya_mehta.pdf",
-      applicationStatus: "applied"
-    },
-    {
-      id: "cand_aman_verma",
-      name: "Aman Verma",
-      email: "aman.verma@example.com",
-      phone: "+91 98123 45678",
-      currentTitle: "Software Engineer",
-      totalExperience: 4,
-      skills: ["React", "Node.js", "TypeScript", "PostgreSQL", "GraphQL", "MongoDB"],
-      education: "B.E. in Information Technology (Mumbai University)",
-      certifications: ["Meta Front-End Developer Certificate"],
-      location: "Mumbai",
-      workModePreference: "Hybrid",
-      noticePeriod: "15 Days",
-      resumeUrl: "https://aijobs.example.com/resumes/aman_verma.pdf",
-      applicationStatus: "applied"
-    },
-    {
-      id: "cand_sneha_rao",
-      name: "Sneha Rao",
-      email: "sneha.rao@example.com",
-      phone: "+91 97654 32109",
-      currentTitle: "Lead Frontend Engineer",
-      totalExperience: 7,
-      skills: ["React", "TypeScript", "Tailwind CSS", "Redux", "Next.js", "System Architecture"],
-      education: "B.Tech in Computer Science",
-      certifications: ["Certified Scrum Master"],
-      location: "Bangalore",
-      workModePreference: "Remote",
-      noticePeriod: "60 Days",
-      resumeUrl: "https://aijobs.example.com/resumes/sneha_rao.pdf",
-      applicationStatus: "applied"
-    },
-    {
-      id: "cand_vikram_singh",
-      name: "Vikram Singh",
-      email: "vikram.singh@example.com",
-      phone: "+91 96543 21098",
-      currentTitle: "Backend Developer",
-      totalExperience: 3,
-      skills: ["Node.js", "Express", "PostgreSQL", "Redis", "Docker", "Python"],
-      education: "B.Tech in Information Technology",
-      certifications: ["Oracle Certified Associate"],
-      location: "Delhi NCR",
-      workModePreference: "On-site",
-      noticePeriod: "30 Days",
-      resumeUrl: "https://aijobs.example.com/resumes/vikram_singh.pdf",
-      applicationStatus: "applied"
-    }
-  ];
-
-  for (const c of defaultRealCandidates) {
-    candidatesMap.set(c.id, c);
-  }
-
   if (db && db.collection) {
     try {
       const candSnap = await db.collection("candidates").get();
@@ -1185,25 +1097,26 @@ router.post("/generate-offer", async (req, res) => {
 router.get("/funnel-stats", async (req, res) => {
   try {
     const db = getFirestoreDb();
-    let candidatesScanned = 12;
-    let highlyMatched = 4;
-    let shortlisted = 3;
-    let assessmentSent = 2;
-    let interviewScheduled = 2;
-    let interviewCompleted = 1;
-    let selected = 1;
-    let joined = 1;
+    let candidatesScanned = 0;
+    let highlyMatched = 0;
+    let shortlisted = 0;
+    let assessmentSent = 0;
+    let interviewScheduled = 0;
+    let interviewCompleted = 0;
+    let selected = 0;
+    let joined = 0;
 
     if (db && db.collection) {
       try {
         const appsSnap = await db.collection("applications").get();
         if (!appsSnap.empty) {
-          candidatesScanned = Math.max(candidatesScanned, appsSnap.size);
-          shortlisted = appsSnap.docs.filter(d => d.data().status === "shortlisted").length || shortlisted;
-          assessmentSent = appsSnap.docs.filter(d => d.data().status === "assessment").length || assessmentSent;
-          interviewScheduled = appsSnap.docs.filter(d => d.data().status === "interview_scheduled").length || interviewScheduled;
-          interviewCompleted = appsSnap.docs.filter(d => d.data().status === "interview_completed").length || interviewCompleted;
-          selected = appsSnap.docs.filter(d => d.data().status === "selected").length || selected;
+          candidatesScanned = appsSnap.size;
+          shortlisted = appsSnap.docs.filter(d => d.data().status === "shortlisted").length;
+          assessmentSent = appsSnap.docs.filter(d => d.data().status === "assessment").length;
+          interviewScheduled = appsSnap.docs.filter(d => d.data().status === "interview_scheduled").length;
+          interviewCompleted = appsSnap.docs.filter(d => d.data().status === "interview_completed").length;
+          selected = appsSnap.docs.filter(d => d.data().status === "selected").length;
+          joined = appsSnap.docs.filter(d => d.data().status === "joined").length;
         }
       } catch (err: any) {
         console.warn("[Funnel Stats] Query fallback:", err?.message);
@@ -1244,22 +1157,6 @@ router.get("/audit-logs", async (req, res) => {
       } catch (err: any) {
         console.warn("[Audit Logs] Query fallback:", err?.message);
       }
-    }
-
-    if (logs.length === 0) {
-      logs = [
-        {
-          auditId: "aud_preset_1",
-          action: "JD_PARSED",
-          performedBy: "Admin / Recruiter",
-          jobId: "jd_senior_fullstack",
-          candidateId: "N/A",
-          previousStatus: "N/A",
-          newStatus: "parsed",
-          details: "Parsed Job Description for Senior Full Stack Engineer (5/5 core skills)",
-          timestamp: new Date().toISOString()
-        }
-      ];
     }
 
     return res.json({ success: true, logs });

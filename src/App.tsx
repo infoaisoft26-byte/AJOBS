@@ -749,25 +749,27 @@ function MainAppContent() {
       )}
 
       {/* Header */}
-      <Header
-        user={user}
-        onLogout={handleLogout}
-        onShowAuth={(mode) => setAuthMode(mode || "signin")}
-        activeView={activeView}
-        setActiveView={(view) => {
-          setActiveView(view);
-          if (view === "dashboard" && !user) {
-            setAuthMode("signin");
-            setActiveView("home");
-            showToast("Please authenticate to access recruitment dashboard", "warning");
-          }
-        }}
-        theme={theme}
-        toggleTheme={toggleTheme}
-        onReplayIntro={() => setShowSplash(true)}
-        threeDMode={threeDMode}
-        onThreeDModeChange={handleThreeDModeChange}
-      />
+      {activeView !== "dashboard" && (
+        <Header
+          user={user}
+          onLogout={handleLogout}
+          onShowAuth={(mode) => setAuthMode(mode || "signin")}
+          activeView={activeView}
+          setActiveView={(view) => {
+            setActiveView(view);
+            if (view === "dashboard" && !user) {
+              setAuthMode("signin");
+              setActiveView("home");
+              showToast("Please authenticate to access recruitment dashboard", "warning");
+            }
+          }}
+          theme={theme}
+          toggleTheme={toggleTheme}
+          onReplayIntro={() => setShowSplash(true)}
+          threeDMode={threeDMode}
+          onThreeDModeChange={handleThreeDModeChange}
+        />
+      )}
 
       {!isFirebaseConfigured && (
         <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-2 text-center text-xs text-yellow-300 flex items-center justify-center gap-2 z-20">

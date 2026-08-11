@@ -495,6 +495,10 @@ service cloud.firestore {
       allow read, create, update, delete: if isSignedIn();
     }
 
+    match /leaveRequests/{leaveId} {
+      allow read, create, update, delete: if isSignedIn();
+    }
+
     match /leave_balances/{balanceId} {
       allow read, create, update, delete: if isSignedIn();
     }
@@ -518,7 +522,31 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
+    match /employee_payroll/{payrollId} {
+      allow read, write: if isSignedIn();
+    }
+
     match /employee_payrolls/{payrollId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /salary_structures/{structureId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /salary_revisions/{revisionId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /employee_advances/{advanceId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /payroll_policies/{policyId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /candidate_documents/{docId} {
       allow read, write: if isSignedIn();
     }
 

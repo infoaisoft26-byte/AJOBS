@@ -130,10 +130,7 @@ export default function EmployerDashboard({ userId, userName, userRole }: Employ
     setLoading(true);
     setError(null);
     try {
-      // 1. Seed demo data if first-time corporate logon
-      await seedEmployerDataIfEmpty(userId, userName);
-
-      // 2. Fetch Corporate Registry Profile
+      // 1. Fetch Corporate Registry Profile
       const companySnap = await getDoc(doc(db, "companies", userId));
       if (companySnap.exists()) {
         setCompanyProfile(companySnap.data() as CompanyProfile);

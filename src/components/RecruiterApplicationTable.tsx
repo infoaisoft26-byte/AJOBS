@@ -155,74 +155,7 @@ export default function RecruiterApplicationTable({
         console.warn("RecruiterApplicationTable: Company applications fetch warning:", err.message);
       }
 
-      // Fallback mock data if Firestore has no records yet
-      if (appsList.length === 0) {
-        const mockRecords: ApplicationRecord[] = [
-          {
-            id: "app_demo_101",
-            jobId: "job_dev_01",
-            jobTitle: "Senior AI Full Stack Engineer",
-            companyName: "Nexus Labs Global",
-            candidateId: "cand_priya_01",
-            candidateName: "Priya Sharma",
-            candidateEmail: "priya.sharma@techcorp.io",
-            candidatePhone: "+91 98765 43210",
-            status: "Applied",
-            appliedAt: new Date(Date.now() - 3600000 * 4).toISOString(),
-            resumeScore: 92,
-            interviewScore: 88,
-            aiMatchReasoning: "Strong match in React 18, TypeScript, and Generative AI SDKs with 5+ years building full-stack platforms."
-          },
-          {
-            id: "app_demo_102",
-            jobId: "job_dev_01",
-            jobTitle: "Senior AI Full Stack Engineer",
-            companyName: "Nexus Labs Global",
-            candidateId: "cand_arjun_02",
-            candidateName: "Arjun Verma",
-            candidateEmail: "arjun.v@solutia.com",
-            candidatePhone: "+91 98123 88776",
-            status: "Shortlisted",
-            appliedAt: new Date(Date.now() - 3600000 * 22).toISOString(),
-            resumeScore: 86,
-            interviewScore: 78,
-            aiMatchReasoning: "Solid experience in Node.js microservices and Cloud Run deployment pipelines."
-          },
-          {
-            id: "app_demo_103",
-            jobId: "job_lead_02",
-            jobTitle: "Lead DevOps & Cloud Architect",
-            companyName: "Nexus Labs Global",
-            candidateId: "cand_rohan_03",
-            candidateName: "Rohan Mehta",
-            candidateEmail: "rohan.mehta@cloudlabs.net",
-            candidatePhone: "+91 99001 12233",
-            status: "Interview Scheduled",
-            appliedAt: new Date(Date.now() - 3600000 * 48).toISOString(),
-            resumeScore: 94,
-            interviewScore: 91,
-            aiMatchReasoning: "Expertise in Terraform, Kubernetes, and GCP Security Architecture."
-          },
-          {
-            id: "app_demo_104",
-            jobId: "job_dev_01",
-            jobTitle: "Senior AI Full Stack Engineer",
-            companyName: "Nexus Labs Global",
-            candidateId: "cand_sneha_04",
-            candidateName: "Sneha Reddy",
-            candidateEmail: "sneha.reddy@innovate.co",
-            candidatePhone: "+91 97788 55443",
-            status: "Rejected",
-            appliedAt: new Date(Date.now() - 3600000 * 72).toISOString(),
-            resumeScore: 62,
-            interviewScore: 55,
-            aiMatchReasoning: "Missing required TypeScript full-stack experience and vector database knowledge."
-          }
-        ];
-        setApplications(mockRecords);
-      } else {
-        setApplications(appsList);
-      }
+      setApplications(appsList);
     } catch (err: any) {
       console.error("Error loading recruiter applications:", err);
       setError("Failed to load applicants. Please verify Firestore connectivity.");

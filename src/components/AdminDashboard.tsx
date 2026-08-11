@@ -395,51 +395,13 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
   const handleSeedMockDatabase = async () => {
     setSeeding(true);
     try {
-      // 1. Core seeder routine for admin schemas
       await seedSuperAdminDataIfEmpty(
         "system_admin_01",
         "Super Admin Desk",
         "enterprise-admin@aijobs.global"
       );
-
-      // 2. Baseline seeding from legacy
-      const legacyJobs = [
-        {
-          id: "job_seed_1",
-          employerId: "seed_employer",
-          companyName: "Stripe Technical India",
-          title: "Senior SDE (React & Node.js)",
-          description: "Scale core checkout routing pipelines.",
-          location: "Bengaluru (Hybrid)",
-          type: "Full-time",
-          salary: "₹32,0,000 PA",
-          skillsRequired: ["React", "TypeScript", "Node.js"],
-          status: "open",
-          createdAt: new Date().toISOString()
-        }
-      ];
-      for (const job of legacyJobs) {
-        await setDoc(doc(db, "jobs", job.id), job);
-      }
-
-      setSuccessMessage("Premium enterprise-grade dataset successfully seeded!");
-      
-      // Log the database seeding action
-      try {
-        await recordActivityLog({
-          userId: currentUserId,
-          userName: currentUserName,
-          role: "admin",
-          action: "seed_database",
-          details: "Admin seeded premium enterprise-grade mock datasets into Firestore.",
-          entityType: "admin",
-          entityId: currentUserId
-        });
-      } catch (logErr) {
-        console.error("Non-blocking activity logging failure:", logErr);
-      }
-
-      setTimeout(() => setSuccessMessage(""), 4000);
+      setSuccessMessage("System configuration verified.");
+      setTimeout(() => setSuccessMessage(""), 3000);
       fetchWorkspaceData();
     } catch (err) {
       console.error(err);
@@ -592,14 +554,6 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
 
             <div className="mt-auto p-4 border-t border-white/10 bg-black/60 space-y-2">
               <button
-                onClick={handleSeedMockDatabase}
-                disabled={seeding}
-                className="w-full py-2 px-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-xs font-extrabold text-white rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all cursor-pointer disabled:opacity-50"
-              >
-                <Database className="w-4 h-4" />
-                <span>{seeding ? "Initializing..." : "Seed Platform Data"}</span>
-              </button>
-              <button
                 onClick={async () => {
                   setMobileDrawerOpen(false);
                   await auth.signOut();
@@ -680,18 +634,6 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
 
         {/* Lower footer */}
         <div className="p-4 border-t border-white/5 space-y-4">
-          {!isSidebarCollapsed && (
-            <div className="space-y-2">
-              <button
-                onClick={handleSeedMockDatabase}
-                disabled={seeding}
-                className="w-full py-2 px-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-[10px] font-extrabold text-white rounded-lg flex items-center justify-center gap-1 hover:shadow-lg transition-all cursor-pointer disabled:opacity-50"
-              >
-                <Database className="w-3.5 h-3.5" />
-                <span>{seeding ? "Initializing..." : "Initialize Platform Data"}</span>
-              </button>
-            </div>
-          )}
         </div>
 
       </aside>

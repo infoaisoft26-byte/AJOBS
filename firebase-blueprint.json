@@ -664,6 +664,14 @@
     "talent_scores/{scoreId}": {
       "schema": "talent_score",
       "description": "AI talent scores collection"
+    },
+    "salary_structures/{structureId}": {
+      "schema": "salary_structure",
+      "description": "Company salary component definitions and templates"
+    },
+    "employee_payroll/{payrollId}": {
+      "schema": "employee_payroll",
+      "description": "Employee monthly processed payroll details"
     }
   }
 }

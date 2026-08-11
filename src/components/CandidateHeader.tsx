@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import AIJobsLogo from "./AIJobsLogo";
 import { 
   Search, 
   Bell, 
@@ -67,6 +68,10 @@ export default function CandidateHeader({
         >
           <Menu className="w-5 h-5" />
         </button>
+
+        <div className="lg:hidden shrink-0">
+          <AIJobsLogo variant="compact" size="sm" />
+        </div>
 
         <div className="relative w-full hidden sm:block">
           <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-gray-400" />
