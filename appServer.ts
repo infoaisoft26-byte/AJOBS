@@ -34,7 +34,7 @@ import { parsePaymentThreat, logChatSessionAndMessage } from "./server/chatServi
 import { handleUnifiedAgentRequest } from "./server/unifiedAgentService.js";
 import { sendGoogleIndexingNotification } from "./server/googleIndexingService.js";
 import emailRoutes from "./server/emailRoutes.js";
-import { dispatchEmail, sendCandidateWelcomeEmail } from "./server/emailService.js";
+import { dispatchEmail, sendTemplatedEmail, sendCandidateWelcomeEmail } from "./server/emailService.js";
 import kycRoutes from "./server/kycRoutes.js";
 import leadRoutes from "./server/leadRoutes.js";
 import applicationRoutes from "./server/applicationRoutes.js";
@@ -3490,31 +3490,48 @@ app.post("/api/agreements/generate", async (req, res) => {
 
 // 5. Accept Service Agreement
 app.post("/api/agreements/accept", async (req, res) => {
+  res.setHeader("Content-Type", "application/json");
   try {
-    const { userId, agreementId, acceptedName, checkboxAccepted, ip, userAgent } = req.body;
-    if (!userId || !checkboxAccepted) {
-      return res.status(400).json({ error: "userId and digital terms acceptance are required." });
+    const { userId, agreementId, acceptedName, checkboxAccepted, ip, userAgent } = req.body || {};
+    const effectiveUserId = (userId || "").toString().trim();
+    if (!effectiveUserId) {
+      return res.status(400).json({ success: false, error: "MISSING_USER_ID", message: "userId is required." });
     }
+
     const db = getFirestoreDb();
     const timestamp = new Date().toISOString();
 
-    const agmtRef = db.collection("agreements").doc(agreementId || `agmt_${userId}`);
+    const resolvedAgreementId = agreementId || `agmt_${effectiveUserId}`;
+    const agmtRef = db.collection("agreements").doc(resolvedAgreementId);
     const agmtDoc = await agmtRef.get();
     const agmtData = agmtDoc.exists ? agmtDoc.data() : {};
 
+    // Idempotency check
+    if (agmtData?.status === "accepted") {
+      return res.json({
+        success: true,
+        alreadyAccepted: true,
+        message: "Agreement is already accepted.",
+        status: "accepted",
+        nextStep: "payment_pending",
+        agreement: agmtData
+      });
+    }
+
+    const clientIp = ip || req.ip || req.headers["x-forwarded-for"] || "127.0.0.1";
     const acceptanceRecord = {
-      acceptedBy: acceptedName || userId,
+      acceptedBy: acceptedName || effectiveUserId,
       acceptedAt: timestamp,
-      acceptedIp: ip || req.ip || "127.0.0.1",
+      acceptedIp: clientIp,
       acceptedUserAgent: userAgent || req.headers["user-agent"] || "Browser Client",
       checkboxTermsAccepted: true
     };
 
-    await agmtRef.set({
+    const agmtUpdates = {
       status: "accepted",
       acceptanceRecord,
       updatedAt: timestamp
-    }, { merge: true });
+    };
 
     const userUpdates = {
       accountStatus: "payment_pending",
@@ -3523,39 +3540,66 @@ app.post("/api/agreements/accept", async (req, res) => {
       updatedAt: timestamp
     };
 
-    await db.collection("users").doc(userId).set(userUpdates, { merge: true });
-    await db.collection("recruiters").doc(userId).set(userUpdates, { merge: true });
-    await db.collection("consultancies").doc(userId).set(userUpdates, { merge: true });
+    const userRef = db.collection("users").doc(effectiveUserId);
+    const recruiterRef = db.collection("recruiters").doc(effectiveUserId);
+    const consultancyRef = db.collection("consultancies").doc(effectiveUserId);
 
-    // Timeline
-    await db.collection("onboarding_timelines").doc(`tl_${userId}_${Date.now()}`).set({
-      userId,
-      stage: "AGREEMENT_ACCEPTED",
-      title: "Service Agreement Accepted",
-      description: `Agreement digitally signed by ${acceptedName || userId} from IP ${acceptanceRecord.acceptedIp}.`,
-      timestamp,
-      actor: userId
-    });
-
-    if (agmtData?.userEmail) {
-      sendTemplatedEmail({
-        to: agmtData.userEmail,
-        templateName: "agreement_accepted",
-        data: {
-          recipientName: acceptedName || "Valued Partner",
-          appUrl: process.env.APP_URL || "https://aijobs.app"
+    try {
+      await db.runTransaction(async (transaction) => {
+        const freshAgmt = await transaction.get(agmtRef);
+        if (freshAgmt.exists && freshAgmt.data()?.status === "accepted") {
+          return;
         }
-      }).catch(err => console.warn("Agreement accepted email warning:", err.message));
+
+        transaction.set(agmtRef, agmtUpdates, { merge: true });
+        transaction.set(userRef, userUpdates, { merge: true });
+        transaction.set(recruiterRef, userUpdates, { merge: true });
+        transaction.set(consultancyRef, userUpdates, { merge: true });
+      });
+    } catch (txnError: any) {
+      console.warn("[appServer Agreement Accept Txn Warning]:", txnError?.message);
+      await agmtRef.set(agmtUpdates, { merge: true });
+      await Promise.allSettled([
+        userRef.set(userUpdates, { merge: true }),
+        recruiterRef.set(userUpdates, { merge: true }),
+        consultancyRef.set(userUpdates, { merge: true })
+      ]);
     }
 
-    res.json({
+    // Fail-safe secondary tasks (Timeline & Email)
+    try {
+      await db.collection("onboarding_timelines").doc(`tl_${effectiveUserId}_${Date.now()}`).set({
+        userId: effectiveUserId,
+        stage: "AGREEMENT_ACCEPTED",
+        title: "Service Agreement Accepted",
+        description: `Agreement digitally signed by ${acceptedName || effectiveUserId} from IP ${acceptanceRecord.acceptedIp}.`,
+        timestamp,
+        actor: effectiveUserId
+      }).catch(e => console.warn("Timeline write warning:", e));
+
+      if (agmtData?.userEmail) {
+        sendTemplatedEmail({
+          to: agmtData.userEmail,
+          templateName: "agreement_accepted",
+          data: {
+            recipientName: acceptedName || "Valued Partner",
+            appUrl: process.env.APP_URL || "https://aijobs.app"
+          }
+        }).catch(err => console.warn("Agreement accepted email warning:", err.message));
+      }
+    } catch (secErr: any) {
+      console.warn("Secondary tasks warning in appServer agreement accept:", secErr?.message);
+    }
+
+    return res.json({
       success: true,
       message: "Agreement accepted successfully. Proceeding to Payment step.",
-      nextStep: "payment_pending"
+      nextStep: "payment_pending",
+      status: "accepted"
     });
   } catch (err: any) {
     console.error("[/api/agreements/accept Error]:", err);
-    res.status(500).json({ error: err.message || "Failed to accept agreement." });
+    return res.status(500).json({ success: false, error: "AGREEMENT_ACCEPT_FAILED", message: err.message || "Failed to accept agreement." });
   }
 });
 

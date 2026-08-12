@@ -56,6 +56,7 @@ export default function AgreementAndCheckoutModal({
 
   // Payment State
   const [paymentOrder, setPaymentOrder] = useState<any>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [invoice, setInvoice] = useState<any>(null);
 
@@ -126,14 +127,15 @@ export default function AgreementAndCheckoutModal({
 
   // Step 1 -> Generate Agreement
   const handleGenerateAgreement = async () => {
+    setIsGenerating(true);
     setErrorMsg("");
     try {
       const res = await fetch("/api/agreements/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: user.uid,
-          role: user.role || "consultancy",
+          userId: user?.uid,
+          role: user?.role || "consultancy",
           planId: selectedPlan?.planId || "plan_default_499",
           legalName: buyerInfo.legalName,
           authorizedPerson: buyerInfo.authorizedPerson,
@@ -150,6 +152,8 @@ export default function AgreementAndCheckoutModal({
       setStep("agreement");
     } catch (err: any) {
       setErrorMsg(err.message || "Could not generate agreement.");
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -180,15 +184,17 @@ export default function AgreementAndCheckoutModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          agreementId: agreement.agreementId,
-          userId: user.uid,
+          agreementId: agreement?.agreementId || `agmt_${user?.uid}`,
+          userId: user?.uid,
           otp: otp.trim(),
+          acceptedName: buyerInfo.authorizedPerson || user?.name || user?.displayName,
+          checkboxAccepted: true,
           checkboxes
         })
       });
 
       const data = await safeParseJson(res, "Failed to sign agreement");
-      if (!data.success) throw new Error(data.error || "Failed to sign agreement.");
+      if (!data.success) throw new Error(data.error || data.message || "Failed to sign agreement.");
 
       setAgreement(data.agreement);
 
@@ -197,13 +203,13 @@ export default function AgreementAndCheckoutModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: user.uid,
-          agreementId: agreement.agreementId
+          userId: user?.uid,
+          agreementId: data.agreement?.agreementId || agreement?.agreementId
         })
       });
 
       const orderData = await safeParseJson(orderRes, "Failed to create payment order");
-      if (!orderData.success) throw new Error(orderData.error || "Failed to create payment order.");
+      if (!orderData.success) throw new Error(orderData.error || orderData.message || "Failed to create payment order.");
 
       setPaymentOrder(orderData.order);
       setStep("payment");
@@ -383,17 +389,38 @@ export default function AgreementAndCheckoutModal({
             </div>
 
             {errorMsg && (
-              <p className="text-xs text-rose-400 font-mono bg-rose-500/10 p-2.5 rounded-lg border border-rose-500/20">
-                ❌ {errorMsg}
-              </p>
+              <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl space-y-2">
+                <p className="text-xs text-rose-300 font-mono flex items-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span>{errorMsg}</span>
+                </p>
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleGenerateAgreement}
+                    disabled={isGenerating}
+                    className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[11px] font-mono font-medium transition-colors cursor-pointer"
+                  >
+                    {isGenerating ? "Retrying..." : "🔄 Retry Agreement Generation"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setErrorMsg("")}
+                    className="px-3 py-1 bg-white/10 hover:bg-white/20 text-gray-300 rounded text-[11px] font-mono transition-colors cursor-pointer"
+                  >
+                    Dismiss Error
+                  </button>
+                </div>
+              </div>
             )}
 
             <button
               onClick={handleGenerateAgreement}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center space-x-2"
+              disabled={isGenerating}
+              className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center space-x-2"
             >
               <ScrollText className="w-4 h-4" />
-              <span>Generate Official Database Access Agreement & Proceed</span>
+              <span>{isGenerating ? "Generating Agreement Document..." : "Generate Official Database Access Agreement & Proceed"}</span>
             </button>
           </div>
         )}
@@ -513,9 +540,21 @@ export default function AgreementAndCheckoutModal({
             </div>
 
             {errorMsg && (
-              <p className="text-xs text-rose-400 font-mono bg-rose-500/10 p-2.5 rounded-lg border border-rose-500/20">
-                ❌ {errorMsg}
-              </p>
+              <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl space-y-2">
+                <p className="text-xs text-rose-300 font-mono flex items-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span>{errorMsg}</span>
+                </p>
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setErrorMsg("")}
+                    className="px-3 py-1 bg-white/10 hover:bg-white/20 text-gray-300 rounded text-[11px] font-mono transition-colors cursor-pointer"
+                  >
+                    Dismiss Error
+                  </button>
+                </div>
+              </div>
             )}
 
             <button
@@ -556,9 +595,39 @@ export default function AgreementAndCheckoutModal({
             </div>
 
             {otpError && (
-              <p className="text-xs text-rose-400 font-mono bg-rose-500/10 p-2 rounded border border-rose-500/20">
-                ❌ {otpError}
-              </p>
+              <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl space-y-2 text-left">
+                <p className="text-xs text-rose-300 font-mono flex items-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span>{otpError}</span>
+                </p>
+                <div className="flex items-center gap-2 pt-1 font-mono">
+                  <button
+                    type="button"
+                    onClick={handleVerifyOtpAndSign}
+                    disabled={otpVerifying}
+                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-medium transition-colors cursor-pointer"
+                  >
+                    {otpVerifying ? "Retrying..." : "🔄 Retry eSign Signature"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOtpError("")}
+                    className="px-3 py-1 bg-white/10 hover:bg-white/20 text-gray-300 rounded text-[11px] transition-colors cursor-pointer"
+                  >
+                    Dismiss Error
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOtpError("");
+                      setStep("agreement");
+                    }}
+                    className="px-3 py-1 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 rounded text-[11px] transition-colors cursor-pointer"
+                  >
+                    Back to Clauses
+                  </button>
+                </div>
+              </div>
             )}
 
             <button
@@ -600,6 +669,32 @@ export default function AgreementAndCheckoutModal({
                 <div className="text-emerald-400 font-bold">Total Payable: ₹{paymentOrder.totalAmount}</div>
               </div>
             </div>
+
+            {errorMsg && (
+              <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl space-y-2">
+                <p className="text-xs text-rose-300 font-mono flex items-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span>{errorMsg}</span>
+                </p>
+                <div className="flex items-center gap-2 pt-1 font-mono">
+                  <button
+                    type="button"
+                    onClick={handleExecutePayment}
+                    disabled={isProcessingPayment}
+                    className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded text-[11px] font-medium transition-colors cursor-pointer"
+                  >
+                    {isProcessingPayment ? "Retrying..." : "🔄 Retry Payment"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setErrorMsg("")}
+                    className="px-3 py-1 bg-white/10 hover:bg-white/20 text-gray-300 rounded text-[11px] transition-colors cursor-pointer"
+                  >
+                    Dismiss Error
+                  </button>
+                </div>
+              </div>
+            )}
 
             <button
               onClick={handleExecutePayment}

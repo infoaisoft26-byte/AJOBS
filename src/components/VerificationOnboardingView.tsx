@@ -596,9 +596,27 @@ export default function VerificationOnboardingView({ user, onLogout, onStatusUpd
 
             {/* Submit Error */}
             {submitError && (
-              <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs flex items-center space-x-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{submitError}</span>
+              <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs space-y-2 font-mono">
+                <div className="flex items-center space-x-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                  <span>{submitError}</span>
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || !paymentDone}
+                    className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[11px] font-medium transition-colors cursor-pointer"
+                  >
+                    {isSubmitting ? "Retrying..." : "🔄 Retry Submission"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSubmitError("")}
+                    className="px-3 py-1 bg-white/10 hover:bg-white/20 text-gray-300 rounded text-[11px] transition-colors cursor-pointer"
+                  >
+                    Dismiss Error
+                  </button>
+                </div>
               </div>
             )}
 

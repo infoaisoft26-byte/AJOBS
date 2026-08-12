@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getFirestoreDb } from "./firestoreHelper.js";
+import { getFirestoreDb, getFirebaseAuth } from "./firestoreHelper.js";
 import { sendOTP, verifyOTP, isTwilioConfigured } from "./twilioService.js";
 import { processPaymentAccounting } from "./accountingEngine.js";
 import { dispatchEmail } from "./emailService.js";
@@ -384,8 +384,11 @@ router.post(["/send-otp", "/agreements/send-otp"], async (req, res) => {
  * Verifies 6 required checkboxes and OTP, signs agreement safely & idempotently
  */
 router.post(["/accept", "/agreements/accept"], async (req, res) => {
+  res.setHeader("Content-Type", "application/json");
   try {
     const db = getFirestoreDb();
+    const auth = getFirebaseAuth();
+
     const {
       agreementId,
       userId,
@@ -395,71 +398,118 @@ router.post(["/accept", "/agreements/accept"], async (req, res) => {
       checkboxes = {},
       ip,
       ipAddress,
-      userAgent
+      userAgent,
+      role: bodyRole
     } = req.body || {};
 
-    let effectiveUserId = userId;
-    let resolvedAgreementId = agreementId;
+    // 1. Firebase ID Token Verification (if Authorization header provided)
+    let decodedToken: any = null;
+    const authHeader = req.headers.authorization || "";
+    if (authHeader.startsWith("Bearer ")) {
+      const token = authHeader.split("Bearer ")[1]?.trim();
+      if (token) {
+        try {
+          decodedToken = await auth.verifyIdToken(token);
+        } catch (tokenErr: any) {
+          console.warn("[Agreements Accept] Invalid/Expired Firebase ID token:", tokenErr?.message);
+          return res.status(401).json({
+            success: false,
+            error: "UNAUTHORIZED",
+            message: "Authentication token is invalid or expired. Please sign in again."
+          });
+        }
+      }
+    }
 
+    let effectiveUserId = (decodedToken?.uid || userId || "").toString().trim();
+    if (!effectiveUserId) {
+      return res.status(400).json({
+        success: false,
+        error: "MISSING_USER_ID",
+        message: "userId or valid Authorization token is required."
+      });
+    }
+
+    // Verify UID match if both token and body userId are present
+    if (decodedToken && userId && decodedToken.uid !== String(userId).trim()) {
+      return res.status(403).json({
+        success: false,
+        error: "FORBIDDEN",
+        message: "Authorization token UID does not match provided userId."
+      });
+    }
+
+    // 2. Role Validation Check
+    let effectiveRole = decodedToken?.role || bodyRole || "";
+    if (!effectiveRole && effectiveUserId) {
+      try {
+        const uDoc = await db.collection("users").doc(effectiveUserId).get();
+        if (uDoc.exists) {
+          effectiveRole = uDoc.data()?.role || uDoc.data()?.userType || "";
+        }
+      } catch (rErr) {
+        console.warn("[Agreements Accept] Role query fallback warning:", rErr);
+      }
+    }
+
+    const allowedRoles = ["consultancy", "employer", "recruiter", "admin", "agency", "partner", "corporate"];
+    if (effectiveRole && !allowedRoles.includes(effectiveRole.toLowerCase())) {
+      return res.status(403).json({
+        success: false,
+        error: "FORBIDDEN",
+        message: `Role '${effectiveRole}' is not authorized to accept consultancy service agreements.`
+      });
+    }
+
+    // Resolve Agreement Document Reference
+    let resolvedAgreementId = agreementId ? String(agreementId).trim() : "";
     if (!resolvedAgreementId && effectiveUserId) {
       resolvedAgreementId = `agmt_${effectiveUserId}`;
     }
 
-    let agrRef: any = null;
-    let agrSnap: any = null;
-
-    if (resolvedAgreementId) {
-      agrRef = db.collection("agreements").doc(resolvedAgreementId);
-      agrSnap = await agrRef.get();
-    }
+    let agrRef = db.collection("agreements").doc(resolvedAgreementId);
+    let agrSnap = await agrRef.get();
 
     // Search by userId if document not found directly
     if ((!agrSnap || !agrSnap.exists) && effectiveUserId) {
       try {
         const qSnap = await db.collection("agreements").where("userId", "==", effectiveUserId).get();
         if (!qSnap.empty) {
-          const foundDoc = qSnap.docs[0];
-          agrRef = foundDoc.ref;
+          agrRef = qSnap.docs[0].ref;
+          resolvedAgreementId = qSnap.docs[0].id;
           agrSnap = await agrRef.get();
-          resolvedAgreementId = foundDoc.id;
         }
-      } catch (e) {
-        console.warn("[Agreements Accept] Firestore query warning:", e);
+      } catch (qErr) {
+        console.warn("[Agreements Accept] Firestore query fallback error:", qErr);
       }
     }
 
+    // Create agreement shell if document doesn't exist
     if (!agrSnap || !agrSnap.exists) {
-      if (!effectiveUserId) {
-        return res.status(404).json({
-          success: false,
-          error: "AGREEMENT_NOT_FOUND",
-          message: "Agreement document not found. Missing userId."
-        });
-      }
-      resolvedAgreementId = resolvedAgreementId || `agmt_${effectiveUserId}`;
       const now = new Date().toISOString();
-      const newAgr = sanitizeFirestoreData({
+      const newAgrData = sanitizeFirestoreData({
         id: resolvedAgreementId,
         agreementId: resolvedAgreementId,
         agreementNumber: `AIJOBS-AGMT-${Date.now().toString().slice(-8)}`,
         userId: effectiveUserId,
+        role: effectiveRole || "consultancy",
         status: "generated",
         createdAt: now,
         updatedAt: now,
         planSummary: {
+          planName: "AIJOBS Consultancy Database Access Plan",
           baseAmount: 499,
           gstAmount: 89.82,
           totalAmount: 588.82
         }
       });
-      agrRef = db.collection("agreements").doc(resolvedAgreementId);
-      await agrRef.set(newAgr, { merge: true });
+      await agrRef.set(newAgrData, { merge: true });
       agrSnap = await agrRef.get();
     }
 
     const agrData = agrSnap.data() || {};
 
-    // IDEMPOTENCY CHECK: If already accepted, return success immediately
+    // 3. IDEMPOTENCY CHECK: If already accepted, return HTTP 200 JSON response
     if (agrData.status === "accepted") {
       return res.json({
         success: true,
@@ -471,7 +521,7 @@ router.post(["/accept", "/agreements/accept"], async (req, res) => {
       });
     }
 
-    // OTP verification logic
+    // 4. OTP Verification Logic
     const otpStr = String(otp || "").trim();
     const isTestOtp = otpStr === "123456" || otpStr === "000000" || otpStr === "1234" || Boolean(checkboxAccepted);
 
@@ -481,17 +531,25 @@ router.post(["/accept", "/agreements/accept"], async (req, res) => {
         try {
           const uSnap = await db.collection("users").doc(effectiveUserId).get();
           if (uSnap.exists) phone = uSnap.data()?.phone || uSnap.data()?.mobile;
-        } catch (e) {}
+        } catch (pErr) {}
       }
       if (phone) {
         try {
           const twResult = await verifyOTP(phone, otpStr);
           if (!twResult.success) {
-            return res.status(400).json({ success: false, error: twResult.message || "Invalid or expired OTP code." });
+            return res.status(400).json({
+              success: false,
+              error: "INVALID_OTP",
+              message: twResult.message || "Invalid or expired OTP code."
+            });
           }
         } catch (e: any) {
           console.warn("[Agreements Accept] verifyOTP error:", e.message);
-          return res.status(400).json({ success: false, error: e.message || "Invalid or expired OTP code." });
+          return res.status(400).json({
+            success: false,
+            error: "OTP_VERIFICATION_FAILED",
+            message: e.message || "Invalid or expired OTP code."
+          });
         }
       }
     }
@@ -513,24 +571,52 @@ router.post(["/accept", "/agreements/accept"], async (req, res) => {
       updatedAt: nowIso
     });
 
-    await agrRef.set(updateData, { merge: true });
+    const userUpdates = sanitizeFirestoreData({
+      accountStatus: "payment_pending",
+      agreementStatus: "accepted",
+      agreementId: resolvedAgreementId,
+      agreementAcceptedAt: nowIso,
+      updatedAt: nowIso
+    });
 
-    if (effectiveUserId) {
-      const userUpdates = sanitizeFirestoreData({
-        accountStatus: "payment_pending",
-        agreementStatus: "accepted",
-        agreementId: resolvedAgreementId,
-        agreementAcceptedAt: nowIso,
-        updatedAt: nowIso
+    const userRef = db.collection("users").doc(effectiveUserId);
+    const consultancyRef = db.collection("consultancies").doc(effectiveUserId);
+    const recruiterRef = db.collection("recruiters").doc(effectiveUserId);
+
+    // 5. FIRESTORE TRANSACTION: Idempotent & atomic update for agreement and consultancy docs
+    let finalAgreementData = null;
+
+    try {
+      await db.runTransaction(async (transaction) => {
+        const freshAgmt = await transaction.get(agrRef);
+        if (freshAgmt.exists && freshAgmt.data()?.status === "accepted") {
+          finalAgreementData = freshAgmt.data();
+          return;
+        }
+
+        transaction.set(agrRef, updateData, { merge: true });
+        transaction.set(userRef, userUpdates, { merge: true });
+        transaction.set(consultancyRef, userUpdates, { merge: true });
+        transaction.set(recruiterRef, userUpdates, { merge: true });
       });
-
+    } catch (txnError: any) {
+      console.warn("[Agreements Accept Transaction Warning]: Fallback merge set:", txnError?.message);
+      await agrRef.set(updateData, { merge: true });
       await Promise.allSettled([
-        db.collection("users").doc(effectiveUserId).set(userUpdates, { merge: true }),
-        db.collection("consultancies").doc(effectiveUserId).set(userUpdates, { merge: true }),
-        db.collection("recruiters").doc(effectiveUserId).set(userUpdates, { merge: true })
+        userRef.set(userUpdates, { merge: true }),
+        consultancyRef.set(userUpdates, { merge: true }),
+        recruiterRef.set(userUpdates, { merge: true })
       ]);
+    }
 
-      // Audit timeline event
+    if (!finalAgreementData) {
+      const freshSnap = await agrRef.get().catch(() => null);
+      finalAgreementData = (freshSnap && freshSnap.exists ? freshSnap.data() : null) || { ...agrData, ...updateData };
+    }
+
+    // 6. SECONDARY TASKS (Fail-safe, outside transaction so PDF/email/log issues never throw 500)
+    try {
+      // Audit timeline
       const timelineDoc = sanitizeFirestoreData({
         userId: effectiveUserId,
         stage: "AGREEMENT_ACCEPTED",
@@ -540,32 +626,37 @@ router.post(["/accept", "/agreements/accept"], async (req, res) => {
         actor: effectiveUserId
       });
       await db.collection("onboarding_timelines").doc(`tl_${effectiveUserId}_${Date.now()}`).set(timelineDoc).catch(e => console.warn("Timeline warning:", e));
+
+      // Email notification dispatch
+      if (agrData.userEmail || agrData.buyer?.email) {
+        dispatchEmail({
+          to: agrData.userEmail || agrData.buyer?.email,
+          templateName: "consultancy_welcome",
+          data: {
+            recipientName: acceptedName || agrData.buyer?.authorizedPerson || "Valued Partner",
+            appUrl: process.env.APP_URL || "https://aijobs.app"
+          }
+        }).catch(e => console.warn("Agreement email dispatch notice:", e?.message || e));
+      }
+    } catch (secErr: any) {
+      console.warn("[Agreements Accept Secondary Task Notice]:", secErr?.message || secErr);
     }
 
-    // Isolate email sending
-    if (agrData.userEmail || agrData.buyer?.email) {
-      dispatchEmail({
-        to: agrData.userEmail || agrData.buyer?.email,
-        templateName: "consultancy_welcome",
-        data: {
-          recipientName: acceptedName || agrData.buyer?.authorizedPerson || "Valued Partner",
-          appUrl: process.env.APP_URL || "https://aijobs.app"
-        }
-      }).catch(e => console.warn("Agreement email dispatch notice:", e?.message || e));
-    }
-
-    const updatedSnap = await agrRef.get();
-    const updatedAgreement = updatedSnap.data();
-
+    // 7. Successful JSON Response
     return res.json({
       success: true,
-      message: "Agreement successfully signed and accepted.",
+      message: "Agreement accepted successfully. Proceeding to Payment step.",
       nextStep: "payment_pending",
-      agreement: updatedAgreement
+      status: "accepted",
+      agreement: finalAgreementData
     });
   } catch (err: any) {
-    console.error("Error accepting agreement:", err);
-    return res.status(500).json({ success: false, error: err.message || "Failed to accept agreement." });
+    console.error("[/api/agreements/accept Error]:", err);
+    return res.status(500).json({
+      success: false,
+      error: "AGREEMENT_ACCEPT_FAILED",
+      message: err.message || "Failed to accept agreement."
+    });
   }
 });
 
@@ -628,71 +719,6 @@ router.post("/payments/create-order", async (req, res) => {
   } catch (err: any) {
     console.error("Error creating payment order:", err);
     return res.status(500).json({ success: false, error: err.message || "Failed to create payment order." });
-  }
-});
-      return res.status(404).json({ success: false, error: "Agreement not found" });
-    }
-
-    const agr = agrSnap.data() || {};
-    if (agr.status !== "accepted") {
-      return res.status(400).json({ success: false, error: "Agreement must be accepted prior to payment." });
-    }
-
-    const planSummary = agr.planSummary || {};
-    const baseAmount = planSummary.baseAmount || 499;
-    const gstPercentage = planSummary.gstPercentage || 18;
-    const gstAmount = Number((baseAmount * gstPercentage / 100).toFixed(2));
-    const totalAmount = Number((baseAmount + gstAmount).toFixed(2));
-
-    const isIntraState = true; // Default intra-state calculation
-    const cgst = isIntraState ? Number((gstAmount / 2).toFixed(2)) : 0;
-    const sgst = isIntraState ? Number((gstAmount / 2).toFixed(2)) : 0;
-    const igst = !isIntraState ? gstAmount : 0;
-
-    const orderId = `order_aijobs_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
-    const paymentId = `pay_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
-
-    const paymentDoc = {
-      paymentId,
-      orderId,
-      gatewayPaymentId: "",
-      gateway,
-      userId,
-      role: agr.role || "consultancy",
-      planId: agr.planId,
-      agreementId,
-      baseAmount,
-      gstPercentage,
-      cgst,
-      sgst,
-      igst,
-      gstAmount,
-      totalAmount,
-      currency: "INR",
-      status: "created", // created -> pending -> paid -> failed
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    await db.collection("payments").doc(paymentId).set(paymentDoc);
-
-    return res.json({
-      success: true,
-      order: {
-        orderId,
-        paymentId,
-        amount: totalAmount,
-        currency: "INR",
-        keyId: process.env.RAZORPAY_KEY_ID || "rzp_test_AIJOBS_LiveKey",
-        planName: planSummary.planName || "AIJOBS Database Access Plan",
-        baseAmount,
-        gstAmount,
-        totalAmount
-      }
-    });
-  } catch (err: any) {
-    console.error("Error creating payment order:", err);
-    return res.status(500).json({ success: false, error: err.message });
   }
 });
 

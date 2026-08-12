@@ -196,7 +196,7 @@ export default function AgreementsView({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          agreementId: activeAgreement.agreementId,
+          agreementId: activeAgreement?.agreementId || `agmt_${userId}`,
           userId,
           otp: otp.trim(),
           ipAddress,
@@ -205,9 +205,9 @@ export default function AgreementsView({
         })
       });
 
-      const data = await parseJsonResponse(res, "Digital signature failed");
+      const data = await parseJsonResponse(res);
       if (!data.success) {
-        throw new Error(data.error || "Digital signature failed.");
+        throw new Error(data.error || data.message || "Digital signature failed.");
       }
 
       setActiveAgreement(data.agreement);
@@ -547,9 +547,29 @@ export default function AgreementsView({
                   </div>
 
                   {errorMsg && (
-                    <p className="text-xs text-rose-400 bg-rose-500/10 p-2 rounded border border-rose-500/20">
-                      ❌ {errorMsg}
-                    </p>
+                    <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl space-y-2 text-left">
+                      <p className="text-xs text-rose-300 font-mono flex items-center gap-1.5">
+                        <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                        <span>{errorMsg}</span>
+                      </p>
+                      <div className="flex items-center gap-2 pt-1 font-mono">
+                        <button
+                          type="button"
+                          onClick={handleVerifyOtpAndSign}
+                          disabled={otpVerifying}
+                          className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-medium transition-colors cursor-pointer"
+                        >
+                          {otpVerifying ? "Retrying..." : "🔄 Retry Signature"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setErrorMsg("")}
+                          className="px-3 py-1 bg-white/10 hover:bg-white/20 text-gray-300 rounded text-[11px] transition-colors cursor-pointer"
+                        >
+                          Dismiss Error
+                        </button>
+                      </div>
+                    </div>
                   )}
 
                   <button
@@ -570,9 +590,21 @@ export default function AgreementsView({
               ) : (
                 <>
                   {errorMsg && (
-                    <p className="text-xs text-rose-400 font-mono bg-rose-500/10 p-2.5 rounded-lg border border-rose-500/20">
-                      ❌ {errorMsg}
-                    </p>
+                    <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl space-y-2 text-left">
+                      <p className="text-xs text-rose-300 font-mono flex items-center gap-1.5">
+                        <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                        <span>{errorMsg}</span>
+                      </p>
+                      <div className="flex items-center gap-2 pt-1 font-mono">
+                        <button
+                          type="button"
+                          onClick={() => setErrorMsg("")}
+                          className="px-3 py-1 bg-white/10 hover:bg-white/20 text-gray-300 rounded text-[11px] transition-colors cursor-pointer"
+                        >
+                          Dismiss Error
+                        </button>
+                      </div>
+                    </div>
                   )}
 
                   <button
