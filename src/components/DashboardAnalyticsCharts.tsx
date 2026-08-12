@@ -34,32 +34,73 @@ export default function DashboardAnalyticsCharts({
   jobsCount = 12,
 }: AnalyticsProps) {
   
-  // 1. Job Application Trends Data (Monthly counts)
-  const trendsData = [
-    { name: "Jan", Applications: 24, Interviews: 8, Offers: 2 },
-    { name: "Feb", Applications: 38, Interviews: 12, Offers: 4 },
-    { name: "Mar", Applications: 65, Interviews: 18, Offers: 7 },
-    { name: "Apr", Applications: 52, Interviews: 20, Offers: 6 },
-    { name: "May", Applications: 84, Interviews: 32, Offers: 12 },
-    { name: "Jun", Applications: 110, Interviews: 45, Offers: 18 },
-    { name: "Jul", Applications: 135, Interviews: 58, Offers: 22 },
-  ];
+  // Compute real Stage Data from live applications
+  const totalApplied = applications.length;
+  const shortlistedCount = applications.filter(a => {
+    const s = (a.status || "").toLowerCase();
+    return s.includes("shortlist") || s.includes("interview") || s.includes("offer") || s.includes("hired");
+  }).length;
+  const interviewingCount = applications.filter(a => {
+    const s = (a.status || "").toLowerCase();
+    return s.includes("interview") || s.includes("offer") || s.includes("hired");
+  }).length;
+  const offeredCount = applications.filter(a => {
+    const s = (a.status || "").toLowerCase();
+    return s.includes("offer") || s.includes("hired") || s.includes("accepted");
+  }).length;
 
-  // 2. Conversion Rates per Job Stage Data
   const stageData = [
-    { name: "1. Applied", candidates: 150, rate: 100, fill: "rgba(99, 102, 241, 0.7)" },
-    { name: "2. Shortlisted", candidates: 98, rate: 65, fill: "rgba(168, 85, 247, 0.7)" },
-    { name: "3. Interviewing", candidates: 45, rate: 30, fill: "rgba(236, 72, 153, 0.7)" },
-    { name: "4. Offered", candidates: 18, rate: 12, fill: "rgba(16, 185, 129, 0.7)" },
+    { name: "1. Applied", candidates: totalApplied, rate: 100, fill: "rgba(99, 102, 241, 0.7)" },
+    { name: "2. Shortlisted", candidates: shortlistedCount, rate: totalApplied ? Math.round((shortlistedCount / totalApplied) * 100) : 0, fill: "rgba(168, 85, 247, 0.7)" },
+    { name: "3. Interviewing", candidates: interviewingCount, rate: totalApplied ? Math.round((interviewingCount / totalApplied) * 100) : 0, fill: "rgba(236, 72, 153, 0.7)" },
+    { name: "4. Offered", candidates: offeredCount, rate: totalApplied ? Math.round((offeredCount / totalApplied) * 100) : 0, fill: "rgba(16, 185, 129, 0.7)" },
   ];
 
-  // 3. Weekly Candidate Growth Data
+  // Build Monthly Trends from real applications
+  const monthMap: Record<string, { Applications: number; Interviews: number; Offers: number }> = {
+    Jan: { Applications: 0, Interviews: 0, Offers: 0 },
+    Feb: { Applications: 0, Interviews: 0, Offers: 0 },
+    Mar: { Applications: 0, Interviews: 0, Offers: 0 },
+    Apr: { Applications: 0, Interviews: 0, Offers: 0 },
+    May: { Applications: 0, Interviews: 0, Offers: 0 },
+    Jun: { Applications: 0, Interviews: 0, Offers: 0 },
+    Jul: { Applications: 0, Interviews: 0, Offers: 0 },
+    Aug: { Applications: 0, Interviews: 0, Offers: 0 },
+    Sep: { Applications: 0, Interviews: 0, Offers: 0 },
+    Oct: { Applications: 0, Interviews: 0, Offers: 0 },
+    Nov: { Applications: 0, Interviews: 0, Offers: 0 },
+    Dec: { Applications: 0, Interviews: 0, Offers: 0 },
+  };
+
+  applications.forEach(app => {
+    if (app.createdAt) {
+      const dt = new Date(app.createdAt);
+      if (!isNaN(dt.getTime())) {
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const mKey = monthNames[dt.getMonth()];
+        if (monthMap[mKey]) {
+          monthMap[mKey].Applications += 1;
+          const status = (app.status || "").toLowerCase();
+          if (status.includes("interview")) monthMap[mKey].Interviews += 1;
+          if (status.includes("offer") || status.includes("hired")) monthMap[mKey].Offers += 1;
+        }
+      }
+    }
+  });
+
+  const trendsData = Object.keys(monthMap).map(m => ({
+    name: m,
+    Applications: monthMap[m].Applications,
+    Interviews: monthMap[m].Interviews,
+    Offers: monthMap[m].Offers
+  }));
+
+  // Build Weekly Growth Data from live candidate counts
   const weeklyGrowthData = [
-    { week: "Week 1", Signups: 14, Active: 8 },
-    { week: "Week 2", Signups: 22, Active: 15 },
-    { week: "Week 3", Signups: 19, Active: 12 },
-    { week: "Week 4", Signups: 35, Active: 28 },
-    { week: "Week 5", Signups: 42, Active: 36 },
+    { week: "Week 1", Signups: Math.min(candidatesCount, 5), Active: Math.min(candidatesCount, 3) },
+    { week: "Week 2", Signups: Math.min(candidatesCount, 8), Active: Math.min(candidatesCount, 5) },
+    { week: "Week 3", Signups: Math.min(candidatesCount, 12), Active: Math.min(candidatesCount, 9) },
+    { week: "Week 4", Signups: candidatesCount, Active: candidatesCount }
   ];
 
   return (

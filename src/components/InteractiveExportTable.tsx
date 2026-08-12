@@ -336,16 +336,16 @@ export default function InteractiveExportTable<T extends Record<string, any>>({
         
         {/* DESKTOP TABULAR VIEW */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left border-collapse text-[11px] font-mono">
+          <table className="w-full text-left border-collapse text-sm font-sans">
             <thead>
-              <tr className="bg-zinc-900/60 border-b border-white/5 text-gray-400">
+              <tr className="bg-zinc-900/80 border-b border-white/10 text-slate-300">
                 {activeColumns.map(col => {
                   const isSorted = sortKey === col.key;
                   return (
                     <th 
                       key={col.key as string}
                       onClick={() => col.sortable !== false && handleSort(col.key as string)}
-                      className={`p-3.5 select-none font-bold tracking-wider uppercase ${col.sortable !== false ? "cursor-pointer hover:bg-white/5 text-gray-200 hover:text-white" : ""}`}
+                      className={`p-3.5 select-none text-xs md:text-sm font-semibold tracking-wider uppercase ${col.sortable !== false ? "cursor-pointer hover:bg-white/5 text-slate-200 hover:text-white" : ""}`}
                     >
                       <div className="flex items-center gap-1.5">
                         <span>{col.label}</span>
@@ -353,7 +353,7 @@ export default function InteractiveExportTable<T extends Record<string, any>>({
                           isSorted ? (
                             sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-indigo-400" /> : <ArrowDown className="w-3.5 h-3.5 text-indigo-400" />
                           ) : (
-                            <ArrowUpDown className="w-3 h-3 text-gray-500 opacity-60" />
+                            <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-60" />
                           )
                         )}
                       </div>
@@ -362,12 +362,12 @@ export default function InteractiveExportTable<T extends Record<string, any>>({
                 })}
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5 text-gray-300">
+            <tbody className="divide-y divide-white/10 text-slate-200">
               {processedData.length > 0 ? (
                 processedData.map((item, idx) => (
                   <tr key={item.uid || item.id || idx} className="hover:bg-white/5 transition-all">
                     {activeColumns.map(col => (
-                      <td key={col.key as string} className="p-3.5">
+                      <td key={col.key as string} className="p-3.5 text-sm">
                         {col.render 
                           ? col.render(item[col.key as string], item) 
                           : String(item[col.key as string] ?? "-")
@@ -378,8 +378,8 @@ export default function InteractiveExportTable<T extends Record<string, any>>({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={activeColumns.length} className="text-center py-12 text-gray-500 italic">
-                    No data matrix rows available matching criteria.
+                  <td colSpan={activeColumns.length} className="text-center py-12 text-slate-400 italic text-sm">
+                    No data records found matching criteria.
                   </td>
                 </tr>
               )}

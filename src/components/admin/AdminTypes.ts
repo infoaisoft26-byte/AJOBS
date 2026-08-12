@@ -166,6 +166,8 @@ export interface PaymentTransaction {
 
 export interface LiveStats {
   totalCandidates: number;
+  verifiedCandidates: number;
+  unverifiedCandidates: number;
   totalConsultancies: number;
   totalEmployers: number;
   totalJobs: number;

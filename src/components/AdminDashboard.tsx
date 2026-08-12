@@ -99,6 +99,8 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
   // Stats
   const [stats, setStats] = useState<LiveStats>({
     totalCandidates: 0,
+    verifiedCandidates: 0,
+    unverifiedCandidates: 0,
     totalConsultancies: 0,
     totalEmployers: 0,
     totalJobs: 0,
@@ -303,7 +305,11 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
     }
 
     // Calculate aggregated Live Stats safely from real Firestore collections
-    const candidatesCount = users.filter(u => u.role === "candidate").length;
+    const candidatesList = users.filter(u => u.role === "candidate");
+    const candidatesCount = candidatesList.length;
+    const verifiedCandidatesCount = candidatesList.filter(u => u.emailVerified === true || u.verificationStatus === "verified" || ((u.accountStatus === "active" || u.status === "active") && u.emailVerified !== false && u.verificationStatus !== "pending")).length;
+    const unverifiedCandidatesCount = candidatesList.length - verifiedCandidatesCount;
+
     const employersCount = users.filter(u => u.role === "employer").length;
     const consultanciesCount = users.filter(u => u.role === "consultancy").length;
 
@@ -333,6 +339,8 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
 
     setStats({
       totalCandidates: candidatesCount,
+      verifiedCandidates: verifiedCandidatesCount,
+      unverifiedCandidates: unverifiedCandidatesCount,
       totalConsultancies: consultanciesCount,
       totalEmployers: employersCount,
       totalJobs: jobs.length,
@@ -521,7 +529,7 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-1">
-              <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider block pb-2">
+              <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider block pb-2">
                 SUPER ADMIN NAVIGATION
               </span>
               {navigationItems.map((item) => {
@@ -537,15 +545,15 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
                       setActiveTab(item.id);
                       setMobileDrawerOpen(false);
                     }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-xs text-left transition-all ${
+                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 min-h-[44px] rounded-xl font-medium text-sm text-left transition-all ${
                       isSelected 
-                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/15" 
+                        ? "bg-indigo-600 text-white font-semibold shadow-lg shadow-indigo-600/25" 
                         : isRoleAuthorized 
-                          ? "text-gray-400 hover:text-white hover:bg-white/5 cursor-pointer" 
-                          : "text-gray-600 opacity-30 cursor-not-allowed"
+                          ? "text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer" 
+                          : "text-slate-600 opacity-40 cursor-not-allowed"
                     }`}
                   >
-                    <Icon className={`w-4 h-4 shrink-0 ${isSelected ? "text-white" : "text-gray-400"}`} />
+                    <Icon className={`w-4 h-4 shrink-0 ${isSelected ? "text-white" : "text-slate-400"}`} />
                     <span className="truncate">{item.label}</span>
                   </button>
                 );
@@ -553,13 +561,16 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
             </div>
 
             <div className="mt-auto p-4 border-t border-white/10 bg-black/60 space-y-2">
+              <div className="text-xs text-slate-300 font-medium px-1">
+                Logged in as: <strong className="text-white">{currentUserName}</strong>
+              </div>
               <button
                 onClick={async () => {
                   setMobileDrawerOpen(false);
                   await auth.signOut();
                   window.location.reload();
                 }}
-                className="w-full flex items-center justify-center space-x-2 py-2.5 px-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 text-xs font-bold transition-all cursor-pointer"
+                className="w-full flex items-center justify-center space-x-2 py-2.5 px-4 rounded-xl bg-red-500/15 border border-red-500/30 text-red-300 hover:bg-red-500/25 text-sm font-semibold transition-all cursor-pointer"
               >
                 <LogOut className="w-4 h-4" />
                 <span>Logout</span>
@@ -570,7 +581,7 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
       )}
 
       {/* Desktop Sidebar layout */}
-      <aside className={`hidden lg:flex bg-[#0a0a0f] border-r border-white/5 flex-col justify-between transition-all duration-300 z-10 shrink-0 ${
+      <aside className={`hidden lg:flex bg-[#0a0a0f] border-r border-white/10 flex-col justify-between transition-all duration-300 z-10 shrink-0 ${
         isSidebarCollapsed ? "w-20" : "w-64"
       }`}>
         
@@ -578,11 +589,11 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
         <div className="p-5 space-y-6">
           <div className="flex justify-between items-center">
             {!isSidebarCollapsed && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <AIJobsLogo variant="icon" size="sm" />
                 <div>
-                  <h1 className="font-extrabold text-sm tracking-wider text-white">AIJOBS CONSOLE</h1>
-                  <span className="text-[8px] text-gray-500 font-mono tracking-wider uppercase">ENTERPRISE OS</span>
+                  <h1 className="font-sora font-bold text-base tracking-wide text-white">AIJOBS CONSOLE</h1>
+                  <span className="text-xs text-slate-400 font-mono tracking-wider uppercase">ENTERPRISE OS</span>
                 </div>
               </div>
             )}
@@ -595,16 +606,17 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
 
             <button 
               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              className="p-1 bg-white/5 hover:bg-white/10 rounded border border-white/5 text-gray-400 hover:text-white cursor-pointer ml-auto"
+              className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 text-slate-300 hover:text-white cursor-pointer ml-auto"
+              title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
             >
-              {isSidebarCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+              {isSidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
             </button>
           </div>
 
         </div>
 
         {/* Navigation list */}
-        <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto">
+        <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
           {navigationItems.map((item) => {
             const isSelected = activeView === item.id;
             const isRoleAuthorized = item.authorizedRoles.includes(activeRole);
@@ -615,15 +627,16 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
                 key={item.id}
                 disabled={!isRoleAuthorized}
                 onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-xs text-left transition-all ${
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 min-h-[44px] rounded-xl font-medium text-sm text-left transition-all ${
                   isSelected 
-                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/15" 
+                    ? "bg-indigo-600 text-white font-semibold shadow-lg shadow-indigo-600/25" 
                     : isRoleAuthorized 
-                      ? "text-gray-400 hover:text-white hover:bg-white/5 cursor-pointer" 
-                      : "text-gray-600 opacity-30 cursor-not-allowed"
+                      ? "text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer" 
+                      : "text-slate-600 opacity-40 cursor-not-allowed"
                 }`}
+                title={isSidebarCollapsed ? item.label : undefined}
               >
-                <Icon className={`w-4 h-4 shrink-0 ${isSelected ? "text-white" : "text-gray-400"}`} />
+                <Icon className={`w-4.5 h-4.5 shrink-0 ${isSelected ? "text-white" : "text-slate-400"}`} />
                 {!isSidebarCollapsed && (
                   <span className="truncate">{item.label}</span>
                 )}
@@ -632,8 +645,27 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
           })}
         </nav>
 
-        {/* Lower footer */}
-        <div className="p-4 border-t border-white/5 space-y-4">
+        {/* Lower footer with Logout */}
+        <div className="p-4 border-t border-white/10 space-y-3 bg-black/40">
+          {!isSidebarCollapsed && (
+            <div className="text-xs text-slate-300 font-medium truncate">
+              <div className="text-slate-400 text-[11px]">Logged in as</div>
+              <div className="text-white font-semibold truncate">{currentUserName}</div>
+            </div>
+          )}
+          <button
+            onClick={async () => {
+              await auth.signOut();
+              window.location.reload();
+            }}
+            className={`w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-red-500/15 border border-red-500/30 text-red-300 hover:bg-red-500/25 hover:text-white text-sm font-semibold transition-all cursor-pointer ${
+              isSidebarCollapsed ? "px-2" : ""
+            }`}
+            title="Logout Admin Session"
+          >
+            <LogOut className="w-4 h-4 shrink-0" />
+            {!isSidebarCollapsed && <span>Logout</span>}
+          </button>
         </div>
 
       </aside>
@@ -642,27 +674,44 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
       <main className="flex-1 flex flex-col min-w-0">
         
         {/* Upper Header notifications */}
-        <header className="p-4 border-b border-white/5 flex justify-between items-center bg-[#0a0a0f]/50 backdrop-blur">
+        <header className="p-4 md:px-8 border-b border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[#0a0a0f]/80">
           <div className="flex items-center gap-3">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="text-[10px] text-gray-400 font-mono">
-              ROLE: <strong className="text-white uppercase font-black">{activeRole}</strong>
-            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono text-slate-400 uppercase">Current Page:</span>
+                <span className="font-sora font-semibold text-sm md:text-base text-white">
+                  {navigationItems.find(n => n.id === activeView)?.label || "Live Dashboard"}
+                </span>
+              </div>
+              <div className="text-xs text-slate-400 font-mono mt-0.5">
+                ROLE: <strong className="text-indigo-300 uppercase font-bold">{activeRole}</strong> • PROFILE: <strong className="text-emerald-400 font-bold">{currentUserName}</strong>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 self-end md:self-auto flex-wrap">
             <OfflineSyncBadge />
             <ExportActivityCsvButton role="admin" variant="compact" label="Export Admin CSV" />
             <button
               onClick={fetchWorkspaceData}
-              className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg border border-white/5 text-gray-400 hover:text-white transition-all cursor-pointer"
+              className="p-2 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 text-slate-300 hover:text-white transition-all cursor-pointer text-xs flex items-center gap-1.5"
               title="Sync core parameters"
             >
-              <RefreshCw className="w-3.5 h-3.5" />
+              <RefreshCw className="w-4 h-4" />
+              <span className="hidden sm:inline font-medium">Sync Data</span>
             </button>
-            <div className="text-right text-[10px] font-mono text-gray-500 pr-1 hidden sm:block">
-              v1.4 Enterprise
-            </div>
+            <button
+              onClick={async () => {
+                await auth.signOut();
+                window.location.reload();
+              }}
+              className="p-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-xl text-red-300 hover:text-white transition-all cursor-pointer text-xs flex items-center gap-1.5 font-medium"
+              title="Logout"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
           </div>
         </header>
 
@@ -685,6 +734,7 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
               {activeView === "dashboard" && (
                 <LiveDashboard
                   stats={stats}
+                  users={userList}
                   recentLogs={auditLogsList.slice(0, 5)}
                   onRefresh={fetchWorkspaceData}
                   onNavigateToTab={(tab) => setActiveTab(tab)}

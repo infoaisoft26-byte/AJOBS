@@ -46,4 +46,21 @@ export async function parseJsonResponse(response: Response) {
   }
 }
 
+/**
+ * Safe wrapper around fetch that guarantees non-throwing response handling
+ * and converts raw TypeError: Failed to fetch into a standard JSON payload.
+ */
+export async function safeFetch(url: string, options?: RequestInit): Promise<any> {
+  try {
+    const res = await fetch(url, options);
+    return await parseJsonResponse(res);
+  } catch (err: any) {
+    console.warn(`[safeFetch] Network error for ${url}:`, err);
+    return {
+      success: false,
+      error: err?.message || "Network error. Failed to reach server."
+    };
+  }
+}
+
 

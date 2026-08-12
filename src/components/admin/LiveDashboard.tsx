@@ -5,9 +5,11 @@ import { auth, db } from "../../firebase";
 import { parseJsonResponse } from "../../utils/apiHelper";
 import { LiveStats, SystemAuditLog } from "./AdminTypes";
 import DashboardAnalyticsCharts from "../DashboardAnalyticsCharts";
+import CandidateVerificationWidget from "./CandidateVerificationWidget";
 
 interface LiveDashboardProps {
   stats: LiveStats;
+  users?: any[];
   recentLogs: SystemAuditLog[];
   onRefresh: () => void;
   onNavigateToTab: (tab: string) => void;
@@ -18,6 +20,7 @@ interface LiveDashboardProps {
 
 export default function LiveDashboard({
   stats,
+  users = [],
   recentLogs,
   onRefresh,
   onNavigateToTab,
@@ -166,15 +169,17 @@ export default function LiveDashboard({
     fetchAiInsights();
   }, [stats]);
 
-  // Weekly applications count data
+  // Weekly applications count data derived from live stats
+  const dailyApps = stats.applicationsToday || 0;
+  const dailyRev = Math.round((stats.monthlyRevenue || 0) / 30);
   const weeklyTrend = [
-    { day: "Mon", count: 42, revenue: 15000 },
-    { day: "Tue", count: 58, revenue: 22000 },
-    { day: "Wed", count: 89, revenue: 35000 },
-    { day: "Thu", count: 74, revenue: 18000 },
-    { day: "Fri", count: 96, revenue: 45000 },
-    { day: "Sat", count: 50, revenue: 29000 },
-    { day: "Sun", count: 65, revenue: 38000 }
+    { day: "Mon", count: dailyApps, revenue: dailyRev },
+    { day: "Tue", count: dailyApps, revenue: dailyRev },
+    { day: "Wed", count: dailyApps, revenue: dailyRev },
+    { day: "Thu", count: dailyApps, revenue: dailyRev },
+    { day: "Fri", count: dailyApps, revenue: dailyRev },
+    { day: "Sat", count: Math.round(dailyApps * 0.5), revenue: Math.round(dailyRev * 0.5) },
+    { day: "Sun", count: Math.round(dailyApps * 0.3), revenue: Math.round(dailyRev * 0.3) }
   ];
 
   // Distribution chart constants
@@ -182,9 +187,9 @@ export default function LiveDashboard({
     { label: "Candidates", value: stats.totalCandidates, color: "stroke-indigo-500", text: "text-indigo-400" },
     { label: "Employers", value: stats.totalEmployers, color: "stroke-pink-500", text: "text-pink-400" },
     { label: "Consultancies", value: stats.totalConsultancies, color: "stroke-purple-500", text: "text-purple-400" },
-    { label: "Admins", value: 3, color: "stroke-emerald-500", text: "text-emerald-400" }
+    { label: "Admins", value: 1, color: "stroke-emerald-500", text: "text-emerald-400" }
   ];
-  const totalUsers = stats.totalCandidates + stats.totalEmployers + stats.totalConsultancies + 3;
+  const totalUsers = stats.totalCandidates + stats.totalEmployers + stats.totalConsultancies + 1;
 
   // Render SVG Ring helper
   let cumulativePercent = 0;
@@ -192,12 +197,13 @@ export default function LiveDashboard({
   // Heat map matrix (Hours 08:00 to 20:00 vs Days Mon-Fri)
   const daysLabel = ["Mon", "Tue", "Wed", "Thu", "Fri"];
   const hoursLabel = ["09:00", "12:00", "15:00", "18:00", "21:00"];
+  const liveActivityLoad = stats.liveOnlineUsers ? Math.min(stats.liveOnlineUsers * 10, 100) : 0;
   const heatValues = [
-    [10, 45, 80, 50, 20], // Mon
-    [30, 90, 70, 85, 40], // Tue
-    [50, 80, 95, 60, 15], // Wed
-    [40, 60, 85, 90, 35], // Thu
-    [75, 95, 99, 70, 60]  // Fri
+    [liveActivityLoad, liveActivityLoad, liveActivityLoad, liveActivityLoad, 0],
+    [liveActivityLoad, liveActivityLoad, liveActivityLoad, liveActivityLoad, 0],
+    [liveActivityLoad, liveActivityLoad, liveActivityLoad, liveActivityLoad, 0],
+    [liveActivityLoad, liveActivityLoad, liveActivityLoad, liveActivityLoad, 0],
+    [liveActivityLoad, liveActivityLoad, liveActivityLoad, liveActivityLoad, 0]
   ];
 
   // Helper formatting INR
@@ -296,6 +302,14 @@ export default function LiveDashboard({
         )}
       </div>
 
+      {/* Candidate Registration Email Verification Impact Widget */}
+      <CandidateVerificationWidget 
+        stats={stats} 
+        users={users} 
+        onNavigateToTab={onNavigateToTab} 
+        onRefresh={onRefresh} 
+      />
+
       {/* Grid of 15 Multi-Faceted Metric Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         
@@ -307,8 +321,7 @@ export default function LiveDashboard({
           </div>
           <div className="text-2xl font-black text-white mt-1.5">{stats.totalCandidates}</div>
           <div className="text-[9px] text-emerald-400 font-mono mt-1 flex items-center gap-0.5">
-            <ArrowUpRight className="w-3 h-3" />
-            <span>+18.4% monthly</span>
+            <span>{stats.verifiedCandidates ?? 0} Verified ({stats.unverifiedCandidates ?? 0} Pending)</span>
           </div>
         </div>
 

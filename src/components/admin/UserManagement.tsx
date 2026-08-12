@@ -28,7 +28,15 @@ export default function UserManagement({
     
     // Simulate active status check since standard user profile might have suspended: true/false
     const userStatus = (u as any).isSuspended ? "suspended" : "active";
-    const matchesStatus = selectedStatus === "all" || userStatus === selectedStatus;
+    const isCand = u.role === "candidate";
+    const isVerifiedCand = isCand && ((u as any).emailVerified === true || (u as any).verificationStatus === "verified" || (((u as any).accountStatus === "active" || (u as any).status === "active") && (u as any).emailVerified !== false && (u as any).verificationStatus !== "pending"));
+
+    let matchesStatus = true;
+    if (selectedStatus === "active") matchesStatus = userStatus === "active";
+    else if (selectedStatus === "suspended") matchesStatus = userStatus === "suspended";
+    else if (selectedStatus === "verified_candidates") matchesStatus = isCand && isVerifiedCand;
+    else if (selectedStatus === "unverified_candidates") matchesStatus = isCand && !isVerifiedCand;
+
     const matchesRole = selectedRole === "all" || u.role === selectedRole;
 
     return matchesSearch && matchesStatus && matchesRole;
@@ -207,6 +215,8 @@ export default function UserManagement({
             <option value="all">All Statuses</option>
             <option value="active">Active Clearances</option>
             <option value="suspended">Suspended Accounts</option>
+            <option value="verified_candidates">Verified Candidates Only</option>
+            <option value="unverified_candidates">Unverified Candidates Only</option>
           </select>
         </div>
 
@@ -229,13 +239,26 @@ export default function UserManagement({
                 key: "name",
                 label: "User Information",
                 sortable: true,
-                render: (val: any, u: UserProfile) => (
-                  <div className="py-1">
-                    <div className="font-bold text-white group-hover:text-indigo-400 transition-all">{u.name}</div>
-                    <div className="text-[10px] text-gray-400 font-mono mt-0.5">{u.email}</div>
-                    <div className="text-[8px] text-gray-500 font-mono mt-0.5">UID: {u.uid}</div>
-                  </div>
-                )
+                render: (val: any, u: UserProfile) => {
+                  const isCand = u.role === "candidate";
+                  const isVerified = (u as any).emailVerified === true || (u as any).verificationStatus === "verified" || (((u as any).accountStatus === "active" || (u as any).status === "active") && (u as any).emailVerified !== false && (u as any).verificationStatus !== "pending");
+                  return (
+                    <div className="py-1">
+                      <div className="font-bold text-white group-hover:text-indigo-400 transition-all flex items-center gap-1.5 flex-wrap">
+                        <span>{u.name}</span>
+                        {isCand && (
+                          <span className={`px-1.5 py-0.2 rounded text-[8px] font-mono font-bold ${
+                            isVerified ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30" : "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                          }`}>
+                            {isVerified ? "✓ Verified" : "⏳ Pending Verification"}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-gray-400 font-mono mt-0.5">{u.email}</div>
+                      <div className="text-[8px] text-gray-500 font-mono mt-0.5">UID: {u.uid}</div>
+                    </div>
+                  );
+                }
               },
               {
                 key: "role",
