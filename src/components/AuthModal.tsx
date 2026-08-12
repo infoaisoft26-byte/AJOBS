@@ -703,6 +703,11 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
         console.log("Updating user profile display name:", displayName);
         await updateProfile(fbUser, { displayName });
 
+        if (role === "candidate") {
+          console.log("Sending Firebase email verification to candidate:", email.trim());
+          await sendEmailVerification(fbUser);
+        }
+
         console.log("Initializing user Firestore collections & profile for role:", role);
         const userProfile = await initializeUserCollectionsAndDocs(fbUser, role, displayName);
 
@@ -759,14 +764,27 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
         }
 
         console.log("Registration successfully finalized. User Profile:", userProfile);
-        setSuccess("Account provisioned successfully!");
-        onAuthSuccess(userProfile);
-        onClose();
+        if (role === "candidate" && !fbUser.emailVerified) {
+          setSuccess("Candidate account created! A verification link has been sent to your email address. Please check your inbox and verify your email to access your candidate dashboard.");
+          showToast("Verification email sent! Please check your inbox.", "info");
+        } else {
+          setSuccess("Account provisioned successfully!");
+          onAuthSuccess(userProfile);
+          onClose();
+        }
       } else {
         console.log("Signing in user...");
         const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
         console.log("Sign-in success:", userCredential);
         const fbUser = userCredential.user;
+
+        if (role === "candidate") {
+          await fbUser.reload();
+          if (!fbUser.emailVerified) {
+            throw new Error("Candidate email address not verified yet. Please check your email inbox and click the verification link before logging in.");
+          }
+        }
+
         setSuccess("Sign-In successful!");
         await handlePostAuth(fbUser);
       }

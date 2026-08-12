@@ -251,7 +251,9 @@ export async function dispatchEmail(params: DispatchEmailParams): Promise<Dispat
 /**
  * Alias for dispatchEmail for backwards compatibility across routes
  */
-export const sendTemplatedEmail = dispatchEmail;
+export async function sendTemplatedEmail(params: DispatchEmailParams): Promise<DispatchEmailResult> {
+  return dispatchEmail(params);
+}
 
 /**
  * Record Log Doc in Firestore 'email_logs/{emailId}'

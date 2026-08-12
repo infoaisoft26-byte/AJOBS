@@ -1,10 +1,11 @@
 import { auth, db } from "../firebase";
 import React, { Dispatch, FormEvent, useState } from "react";
-import { GoogleAuthProvider, createUserWithEmailAndPassword, signInWithPopup, updateProfile } from "firebase/auth";
+import { GoogleAuthProvider, createUserWithEmailAndPassword, sendEmailVerification, signInWithPopup, updateProfile } from "firebase/auth";
 import { collection, doc, setDoc } from "firebase/firestore";
-import { AlertCircle, ArrowRight, Briefcase, Link, Lock, Mail, Phone, RefreshCw, Repeat, Save, Send, Sparkles, Target, Type, User, UserPlus } from "lucide-react";
+import { AlertCircle, ArrowRight, Briefcase, CheckSquare, Link, Lock, Mail, Phone, RefreshCw, Repeat, Save, Send, Sparkles, Target, Type, User, UserPlus } from "lucide-react";
 import { UserProfile } from "../types";
 import { useToast } from "./GlobalToast";
+import CandidateEmailVerification from "./CandidateEmailVerification";
 
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
@@ -26,23 +27,29 @@ export default function CandidateRegister({
   const [phone, setPhone] = useState("");
   const [targetRole, setTargetRole] = useState("");
   const [location, setLocation] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [emailConsent, setEmailConsent] = useState(false); // Unchecked by default
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [showVerificationScreen, setShowVerificationScreen] = useState(false);
+  const [registeredProfile, setRegisteredProfile] = useState<UserProfile | null>(null);
 
-  const saveCandidateToFirestore = async (uid: string, userEmail: string, nameToSave: string): Promise<UserProfile> => {
+  const saveCandidateToFirestore = async (uid: string, userEmail: string, nameToSave: string, isEmailVerified: boolean = false): Promise<UserProfile> => {
     const isoDate = new Date().toISOString();
 
-    // 1. Core user profile document
+    // 1. Core user profile document with strict verification status
     const userProfile: UserProfile = {
       uid,
       name: nameToSave,
       email: userEmail,
       phone: phone.trim(),
       role: "candidate", // Strictly candidate role
-      isBetaTester: false, // Default false
-      internalAccess: false, // Default false
-      accountStatus: "active",
+      isBetaTester: false,
+      internalAccess: false,
+      verificationStatus: isEmailVerified ? "verified" : "pending",
+      emailVerified: isEmailVerified,
+      accountStatus: isEmailVerified ? "active" : "pending_verification",
+      status: isEmailVerified ? "active" : "pending_verification",
       createdAt: isoDate,
       updatedAt: isoDate,
       profileCompleted: false,
@@ -61,7 +68,10 @@ export default function CandidateRegister({
       phone: phone.trim(),
       targetRole: targetRole.trim() || "Software Engineer",
       location: location.trim() || "Remote / India",
-      status: "pre_registered",
+      verificationStatus: isEmailVerified ? "verified" : "pending",
+      emailVerified: isEmailVerified,
+      accountStatus: isEmailVerified ? "active" : "pending_verification",
+      status: isEmailVerified ? "active" : "pending_verification",
       skills: [],
       experience: "Entry / Mid Level",
       emailMarketingConsent: emailConsent,
@@ -126,17 +136,26 @@ export default function CandidateRegister({
       return;
     }
 
+    if (!termsAccepted) {
+      setErrorMsg("You must accept the Terms of Service and Privacy Policy to register.");
+      return;
+    }
+
     setLoading(true);
     try {
       // Create auth user
       const res = await createUserWithEmailAndPassword(auth, email.trim(), password);
       await updateProfile(res.user, { displayName: fullName.trim() });
 
-      // Save Firestore user record with candidate role
-      const profile = await saveCandidateToFirestore(res.user.uid, res.user.email || email.trim(), fullName.trim());
+      // Send Firebase Email Verification immediately
+      await sendEmailVerification(res.user);
 
-      showToast(`Registration Successful! Welcome to AIJobs, ${profile.name}!`, "success");
-      onRegisterSuccess(profile);
+      // Save Firestore user record with pending verification status
+      const profile = await saveCandidateToFirestore(res.user.uid, res.user.email || email.trim(), fullName.trim(), false);
+
+      setRegisteredProfile(profile);
+      setShowVerificationScreen(true);
+      showToast("Account created! A verification email has been sent to your email address.", "info");
     } catch (err: any) {
       console.error("[Candidate Registration Error]:", err);
       let msg = "Failed to complete candidate registration. Please try again.";
@@ -161,10 +180,17 @@ export default function CandidateRegister({
       const res = await signInWithPopup(auth, googleProvider);
       const displayName = res.user.displayName || fullName.trim() || res.user.email?.split("@")[0] || "Candidate";
       
-      const profile = await saveCandidateToFirestore(res.user.uid, res.user.email || "", displayName);
+      const isGoogleEmailVerified = res.user.emailVerified === true;
+      const profile = await saveCandidateToFirestore(res.user.uid, res.user.email || "", displayName, isGoogleEmailVerified);
 
-      showToast(`Pre-Registered via Google as ${profile.name}`, "success");
-      onRegisterSuccess(profile);
+      if (isGoogleEmailVerified) {
+        showToast(`Signed up via Google as ${profile.name}`, "success");
+        onRegisterSuccess(profile);
+      } else {
+        setRegisteredProfile(profile);
+        setShowVerificationScreen(true);
+        showToast("Please verify your email to continue.", "info");
+      }
     } catch (err: any) {
       console.error("[Candidate Google Sign Up Error]:", err);
       setErrorMsg("Google Sign-Up failed or was cancelled.");
@@ -173,6 +199,22 @@ export default function CandidateRegister({
       setLoading(false);
     }
   };
+
+  if (showVerificationScreen) {
+    return (
+      <CandidateEmailVerification
+        user={registeredProfile}
+        onVerified={(verifiedProfile) => {
+          onRegisterSuccess(verifiedProfile);
+        }}
+        onSignOut={() => {
+          setShowVerificationScreen(false);
+          setRegisteredProfile(null);
+          onNavigateToLogin();
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-[85vh] flex items-center justify-center px-4 py-12 relative z-10">
@@ -315,8 +357,24 @@ export default function CandidateRegister({
 
           </div>
 
-          {/* Email Marketing Consent Checkbox (Optional, Unchecked by default) */}
+          {/* Terms of Service & Privacy Policy Acceptance Checkbox (Required) */}
           <div className="pt-2 text-left">
+            <label className="flex items-start gap-2.5 cursor-pointer text-xs text-gray-300 hover:text-white transition-colors group">
+              <input
+                type="checkbox"
+                required
+                checked={termsAccepted}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-gray-700 bg-gray-900 text-blue-600 focus:ring-blue-500/40 cursor-pointer"
+              />
+              <span className="leading-snug text-[11px]">
+                I accept the <a href="/terms" target="_blank" className="text-blue-400 underline hover:text-blue-300">Terms of Service</a> and <a href="/privacy-policy" target="_blank" className="text-blue-400 underline hover:text-blue-300">Privacy Policy</a>. *
+              </span>
+            </label>
+          </div>
+
+          {/* Email Marketing Consent Checkbox (Optional, Unchecked by default) */}
+          <div className="pt-1 text-left">
             <label className="flex items-start gap-2.5 cursor-pointer text-xs text-gray-300 hover:text-white transition-colors group">
               <input
                 type="checkbox"

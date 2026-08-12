@@ -7,6 +7,7 @@ import { auth, db } from "../firebase";
 
 import { UserProfile } from "../types";
 import { useToast } from "./GlobalToast";
+import CandidateEmailVerification from "./CandidateEmailVerification";
 
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
@@ -25,6 +26,8 @@ export default function CandidatePreLaunchLogin({
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [showVerificationScreen, setShowVerificationScreen] = useState(false);
+  const [unverifiedProfile, setUnverifiedProfile] = useState<UserProfile | null>(null);
   
   // Forgot Password Modal State
   const [forgotOpen, setForgotOpen] = useState(false);
@@ -35,6 +38,7 @@ export default function CandidatePreLaunchLogin({
   const syncCandidateProfile = async (fbUser: any): Promise<UserProfile> => {
     const userRef = doc(db, "users", fbUser.uid);
     const snap = await getDoc(userRef);
+    const isEmailVerified = fbUser.emailVerified === true;
 
     if (snap.exists()) {
       const data = snap.data();
@@ -46,14 +50,22 @@ export default function CandidatePreLaunchLogin({
         role: "candidate", // Candidates strictly stay as candidate in pre-launch
         isBetaTester: data.isBetaTester ?? false,
         internalAccess: data.internalAccess ?? false,
-        accountStatus: data.accountStatus || "active",
+        verificationStatus: isEmailVerified ? "verified" : (data.verificationStatus || "pending"),
+        emailVerified: isEmailVerified,
+        accountStatus: isEmailVerified ? "active" : (data.accountStatus || "pending_verification"),
+        status: isEmailVerified ? "active" : (data.status || "pending_verification"),
         createdAt: data.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         profileCompleted: data.profileCompleted ?? false,
         resumeURL: data.resumeURL || "",
       };
-      // Update last login timestamp
-      await setDoc(userRef, { lastLogin: new Date().toISOString() }, { merge: true });
+      // Update last login timestamp & sync verification status
+      await setDoc(userRef, { 
+        lastLogin: new Date().toISOString(),
+        emailVerified: isEmailVerified,
+        verificationStatus: isEmailVerified ? "verified" : (data.verificationStatus || "pending"),
+        accountStatus: isEmailVerified ? "active" : (data.accountStatus || "pending_verification")
+      }, { merge: true });
       return profile;
     } else {
       // New record fallback
@@ -64,7 +76,10 @@ export default function CandidatePreLaunchLogin({
         role: "candidate",
         isBetaTester: false,
         internalAccess: false,
-        accountStatus: "active",
+        verificationStatus: isEmailVerified ? "verified" : "pending",
+        emailVerified: isEmailVerified,
+        accountStatus: isEmailVerified ? "active" : "pending_verification",
+        status: isEmailVerified ? "active" : "pending_verification",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         profileCompleted: false,
@@ -86,7 +101,20 @@ export default function CandidatePreLaunchLogin({
     setLoading(true);
     try {
       const res = await signInWithEmailAndPassword(auth, email.trim(), password);
-      const profile = await syncCandidateProfile(res.user);
+      // ALWAYS reload user state to check latest emailVerified status
+      await res.user.reload();
+      const fbUser = auth.currentUser || res.user;
+
+      const profile = await syncCandidateProfile(fbUser);
+
+      if (!fbUser.emailVerified) {
+        // BLOCK CANDIDATE DASHBOARD
+        setUnverifiedProfile(profile);
+        setShowVerificationScreen(true);
+        showToast("Email verification required to access candidate dashboard.", "warning");
+        return;
+      }
+
       showToast(`Welcome back, ${profile.name}!`, "success");
       onLoginSuccess(profile);
     } catch (err: any) {
@@ -114,6 +142,14 @@ export default function CandidatePreLaunchLogin({
     try {
       const res = await signInWithPopup(auth, googleProvider);
       const profile = await syncCandidateProfile(res.user);
+      
+      if (!res.user.emailVerified) {
+        setUnverifiedProfile(profile);
+        setShowVerificationScreen(true);
+        showToast("Email verification required.", "warning");
+        return;
+      }
+
       showToast(`Google authenticated successfully as ${profile.name}`, "success");
       onLoginSuccess(profile);
     } catch (err: any) {
@@ -124,6 +160,21 @@ export default function CandidatePreLaunchLogin({
       setLoading(false);
     }
   };
+
+  if (showVerificationScreen) {
+    return (
+      <CandidateEmailVerification
+        user={unverifiedProfile}
+        onVerified={(verifiedProfile) => {
+          onLoginSuccess(verifiedProfile);
+        }}
+        onSignOut={() => {
+          setShowVerificationScreen(false);
+          setUnverifiedProfile(null);
+        }}
+      />
+    );
+  }
 
   const handleSendReset = async (e: React.FormEvent) => {
     e.preventDefault();

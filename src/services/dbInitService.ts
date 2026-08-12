@@ -66,6 +66,8 @@ export async function initializeUserCollectionsAndDocs(
 
   // 1. Prepare User Profile based on registration flow
   const isPendingKycRole = role === "consultancy" || role === "employer" || role === "recruiter";
+  const isCandidateEmailUnverified = role === "candidate" && fbUser.emailVerified !== true;
+  const initialStatus = isPendingKycRole ? "pending_kyc" : (isCandidateEmailUnverified ? "pending_verification" : "active");
   
   const userProfile: UserProfile = {
     uid: userId,
@@ -77,10 +79,12 @@ export async function initializeUserCollectionsAndDocs(
     photoURL: fbUser.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}`,
     createdAt: isoDate,
     lastLogin: isoDate,
-    status: isPendingKycRole ? "pending_kyc" : "active",
-    accountStatus: isPendingKycRole ? "pending_kyc" : "active",
-    isActive: !isPendingKycRole,
-    isApproved: !isPendingKycRole,
+    verificationStatus: role === "candidate" ? (fbUser.emailVerified ? "verified" : "pending") : "verified",
+    emailVerified: fbUser.emailVerified === true,
+    status: initialStatus,
+    accountStatus: initialStatus,
+    isActive: !isPendingKycRole && !isCandidateEmailUnverified,
+    isApproved: !isPendingKycRole && !isCandidateEmailUnverified,
     subscription: role === "consultancy" ? "Pro Agency" : "Enterprise Access",
     resumeURL: "",
     profileCompleted: false,
@@ -127,12 +131,17 @@ export async function initializeUserCollectionsAndDocs(
 
   // Fresh Candidate Profile (No fake demo data)
   if (role === "candidate") {
+    const isVerified = fbUser.emailVerified === true;
     const candidateProfile = {
       uid: userId,
       email,
       name,
       phone: fbUser.phoneNumber || "",
       role: "candidate",
+      verificationStatus: isVerified ? "verified" : "pending",
+      emailVerified: isVerified,
+      accountStatus: isVerified ? "active" : "pending_verification",
+      status: isVerified ? "active" : "pending_verification",
       profileCompleted: false,
       profileCompletionPercentage: 0,
       resumeUrl: null,
@@ -153,6 +162,10 @@ export async function initializeUserCollectionsAndDocs(
       name,
       email,
       phone: fbUser.phoneNumber || "",
+      verificationStatus: isVerified ? "verified" : "pending",
+      emailVerified: isVerified,
+      accountStatus: isVerified ? "active" : "pending_verification",
+      status: isVerified ? "active" : "pending_verification",
       resumeUrl: null,
       resumeFileName: null,
       resumeStoragePath: null,

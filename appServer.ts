@@ -3301,15 +3301,19 @@ app.post("/api/kyc/send-link", async (req, res) => {
     const kycUrl = `${appUrl}/#kyc-submit?token=${token}&uid=${userId}`;
     
     if (userEmail) {
-      sendTemplatedEmail({
-        to: userEmail,
-        templateName: "kyc_link",
-        data: {
-          recipientName: recipientName || "Valued Partner",
-          jobUrl: kycUrl,
-          appUrl
-        }
-      }).catch(err => console.warn("KYC Email send warning:", err.message));
+      try {
+        await dispatchEmail({
+          to: userEmail,
+          templateName: "kyc_link",
+          data: {
+            recipientName: recipientName || "Valued Partner",
+            jobUrl: kycUrl,
+            appUrl
+          }
+        });
+      } catch (eErr: any) {
+        console.warn("KYC Email send warning:", eErr?.message || eErr);
+      }
     }
 
     res.json({
@@ -3376,14 +3380,18 @@ app.post("/api/kyc/send-reminder", async (req, res) => {
     }, { merge: true });
 
     if (userEmail) {
-      sendTemplatedEmail({
-        to: userEmail,
-        templateName: reminderType === "agreement" ? "agreement_reminder" : "kyc_reminder",
-        data: {
-          recipientName: recipientName || userData.displayName || "Valued Partner",
-          appUrl: process.env.APP_URL || "https://aijobs.app"
-        }
-      }).catch(err => console.warn("Reminder email error:", err.message));
+      try {
+        await dispatchEmail({
+          to: userEmail,
+          templateName: reminderType === "agreement" ? "agreement_reminder" : "kyc_reminder",
+          data: {
+            recipientName: recipientName || userData.displayName || "Valued Partner",
+            appUrl: process.env.APP_URL || "https://aijobs.app"
+          }
+        });
+      } catch (eErr: any) {
+        console.warn("Reminder email error:", eErr?.message || eErr);
+      }
     }
 
     res.json({
@@ -3467,14 +3475,18 @@ app.post("/api/agreements/generate", async (req, res) => {
     });
 
     if (userEmail) {
-      sendTemplatedEmail({
-        to: userEmail,
-        templateName: "agreement_ready",
-        data: {
-          recipientName: recipientName || "Valued Partner",
-          appUrl: process.env.APP_URL || "https://aijobs.app"
-        }
-      }).catch(err => console.warn("Agreement email warning:", err.message));
+      try {
+        await dispatchEmail({
+          to: userEmail,
+          templateName: "agreement_ready",
+          data: {
+            recipientName: recipientName || "Valued Partner",
+            appUrl: process.env.APP_URL || "https://aijobs.app"
+          }
+        });
+      } catch (eErr: any) {
+        console.warn("Agreement email warning:", eErr?.message || eErr);
+      }
     }
 
     res.json({
@@ -3578,14 +3590,18 @@ app.post("/api/agreements/accept", async (req, res) => {
       }).catch(e => console.warn("Timeline write warning:", e));
 
       if (agmtData?.userEmail) {
-        sendTemplatedEmail({
-          to: agmtData.userEmail,
-          templateName: "agreement_accepted",
-          data: {
-            recipientName: acceptedName || "Valued Partner",
-            appUrl: process.env.APP_URL || "https://aijobs.app"
-          }
-        }).catch(err => console.warn("Agreement accepted email warning:", err.message));
+        try {
+          await dispatchEmail({
+            to: agmtData.userEmail,
+            templateName: "agreement_accepted",
+            data: {
+              recipientName: acceptedName || "Valued Partner",
+              appUrl: process.env.APP_URL || "https://aijobs.app"
+            }
+          });
+        } catch (eErr: any) {
+          console.warn("Agreement accepted email warning:", eErr?.message || eErr);
+        }
       }
     } catch (secErr: any) {
       console.warn("Secondary tasks warning in appServer agreement accept:", secErr?.message);
@@ -3670,14 +3686,18 @@ app.post("/api/payment/verify-and-transition", async (req, res) => {
     });
 
     if (userData.email) {
-      sendTemplatedEmail({
-        to: userData.email,
-        templateName: "payment_success",
-        data: {
-          recipientName: userData.displayName || "Valued Partner",
-          appUrl: process.env.APP_URL || "https://aijobs.app"
-        }
-      }).catch(err => console.warn("Payment success email warning:", err.message));
+      try {
+        await dispatchEmail({
+          to: userData.email,
+          templateName: "payment_success",
+          data: {
+            recipientName: userData.displayName || "Valued Partner",
+            appUrl: process.env.APP_URL || "https://aijobs.app"
+          }
+        });
+      } catch (eErr: any) {
+        console.warn("Payment success email warning:", eErr?.message || eErr);
+      }
     }
 
     res.json({
@@ -3755,14 +3775,18 @@ app.post("/api/admin/approve-account", async (req, res) => {
     });
 
     if (userData.email) {
-      sendTemplatedEmail({
-        to: userData.email,
-        templateName: "account_activated",
-        data: {
-          recipientName: userData.displayName || "Valued Partner",
-          appUrl: process.env.APP_URL || "https://aijobs.app"
-        }
-      }).catch(err => console.warn("Account activated email warning:", err.message));
+      try {
+        await dispatchEmail({
+          to: userData.email,
+          templateName: "account_activated",
+          data: {
+            recipientName: userData.displayName || "Valued Partner",
+            appUrl: process.env.APP_URL || "https://aijobs.app"
+          }
+        });
+      } catch (eErr: any) {
+        console.warn("Account activated email warning:", eErr?.message || eErr);
+      }
     }
 
     res.json({

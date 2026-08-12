@@ -3,6 +3,7 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 import { AnimatePresence, motion } from "motion/react";
 import { AlertTriangle, Bot, Cookie, Route, Type, User, UserCheck } from "lucide-react";
 import { auth, isFirebaseConfigured } from "./firebase";
+import CandidateEmailVerification from "./components/CandidateEmailVerification";
 
 // Helper function to dynamically import components with automatic retry logic on chunk/network errors
 function safeLazy<T extends React.ComponentType<any>>(
@@ -592,17 +593,31 @@ function MainAppContent() {
           </ProtectedRoute>
         );
       case "candidate":
-        return (
-          <ProtectedRoute 
-            user={user} 
-            allowedRoles={["candidate", "admin", "super_admin"]} 
-            fallbackView="home" 
-            setActiveView={setActiveView} 
-            setAuthMode={setAuthMode}
-          >
-            <CandidateDashboard userId={user.uid} userName={user.name} />
-          </ProtectedRoute>
-        );
+        {
+          const isEmailVerified = auth.currentUser?.emailVerified === true || user.emailVerified === true;
+          if (!isEmailVerified) {
+            return (
+              <CandidateEmailVerification
+                user={user}
+                onVerified={(verifiedProfile) => {
+                  setUser(verifiedProfile);
+                }}
+                onSignOut={handleLogout}
+              />
+            );
+          }
+          return (
+            <ProtectedRoute 
+              user={user} 
+              allowedRoles={["candidate", "admin", "super_admin"]} 
+              fallbackView="home" 
+              setActiveView={setActiveView} 
+              setAuthMode={setAuthMode}
+            >
+              <CandidateDashboard userId={user.uid} userName={user.name} />
+            </ProtectedRoute>
+          );
+        }
       case "consultancy":
         {
           const isVerified = user.isApproved === true && user.status === "active" && user.kycStatus === "verified";
@@ -862,6 +877,7 @@ function MainAppContent() {
                   <CandidatePreLaunchGuard
                     user={user}
                     onNavigateToLogin={() => setActiveView("candidate-login")}
+                    onUserVerified={(verifiedProfile) => setUser(verifiedProfile)}
                   >
                     <Suspense fallback={<GeneralLoading />}>
                       <CandidatePreLaunchProfileLazy
