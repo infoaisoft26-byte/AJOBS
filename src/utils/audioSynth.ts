@@ -186,6 +186,31 @@ class SoundSynthesizer {
       // Ignore
     }
   }
+
+  // Subtle tone sound for 3D interactions and animations
+  public playSubtleTone(freq: number = 660, type: OscillatorType = "sine", duration: number = 0.15, volume: number = 0.1) {
+    const ctx = this.getContext();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, now);
+      gain.gain.setValueAtTime(volume, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + duration);
+    } catch (e) {
+      // Ignore
+    }
+  }
 }
 
 export const soundSynth = new SoundSynthesizer();

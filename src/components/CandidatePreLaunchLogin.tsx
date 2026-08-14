@@ -8,6 +8,7 @@ import { auth, db } from "../firebase";
 import { UserProfile } from "../types";
 import { useToast } from "./GlobalToast";
 import CandidateEmailVerification from "./CandidateEmailVerification";
+import { trackLogin } from "../utils/analytics";
 
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
@@ -115,6 +116,7 @@ export default function CandidatePreLaunchLogin({
         return;
       }
 
+      trackLogin("email", "candidate");
       showToast(`Welcome back, ${profile.name}!`, "success");
       onLoginSuccess(profile);
     } catch (err: any) {
@@ -150,6 +152,7 @@ export default function CandidatePreLaunchLogin({
         return;
       }
 
+      trackLogin("google", "candidate");
       showToast(`Google authenticated successfully as ${profile.name}`, "success");
       onLoginSuccess(profile);
     } catch (err: any) {

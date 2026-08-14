@@ -137,10 +137,9 @@ export default function AdminLogin({
 
   return (
     <div className="min-h-[85vh] flex items-center justify-center px-4 py-12 relative z-10">
-      <div className="w-full max-w-md bg-gray-950/90 backdrop-blur-2xl border border-amber-500/30 rounded-3xl p-8 shadow-[0_0_60px_rgba(245,158,11,0.15)] relative overflow-hidden">
+      <div className="w-full max-w-md bg-gray-950 border border-amber-500/30 rounded-3xl p-8 shadow-[0_0_60px_rgba(245,158,11,0.15)] relative overflow-hidden">
         
-        {/* Ambient Top Glow */}
-        <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 bg-amber-500/20 rounded-full blur-3xl pointer-events-none" />
+        {/* Admin Shield Badge */}
 
         {/* Admin Shield Badge */}
         <div className="text-center space-y-3 mb-8 relative">
@@ -246,7 +245,7 @@ export default function AdminLogin({
 
       {/* Forgot Password Modal */}
       {forgotOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4">
           <div className="w-full max-w-sm bg-gray-950 border border-white/10 rounded-3xl p-6 space-y-4 shadow-2xl relative">
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div className="flex items-center gap-2">

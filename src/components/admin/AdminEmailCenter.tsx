@@ -322,8 +322,7 @@ export default function AdminEmailCenter() {
     <div className="space-y-6 animate-in fade-in duration-300">
       
       {/* Top Banner Header */}
-      <div className="bg-gradient-to-r from-indigo-950/60 via-purple-900/30 to-blue-950/60 border border-indigo-500/20 p-6 rounded-3xl relative overflow-hidden backdrop-blur-md">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="bg-[#0b0f19] border border-indigo-500/20 p-6 rounded-3xl relative overflow-hidden">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -860,7 +859,7 @@ export default function AdminEmailCenter() {
 
       {/* LIVE EMAIL PREVIEW MODAL */}
       {showPreview && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-200">
           <div className="bg-[#0b0f19] border border-white/20 rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
             {/* Modal Header */}
             <div className="p-5 border-b border-white/10 flex justify-between items-center bg-black/40">

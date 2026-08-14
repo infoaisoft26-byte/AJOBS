@@ -360,7 +360,7 @@ export default function PayrollManagementModule() {
 
       {/* MARK SALARY PAID MODAL */}
       {showPaymentModal && payTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
           <div className="w-full max-w-md bg-gray-900 border border-indigo-500/30 rounded-2xl p-6 space-y-4">
             <h3 className="text-base font-bold text-white">Record Salary Disbursal</h3>
             <p className="text-xs text-gray-400">Employee: <strong className="text-white">{payTarget.employeeName}</strong> (Net ₹{payTarget.netSalary.toLocaleString("en-IN")})</p>

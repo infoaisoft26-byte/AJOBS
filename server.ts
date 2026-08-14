@@ -3,7 +3,7 @@ import path from "path";
 import express from "express";
 import { createServer as createViteServer } from "vite";
 
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 
 // Boot background scheduler on non-serverless server instance
 startExpiredJobsScheduler();

@@ -102,7 +102,7 @@ export default function AdminInternalAccessManager() {
     <div className="space-y-6 text-left">
       
       {/* HEADER & STATS */}
-      <div className="bg-gray-950/80 border border-white/10 rounded-3xl p-6 backdrop-blur-xl space-y-6">
+      <div className="bg-gray-950 border border-white/10 rounded-3xl p-6 space-y-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-mono font-bold uppercase tracking-wider mb-2">
@@ -206,7 +206,7 @@ export default function AdminInternalAccessManager() {
       </div>
 
       {/* USER TABLE */}
-      <div className="bg-gray-950/80 border border-white/10 rounded-3xl overflow-hidden shadow-2xl backdrop-blur-xl">
+      <div className="bg-gray-950 border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-white/5 border-b border-white/10 text-gray-400 font-mono uppercase text-[10px]">

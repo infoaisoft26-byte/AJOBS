@@ -4,6 +4,7 @@ import { JobPosting, JobApplication } from "../types";
 import JobCard from "./JobCard";
 import JobDetails from "./JobDetails";
 import { SupportedLanguage, getTranslation } from "../utils/candidateTranslations";
+import { trackJobView, trackJobSearch, trackJobApplyStarted } from "../utils/analytics";
 
 interface CandidateJobsSectionProps {
   userId: string;
@@ -251,9 +252,19 @@ export default function CandidateJobsSection({
               profile={profile}
               applied={appliedJobIds.includes(job.id)}
               isSaved={savedJobIds.includes(job.id)}
-              onApply={onApplyJob}
+              onApply={(j) => {
+                try {
+                  trackJobApplyStarted(j.id, j.title);
+                } catch {}
+                onApplyJob(j);
+              }}
               onSave={(id, isS) => onSaveJob(id, isS)}
-              onSelectDetails={(j) => setSelectedJob(j)}
+              onSelectDetails={(j) => {
+                try {
+                  trackJobView(j.id, j.title, j.companyName);
+                } catch {}
+                setSelectedJob(j);
+              }}
             />
           ))}
         </div>

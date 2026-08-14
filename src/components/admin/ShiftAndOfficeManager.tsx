@@ -240,7 +240,7 @@ export default function ShiftAndOfficeManager() {
 
       {/* ADD OFFICE MODAL */}
       {showOfficeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
           <div className="w-full max-w-md bg-gray-900 border border-indigo-500/30 rounded-2xl p-6 space-y-4">
             <h3 className="text-base font-bold text-white">Office Location Config</h3>
             <form onSubmit={handleSaveOffice} className="space-y-3 text-xs">
@@ -310,7 +310,7 @@ export default function ShiftAndOfficeManager() {
 
       {/* ADD SHIFT MODAL */}
       {showShiftModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
           <div className="w-full max-w-md bg-gray-900 border border-indigo-500/30 rounded-2xl p-6 space-y-4">
             <h3 className="text-base font-bold text-white">Work Shift Config</h3>
             <form onSubmit={handleSaveShift} className="space-y-3 text-xs">
@@ -368,7 +368,7 @@ export default function ShiftAndOfficeManager() {
 
       {/* ADD HOLIDAY MODAL */}
       {showHolidayModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
           <div className="w-full max-w-md bg-gray-900 border border-indigo-500/30 rounded-2xl p-6 space-y-4">
             <h3 className="text-base font-bold text-white">Add Holiday</h3>
             <form onSubmit={handleSaveHoliday} className="space-y-3 text-xs">

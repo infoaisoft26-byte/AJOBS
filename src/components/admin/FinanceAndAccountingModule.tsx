@@ -1025,7 +1025,7 @@ export const FinanceAndAccountingModule: React.FC<FinanceAndAccountingModuleProp
 
       {/* ACCOUNT LEDGER MODAL */}
       {selectedAccountId && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col overflow-hidden">
             <div className="p-5 border-b border-slate-800 flex items-center justify-between">
               <div>
@@ -1073,7 +1073,7 @@ export const FinanceAndAccountingModule: React.FC<FinanceAndAccountingModuleProp
 
       {/* RECORD EXPENSE MODAL */}
       {showExpenseModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
@@ -1172,7 +1172,7 @@ export const FinanceAndAccountingModule: React.FC<FinanceAndAccountingModuleProp
 
       {/* ISSUE REFUND MODAL */}
       {showRefundModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
@@ -1242,7 +1242,7 @@ export const FinanceAndAccountingModule: React.FC<FinanceAndAccountingModuleProp
 
       {/* PRINTABLE TAX INVOICE / CREDIT NOTE MODAL */}
       {selectedDoc && docType && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
           <div className="bg-slate-950 border border-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
             <div className="p-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
               <span className="text-xs font-bold text-slate-200">

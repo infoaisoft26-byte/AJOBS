@@ -237,8 +237,7 @@ export default function LiveDashboard({
       </div>
 
       {/* AI Platform Intelligence Advisor */}
-      <div className="glass p-5 rounded-3xl border border-indigo-500/15 bg-indigo-950/5 space-y-4 relative overflow-hidden" id="admin-ai-insights-block">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="bg-[#0b0f19] p-5 rounded-3xl border border-indigo-500/15 space-y-4 relative overflow-hidden" id="admin-ai-insights-block">
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-white/5 pb-3">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-indigo-400 animate-pulse" />
@@ -592,7 +591,7 @@ export default function LiveDashboard({
                   />
                   {activeChartPoint === idx && (
                     <foreignObject x={pt.x - 50} y={pt.y - 45} width="100" height="40" className="overflow-visible">
-                      <div className="bg-neutral-900 border border-white/10 p-1.5 rounded text-center text-[9px] text-white shadow-xl backdrop-blur">
+                      <div className="bg-neutral-900 border border-white/20 p-1.5 rounded text-center text-[9px] text-white shadow-xl">
                         <p className="font-extrabold text-indigo-400">{pt.val} Apps</p>
                         <p className="text-emerald-400 font-mono">₹{pt.rev.toLocaleString()}</p>
                       </div>

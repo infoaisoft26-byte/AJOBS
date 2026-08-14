@@ -74,11 +74,7 @@ export default function CandidateVerificationWidget({
   };
 
   return (
-    <div className="glass p-5 md:p-6 rounded-3xl border border-indigo-500/20 bg-gradient-to-br from-[#0c0d18] via-[#090a12] to-[#0d0d1e] space-y-6 relative overflow-hidden shadow-2xl">
-      {/* Background Accent glow */}
-      <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
-      <div className="absolute bottom-0 left-0 w-80 h-80 bg-emerald-600/5 rounded-full blur-3xl pointer-events-none"></div>
-
+    <div className="p-5 md:p-6 rounded-3xl border border-indigo-500/20 bg-[#0c0d18] space-y-6 relative overflow-hidden shadow-2xl">
       {/* Header Bar */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-white/10 pb-4 relative z-10">
         <div className="flex items-center gap-3">

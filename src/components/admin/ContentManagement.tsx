@@ -715,7 +715,7 @@ export default function ContentManagement({
 
       {/* Form Overlay Modal */}
       {isFormOpen && (
-        <div className="fixed inset-0 bg-neutral-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-neutral-950/80 z-50 flex items-center justify-center p-4">
           <form onSubmit={handleSaveCMS} className="w-full max-w-lg bg-[#0a0a0f] border border-white/10 rounded-2xl p-6 space-y-4 text-xs text-gray-300">
             <div className="border-b border-white/5 pb-3 flex justify-between items-center">
               <h4 className="font-extrabold text-sm text-white">

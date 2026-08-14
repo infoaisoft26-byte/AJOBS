@@ -237,7 +237,7 @@ export default function EmployeeManagement() {
 
       {/* Add / Edit Employee Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
           <div className="w-full max-w-xl bg-gray-900 border border-indigo-500/30 rounded-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-base font-bold text-white">
               {selectedEmp ? `Edit Profile: ${selectedEmp.fullName}` : "Add Internal Employee"}

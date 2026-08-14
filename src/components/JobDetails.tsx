@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { collection, getDocs, query, where } from "firebase/firestore";
-import { AlertTriangle, ArrowLeft, ArrowRight, Brain, Briefcase, Check, CheckCircle2, Clock, File, Grid, Heart, Info, Key, Link, MapPin, Navigation, Package, Section, Send, Share, Share2, ShieldCheck, Sparkles, Users, View } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Brain, Briefcase, Check, CheckCircle2, Clock, File, FileText, Grid, Heart, Info, Key, Link, MapPin, Navigation, Package, Section, Send, Share, Share2, ShieldCheck, Sparkles, Users, View, X } from "lucide-react";
 import { db } from "../firebase";
 
 
@@ -40,6 +40,7 @@ export default function JobDetails({
   const [isApplying, setIsApplying] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Invoke SEO structured JobPosting schema & dynamic meta management
   useJobPostingSchema(job);
@@ -133,14 +134,25 @@ export default function JobDetails({
     }
   };
 
-  const handleApply = async () => {
+  const handleInitiateApply = () => {
+    if (!job) return;
+    if (hasApplied) {
+      showToast("You have already applied for this position.", "info");
+      return;
+    }
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmSubmit = async () => {
     if (!job) return;
     try {
       setIsApplying(true);
-      const result = await applyToJob(job, userId, profile, resumeText || profile?.resumeText || "");
+      const activeResumeText = resumeText || profile?.resumeText || "Resume Attached";
+      const result = await applyToJob(job, userId, profile, activeResumeText);
       if (result.success) {
         setHasApplied(true);
-        alert(result.message);
+        setShowConfirmModal(false);
+        showToast(result.message || "🎉 Application submitted successfully!", "success");
         
         if (onAppliedSuccess) {
           const appId = result.applicationId || `app_${Math.random().toString(36).substring(2, 11)}`;
@@ -158,11 +170,11 @@ export default function JobDetails({
           onAppliedSuccess(newApp);
         }
       } else {
-        alert(result.message);
+        showToast(result.message || "Application could not be submitted.", "warning");
       }
     } catch (err: any) {
       console.error("Error applying to job:", err);
-      alert(err.message || "An unexpected error occurred during application processing.");
+      showToast(err.message || "An unexpected error occurred during application processing.", "error");
     } finally {
       setIsApplying(false);
     }
@@ -283,20 +295,12 @@ export default function JobDetails({
               </div>
             ) : (
               <button
-                onClick={handleApply}
+                onClick={handleInitiateApply}
                 disabled={isApplying}
-                className={`w-full md:w-auto px-8 py-3 text-xs font-black rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 ${
-                  isApplying 
-                    ? "bg-indigo-700/50 text-indigo-300 cursor-not-allowed" 
-                    : "bg-indigo-600 hover:bg-indigo-500 text-white"
-                }`}
+                className="w-full md:w-auto px-8 py-3 text-xs font-black rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 bg-indigo-600 hover:bg-indigo-500 text-white"
               >
-                {isApplying ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
-                <span>{isApplying ? "Submitting File..." : "Apply Instantly"}</span>
+                <Send className="w-4 h-4" />
+                <span>Apply Instantly</span>
               </button>
             )}
           </div>
@@ -508,19 +512,106 @@ export default function JobDetails({
           </div>
         ) : (
           <button
-            onClick={handleApply}
+            onClick={handleInitiateApply}
             disabled={isApplying}
             className="flex-1 py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-extrabold text-xs rounded-2xl shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer"
           >
-            {isApplying ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Send className="w-4 h-4 text-emerald-300" />
-            )}
-            <span>{isApplying ? "Submitting..." : "Apply Now"}</span>
+            <Send className="w-4 h-4 text-emerald-300" />
+            <span>Apply Now</span>
           </button>
         )}
       </div>
+
+      {/* Accidental Submission Prevention / Review Dialog */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-200" id="job-details-review-confirm-modal">
+          <div className="bg-[#0f172a] border border-white/15 rounded-3xl shadow-2xl max-w-lg w-full p-6 space-y-5 relative text-white">
+            
+            <button
+              onClick={() => setShowConfirmModal(false)}
+              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white rounded-full hover:bg-white/10 transition-all cursor-pointer"
+              title="Close modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="space-y-1 pr-8">
+              <span className="text-[10px] font-mono font-bold text-indigo-400 uppercase tracking-wider block">
+                Review & Confirm Application
+              </span>
+              <h2 className="text-xl font-black text-white">{job.title}</h2>
+              <p className="text-xs text-indigo-300 font-semibold">{job.companyName}</p>
+            </div>
+
+            {/* Resume Details */}
+            <div className="p-3.5 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl space-y-2 text-xs">
+              <span className="text-[11px] font-bold text-indigo-200 block">Attached Resume</span>
+              <div className="flex items-center justify-between bg-black/40 p-2.5 rounded-xl border border-white/5 text-xs">
+                <div className="flex items-center gap-2 truncate">
+                  <FileText className="w-4 h-4 text-indigo-400 shrink-0" />
+                  <span className="font-semibold text-white truncate max-w-[200px]">
+                    {profile?.resumeFileName || (profile?.resumeUrl ? "Uploaded_Resume.pdf" : "Candidate_Resume.pdf")}
+                  </span>
+                </div>
+                <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-bold text-[10px] border border-emerald-500/20">
+                  Ready ({profile?.resumeScore || 80}% ATS)
+                </span>
+              </div>
+            </div>
+
+            {/* Candidate Details */}
+            <div className="p-3.5 bg-white/5 rounded-2xl border border-white/5 space-y-2 text-xs">
+              <span className="text-[11px] font-bold text-gray-300 block">Candidate Information</span>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-[10px] text-gray-400 block font-mono">Applicant Name</span>
+                  <span className="font-bold text-white">{profile?.name || userName || "Candidate"}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-gray-400 block font-mono">Mobile</span>
+                  <span className="font-bold text-white">{profile?.profileDetails?.mobileNumber || profile?.mobile || "Provided in Profile"}</span>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-[10px] text-gray-400 block font-mono">Email Address</span>
+                  <span className="font-bold text-white">{profile?.email || profile?.profileDetails?.email || "candidate@example.com"}</span>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-gray-400 leading-relaxed">
+              Please ensure your resume and contact information are accurate. Once submitted, your profile will be sent directly to the hiring manager at <strong>{job.companyName}</strong>.
+            </p>
+
+            <div className="pt-2 flex items-center justify-end space-x-3">
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                disabled={isApplying}
+                className="px-4 py-2.5 bg-white/10 hover:bg-white/15 text-gray-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                Review Again
+              </button>
+              <button
+                onClick={handleConfirmSubmit}
+                disabled={isApplying}
+                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all flex items-center space-x-2 cursor-pointer disabled:opacity-50"
+              >
+                {isApplying ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Submitting Application...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4 text-emerald-300" />
+                    <span>Yes, Confirm & Submit</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );

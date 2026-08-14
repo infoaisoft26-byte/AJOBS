@@ -6,6 +6,7 @@ import { AlertTriangle, CheckCircle2, File, FileText, Loader2, Network, RefreshC
 import { auth, db, storage } from "../firebase";
 import { useToast } from "./GlobalToast";
 import { uploadResumeService } from "../services/resumeUploadService";
+import { trackResumeUploaded, trackProfileCompleted } from "../utils/analytics";
 
 import { parseApiResponse } from "../utils/apiHelper";
 
@@ -195,6 +196,13 @@ export default function ResumeOnboarding({ user, setUser, setActiveView }: Resum
 
       setProgress(100);
       setStep("Resume uploaded successfully!");
+
+      try {
+        trackResumeUploaded(file.type);
+        trackProfileCompleted("candidate");
+      } catch (trackErr) {
+        console.warn("[Analytics] Tracking error:", trackErr);
+      }
 
       const updatedUser = {
         ...user,

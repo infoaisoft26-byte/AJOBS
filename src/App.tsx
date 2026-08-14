@@ -15,7 +15,13 @@ function safeLazy<T extends React.ComponentType<any>>(
     while (attempts < 3) {
       try {
         console.log(`[Trace Lazy] ${componentName} loading (attempt ${attempts + 1})...`);
-        const module = await importFn();
+        const module: any = await importFn();
+        if (module && !module.default) {
+          const fallback = module[componentName] || Object.values(module).find((v) => typeof v === "function");
+          if (fallback) {
+            return { default: fallback as T };
+          }
+        }
         console.log(`[Trace Lazy] ${componentName} loaded successfully.`);
         return module;
       } catch (err) {
@@ -70,6 +76,7 @@ const UnsubscribeViewLazy = safeLazy(() => import("@/components/UnsubscribeView"
 const ResumeOnboardingLazy = safeLazy(() => import("@/components/ResumeOnboarding"), "ResumeOnboarding");
 const AuthModalLazy = safeLazy(() => import("@/components/AuthModal"), "AuthModal");
 const CompanySectionLazy = safeLazy(() => import("@/components/CompanySection"), "CompanySection");
+const IndependenceDayIntroLazy = safeLazy(() => import("@/components/IndependenceDayIntro"), "IndependenceDayIntro");
 const AIJobs3DIntroLazy = safeLazy(() => import("@/components/AIJobs3DIntro"), "AIJobs3DIntro");
 const ThreeDBackgroundLazy = safeLazy(() => import("@/components/ThreeDBackground"), "ThreeDBackground");
 const GlobalChatbotLazy = safeLazy(() =>
@@ -224,12 +231,7 @@ function MainAppContent() {
   const [authLoading, setAuthLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(() => {
     if (typeof window === "undefined") return false;
-    const navEntry = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
-    const isReload = navEntry?.type === "reload" || (performance.navigation && performance.navigation.type === 1);
-    if (isReload) {
-      return true;
-    }
-    const viewedInSession = sessionStorage.getItem("aijobs_3d_intro_played");
+    const viewedInSession = sessionStorage.getItem("aijobs_independence_intro_seen");
     if (viewedInSession === "true") {
       return false;
     }
@@ -406,9 +408,11 @@ function MainAppContent() {
               console.log("[Trace Auth] Routing admin to 'admin-dashboard'");
               setActiveView("admin-dashboard");
             }
-          } else if (profile.role === "candidate" && !profile.profileCompleted) {
-            window.history.pushState({}, "", "/resume/onboarding");
-            setActiveView("resume-onboarding");
+          } else if (normRole === "candidate") {
+            const currentPath = window.location.pathname;
+            if (currentPath === "/candidate-login" || currentPath === "/login" || activeView === "candidate-login" || activeView === "internal-login") {
+              setActiveView("dashboard");
+            }
           }
         } else {
           // Default fallback for missing profile - MUST default to candidate
@@ -1040,17 +1044,19 @@ function MainAppContent() {
         </Suspense>
       )}
 
-      {/* Premium 3D Opening Animation Intro Overlay */}
+      {/* Premium 15-Second Cinematic Independence Day Opening Video Overlay */}
       {showSplash && (
         <Suspense fallback={null}>
-          <AIJobs3DIntroLazy onComplete={() => {
-            setShowSplash(false);
-            try {
-              sessionStorage.setItem("aijobs_3d_intro_played", "true");
-            } catch (e) {
-              // ignore
-            }
-          }} />
+          <IndependenceDayIntroLazy
+            onComplete={() => {
+              setShowSplash(false);
+              try {
+                sessionStorage.setItem("aijobs_independence_intro_seen", "true");
+              } catch (e) {
+                // ignore
+              }
+            }}
+          />
         </Suspense>
       )}
 

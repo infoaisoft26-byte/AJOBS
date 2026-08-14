@@ -511,7 +511,7 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
       {mobileDrawerOpen && (
         <div className="lg:hidden">
           <div
-            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm"
+            className="fixed inset-0 z-50 bg-black/75"
             onClick={() => setMobileDrawerOpen(false)}
           />
           <aside className="fixed inset-y-0 left-0 z-50 w-[85vw] max-w-[320px] bg-[#0a0a0f] border-r border-white/10 flex flex-col h-full overflow-y-auto shadow-2xl">

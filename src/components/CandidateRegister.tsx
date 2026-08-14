@@ -6,6 +6,7 @@ import { AlertCircle, ArrowRight, Briefcase, CheckSquare, Link, Lock, Mail, Phon
 import { UserProfile } from "../types";
 import { useToast } from "./GlobalToast";
 import CandidateEmailVerification from "./CandidateEmailVerification";
+import { trackCandidateRegistrationStarted, trackCandidateRegistrationCompleted } from "../utils/analytics";
 
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
@@ -83,6 +84,30 @@ export default function CandidateRegister({
 
     await setDoc(doc(db, "candidates", uid), candidateData, { merge: true });
 
+    // 2b. Candidate profile document in 'candidate_profiles' collection
+    const candidateProfileData = {
+      uid,
+      userId: uid,
+      email: userEmail,
+      name: nameToSave,
+      role: "candidate",
+      phone: phone.trim(),
+      resumeUrl: null,
+      resumePublicId: null,
+      resumeProvider: "cloudinary",
+      skills: [],
+      education: [],
+      experience: [],
+      profileCompleted: false,
+      verificationStatus: isEmailVerified ? "verified" : "pending",
+      emailVerified: isEmailVerified,
+      accountStatus: isEmailVerified ? "active" : "pending_verification",
+      status: isEmailVerified ? "active" : "pending_verification",
+      createdAt: isoDate,
+      updatedAt: isoDate
+    };
+    await setDoc(doc(db, "candidate_profiles", uid), candidateProfileData, { merge: true });
+
     // 3. Save Email Preferences & Dispatch Candidate Welcome Email
     try {
       await fetch(`/api/email/preferences/${uid}`, {
@@ -142,6 +167,7 @@ export default function CandidateRegister({
     }
 
     setLoading(true);
+    trackCandidateRegistrationStarted("email");
     try {
       // Create auth user
       const res = await createUserWithEmailAndPassword(auth, email.trim(), password);
@@ -153,6 +179,7 @@ export default function CandidateRegister({
       // Save Firestore user record with pending verification status
       const profile = await saveCandidateToFirestore(res.user.uid, res.user.email || email.trim(), fullName.trim(), false);
 
+      trackCandidateRegistrationCompleted("email");
       setRegisteredProfile(profile);
       setShowVerificationScreen(true);
       showToast("Account created! A verification email has been sent to your email address.", "info");
@@ -176,6 +203,7 @@ export default function CandidateRegister({
   const handleGoogleSignUp = async () => {
     setErrorMsg("");
     setLoading(true);
+    trackCandidateRegistrationStarted("google");
     try {
       const res = await signInWithPopup(auth, googleProvider);
       const displayName = res.user.displayName || fullName.trim() || res.user.email?.split("@")[0] || "Candidate";
@@ -183,6 +211,7 @@ export default function CandidateRegister({
       const isGoogleEmailVerified = res.user.emailVerified === true;
       const profile = await saveCandidateToFirestore(res.user.uid, res.user.email || "", displayName, isGoogleEmailVerified);
 
+      trackCandidateRegistrationCompleted("google");
       if (isGoogleEmailVerified) {
         showToast(`Signed up via Google as ${profile.name}`, "success");
         onRegisterSuccess(profile);

@@ -435,7 +435,7 @@ export default function OnboardingControlCenter() {
 
       {/* Action & Onboarding Execution Modal */}
       {selectedUser && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
           <div className="bg-[#0a0e1a] border border-white/10 rounded-2xl max-w-3xl w-full p-6 space-y-5 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             
             <div className="flex justify-between items-center border-b border-white/10 pb-3">
@@ -575,7 +575,7 @@ export default function OnboardingControlCenter() {
 
       {/* Onboarding Timeline Modal */}
       {timelineModalUser && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
           <div className="bg-[#0a0e1a] border border-white/10 rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl relative max-h-[85vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-white/10 pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">

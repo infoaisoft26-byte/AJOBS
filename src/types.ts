@@ -260,17 +260,37 @@ export interface JobApplication {
   id: string;
   jobId: string;
   candidateId: string;
+  userId?: string;
   candidateName: string;
+  candidateEmail?: string;
+  candidatePhone?: string;
+  candidateLocation?: string;
+  candidateExperience?: string;
+  candidateSkills?: string[];
   jobTitle: string;
+  companyId?: string;
   companyName: string;
   recruiterId?: string;
+  employerId?: string;
   consultancyId?: string;
-  resumeUrl?: string;
-  status: "Applied" | "Application Submitted" | "Resume Under Review" | "Screening" | "Shortlisted" | "Interview Scheduled" | "Interview Completed" | "Selected" | "Offer Released" | "On Hold" | "Joined" | "Rejected" | "Withdrawn";
+  assignedRecruiterId?: string | null;
+  assignedRecruiterName?: string | null;
+  assignedAt?: string | null;
+  assignedBy?: string | null;
+  resumeUrl?: string | null;
+  resumeScore?: number;
+  source?: string;
+  status: "applied" | "under_review" | "shortlisted" | "interview" | "selected" | "offer" | "joined" | "rejected" | "Applied" | "Screening" | "Shortlisted" | "Interview Scheduled" | "Interview Completed" | "Selected" | "Offer Released" | "Joined" | "Rejected" | string;
   appliedAt: string;
   updatedAt?: string;
-  resumeScore?: number;
   trackingSource?: string;
+  interviewDate?: string;
+  interviewTime?: string;
+  interviewMode?: string;
+  interviewLocation?: string;
+  meetingLink?: string;
+  interviewerName?: string;
+  interviewNotes?: string;
 }
 
 export interface Lead {

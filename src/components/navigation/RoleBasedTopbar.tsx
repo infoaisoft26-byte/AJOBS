@@ -283,6 +283,19 @@ export default function RoleBasedTopbar({
             />
           )}
 
+          {/* INDEPENDENCE DAY SPECIAL REPLAY BUTTON */}
+          {onReplayIntro && (
+            <button
+              onClick={() => { soundSynth.playClick(); onReplayIntro(); }}
+              className="px-2.5 py-1.5 rounded-xl bg-slate-900/60 hover:bg-slate-800 border border-amber-500/20 hover:border-amber-400/40 text-gray-300 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 text-xs font-mono"
+              title="Play 60-Second Ultra-Premium Cinematic Independence Day Brand Film"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="hidden sm:inline text-[11px] font-bold text-amber-300">15 Aug</span>
+              <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+            </button>
+          )}
+
           {/* LANGUAGE SELECTOR */}
           <LanguageSelector />
 

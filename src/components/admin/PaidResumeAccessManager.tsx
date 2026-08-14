@@ -294,7 +294,7 @@ export default function PaidResumeAccessManager({ adminUserId }: { adminUserId: 
 
       {/* Grant Allocation Modal */}
       {showGrantModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
           <div className="w-full max-w-md bg-gray-950 border border-white/10 rounded-2xl p-6 space-y-4 shadow-2xl">
             <h4 className="text-base font-bold flex items-center gap-2 text-white">
               <Key className="w-5 h-5 text-amber-400" />

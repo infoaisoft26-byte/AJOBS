@@ -105,29 +105,36 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
         const liveJobs = await getLiveJobs();
         if (isMounted) setJobs(liveJobs);
 
-        // Fetch candidate applications
+        // Realtime candidate applications listener
+        let unsubApps: (() => void) | null = null;
         if (userId) {
           const appsRef = collection(db, "applications");
           const q = query(appsRef, where("candidateId", "==", userId));
-          const appSnap = await getDocs(q);
-          const appList: JobApplication[] = [];
-          appSnap.forEach(d => appList.push({ id: d.id, ...d.data() } as JobApplication));
-          if (isMounted) setApplications(appList);
+          unsubApps = onSnapshot(q, (snap) => {
+            const appList: JobApplication[] = [];
+            snap.forEach(d => appList.push({ id: d.id, ...d.data() } as JobApplication));
+            appList.sort((a, b) => new Date(b.appliedAt || 0).getTime() - new Date(a.appliedAt || 0).getTime());
+            if (isMounted) setApplications(appList);
+          }, (err) => console.warn("Applications listener note:", err));
         }
 
         // Realtime notifications
+        let unsubNotifs: (() => void) | null = null;
         if (userId) {
           const nRef = collection(db, "notifications");
           const nQ = query(nRef, where("userId", "==", userId));
-          const unsub = onSnapshot(nQ, (snap) => {
+          unsubNotifs = onSnapshot(nQ, (snap) => {
             const list: NotificationRecord[] = [];
             snap.forEach(d => list.push({ id: d.id, ...d.data() } as NotificationRecord));
             list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
             if (isMounted) setNotifications(list);
           }, (err) => console.warn("Notifications listener note:", err));
-
-          return () => unsub();
         }
+
+        return () => {
+          if (unsubApps) unsubApps();
+          if (unsubNotifs) unsubNotifs();
+        };
 
       } catch (err) {
         console.warn("Candidate dashboard load note:", err);

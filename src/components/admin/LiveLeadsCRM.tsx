@@ -352,7 +352,7 @@ export default function LiveLeadsCRM() {
 
       {/* Edit Lead Modal */}
       {selectedLead && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
           <div className="bg-[#0c101d] border border-white/10 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative">
             <div className="flex justify-between items-center border-b border-white/10 pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
