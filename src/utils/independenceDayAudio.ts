@@ -39,36 +39,47 @@ export class IndependenceDayAudioEngine {
   }
 
   public async startAudio(): Promise<boolean> {
-    try {if (typeof window !== "undefined") {
-  if (!this.audioElement) {
-    this.audioElement = new Audio("/audio/vande_matram_flute.mp3");
-    this.audioElement.loop = true;
-    this.audioElement.preload = "auto";
-    this.audioElement.volume = 0.45;
-  }
-this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 0.18, ctx.currentTime);
   try {
-    this.audioElement.currentTime = 0;
-    await this.audioElement.play();
-  } catch (err) {
-    console.warn("[IndependenceDayAudioEngine] MP3 autoplay blocked:", err);
-  }
-}
-      const ctx = this.initContext();
-      if (!ctx) return false;
+    const ctx = this.initContext();
+    if (!ctx) return false;
 
-      this.stopAudio();
+    // Purana audio pehle stop karo
+    this.stopAudio();
 
-      this.masterGain = ctx.createGain();
-      this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 0.72, ctx.currentTime);
-      this.masterGain.connect(ctx.destination);
+    // Vande Mataram MP3 start karo
+    if (typeof window !== "undefined") {
+      if (!this.audioElement) {
+        this.audioElement = new Audio("/audio/vande_matram_flute.mp3");
+        this.audioElement.loop = true;
+        this.audioElement.preload = "auto";
+        this.audioElement.volume = 0.45;
+      }
 
-      this.startTime = ctx.currentTime;
-      this.isPlaying = true;
-      this.scheduledNodes = [];
+      try {
+        this.audioElement.currentTime = 0;
+        this.audioElement.muted = this.isMuted;
+        await this.audioElement.play();
+      } catch (err) {
+        console.warn(
+          "[IndependenceDayAudioEngine] MP3 autoplay blocked:",
+          err
+        );
+      }
+    }
 
-      const t0 = this.startTime;
+    // Background cinematic soundtrack
+    this.masterGain = ctx.createGain();
+    this.masterGain.gain.setValueAtTime(
+      this.isMuted ? 0 : 0.18,
+      ctx.currentTime
+    );
+    this.masterGain.connect(ctx.destination);
 
+    this.startTime = ctx.currentTime;
+    this.isPlaying = true;
+    this.scheduledNodes = [];
+
+    const t0 = this.startTime;
       // =======================================================================
       // 1. SOFT MORNING WIND & TANPURA DRONE (0:00 - 60:00)
       // =======================================================================
