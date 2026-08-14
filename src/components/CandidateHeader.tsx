@@ -57,9 +57,25 @@ export default function CandidateHeader({
   ];
 
   return (
-    <header className="sticky top-0 z-30 w-full bg-white border-b border-gray-200 py-3 px-4 md:px-6 flex items-center justify-between gap-4 shadow-xs">
+    <header
+  className="
+    sticky top-0 z-30
+    w-full
+    bg-white
+    border-b border-gray-200
+    shadow-sm
+    px-3 py-2.5
+    sm:px-4
+    md:px-6
+    flex flex-wrap
+    items-center
+    justify-between
+    gap-2
+    sm:gap-3
+  "
+>
       {/* Sidebar Toggle & Quick Search */}
-      <div className="flex items-center space-x-3 flex-1 max-w-lg">
+      <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 lg:max-w-lg">
         <button 
           onClick={toggleSidebar}
           className="lg:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all cursor-pointer"
@@ -73,14 +89,32 @@ export default function CandidateHeader({
           <AIJobsLogo variant="compact" size="sm" />
         </div>
 
-        <div className="relative w-full hidden sm:block">
+        <div className="relative w-full order-3 sm:order-none basis-full sm:basis-auto sm:flex-1 mt-2 sm:mt-0">
           <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-gray-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t("searchPlaceholderTitle")}
-            className="w-full pl-9 pr-10 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:bg-white text-gray-900 transition-all placeholder:text-gray-400"
+            placeholder={t("searchPlaceholderTitle")}className="
+  w-full
+  min-h-[44px]
+  pl-10
+  pr-12
+  py-2.5
+  text-[16px]
+  sm:text-sm
+  bg-gray-50
+  border border-gray-200
+  rounded-xl
+  focus:outline-none
+  focus:ring-2
+  focus:ring-blue-100
+  focus:border-blue-500
+  focus:bg-white
+  text-gray-900
+  transition-all
+  placeholder:text-gray-400
+"
             id="candidate-search-jobs-input"
           />
           {searchQuery && (
@@ -101,7 +135,7 @@ export default function CandidateHeader({
       </div>
 
       {/* Header Actions */}
-      <div className="flex items-center space-x-2 sm:space-x-3">
+      <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 shrink-0">
         {/* Language Selector */}
         <div className="relative">
           <button
@@ -110,7 +144,20 @@ export default function CandidateHeader({
               setShowNotifications(false);
               setShowProfileMenu(false);
             }}
-            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 text-xs font-semibold transition-all cursor-pointer"
+            className="
+  flex items-center gap-1
+  px-2 sm:px-2.5
+  py-2
+  rounded-xl
+  border border-gray-200
+  text-gray-700
+  hover:bg-gray-50
+  text-xs
+  font-semibold
+  transition-all
+  cursor-pointer
+  min-h-[40px]
+"
             title="Select Language"
           >
             <Globe className="w-4 h-4 text-blue-600" />
@@ -118,7 +165,7 @@ export default function CandidateHeader({
           </button>
 
           {showLangMenu && (
-            <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-lg p-1.5 z-50 animate-in fade-in duration-150">
+            <div className="absolute right-0 mt-2 w-44 sm:w-48 bg-white border border-gray-200 rounded-xl shadow-lg p-1.5 z-50 animate-in fade-in duration-150">
               <div className="px-2 py-1 text-[11px] font-semibold text-gray-400 uppercase">
                 Select Language
               </div>
@@ -162,7 +209,20 @@ export default function CandidateHeader({
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden z-50 text-gray-900">
+            <div
+  className="
+    absolute right-0 mt-2
+    w-[calc(100vw-24px)]
+    max-w-sm
+    bg-white
+    border border-gray-200
+    rounded-2xl
+    shadow-xl
+    overflow-hidden
+    z-50
+    text-gray-900
+  "
+>
               <div className="p-3.5 border-b border-gray-100 bg-gray-50 flex items-center justify-between text-xs font-semibold">
                 <span>{t("notifications")} ({unreadCount})</span>
                 {unreadCount > 0 && (
@@ -234,7 +294,7 @@ export default function CandidateHeader({
             }}
             className="flex items-center space-x-2 p-1 rounded-xl hover:bg-gray-100 transition-all cursor-pointer"
           >
-            <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-xs">
+            <div className="w-9 h-9 sm:w-8 sm:h-8 shrink-0 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
               {userName ? userName.charAt(0).toUpperCase() : "C"}
             </div>
             <span className="text-sm font-semibold text-gray-800 hidden md:inline-block pr-1">
@@ -243,7 +303,21 @@ export default function CandidateHeader({
           </button>
 
           {showProfileMenu && (
-            <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-lg p-1 z-50 text-gray-900 animate-in fade-in duration-150">
+            <div
+  className="
+    absolute right-0 mt-2
+    w-[calc(100vw-24px)]
+    max-w-56
+    bg-white
+    border border-gray-200
+    rounded-xl
+    shadow-lg
+    p-1
+    z-50
+    text-gray-900
+    animate-in fade-in duration-150
+  "
+>
               <div className="p-3 border-b border-gray-100 bg-gray-50 rounded-t-lg">
                 <p className="font-bold text-sm text-gray-900">{userName}</p>
                 <p className="text-xs text-gray-500 truncate">{userEmail}</p>
