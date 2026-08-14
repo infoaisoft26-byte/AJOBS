@@ -729,12 +729,12 @@ export const IndependenceDayIntro: React.FC<IndependenceDayIntroProps> = ({ onCo
               <div className="absolute -inset-4 bg-gradient-to-r from-blue-600/20 via-cyan-500/15 to-orange-500/20 rounded-2xl blur-xl animate-pulse" />
               <div className="relative px-8 py-3.5 rounded-2xl bg-slate-950/85 border border-blue-500/40 shadow-2xl backdrop-blur-md flex flex-col items-center space-y-1">
                 <img
-                  src="/aijobs-ai-logo.png"
+                  src="/images/aijobs-logo.png"
                   alt="AIJobs"
-                  className="h-11 sm:h-13 w-auto object-contain mx-auto"
+                  className="w-[240px] sm:w-[320px] md:w-[380px] max-w-[82vw] h-auto object-contain mx-auto"
                 />
                 <span className="text-[11px] font-mono tracking-widest text-slate-300 uppercase">
-                  AI Powered Hiring Platform
+                 
                 </span>
               </div>
             </div>
