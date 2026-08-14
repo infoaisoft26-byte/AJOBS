@@ -85,69 +85,146 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
 
   // 2. Fetch Data on Mount
   useEffect(() => {
-    let isMounted = true;
+  let isMounted = true;
 
-    async function loadData() {
-      try {
-        setLoading(true);
+  let unsubApps: (() => void) | null = null;
+  let unsubNotifs: (() => void) | null = null;
 
-        // Fetch candidate profile
-        if (userId) {
-          const pDoc = await getDoc(doc(db, "candidates", userId));
-          if (pDoc.exists() && isMounted) {
-            const data = pDoc.data();
-            setProfile({ id: pDoc.id, userId, ...data });
-            if (data.resumeText) setResumeText(data.resumeText);
+  async function loadData() {
+    try {
+      setLoading(true);
+
+      // Candidate profile
+      if (userId) {
+        const pDoc = await getDoc(doc(db, "candidates", userId));
+
+        if (pDoc.exists() && isMounted) {
+          const data = pDoc.data();
+
+          setProfile({
+            id: pDoc.id,
+            userId,
+            ...data,
+          });
+
+          if (data.resumeText) {
+            setResumeText(data.resumeText);
           }
         }
+      }
 
-        // Fetch live jobs
-        const liveJobs = await getLiveJobs();
-        if (isMounted) setJobs(liveJobs);
+      // Live jobs
+      const liveJobs = await getLiveJobs();
 
-        // Realtime candidate applications listener
-        let unsubApps: (() => void) | null = null;
-        if (userId) {
-          const appsRef = collection(db, "applications");
-          const q = query(appsRef, where("candidateId", "==", userId));
-          unsubApps = onSnapshot(q, (snap) => {
+      if (isMounted) {
+        setJobs(liveJobs);
+      }
+
+      // Applications realtime
+      if (userId) {
+        const appsRef = collection(db, "applications");
+
+        const appsQuery = query(
+          appsRef,
+          where("candidateId", "==", userId)
+        );
+
+        unsubApps = onSnapshot(
+          appsQuery,
+          (snap) => {
             const appList: JobApplication[] = [];
-            snap.forEach(d => appList.push({ id: d.id, ...d.data() } as JobApplication));
-            appList.sort((a, b) => new Date(b.appliedAt || 0).getTime() - new Date(a.appliedAt || 0).getTime());
-            if (isMounted) setApplications(appList);
-          }, (err) => console.warn("Applications listener note:", err));
-        }
 
-        // Realtime notifications
-        let unsubNotifs: (() => void) | null = null;
-        if (userId) {
-          const nRef = collection(db, "notifications");
-          const nQ = query(nRef, where("userId", "==", userId));
-          unsubNotifs = onSnapshot(nQ, (snap) => {
+            snap.forEach((d) => {
+              appList.push({
+                id: d.id,
+                ...d.data(),
+              } as JobApplication);
+            });
+
+            appList.sort(
+              (a, b) =>
+                new Date(b.appliedAt || 0).getTime() -
+                new Date(a.appliedAt || 0).getTime()
+            );
+
+            if (isMounted) {
+              setApplications(appList);
+            }
+          },
+          (err) => {
+            console.warn(
+              "Applications listener note:",
+              err
+            );
+          }
+        );
+      }
+
+      // Notifications realtime
+      if (userId) {
+        const nRef = collection(db, "notifications");
+
+        const notificationQuery = query(
+          nRef,
+          where("userId", "==", userId)
+        );
+
+        unsubNotifs = onSnapshot(
+          notificationQuery,
+          (snap) => {
             const list: NotificationRecord[] = [];
-            snap.forEach(d => list.push({ id: d.id, ...d.data() } as NotificationRecord));
-            list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-            if (isMounted) setNotifications(list);
-          }, (err) => console.warn("Notifications listener note:", err));
-        }
 
-        return () => {
-          if (unsubApps) unsubApps();
-          if (unsubNotifs) unsubNotifs();
-        };
+            snap.forEach((d) => {
+              list.push({
+                id: d.id,
+                ...d.data(),
+              } as NotificationRecord);
+            });
 
-      } catch (err) {
-        console.warn("Candidate dashboard load note:", err);
-      } finally {
-        if (isMounted) setLoading(false);
+            list.sort(
+              (a, b) =>
+                new Date(b.createdAt || 0).getTime() -
+                new Date(a.createdAt || 0).getTime()
+            );
+
+            if (isMounted) {
+              setNotifications(list);
+            }
+          },
+          (err) => {
+            console.warn(
+              "Notifications listener note:",
+              err
+            );
+          }
+        );
+      }
+    } catch (err) {
+      console.warn(
+        "Candidate dashboard load note:",
+        err
+      );
+    } finally {
+      if (isMounted) {
+        setLoading(false);
       }
     }
+  }
 
-    loadData();
+  loadData();
 
-    return () => { isMounted = false; };
-  }, [userId]);
+  return () => {
+    isMounted = false;
 
+    if (unsubApps) {
+      unsubApps();
+    }
+
+    if (unsubNotifs) {
+      unsubNotifs();
+    }
+  };
+}, [userId]);
   // Notification Trigger
   const triggerNotification = async (title: string, message: string) => {
     if (!userId) return;
@@ -234,7 +311,21 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans flex flex-col" id="candidate-portal-root">
+    <div
+  className="
+    min-h-screen
+    min-h-[100dvh]
+    w-full
+    max-w-full
+    overflow-x-hidden
+    bg-gray-50
+    text-gray-900
+    font-sans
+    flex
+    flex-col
+  "
+  id="candidate-portal-root"
+>
       {/* Top Header */}
       <CandidateHeader
         userName={userName}
@@ -251,7 +342,19 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
         setLang={setLang}
       />
 
-      <div className="flex-1 flex max-w-7xl w-full mx-auto relative pb-16 lg:pb-0">
+      <div
+  className="
+    flex-1
+    flex
+    w-full
+    max-w-7xl
+    mx-auto
+    relative
+    min-w-0
+    pb-20
+    lg:pb-0
+  "
+>
         {/* Sidebar Navigation */}
         <CandidateSidebar
           activeTab={activeTab}
@@ -264,7 +367,23 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
         />
 
         {/* Main Work Area */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto max-w-full">
+        <main
+  className="
+    flex-1
+    min-w-0
+    w-full
+    max-w-full
+    overflow-x-hidden
+    overflow-y-auto
+    px-3
+    py-4
+    sm:px-4
+    sm:py-5
+    md:px-6
+    lg:px-8
+    lg:py-8
+  "
+>
           {/* 1. HOME / OVERVIEW */}
           {activeTab === "overview" && (
             <CandidateDashboardOverview
@@ -334,7 +453,7 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
 
           {/* 6. NOTIFICATIONS */}
           {activeTab === "notifications" && (
-            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs">
+            <div className="w-full min-w-0 bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-3 sm:p-4 lg:p-6 shadow-sm overflow-hidden">
               <NotificationCenterView userId={userId} userRole="candidate" userName={userName} />
             </div>
           )}
