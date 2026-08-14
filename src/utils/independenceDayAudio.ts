@@ -373,26 +373,30 @@ this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 0.18, ctx.currentTime);
   }
 
   public toggleMute(): boolean {
-    this.setMute(!this.isMuted);
-    return this.isMuted;
-  }
-
-  public getIsMuted(): boolean {
-    return this.isMuted;
-  }
-
-  if (this.audioElement) {
-  this.audioElement.pause();
-  this.audioElement.currentTime = 0;
+  this.setMute(!this.isMuted);
+  return this.isMuted;
 }
-    this.isPlaying = false;
-    this.scheduledNodes.forEach((node) => {
-      try {
-        node.stop();
-      } catch {}
-    });
-    this.scheduledNodes = [];
+
+public getIsMuted(): boolean {
+  return this.isMuted;
+}
+
+public stopAudio() {
+  if (this.audioElement) {
+    this.audioElement.pause();
+    this.audioElement.currentTime = 0;
   }
+
+  this.isPlaying = false;
+
+  this.scheduledNodes.forEach((node) => {
+    try {
+      node.stop();
+    } catch {}
+  });
+
+  this.scheduledNodes = [];
+}
 }
 
 export const independenceAudio = new IndependenceDayAudioEngine();
