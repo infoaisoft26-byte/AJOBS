@@ -100,7 +100,6 @@ export default function CandidateSidebar({
   `}
   id="candidate-sidebar"
 >
-      >
         {/* Mobile Header */}
         <div className="flex shrink-0 items-center justify-between px-4 py-3 lg:hidden border-b border-gray-100 bg-gray-50">
           <span className="font-semibold text-sm text-gray-800">Menu</span>
