@@ -16,6 +16,7 @@
 export class IndependenceDayAudioEngine {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
+  private audioElement: HTMLAudioElement | null = null;
   private isPlaying: boolean = false;
   private isMuted: boolean = false;
   private startTime: number = 0;
@@ -38,7 +39,21 @@ export class IndependenceDayAudioEngine {
   }
 
   public async startAudio(): Promise<boolean> {
-    try {
+    try {if (typeof window !== "undefined") {
+  if (!this.audioElement) {
+    this.audioElement = new Audio("/audio/vande_matram_flute.mp3");
+    this.audioElement.loop = true;
+    this.audioElement.preload = "auto";
+    this.audioElement.volume = 0.45;
+  }
+this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 0.18, ctx.currentTime);
+  try {
+    this.audioElement.currentTime = 0;
+    await this.audioElement.play();
+  } catch (err) {
+    console.warn("[IndependenceDayAudioEngine] MP3 autoplay blocked:", err);
+  }
+}
       const ctx = this.initContext();
       if (!ctx) return false;
 
@@ -337,7 +352,7 @@ export class IndependenceDayAudioEngine {
       });
 
       // Master fade out ending gracefully at 60.0s
-      this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 0.72, t0 + 58.5);
+      this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 0.18, t0 + 58.5);
       this.masterGain.gain.exponentialRampToValueAtTime(0.0001, t0 + 60.0);
 
       return true;
@@ -348,9 +363,12 @@ export class IndependenceDayAudioEngine {
   }
 
   public setMute(mute: boolean) {
+    if (this.audioElement) {
+  this.audioElement.muted = mute;
+}
     this.isMuted = mute;
     if (this.masterGain && this.ctx) {
-      this.masterGain.gain.setValueAtTime(mute ? 0 : 0.72, this.ctx.currentTime);
+      this.masterGain.gain.setValueAtTime(mute ? 0 : 0.18, this.ctx.currentTime);
     }
   }
 
@@ -363,7 +381,10 @@ export class IndependenceDayAudioEngine {
     return this.isMuted;
   }
 
-  public stopAudio() {
+  if (this.audioElement) {
+  this.audioElement.pause();
+  this.audioElement.currentTime = 0;
+}
     this.isPlaying = false;
     this.scheduledNodes.forEach((node) => {
       try {
