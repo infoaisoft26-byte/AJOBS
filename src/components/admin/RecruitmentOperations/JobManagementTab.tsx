@@ -24,8 +24,8 @@ import { RecruitmentJob, RecruiterUser } from "../../../types/recruitment";
 import { setJobStatus, exportJobsToExcel, createRecruitmentJob } from "../../../services/recruitmentService";
 
 interface JobManagementTabProps {
-  jobs: RecruitmentJob[];
-  recruiters: RecruiterUser[];
+  jobs?: RecruitmentJob[];
+  recruiters?: RecruiterUser[];
   onOpenCreateJob: () => void;
   onOpenEditJob: (job: RecruitmentJob) => void;
   onFindMatchesForJob: (job: RecruitmentJob) => void;
@@ -34,14 +34,17 @@ interface JobManagementTabProps {
 }
 
 export default function JobManagementTab({
-  jobs,
-  recruiters,
+  jobs = [],
+  recruiters = [],
   onOpenCreateJob,
   onOpenEditJob,
   onFindMatchesForJob,
   onRefresh,
   adminUser
 }: JobManagementTabProps) {
+  const safeJobs = Array.isArray(jobs) ? jobs : [];
+  const safeRecruiters = Array.isArray(recruiters) ? recruiters : [];
+
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [workModeFilter, setWorkModeFilter] = useState("ALL");
@@ -49,15 +52,16 @@ export default function JobManagementTab({
   const [actionNotice, setActionNotice] = useState("");
 
   const filteredJobs = useMemo(() => {
-    return jobs.filter((job) => {
+    return safeJobs.filter((job) => {
       const term = searchTerm.toLowerCase().trim();
+      const skills = Array.isArray(job.skillsRequired) ? job.skillsRequired : [];
       const matchesSearch = 
         !term ||
-        job.jobId.toLowerCase().includes(term) ||
-        job.title.toLowerCase().includes(term) ||
-        job.companyName.toLowerCase().includes(term) ||
-        job.location.toLowerCase().includes(term) ||
-        job.skillsRequired.some((s) => s.toLowerCase().includes(term));
+        (job.jobId && job.jobId.toLowerCase().includes(term)) ||
+        (job.title && job.title.toLowerCase().includes(term)) ||
+        (job.companyName && job.companyName.toLowerCase().includes(term)) ||
+        (job.location && job.location.toLowerCase().includes(term)) ||
+        skills.some((s) => s.toLowerCase().includes(term));
 
       const matchesStatus = 
         statusFilter === "ALL" || 
@@ -74,7 +78,7 @@ export default function JobManagementTab({
 
       return matchesSearch && matchesStatus && matchesWorkMode && matchesIndustry;
     });
-  }, [jobs, searchTerm, statusFilter, workModeFilter, industryFilter]);
+  }, [safeJobs, searchTerm, statusFilter, workModeFilter, industryFilter]);
 
   // Status toggle handler
   const handleToggleStatus = async (job: RecruitmentJob, newStatus: "Draft" | "Published" | "Paused" | "Closed") => {

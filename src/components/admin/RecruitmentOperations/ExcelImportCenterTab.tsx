@@ -29,18 +29,21 @@ import {
 } from "../../../services/recruitmentService";
 
 interface ExcelImportCenterTabProps {
-  candidates: RecruitmentCandidate[];
-  jobs: RecruitmentJob[];
+  candidates?: RecruitmentCandidate[];
+  jobs?: RecruitmentJob[];
   onImportCompleted: () => void;
   adminUser?: { name: string; email: string };
 }
 
 export default function ExcelImportCenterTab({
-  candidates,
-  jobs,
+  candidates = [],
+  jobs = [],
   onImportCompleted,
   adminUser
 }: ExcelImportCenterTabProps) {
+  const safeCandidates = Array.isArray(candidates) ? candidates : [];
+  const safeJobs = Array.isArray(jobs) ? jobs : [];
+
   const [importType, setImportType] = useState<"CANDIDATES" | "JOBS">("CANDIDATES");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isParsing, setIsParsing] = useState(false);

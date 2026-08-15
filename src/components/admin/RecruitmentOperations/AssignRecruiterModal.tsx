@@ -17,28 +17,42 @@ import { RecruitmentCandidate, RecruitmentJob, RecruiterUser } from "../../../ty
 import { assignCandidatesToRecruiter } from "../../../services/recruitmentService";
 
 interface AssignRecruiterModalProps {
-  candidates: RecruitmentCandidate[];
-  allCandidates: RecruitmentCandidate[];
-  recruiters: RecruiterUser[];
-  jobs: RecruitmentJob[];
+  candidates?: RecruitmentCandidate[];
+  allCandidates?: RecruitmentCandidate[];
+  recruiters?: RecruiterUser[];
+  jobs?: RecruitmentJob[];
   selectedJob?: RecruitmentJob | null;
+  preselectedJob?: RecruitmentJob | null;
+  isOpen?: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess?: () => void;
+  onAssigned?: () => void;
   adminUser?: { name: string; email: string };
 }
 
 export default function AssignRecruiterModal({
-  candidates,
-  allCandidates,
-  recruiters,
-  jobs,
+  candidates = [],
+  allCandidates = [],
+  recruiters = [],
+  jobs = [],
   selectedJob: initialSelectedJob,
+  preselectedJob,
+  isOpen = true,
   onClose,
   onSuccess,
+  onAssigned,
   adminUser
 }: AssignRecruiterModalProps) {
-  const [selectedRecruiterId, setSelectedRecruiterId] = useState<string>(recruiters[0]?.id || "");
-  const [selectedJobId, setSelectedJobId] = useState<string>(initialSelectedJob?.id || "");
+  if (isOpen === false) return null;
+
+  const safeRecruiters = Array.isArray(recruiters) ? recruiters : [];
+  const safeJobs = Array.isArray(jobs) ? jobs : [];
+  const safeCandidates = Array.isArray(candidates) ? candidates : [];
+  const safeAllCandidates = Array.isArray(allCandidates) && allCandidates.length > 0 ? allCandidates : safeCandidates;
+  const initialJob = initialSelectedJob || preselectedJob || null;
+
+  const [selectedRecruiterId, setSelectedRecruiterId] = useState<string>(safeRecruiters[0]?.id || "");
+  const [selectedJobId, setSelectedJobId] = useState<string>(initialJob?.id || "");
   const [priority, setPriority] = useState<"Urgent" | "High" | "Medium" | "Low">("High");
   const [deadlineDate, setDeadlineDate] = useState<string>("");
   const [adminNotes, setAdminNotes] = useState<string>("");
@@ -46,11 +60,11 @@ export default function AssignRecruiterModal({
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [successMessage, setSuccessMessage] = useState<string>("");
 
-  const selectedRecruiter = recruiters.find((r) => r.id === selectedRecruiterId) || recruiters[0];
-  const selectedJob = jobs.find((j) => j.id === selectedJobId) || initialSelectedJob || null;
+  const selectedRecruiter = safeRecruiters.find((r) => r.id === selectedRecruiterId) || safeRecruiters[0] || null;
+  const selectedJob = safeJobs.find((j) => j.id === selectedJobId) || initialJob || null;
 
   // Check if any candidate is already assigned to this recruiter
-  const alreadyAssigned = candidates.filter((c) => c.assignedRecruiterId === selectedRecruiterId);
+  const alreadyAssigned = safeCandidates.filter((c) => c.assignedRecruiterId === selectedRecruiterId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +72,7 @@ export default function AssignRecruiterModal({
       setErrorMessage("Please select an active recruiter.");
       return;
     }
-    if (candidates.length === 0) {
+    if (safeCandidates.length === 0) {
       setErrorMessage("No candidates selected for assignment.");
       return;
     }
@@ -68,8 +82,8 @@ export default function AssignRecruiterModal({
 
     try {
       const result = await assignCandidatesToRecruiter({
-        candidateIds: candidates.map((c) => c.id),
-        candidates: allCandidates,
+        candidateIds: safeCandidates.map((c) => c.id),
+        candidates: safeAllCandidates,
         recruiter: selectedRecruiter,
         job: selectedJob,
         priority,
@@ -80,7 +94,8 @@ export default function AssignRecruiterModal({
 
       setSuccessMessage(`Successfully assigned ${result.successCount} candidate(s) to ${selectedRecruiter.name}!`);
       setTimeout(() => {
-        onSuccess();
+        if (onSuccess) onSuccess();
+        if (onAssigned) onAssigned();
         onClose();
       }, 1500);
     } catch (err: any) {
@@ -138,17 +153,17 @@ export default function AssignRecruiterModal({
           <div className="p-3.5 bg-slate-950/60 rounded-xl border border-slate-800 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider font-mono">
-                Target Candidates ({candidates.length})
+                Target Candidates ({safeCandidates.length})
               </span>
               <span className="text-[11px] text-blue-400 font-mono">
-                {candidates.map((c) => c.candidateId).slice(0, 3).join(", ")}{candidates.length > 3 ? ` +${candidates.length - 3} more` : ""}
+                {safeCandidates.map((c) => c.candidateId || c.sequentialId || "AIJ-CAN").slice(0, 3).join(", ")}{safeCandidates.length > 3 ? ` +${safeCandidates.length - 3} more` : ""}
               </span>
             </div>
             <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
-              {candidates.map((c) => (
+              {safeCandidates.map((c) => (
                 <div key={c.id} className="px-2.5 py-1 bg-slate-800/90 rounded-lg text-slate-200 border border-slate-700/80 flex items-center space-x-1.5">
-                  <span className="font-semibold text-white">{c.fullName}</span>
-                  <span className="text-[10px] text-slate-400 font-mono">({c.candidateId})</span>
+                  <span className="font-semibold text-white">{c.fullName || c.name || "Candidate"}</span>
+                  <span className="text-[10px] text-slate-400 font-mono">({c.candidateId || c.sequentialId || c.id})</span>
                 </div>
               ))}
             </div>
@@ -165,9 +180,12 @@ export default function AssignRecruiterModal({
               required
               className="w-full px-3 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 focus:outline-none focus:border-blue-500 cursor-pointer"
             >
-              {recruiters.map((rec) => (
+              {safeRecruiters.length === 0 && (
+                <option value="">No recruiters available</option>
+              )}
+              {safeRecruiters.map((rec) => (
                 <option key={rec.id} value={rec.id}>
-                  {rec.name} ({rec.recruiterId}) — {rec.agencyOrCompany || "Talent Operations"} ({rec.email})
+                  {rec.name} ({rec.recruiterId || "REC"}) — {rec.agencyOrCompany || "Talent Operations"} ({rec.email})
                 </option>
               ))}
             </select>
@@ -184,9 +202,9 @@ export default function AssignRecruiterModal({
               className="w-full px-3 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 focus:outline-none focus:border-blue-500 cursor-pointer"
             >
               <option value="">-- General Recruitment Pipeline (No Specific Job) --</option>
-              {jobs.map((j) => (
+              {safeJobs.map((j) => (
                 <option key={j.id} value={j.id}>
-                  [{j.jobId}] {j.title} at {j.companyName} ({j.location}) — Status: {j.status}
+                  [{j.jobId || "JOB"}] {j.title} at {j.companyName} ({j.location}) — Status: {j.status}
                 </option>
               ))}
             </select>
@@ -263,7 +281,7 @@ export default function AssignRecruiterModal({
               className="px-5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-semibold flex items-center space-x-2 shadow-lg shadow-blue-500/20 disabled:opacity-50 cursor-pointer transition-all"
             >
               <Send className="w-4 h-4" />
-              <span>{isSubmitting ? "Assigning..." : `Confirm Assignment (${candidates.length})`}</span>
+              <span>{isSubmitting ? "Assigning..." : `Confirm Assignment (${safeCandidates.length})`}</span>
             </button>
           </div>
         </form>

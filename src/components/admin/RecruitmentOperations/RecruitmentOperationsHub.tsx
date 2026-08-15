@@ -287,35 +287,47 @@ export default function RecruitmentOperationsHub({
       </div>
 
       {/* Shared Modals */}
-      <CandidateProfileModal
-        candidate={selectedCandidateForProfile}
-        isOpen={Boolean(selectedCandidateForProfile)}
-        onClose={() => setSelectedCandidateForProfile(null)}
-        onAssignToRecruiter={(cand) => handleOpenAssignModal([cand])}
-        onCandidateUpdated={loadRecruitmentData}
-        adminUser={adminUser}
-      />
+      {selectedCandidateForProfile && (
+        <CandidateProfileModal
+          candidate={selectedCandidateForProfile}
+          isOpen={Boolean(selectedCandidateForProfile)}
+          onClose={() => setSelectedCandidateForProfile(null)}
+          onAssignToRecruiter={(cand) => handleOpenAssignModal([cand])}
+          onCandidateUpdated={loadRecruitmentData}
+          adminUser={adminUser}
+        />
+      )}
 
-      <AssignRecruiterModal
-        candidates={candidatesForAssignment}
-        preselectedJob={preselectedJobForAssignment}
-        recruiters={recruiters}
-        isOpen={isAssignModalOpen}
-        onClose={() => setIsAssignModalOpen(false)}
-        onAssigned={loadRecruitmentData}
-        adminUser={adminUser}
-      />
+      {isAssignModalOpen && (
+        <AssignRecruiterModal
+          candidates={candidatesForAssignment}
+          allCandidates={candidates}
+          preselectedJob={preselectedJobForAssignment}
+          selectedJob={preselectedJobForAssignment}
+          recruiters={recruiters}
+          jobs={jobs}
+          isOpen={isAssignModalOpen}
+          onClose={() => setIsAssignModalOpen(false)}
+          onSuccess={loadRecruitmentData}
+          onAssigned={loadRecruitmentData}
+          adminUser={adminUser}
+        />
+      )}
 
-      <CreateJobModal
-        isOpen={isCreateJobModalOpen}
-        onClose={() => {
-          setIsCreateJobModalOpen(false);
-          setJobToEdit(null);
-        }}
-        onJobCreated={loadRecruitmentData}
-        jobToEdit={jobToEdit}
-        adminUser={adminUser}
-      />
+      {isCreateJobModalOpen && (
+        <CreateJobModal
+          isOpen={isCreateJobModalOpen}
+          recruiters={recruiters}
+          onClose={() => {
+            setIsCreateJobModalOpen(false);
+            setJobToEdit(null);
+          }}
+          onSuccess={() => loadRecruitmentData()}
+          onJobCreated={loadRecruitmentData}
+          jobToEdit={jobToEdit}
+          adminUser={adminUser}
+        />
+      )}
     </div>
   );
 }

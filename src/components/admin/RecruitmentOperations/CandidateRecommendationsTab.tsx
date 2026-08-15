@@ -21,9 +21,9 @@ import { RecruitmentCandidate, RecruitmentJob, RecruiterUser, CandidateMatchResu
 import { rankCandidatesForJob, calculateCandidateJobMatch } from "../../../services/recruitmentService";
 
 interface CandidateRecommendationsTabProps {
-  candidates: RecruitmentCandidate[];
-  jobs: RecruitmentJob[];
-  recruiters: RecruiterUser[];
+  candidates?: RecruitmentCandidate[];
+  jobs?: RecruitmentJob[];
+  recruiters?: RecruiterUser[];
   initialSelectedJob?: RecruitmentJob | null;
   initialSelectedCandidate?: RecruitmentCandidate | null;
   onOpenCandidateProfile: (candidate: RecruitmentCandidate) => void;
@@ -31,45 +31,49 @@ interface CandidateRecommendationsTabProps {
 }
 
 export default function CandidateRecommendationsTab({
-  candidates,
-  jobs,
-  recruiters,
+  candidates = [],
+  jobs = [],
+  recruiters = [],
   initialSelectedJob,
   initialSelectedCandidate,
   onOpenCandidateProfile,
   onOpenAssignModal
 }: CandidateRecommendationsTabProps) {
+  const safeCandidates = Array.isArray(candidates) ? candidates : [];
+  const safeJobs = Array.isArray(jobs) ? jobs : [];
+  const safeRecruiters = Array.isArray(recruiters) ? recruiters : [];
+
   const [matchMode, setMatchMode] = useState<"JOB_TO_CANDIDATES" | "CANDIDATE_TO_JOBS">(
     initialSelectedCandidate ? "CANDIDATE_TO_JOBS" : "JOB_TO_CANDIDATES"
   );
 
   const [selectedJobId, setSelectedJobId] = useState<string>(
-    initialSelectedJob?.id || jobs[0]?.id || ""
+    initialSelectedJob?.id || safeJobs[0]?.id || ""
   );
 
   const [selectedCandidateId, setSelectedCandidateId] = useState<string>(
-    initialSelectedCandidate?.id || candidates[0]?.id || ""
+    initialSelectedCandidate?.id || safeCandidates[0]?.id || ""
   );
 
   const [minScoreThreshold, setMinScoreThreshold] = useState<number>(40);
 
-  const activeJob = jobs.find((j) => j.id === selectedJobId) || jobs[0];
-  const activeCandidate = candidates.find((c) => c.id === selectedCandidateId) || candidates[0];
+  const activeJob = safeJobs.find((j) => j.id === selectedJobId) || safeJobs[0] || null;
+  const activeCandidate = safeCandidates.find((c) => c.id === selectedCandidateId) || safeCandidates[0] || null;
 
   // Job -> Ranked Candidates
   const jobMatches: CandidateMatchResult[] = useMemo(() => {
-    if (!activeJob || candidates.length === 0) return [];
-    return rankCandidatesForJob(activeJob, candidates, minScoreThreshold);
-  }, [activeJob, candidates, minScoreThreshold]);
+    if (!activeJob || safeCandidates.length === 0) return [];
+    return rankCandidatesForJob(activeJob, safeCandidates, minScoreThreshold);
+  }, [activeJob, safeCandidates, minScoreThreshold]);
 
   // Candidate -> Ranked Jobs
   const candidateMatches: CandidateMatchResult[] = useMemo(() => {
-    if (!activeCandidate || jobs.length === 0) return [];
-    return jobs
+    if (!activeCandidate || safeJobs.length === 0) return [];
+    return safeJobs
       .map((j) => calculateCandidateJobMatch(activeCandidate, j))
       .filter((res) => res.overallScore >= minScoreThreshold)
       .sort((a, b) => b.overallScore - a.overallScore);
-  }, [activeCandidate, jobs, minScoreThreshold]);
+  }, [activeCandidate, safeJobs, minScoreThreshold]);
 
   return (
     <div className="space-y-6">

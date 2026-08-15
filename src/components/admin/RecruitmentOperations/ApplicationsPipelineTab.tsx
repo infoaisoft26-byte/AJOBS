@@ -19,16 +19,19 @@ import { RecruitmentCandidate, RecruitmentJob } from "../../../types/recruitment
 import { logRecruitmentAudit } from "../../../services/recruitmentService";
 
 interface ApplicationsPipelineTabProps {
-  candidates: RecruitmentCandidate[];
-  jobs: RecruitmentJob[];
+  candidates?: RecruitmentCandidate[];
+  jobs?: RecruitmentJob[];
   adminUser?: { name: string; email: string };
 }
 
 export default function ApplicationsPipelineTab({
-  candidates,
-  jobs,
+  candidates = [],
+  jobs = [],
   adminUser
 }: ApplicationsPipelineTabProps) {
+  const safeCandidates = Array.isArray(candidates) ? candidates : [];
+  const safeJobs = Array.isArray(jobs) ? jobs : [];
+
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");

@@ -18,46 +18,51 @@ import {
 import { RecruitmentCandidate, RecruitmentJob, RecruiterUser, RecruiterAssignment } from "../../../types/recruitment";
 
 interface RecruitmentDashboardTabProps {
-  candidates: RecruitmentCandidate[];
-  jobs: RecruitmentJob[];
-  recruiters: RecruiterUser[];
-  assignments: RecruiterAssignment[];
+  candidates?: RecruitmentCandidate[];
+  jobs?: RecruitmentJob[];
+  recruiters?: RecruiterUser[];
+  assignments?: RecruiterAssignment[];
   onNavigateTab: (tab: string) => void;
   onOpenCreateJob: () => void;
   onRefresh: () => void;
 }
 
 export default function RecruitmentDashboardTab({
-  candidates,
-  jobs,
-  recruiters,
-  assignments,
+  candidates = [],
+  jobs = [],
+  recruiters = [],
+  assignments = [],
   onNavigateTab,
   onOpenCreateJob,
   onRefresh
 }: RecruitmentDashboardTabProps) {
+  const safeCandidates = Array.isArray(candidates) ? candidates : [];
+  const safeJobs = Array.isArray(jobs) ? jobs : [];
+  const safeRecruiters = Array.isArray(recruiters) ? recruiters : [];
+  const safeAssignments = Array.isArray(assignments) ? assignments : [];
+
   // Compute live calculations from real Firestore arrays
-  const totalCandidates = candidates.length;
-  const verifiedCandidates = candidates.filter((c) => c.emailVerified || c.verificationStatus === "verified").length;
-  const withResumes = candidates.filter((c) => Boolean(c.resumeUrl)).length;
+  const totalCandidates = safeCandidates.length;
+  const verifiedCandidates = safeCandidates.filter((c) => c.emailVerified || c.verificationStatus === "verified").length;
+  const withResumes = safeCandidates.filter((c) => Boolean(c.resumeUrl)).length;
   
   const today = new Date().toDateString();
-  const candidatesToday = candidates.filter((c) => c.createdAt && new Date(c.createdAt).toDateString() === today).length;
+  const candidatesToday = safeCandidates.filter((c) => c.createdAt && new Date(c.createdAt).toDateString() === today).length;
 
-  const totalJobs = jobs.length;
-  const publishedJobs = jobs.filter((j) => j.status === "Published" || j.status === "Live").length;
-  const draftJobs = jobs.filter((j) => j.status === "Draft").length;
-  const pausedOrClosedJobs = jobs.filter((j) => j.status === "Paused" || j.status === "Closed").length;
-  const totalOpenings = jobs.reduce((sum, j) => sum + (j.openings || 1), 0);
+  const totalJobs = safeJobs.length;
+  const publishedJobs = safeJobs.filter((j) => j.status === "Published" || j.status === "Live").length;
+  const draftJobs = safeJobs.filter((j) => j.status === "Draft").length;
+  const pausedOrClosedJobs = safeJobs.filter((j) => j.status === "Paused" || j.status === "Closed").length;
+  const totalOpenings = safeJobs.reduce((sum, j) => sum + (j.openings || 1), 0);
 
-  const activeRecruiters = recruiters.filter((r) => r.status !== "inactive").length;
-  const totalAssignments = assignments.length;
-  const activeAssignments = assignments.filter((a) => a.status === "Assigned" || a.status === "In-Progress" || a.status === "Screening").length;
-  const completedPlacements = assignments.filter((a) => a.status === "Joined" || a.status === "Offered").length;
+  const activeRecruiters = safeRecruiters.filter((r) => r.status !== "inactive").length;
+  const totalAssignments = safeAssignments.length;
+  const activeAssignments = safeAssignments.filter((a) => a.status === "Assigned" || a.status === "In-Progress" || a.status === "Screening").length;
+  const completedPlacements = safeAssignments.filter((a) => a.status === "Joined" || a.status === "Offered").length;
 
   // Source breakdown
   const sourceCounts: Record<string, number> = {};
-  candidates.forEach((c) => {
+  safeCandidates.forEach((c) => {
     const s = c.source || "Email Registration";
     sourceCounts[s] = (sourceCounts[s] || 0) + 1;
   });

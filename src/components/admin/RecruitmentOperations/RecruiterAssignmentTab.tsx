@@ -21,24 +21,29 @@ import { RecruitmentCandidate, RecruitmentJob, RecruiterUser, RecruiterAssignmen
 import { assignCandidatesToRecruiter } from "../../../services/recruitmentService";
 
 interface RecruiterAssignmentTabProps {
-  candidates: RecruitmentCandidate[];
-  jobs: RecruitmentJob[];
-  recruiters: RecruiterUser[];
-  assignments: RecruiterAssignment[];
+  candidates?: RecruitmentCandidate[];
+  jobs?: RecruitmentJob[];
+  recruiters?: RecruiterUser[];
+  assignments?: RecruiterAssignment[];
   onOpenAssignModal: (candidates: RecruitmentCandidate[], job?: RecruitmentJob | null) => void;
   onRefresh: () => void;
   adminUser?: { name: string; email: string };
 }
 
 export default function RecruiterAssignmentTab({
-  candidates,
-  jobs,
-  recruiters,
-  assignments,
+  candidates = [],
+  jobs = [],
+  recruiters = [],
+  assignments = [],
   onOpenAssignModal,
   onRefresh,
   adminUser
 }: RecruiterAssignmentTabProps) {
+  const safeCandidates = Array.isArray(candidates) ? candidates : [];
+  const safeJobs = Array.isArray(jobs) ? jobs : [];
+  const safeRecruiters = Array.isArray(recruiters) ? recruiters : [];
+  const safeAssignments = Array.isArray(assignments) ? assignments : [];
+
   const [activeSubTab, setActiveSubTab] = useState<"ACTIVE_ROSTER" | "ASSIGNMENT_HISTORY">("ACTIVE_ROSTER");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -46,7 +51,7 @@ export default function RecruiterAssignmentTab({
 
   // Filter assignments
   const filteredAssignments = useMemo(() => {
-    return assignments.filter((a) => {
+    return safeAssignments.filter((a) => {
       const term = searchTerm.toLowerCase().trim();
       const matchesSearch = 
         !term ||
@@ -61,7 +66,7 @@ export default function RecruiterAssignmentTab({
 
       return matchesSearch && matchesStatus && matchesRecruiter;
     });
-  }, [assignments, searchTerm, statusFilter, selectedRecruiterId]);
+  }, [safeAssignments, searchTerm, statusFilter, selectedRecruiterId]);
 
   return (
     <div className="space-y-6">

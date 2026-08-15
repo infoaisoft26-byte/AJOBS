@@ -18,19 +18,26 @@ import { createRecruitmentJob, updateRecruitmentJob } from "../../../services/re
 
 interface CreateJobModalProps {
   jobToEdit?: RecruitmentJob | null;
-  recruiters: RecruiterUser[];
+  recruiters?: RecruiterUser[];
+  isOpen?: boolean;
   onClose: () => void;
-  onSuccess: (job: RecruitmentJob) => void;
+  onSuccess?: (job: RecruitmentJob) => void;
+  onJobCreated?: () => void;
   adminUser?: { name: string; email: string };
 }
 
 export default function CreateJobModal({
   jobToEdit,
-  recruiters,
+  recruiters = [],
+  isOpen = true,
   onClose,
   onSuccess,
+  onJobCreated,
   adminUser
 }: CreateJobModalProps) {
+  if (isOpen === false) return null;
+
+  const safeRecruiters = Array.isArray(recruiters) ? recruiters : [];
   const isEditing = Boolean(jobToEdit);
 
   const [title, setTitle] = useState(jobToEdit?.title || "");
@@ -82,7 +89,7 @@ export default function CreateJobModal({
       .map((s) => s.trim())
       .filter(Boolean);
 
-    const selectedRecruiter = recruiters.find((r) => r.id === assignedRecruiterId);
+    const selectedRecruiter = safeRecruiters.find((r) => r.id === assignedRecruiterId) || null;
 
     try {
       if (isEditing && jobToEdit) {
@@ -115,7 +122,8 @@ export default function CreateJobModal({
         };
 
         await updateRecruitmentJob(jobToEdit.id, updatePayload, adminUser);
-        onSuccess({ ...jobToEdit, ...updatePayload } as RecruitmentJob);
+        if (onSuccess) onSuccess({ ...jobToEdit, ...updatePayload } as RecruitmentJob);
+        if (onJobCreated) onJobCreated();
       } else {
         const newJob = await createRecruitmentJob({
           title: title.trim(),
@@ -147,7 +155,8 @@ export default function CreateJobModal({
           createdByRole: "Admin"
         }, adminUser);
 
-        onSuccess(newJob);
+        if (onSuccess) onSuccess(newJob);
+        if (onJobCreated) onJobCreated();
       }
       onClose();
     } catch (err: any) {
@@ -456,7 +465,7 @@ export default function CreateJobModal({
                 className="w-full px-2.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 focus:outline-none focus:border-blue-500 cursor-pointer"
               >
                 <option value="">-- No Recruiter Assigned --</option>
-                {recruiters.map((r) => (
+                {safeRecruiters.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.name} ({r.agencyOrCompany || "Talent Team"})
                   </option>

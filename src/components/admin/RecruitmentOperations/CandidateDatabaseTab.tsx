@@ -24,9 +24,9 @@ import { RecruitmentCandidate, RecruitmentJob, RecruiterUser } from "../../../ty
 import { exportCandidatesToExcel, createCandidate } from "../../../services/recruitmentService";
 
 interface CandidateDatabaseTabProps {
-  candidates: RecruitmentCandidate[];
-  recruiters: RecruiterUser[];
-  jobs: RecruitmentJob[];
+  candidates?: RecruitmentCandidate[];
+  recruiters?: RecruiterUser[];
+  jobs?: RecruitmentJob[];
   onOpenCandidateProfile: (candidate: RecruitmentCandidate) => void;
   onOpenAssignModal: (candidates: RecruitmentCandidate[]) => void;
   onFindMatchesForCandidate: (candidate: RecruitmentCandidate) => void;
@@ -35,15 +35,19 @@ interface CandidateDatabaseTabProps {
 }
 
 export default function CandidateDatabaseTab({
-  candidates,
-  recruiters,
-  jobs,
+  candidates = [],
+  recruiters = [],
+  jobs = [],
   onOpenCandidateProfile,
   onOpenAssignModal,
   onFindMatchesForCandidate,
   onRefresh,
   adminUser
 }: CandidateDatabaseTabProps) {
+  const safeCandidates = Array.isArray(candidates) ? candidates : [];
+  const safeRecruiters = Array.isArray(recruiters) ? recruiters : [];
+  const safeJobs = Array.isArray(jobs) ? jobs : [];
+
   const [searchTerm, setSearchTerm] = useState("");
   const [expFilter, setExpFilter] = useState("ALL");
   const [verificationFilter, setVerificationFilter] = useState("ALL");
@@ -72,14 +76,14 @@ export default function CandidateDatabaseTab({
 
   // Filtering calculation
   const filteredCandidates = useMemo(() => {
-    return candidates.filter((c) => {
+    return safeCandidates.filter((c) => {
       const term = searchTerm.toLowerCase().trim();
       const skillsStr = (c.keySkills || c.skills || []).join(" ").toLowerCase();
       const matchesSearch = 
         !term ||
-        c.candidateId.toLowerCase().includes(term) ||
-        c.fullName.toLowerCase().includes(term) ||
-        c.email.toLowerCase().includes(term) ||
+        (c.candidateId && c.candidateId.toLowerCase().includes(term)) ||
+        (c.fullName && c.fullName.toLowerCase().includes(term)) ||
+        (c.email && c.email.toLowerCase().includes(term)) ||
         (c.phone && c.phone.includes(term)) ||
         (c.targetRole && c.targetRole.toLowerCase().includes(term)) ||
         (c.location && c.location.toLowerCase().includes(term)) ||
