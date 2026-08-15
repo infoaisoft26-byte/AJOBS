@@ -106,7 +106,23 @@ export default function CandidateRegister({
       createdAt: isoDate,
       updatedAt: isoDate
     };
-    await setDoc(doc(db, "candidate_profiles", uid), candidateProfileData, { merge: true });
+    // 2c. Candidate profile in 'candidateProfiles' collection with strict blueprint schema
+    const candidateProfileDoc = {
+      uid,
+      fullName: nameToSave,
+      email: userEmail,
+      phone: phone.trim(),
+      role: "candidate",
+      emailVerified: isEmailVerified,
+      accountStatus: isEmailVerified ? "active" : "pending_verification",
+      profileStatus: "incomplete",
+      profileCompletion: 20,
+      targetRole: targetRole.trim() || "Software Engineer",
+      preferredLocation: location.trim() || "Remote / India",
+      createdAt: isoDate,
+      updatedAt: isoDate
+    };
+    await setDoc(doc(db, "candidateProfiles", uid), candidateProfileDoc, { merge: true });
 
     // 3. Save Email Preferences & Dispatch Candidate Welcome Email
     try {
@@ -173,8 +189,22 @@ export default function CandidateRegister({
       const res = await createUserWithEmailAndPassword(auth, email.trim(), password);
       await updateProfile(res.user, { displayName: fullName.trim() });
 
-      // Send Firebase Email Verification immediately
-      await sendEmailVerification(res.user);
+      // Send Email OTP verification code to candidate email
+      try {
+        await fetch("/api/auth/candidate/send-email-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: email.trim().toLowerCase(),
+            name: fullName.trim()
+          })
+        });
+      } catch (otpErr) {
+        console.warn("[CandidateRegister] Notice sending OTP:", otpErr);
+      }
+
+      // Also send Firebase Email Verification as fallback link
+      await sendEmailVerification(res.user).catch(() => {});
 
       // Save Firestore user record with pending verification status
       const profile = await saveCandidateToFirestore(res.user.uid, res.user.email || email.trim(), fullName.trim(), false);
@@ -182,7 +212,7 @@ export default function CandidateRegister({
       trackCandidateRegistrationCompleted("email");
       setRegisteredProfile(profile);
       setShowVerificationScreen(true);
-      showToast("Account created! A verification email has been sent to your email address.", "info");
+      showToast("Account created! A 6-digit verification code has been sent to your email.", "info");
     } catch (err: any) {
       console.error("[Candidate Registration Error]:", err);
       let msg = "Failed to complete candidate registration. Please try again.";
@@ -233,6 +263,7 @@ export default function CandidateRegister({
     return (
       <CandidateEmailVerification
         user={registeredProfile}
+        candidateName={fullName || registeredProfile?.name || "Candidate"}
         onVerified={(verifiedProfile) => {
           onRegisterSuccess(verifiedProfile);
         }}

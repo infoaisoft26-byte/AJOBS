@@ -58,63 +58,31 @@ export default function CandidateSidebar({
       {/* Mobile Backdrop */}
       {isOpen && (
         <div 
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs lg:hidden"
           onClick={() => setIsOpen(false)}
         />
       )}
 
       {/* Sidebar Drawer */}
-     <aside
-  className={`
-    fixed
-    inset-y-0
-    left-0
-    z-50
-    flex
-    flex-col
-
-    w-[85vw]
-    max-w-[280px]
-
-    bg-white
-    border-r
-    border-gray-200
-
-    transform
-    transition-transform
-    duration-300
-    ease-in-out
-
-    shadow-xl
-
-    lg:static
-    lg:z-auto
-    lg:w-64
-    lg:max-w-none
-    lg:shrink-0
-    lg:translate-x-0
-    lg:shadow-none
-    lg:h-[calc(100dvh-64px)]
-
-    ${isOpen ? "translate-x-0" : "-translate-x-full"}
-  `}
-  id="candidate-sidebar"
->
+      <aside 
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col w-64 bg-white border-r border-gray-200 transition-transform duration-300 transform lg:translate-x-0 lg:static lg:h-[calc(100vh-64px)] shadow-xs ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+        id="candidate-sidebar"
+      >
         {/* Mobile Header */}
-        <div className="flex shrink-0 items-center justify-between px-4 py-3 lg:hidden border-b border-gray-100 bg-gray-50">
+        <div className="flex items-center justify-between p-4 lg:hidden border-b border-gray-100 bg-gray-50">
           <span className="font-semibold text-sm text-gray-800">Menu</span>
-          <button
-  type="button"
-  aria-label="Close candidate menu"
-  onClick={() => setIsOpen(false)}
-  className="p-2 rounded-lg text-gray-500 hover:bg-gray-200 transition-all cursor-pointer"
->
-  <X className="w-5 h-5" />
-</button>
+          <button 
+            onClick={() => setIsOpen(false)} 
+            className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-200 transition-all cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Navigation List */}
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-4 sm:p-4 space-y-1">
+        <div className="flex-1 overflow-y-auto p-4 space-y-1">
           <div className="px-3 py-2 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
             Candidate Portal
           </div>
@@ -150,12 +118,7 @@ export default function CandidateSidebar({
         </div>
 
         {/* Safety Notice Footer */}
-        <div
-  className="shrink-0 px-3 pt-3 sm:p-4 border-t border-gray-100 bg-gray-50/80 space-y-3"
-  style={{
-    paddingBottom: "max(12px, env(safe-area-inset-bottom))"
-  }}
->
+        <div className="p-4 border-t border-gray-100 bg-gray-50/80 space-y-3">
           <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-100 text-[11px] text-blue-900 leading-tight flex items-start space-x-2">
             <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
             <span>{t("safetyNotice")}</span>

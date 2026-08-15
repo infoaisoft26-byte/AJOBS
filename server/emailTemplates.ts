@@ -138,6 +138,49 @@ function wrapBaseLayout(title: string, bodyContent: string, showUnsubscribe: boo
 
 export const EMAIL_TEMPLATES: Record<string, (data: EmailTemplateData) => { subject: string; html: string; text: string }> = {
   
+  // 0. CANDIDATE EMAIL OTP VERIFICATION
+  'candidate_email_otp': (data) => {
+    const candidateName = escapeHtml(data.candidateName || data.recipientName || 'Candidate');
+    const otp = escapeHtml(data.customMessage || (data as any).otp || '000000');
+    const subject = "AIJOBS Email Verification Code";
+    const appUrl = data.appUrl || DEFAULT_APP_URL;
+
+    const body = `
+      <div style="text-align: left; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+        <h2 style="color: #ffffff; font-size: 20px; font-weight: 700; margin-top: 0; margin-bottom: 12px;">
+          Hello ${candidateName},
+        </h2>
+        <p style="color: #cbd5e1; font-size: 15px; margin-bottom: 16px;">
+          Your AIJOBS verification code is:
+        </p>
+        <div style="background-color: rgba(37, 99, 235, 0.12); border: 2px dashed #3b82f6; border-radius: 12px; padding: 22px 16px; text-align: center; margin-bottom: 20px;">
+          <span style="font-family: 'Courier New', Courier, monospace; font-size: 34px; font-weight: 900; letter-spacing: 8px; color: #60a5fa; display: inline-block;">
+            ${otp}
+          </span>
+        </div>
+        <p style="color: #cbd5e1; font-size: 13px; margin-bottom: 8px;">
+          This code will expire shortly.
+        </p>
+        <p style="color: #fca5a5; font-size: 13px; margin-bottom: 24px; font-weight: 600;">
+          Do not share this verification code with anyone.
+        </p>
+        <p style="color: #94a3b8; font-size: 13px; margin: 0; line-height: 1.6;">
+          Regards,<br/>
+          <strong style="color: #ffffff;">AIJOBS Team</strong>
+        </p>
+      </div>
+    `;
+
+    const plainText = `Hello ${candidateName},\n\nYour AIJOBS verification code is:\n${otp}\n\nThis code will expire shortly.\nDo not share this verification code with anyone.\n\nRegards,\nAIJOBS Team`;
+
+    const fullLayout = wrapBaseLayout(subject, body, false, undefined, appUrl);
+    return {
+      subject,
+      html: fullLayout.html,
+      text: plainText
+    };
+  },
+
   // 1. CANDIDATE WELCOME EMAIL
   'candidate_welcome': (data) => {
     const name = escapeHtml(data.candidateName || data.recipientName || 'Candidate');

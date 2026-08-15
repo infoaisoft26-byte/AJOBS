@@ -26,6 +26,7 @@ import {
 import { auth, db } from "../firebase";
 import { uploadResumeService } from "../services/resumeUploadService";
 import { parseResumeData } from "../services/aiParser";
+import CandidateResumeUploader from "./CandidateResumeUploader";
 import { useToast } from "./GlobalToast";
 
 interface CandidateResumeSectionProps {
@@ -417,7 +418,7 @@ export default function CandidateResumeSection({
       {activeTab === "overview" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
-          {/* LEFT: File Upload & Active State Card */}
+          {/* LEFT: File Upload & Active State Card using shared CandidateResumeUploader */}
           <div className="lg:col-span-7 bg-white border border-gray-200 rounded-2xl p-6 shadow-xs space-y-6">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-gray-900 text-base flex items-center space-x-2">
@@ -437,114 +438,26 @@ export default function CandidateResumeSection({
               )}
             </div>
 
-            {/* Upload Zone or Active Resume Card */}
-            {uploadedFileUrl ? (
-              <div className="bg-blue-50/50 border border-blue-200 rounded-xl p-5 space-y-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-3 bg-blue-100 text-blue-700 rounded-xl">
-                      <FileCheck className="w-7 h-7" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900 text-sm max-w-sm truncate" title={uploadedFileName}>
-                        {uploadedFileName || "Uploaded_Resume.pdf"}
-                      </h4>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        Uploaded: {uploadedAt ? new Date(uploadedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "Recently"}
-                        {fileSize ? ` • ${formatBytes(fileSize)}` : ""}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-blue-100">
-                  <a
-                    href={uploadedFileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl flex items-center space-x-1.5 transition-all cursor-pointer shadow-xs"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>Download Resume</span>
-                  </a>
-
-                  <label
-                    htmlFor="replace-resume-input"
-                    className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 text-xs font-semibold rounded-xl flex items-center space-x-1.5 transition-all cursor-pointer shadow-xs"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5 text-gray-500" />
-                    <span>Replace File</span>
-                  </label>
-                  <input
-                    type="file"
-                    id="replace-resume-input"
-                    className="hidden"
-                    onChange={handleFileSelect}
-                    accept=".pdf,.doc,.docx,.txt"
-                  />
-
-                  <button
-                    onClick={handleDeleteResume}
-                    className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-semibold rounded-xl flex items-center space-x-1 transition-all cursor-pointer ml-auto"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Clear</span>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-2xl p-8 text-center space-y-3 transition-all ${
-                  isDragging
-                    ? "border-blue-500 bg-blue-50/50"
-                    : "border-gray-300 hover:border-blue-400 bg-gray-50/50"
-                }`}
-              >
-                <input
-                  type="file"
-                  id="primary-resume-upload-input"
-                  className="hidden"
-                  onChange={handleFileSelect}
-                  accept=".pdf,.doc,.docx,.txt"
-                />
-
-                <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto">
-                  <Upload className="w-6 h-6" />
-                </div>
-
-                <div>
-                  <h4 className="font-bold text-gray-900 text-sm">Drag and drop your resume file here</h4>
-                  <p className="text-xs text-gray-500 mt-1">Supports PDF, DOC, DOCX, or TXT formats (Max 10MB)</p>
-                </div>
-
-                <label
-                  htmlFor="primary-resume-upload-input"
-                  className="inline-flex items-center space-x-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl cursor-pointer transition-all shadow-xs"
-                >
-                  <Upload className="w-4 h-4" />
-                  <span>Browse File from Computer</span>
-                </label>
-              </div>
-            )}
-
-            {/* Upload Progress Bar */}
-            {isUploading && (
-              <div className="space-y-1.5 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                <div className="flex justify-between text-xs font-semibold text-blue-800">
-                  <span>Uploading to Cloudinary...</span>
-                  <span>{uploadProgress}%</span>
-                </div>
-                <div className="w-full h-2 bg-blue-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-blue-600 rounded-full transition-all duration-300"
-                    style={{ width: `${uploadProgress}%` }}
-                  ></div>
-                </div>
-              </div>
-            )}
+            {/* Shared CandidateResumeUploader Component */}
+            <CandidateResumeUploader
+              userId={userId}
+              profile={profile}
+              currentResumeUrl={uploadedFileUrl}
+              currentResumeName={uploadedFileName}
+              currentResumeDate={uploadedAt}
+              onResumeUploaded={(updatedProfile) => {
+                setUploadedFileUrl(updatedProfile.resumeUrl || updatedProfile.resumeURL);
+                setUploadedFileName(updatedProfile.resumeFileName || "Candidate_Resume.pdf");
+                setUploadedAt(updatedProfile.resumeUploadedAt || new Date().toISOString());
+                setProfile((prev: any) => ({
+                  ...prev,
+                  ...updatedProfile
+                }));
+                if (updatedProfile.parsedData) {
+                  setParsedProfileData(updatedProfile.parsedData);
+                }
+              }}
+            />
 
             {/* Optional Plain Text Transcript Box */}
             <div className="space-y-2 pt-2 border-t border-gray-200">

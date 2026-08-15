@@ -2,6 +2,7 @@ import { collection, doc, getDoc, setDoc } from "firebase/firestore";
 import { User } from "lucide-react";
 import { db } from "../firebase";
 import { normalizeRole } from "../utils/roleUtils";
+import { getNextSequentialId } from "./sequentialIdService";
 
 /**
  * Safely writes/updates a Firestore document using setDoc with merge option.
@@ -131,11 +132,20 @@ export async function initializeUserCollectionsAndDocs(
 
   // Fresh Candidate Profile (No fake demo data)
   if (role === "candidate") {
+    let candidateId = `AIJ-CAN-${userId.substring(0, 6).toUpperCase()}`;
+    try {
+      candidateId = await getNextSequentialId("candidates");
+    } catch (e) {
+      console.warn("Sequential ID fallback notice:", e);
+    }
+
     const isVerified = fbUser.emailVerified === true;
     const candidateProfile = {
       uid: userId,
+      candidateId,
       email,
       name,
+      fullName: name,
       phone: fbUser.phoneNumber || "",
       role: "candidate",
       verificationStatus: isVerified ? "verified" : "pending",
@@ -153,13 +163,16 @@ export async function initializeUserCollectionsAndDocs(
       certifications: [],
       preferredLocations: [],
       savedJobs: [],
+      source: fbUser.photoURL?.includes("google") ? "Google Sign-In" : "Email Registration",
       createdAt: isoDate,
       updatedAt: isoDate,
     };
     await safeSetDocIfNotExists("users", userId, candidateProfile);
     await safeSetDocIfNotExists("candidates", userId, {
       userId,
+      candidateId,
       name,
+      fullName: name,
       email,
       phone: fbUser.phoneNumber || "",
       verificationStatus: isVerified ? "verified" : "pending",
@@ -177,9 +190,11 @@ export async function initializeUserCollectionsAndDocs(
       certifications: [],
       preferredLocations: [],
       savedJobIds: [],
+      source: fbUser.photoURL?.includes("google") ? "Google Sign-In" : "Email Registration",
       createdAt: isoDate,
       updatedAt: isoDate,
     });
+    await safeSetDocIfNotExists("candidateProfiles", userId, candidateProfile);
   }
 
   // --- Collection 15: activity_logs ---

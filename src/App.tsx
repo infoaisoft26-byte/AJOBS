@@ -231,7 +231,7 @@ function MainAppContent() {
   const [authLoading, setAuthLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(() => {
     if (typeof window === "undefined") return false;
-    const viewedInSession = sessionStorage.getItem("aijobs_independence_intro_seen");
+    const viewedInSession = sessionStorage.getItem("aijobs_intro_seen");
     if (viewedInSession === "true") {
       return false;
     }
@@ -603,6 +603,7 @@ function MainAppContent() {
             return (
               <CandidateEmailVerification
                 user={user}
+                candidateName={user.name}
                 onVerified={(verifiedProfile) => {
                   setUser(verifiedProfile);
                 }}
@@ -1044,14 +1045,14 @@ function MainAppContent() {
         </Suspense>
       )}
 
-      {/* Premium 15-Second Cinematic Independence Day Opening Video Overlay */}
+      {/* 15-Second Ultra-Realistic Cinematic Commercial Brand Intro Overlay */}
       {showSplash && (
         <Suspense fallback={null}>
-          <IndependenceDayIntroLazy
+          <AIJobs3DIntroLazy
             onComplete={() => {
               setShowSplash(false);
               try {
-                sessionStorage.setItem("aijobs_independence_intro_seen", "true");
+                sessionStorage.setItem("aijobs_intro_seen", "true");
               } catch (e) {
                 // ignore
               }

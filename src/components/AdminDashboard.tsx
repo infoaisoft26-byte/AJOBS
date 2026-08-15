@@ -60,6 +60,8 @@ import EnterpriseSecurityCenter from "./EnterpriseSecurityCenter";
 import ObservabilityHub from "./ObservabilityHub";
 import PlatformCertificationSuite from "./PlatformCertificationSuite";
 import AdminEmailCenter from "./admin/AdminEmailCenter";
+import RecruitmentOperationsHub from "./admin/RecruitmentOperations/RecruitmentOperationsHub";
+import { FileSpreadsheet, Sparkles, GitPullRequest } from "lucide-react";
 
 export default function AdminDashboard({ userId, userName }: { userId?: string; userName?: string }) {
   const currentUserId = userId || auth.currentUser?.uid || "system_admin_01";
@@ -421,6 +423,12 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
   // Navigations list with authorization levels
   const navigationItems = [
     { id: "dashboard", label: "Live Dashboard", icon: Layers, authorizedRoles: ["Super Admin", "Support Desk", "Finance Officer", "Moderator", "Read Only"] },
+    { id: "recruitment-ops", label: "Recruitment Operations Console", icon: Briefcase, authorizedRoles: ["Super Admin", "Support Desk", "Finance Officer", "Moderator", "Read Only"] },
+    { id: "recruitment-candidates", label: "Candidate Database (Sequential IDs)", icon: Users, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
+    { id: "recruitment-jobs", label: "Job Postings & Pipelines", icon: Briefcase, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
+    { id: "excel-import-center", label: "Excel Bulk Database Ingestion", icon: FileSpreadsheet, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
+    { id: "candidate-recommendations", label: "AI Candidate Match & Recs", icon: Sparkles, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
+    { id: "recruiter-dispatch", label: "Recruiter Dispatch & SLA Tracking", icon: UserCheck, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "executive-bi", label: "Executive BI Analytics", icon: BarChart2, authorizedRoles: ["Super Admin", "Finance Officer", "Read Only"] },
     { id: "ai-agent", label: "Autonomous AI Agent", icon: Brain, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "doc-automation", label: "Document Automation", icon: FileText, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
@@ -741,6 +749,54 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
                   adminLevel={adminProfile.level}
                   adminStatus={adminProfile.status}
                   userId={currentUserId}
+                />
+              )}
+
+              {activeView === "recruitment-ops" && (
+                <RecruitmentOperationsHub
+                  initialSubTab="recruitment_dashboard"
+                  adminUser={{ name: currentUserName, email: "admin@aijobs.global" }}
+                  onNavigateTab={(tab) => setActiveTab(tab)}
+                />
+              )}
+
+              {activeView === "recruitment-candidates" && (
+                <RecruitmentOperationsHub
+                  initialSubTab="candidates"
+                  adminUser={{ name: currentUserName, email: "admin@aijobs.global" }}
+                  onNavigateTab={(tab) => setActiveTab(tab)}
+                />
+              )}
+
+              {activeView === "recruitment-jobs" && (
+                <RecruitmentOperationsHub
+                  initialSubTab="jobs"
+                  adminUser={{ name: currentUserName, email: "admin@aijobs.global" }}
+                  onNavigateTab={(tab) => setActiveTab(tab)}
+                />
+              )}
+
+              {activeView === "excel-import-center" && (
+                <RecruitmentOperationsHub
+                  initialSubTab="excel_import"
+                  adminUser={{ name: currentUserName, email: "admin@aijobs.global" }}
+                  onNavigateTab={(tab) => setActiveTab(tab)}
+                />
+              )}
+
+              {activeView === "candidate-recommendations" && (
+                <RecruitmentOperationsHub
+                  initialSubTab="recommendations"
+                  adminUser={{ name: currentUserName, email: "admin@aijobs.global" }}
+                  onNavigateTab={(tab) => setActiveTab(tab)}
+                />
+              )}
+
+              {activeView === "recruiter-dispatch" && (
+                <RecruitmentOperationsHub
+                  initialSubTab="recruiter_assignment"
+                  adminUser={{ name: currentUserName, email: "admin@aijobs.global" }}
+                  onNavigateTab={(tab) => setActiveTab(tab)}
                 />
               )}
 

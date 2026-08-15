@@ -6,6 +6,7 @@ import { db } from "../firebase";
 
 import { useToast } from "./GlobalToast";
 import { formatPhoneNumber } from "../utils/phoneUtils";
+import CandidateResumeUploader from "./CandidateResumeUploader";
 
 interface CandidatePreLaunchProfileProps {
   user: UserProfile;
@@ -270,7 +271,7 @@ export default function CandidatePreLaunchProfile({
               </button>
             </div>
 
-            {/* RESUME CARD */}
+            {/* RESUME CARD using shared CandidateResumeUploader */}
             <div className="bg-gray-950/80 border border-white/10 rounded-3xl p-6 text-left space-y-4 backdrop-blur-xl">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -288,50 +289,19 @@ export default function CandidatePreLaunchProfile({
                 )}
               </div>
 
-              {candidateData.resumeUrl ? (
-                <div className="p-3 bg-white/5 rounded-2xl border border-white/10 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono text-gray-200 truncate max-w-[180px]">
-                      {candidateData.resumeFileName || "Candidate_Resume.pdf"}
-                    </span>
-                    <a
-                      href={candidateData.resumeUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-1 text-blue-400 hover:text-blue-300 transition-colors"
-                      title="Download/View Resume"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                  </div>
-                  <p className="text-[10px] text-gray-400">Ready for automated AI ATS analysis at launch.</p>
-                </div>
-              ) : (
-                <p className="text-xs text-gray-400 leading-relaxed">
-                  Upload your PDF or Word resume now so your profile is ready for automated AI matching.
-                </p>
-              )}
-
-              <label className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md active:scale-95">
-                {uploadingResume ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Uploading Resume...</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>{candidateData.resumeUrl ? "Replace Resume" : "Upload Resume (PDF/DOC)"}</span>
-                  </>
-                )}
-                <input
-                  type="file"
-                  accept=".pdf,.doc,.docx"
-                  className="hidden"
-                  onChange={handleResumeFileSelect}
-                  disabled={uploadingResume}
-                />
-              </label>
+              <CandidateResumeUploader
+                userId={user.uid}
+                profile={{ ...user, ...candidateData }}
+                currentResumeUrl={candidateData.resumeUrl}
+                currentResumeName={candidateData.resumeFileName}
+                onResumeUploaded={(updated) => {
+                  setCandidateData((prev) => ({
+                    ...prev,
+                    resumeUrl: updated.resumeUrl || updated.resumeURL,
+                    resumeFileName: updated.resumeFileName
+                  }));
+                }}
+              />
             </div>
           </div>
 

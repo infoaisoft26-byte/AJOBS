@@ -3,12 +3,17 @@
  * Production domain: https://aijobs1.vercel.app
  */
 
+export const APP_NAME = "AIJOBS";
+
 export const SITE_URL = 
   import.meta.env.VITE_SITE_URL || 
   import.meta.env.NEXT_PUBLIC_SITE_URL || 
   (typeof window !== "undefined" ? window.location.origin : "https://aijobs1.vercel.app");
 
 export const PRODUCTION_DOMAIN = "https://aijobs1.vercel.app";
+export const HOME_PAGE_URL = "https://aijobs1.vercel.app/";
+export const PRIVACY_POLICY_URL = "https://aijobs1.vercel.app/privacy-policy";
+export const TERMS_OF_SERVICE_URL = "https://aijobs1.vercel.app/terms";
 
 /**
  * Generates an SEO-friendly job URL slug from job title, location, and job ID.

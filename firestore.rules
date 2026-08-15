@@ -571,6 +571,29 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
+    // Atomic Sequential Counters
+    match /counters/{counterName} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Recruiter Assignments Pipeline
+    match /recruiterAssignments/{assignmentId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (isRecruiter() || isAdmin());
+    }
+
+    // Excel & Bulk Import Batches
+    match /importBatches/{batchId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Candidate Profiles
+    match /candidateProfiles/{profileId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(profileId) || isRecruiter() || isConsultancy() || isAdmin();
+    }
+
     match /employee_audit_logs/{logId} {
       allow read, create, update, write: if isSignedIn();
     }

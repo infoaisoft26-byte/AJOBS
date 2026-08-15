@@ -41,6 +41,7 @@ import applicationRoutes from "./server/applicationRoutes.js";
 import subscriptionRoutes from "./server/subscriptionRoutes.js";
 import accountingRoutes from "./server/accountingRoutes.js";
 import aiHiringRoutes from "./server/aiHiringRoutes.js";
+import candidateAuthRoutes from "./server/candidateAuthRoutes.js";
 import { processPaymentAccounting } from "./server/accountingEngine.js";
 
 dotenv.config();
@@ -113,6 +114,8 @@ app.use("/api/", (req: any, res: any, next: any) => {
   next();
 });
 
+app.use("/api/auth/candidate", candidateAuthRoutes);
+app.use("/api/candidate-auth", candidateAuthRoutes);
 app.use("/api/email", emailRoutes);
 app.use("/api/kyc", kycRoutes);
 app.use("/api/leads", leadRoutes);
