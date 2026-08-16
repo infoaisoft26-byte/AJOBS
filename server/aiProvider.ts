@@ -17,9 +17,10 @@ export const telemetryStore = {
 
 // Production Model Fallback Order
 export const MODEL_FALLBACKS = [
-  "gemini-3.6-flash",
-  "gemini-3.5-flash",
-  "gemini-3.5-flash-lite"
+  "gemini-3.7-flash",
+  "gemini-2.5-flash",
+  "gemini-3.1-flash-lite",
+  "gemini-2.5-pro"
 ];
 
 export interface AIProvider {
@@ -129,8 +130,8 @@ export class GeminiProvider implements AIProvider {
       ];
     }
 
-    const primaryModel = model || process.env.GEMINI_MODEL || "gemini-3.6-flash";
-    const envFallback = process.env.GEMINI_FALLBACK_MODEL || "gemini-3.5-flash-lite";
+    const primaryModel = model || process.env.GEMINI_MODEL || "gemini-3.7-flash";
+    const envFallback = process.env.GEMINI_FALLBACK_MODEL || "gemini-3.1-flash-lite";
     const candidateList = [primaryModel, envFallback, ...MODEL_FALLBACKS];
     const modelsToTry = Array.from(new Set(candidateList.filter(Boolean)));
 

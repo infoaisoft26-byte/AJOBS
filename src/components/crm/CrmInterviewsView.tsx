@@ -14,9 +14,9 @@ interface CrmInterviewsViewProps {
 }
 
 export default function CrmInterviewsView({
-  interviews,
-  jobs,
-  candidates,
+  interviews = [],
+  jobs = [],
+  candidates = [],
   onRefresh,
   userRole
 }: CrmInterviewsViewProps) {

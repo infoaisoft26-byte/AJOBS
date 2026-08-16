@@ -13,8 +13,8 @@ interface CrmPlacementsViewProps {
 }
 
 export default function CrmPlacementsView({
-  placements,
-  clients,
+  placements = [],
+  clients = [],
   onRefresh,
   userRole
 }: CrmPlacementsViewProps) {

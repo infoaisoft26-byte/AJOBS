@@ -14,7 +14,7 @@ interface CrmCandidatesViewProps {
 }
 
 export default function CrmCandidatesView({
-  candidates,
+  candidates = [],
   onRefresh,
   userRole
 }: CrmCandidatesViewProps) {

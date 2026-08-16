@@ -5,7 +5,7 @@ import React, { ChangeEvent, HTMLInputElement, useRef, useState } from "react";
 import { doc } from "firebase/firestore";
 import { ref } from "firebase/storage";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowRight, Box, Briefcase, Building, Cloud, Contact, File, Info, Layout, Loader2, LogIn, Mail, Phone, Search, ShieldCheck, Sparkles, Type, Upload, UserCheck } from "lucide-react";
+import { ArrowRight, Box, Briefcase, Building, Cloud, Contact, File, Film, Info, Layout, Loader2, LogIn, Mail, Phone, Play, Search, ShieldCheck, Sparkles, Type, Upload, UserCheck } from "lucide-react";
 import { auth, db, storage } from "../firebase";
 import { uploadToCloudinary } from "../services/cloudinaryService";
 import { parseJsonResponse } from "../utils/apiHelper";
@@ -265,11 +265,25 @@ export default function LandingPage({
           {/* Left Column (Hero Content) */}
           <div className="lg:col-span-7 space-y-8 text-left">
             {/* Logo & Tagline Header */}
-            <div className="space-y-2">
-              <AIJobsLogo variant="full" size="lg" />
-              <p className="text-xs font-mono font-bold text-cyan-400 tracking-[0.2em] uppercase">
-                Find Smarter. Hire Faster.
-              </p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="space-y-1">
+                <AIJobsLogo variant="full" size="lg" />
+                <p className="text-xs font-mono font-bold text-cyan-400 tracking-[0.2em] uppercase">
+                  Find Smarter. Hire Faster.
+                </p>
+              </div>
+
+              {/* 15-Second Cinematic Brand Film Trigger */}
+              <button
+                onClick={() => {
+                  setShowIntro(true);
+                }}
+                className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-blue-950/70 hover:bg-blue-900/90 border border-blue-500/40 hover:border-blue-400 text-blue-300 hover:text-white text-xs font-mono tracking-wider transition-all duration-200 shadow-lg shadow-blue-950/50 backdrop-blur-md cursor-pointer hover:scale-105"
+                title="Watch 15-Second Cinematic Brand Film"
+              >
+                <Film className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
+                <span>Watch Brand Film (15s)</span>
+              </button>
             </div>
 
             {/* Main Hero Headline */}

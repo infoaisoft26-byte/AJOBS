@@ -37,6 +37,68 @@ export const fetchRecruitmentJobs = fetchAllRecruitmentJobs;
 export const fetchRecruiters = fetchAllRecruiters;
 
 // ==========================================
+// 0. STRING & ARRAY SANITIZATION UTILITIES
+// ==========================================
+
+/**
+ * Safely converts any value (string, object, array, number) to a trimmed string.
+ * Prevents TypeError when properties like education/qualification are stored as objects/arrays.
+ */
+export function safeString(val: any, fallback: string = ""): string {
+  if (val === null || val === undefined) return fallback;
+  if (typeof val === "string") return val.trim() || fallback;
+  if (typeof val === "number" || typeof val === "boolean") return String(val);
+  if (Array.isArray(val)) {
+    const joined = val.map((item) => safeString(item)).filter(Boolean).join(", ");
+    return joined || fallback;
+  }
+  if (typeof val === "object") {
+    const candidateField = 
+      val.degree ||
+      val.qualification ||
+      val.highestQualification ||
+      val.course ||
+      val.title ||
+      val.name ||
+      val.city ||
+      val.label ||
+      val.value;
+    if (candidateField && (typeof candidateField === "string" || typeof candidateField === "number")) {
+      return String(candidateField).trim() || fallback;
+    }
+    try {
+      const entries = Object.values(val).filter((v) => typeof v === "string" || typeof v === "number");
+      if (entries.length > 0) return entries.join(" - ");
+    } catch {
+      // ignore
+    }
+  }
+  return fallback;
+}
+
+/**
+ * Safely converts any value to a clean string array (e.g. skills).
+ */
+export function safeStringArray(val: any): string[] {
+  if (!val) return [];
+  if (Array.isArray(val)) {
+    return val
+      .map((item) => {
+        if (typeof item === "string") return item.trim();
+        if (typeof item === "object" && item !== null) {
+          return safeString(item.name || item.skill || item.title || item.value || item.label || "").trim();
+        }
+        return safeString(item).trim();
+      })
+      .filter(Boolean);
+  }
+  if (typeof val === "string") {
+    return val.split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
+  }
+  return [safeString(val)].filter(Boolean);
+}
+
+// ==========================================
 // 1. AUDIT LOGGING HELPER
 // ==========================================
 export async function logRecruitmentAudit(
@@ -80,31 +142,31 @@ export async function fetchAllCandidates(): Promise<RecruitmentCandidate[]> {
           id,
           candidateId,
           uid: data.uid || data.userId || id,
-          fullName: data.fullName || data.name || "Candidate",
-          name: data.name || data.fullName || "Candidate",
-          email: (data.email || "").toLowerCase().trim(),
-          phone: data.phone || data.mobile || "",
-          gender: data.gender || "",
-          city: data.city || (data.preferredLocations && data.preferredLocations[0]) || "",
-          state: data.state || "",
-          location: data.location || data.preferredLocation || data.city || "India",
-          preferredLocation: data.preferredLocation || (data.preferredLocations && data.preferredLocations[0]) || "",
-          targetRole: data.targetRole || data.jobPreference || data.designation || "Software Engineer",
-          jobPreference: data.jobPreference || data.targetRole || "",
-          currentCompany: data.currentCompany || "",
-          designation: data.designation || data.targetRole || "",
+          fullName: safeString(data.fullName || data.name, "Candidate"),
+          name: safeString(data.name || data.fullName, "Candidate"),
+          email: safeString(data.email).toLowerCase(),
+          phone: safeString(data.phone || data.mobile),
+          gender: safeString(data.gender),
+          city: safeString(data.city || (data.preferredLocations && data.preferredLocations[0])),
+          state: safeString(data.state),
+          location: safeString(data.location || data.preferredLocation || data.city, "India"),
+          preferredLocation: safeString(data.preferredLocation || (data.preferredLocations && data.preferredLocations[0])),
+          targetRole: safeString(data.targetRole || data.jobPreference || data.designation, "Software Engineer"),
+          jobPreference: safeString(data.jobPreference || data.targetRole),
+          currentCompany: safeString(data.currentCompany),
+          designation: safeString(data.designation || data.targetRole),
           totalExperienceYears: typeof data.totalExperienceYears === "number" ? data.totalExperienceYears : (typeof data.experience === "number" ? data.experience : (parseFloat(data.experience) || 0)),
           experience: typeof data.experience === "string" ? data.experience : `${data.totalExperienceYears || 0} Years`,
-          highestQualification: data.highestQualification || data.education || data.qualification || "Graduate",
-          education: data.education || data.highestQualification || "Graduate",
-          keySkills: Array.isArray(data.keySkills) ? data.keySkills : (Array.isArray(data.skills) ? data.skills : (typeof data.skills === "string" ? data.skills.split(",").map((s: string) => s.trim()).filter(Boolean) : [])),
-          skills: Array.isArray(data.skills) ? data.skills : (Array.isArray(data.keySkills) ? data.keySkills : []),
-          currentCtc: data.currentCtc || data.currentSalary || "",
-          expectedCtc: data.expectedCtc || data.expectedSalary || "",
-          noticePeriodDays: data.noticePeriodDays || data.noticePeriod || "",
-          noticePeriod: data.noticePeriod || "",
+          highestQualification: safeString(data.highestQualification || data.education || data.qualification, "Graduate"),
+          education: safeString(data.education || data.highestQualification, "Graduate"),
+          keySkills: safeStringArray(data.keySkills || data.skills),
+          skills: safeStringArray(data.skills || data.keySkills),
+          currentCtc: safeString(data.currentCtc || data.currentSalary),
+          expectedCtc: safeString(data.expectedCtc || data.expectedSalary),
+          noticePeriodDays: safeString(data.noticePeriodDays || data.noticePeriod),
+          noticePeriod: safeString(data.noticePeriod),
           resumeUrl: data.resumeUrl || data.resumeURL || null,
-          resumeFileName: data.resumeFileName || null,
+          resumeFileName: safeString(data.resumeFileName) || null,
           resumeScore: typeof data.resumeScore === "number" ? data.resumeScore : null,
           emailVerified: data.emailVerified === true || data.verificationStatus === "verified",
           phoneVerified: data.phoneVerified === true,
@@ -113,14 +175,14 @@ export async function fetchAllCandidates(): Promise<RecruitmentCandidate[]> {
           profileStatus: data.profileStatus || (data.resumeUrl ? "complete" : "incomplete"),
           profileCompletion: data.profileCompletion || data.profileCompletionPercentage || (data.resumeUrl ? 80 : 25),
           assignedRecruiterId: data.assignedRecruiterId || null,
-          assignedRecruiterName: data.assignedRecruiterName || null,
+          assignedRecruiterName: safeString(data.assignedRecruiterName) || null,
           assignedAt: data.assignedAt || null,
           assignedJobId: data.assignedJobId || null,
-          assignedJobTitle: data.assignedJobTitle || null,
-          source: data.source || "Email Registration",
-          importBatchId: data.importBatchId || "",
-          adminNotes: data.adminNotes || "",
-          notesHistory: data.notesHistory || [],
+          assignedJobTitle: safeString(data.assignedJobTitle) || null,
+          source: safeString(data.source, "Email Registration"),
+          importBatchId: safeString(data.importBatchId),
+          adminNotes: safeString(data.adminNotes),
+          notesHistory: Array.isArray(data.notesHistory) ? data.notesHistory : [],
           createdAt: data.createdAt || new Date().toISOString(),
           updatedAt: data.updatedAt || new Date().toISOString()
         });
@@ -143,21 +205,24 @@ export async function fetchAllCandidates(): Promise<RecruitmentCandidate[]> {
           id,
           candidateId,
           uid: id,
-          fullName: data.fullName || data.name || existing?.fullName || "Candidate",
-          email: (data.email || existing?.email || "").toLowerCase().trim(),
-          phone: data.phone || existing?.phone || "",
-          location: data.preferredLocation || data.location || existing?.location || "India",
-          targetRole: data.targetRole || existing?.targetRole || "Software Engineer",
-          keySkills: Array.isArray(data.skills) && data.skills.length > 0 ? data.skills : (existing?.keySkills || []),
+          fullName: safeString(data.fullName || data.name || existing?.fullName, "Candidate"),
+          email: safeString(data.email || existing?.email).toLowerCase(),
+          phone: safeString(data.phone || existing?.phone),
+          location: safeString(data.preferredLocation || data.location || existing?.location, "India"),
+          targetRole: safeString(data.targetRole || existing?.targetRole, "Software Engineer"),
+          keySkills: safeStringArray(data.skills && data.skills.length > 0 ? data.skills : existing?.keySkills),
+          skills: safeStringArray(data.skills && data.skills.length > 0 ? data.skills : existing?.skills),
+          highestQualification: safeString(data.highestQualification || data.education || data.qualification || existing?.highestQualification, "Graduate"),
+          education: safeString(data.education || data.highestQualification || existing?.education, "Graduate"),
           resumeUrl: data.resumeUrl || existing?.resumeUrl || null,
-          resumeFileName: data.resumeFileName || existing?.resumeFileName || null,
+          resumeFileName: safeString(data.resumeFileName || existing?.resumeFileName) || null,
           resumeScore: data.resumeScore || existing?.resumeScore || null,
           emailVerified: data.emailVerified === true || existing?.emailVerified === true,
           verificationStatus: data.verificationStatus || existing?.verificationStatus || "verified",
           accountStatus: data.accountStatus || existing?.accountStatus || "active",
           profileStatus: data.profileStatus || existing?.profileStatus || "incomplete",
           profileCompletion: data.profileCompletion || existing?.profileCompletion || 20,
-          source: existing?.source || data.source || "Email Registration",
+          source: existing?.source || safeString(data.source, "Email Registration"),
           createdAt: existing?.createdAt || data.createdAt || new Date().toISOString(),
           updatedAt: data.updatedAt || existing?.updatedAt || new Date().toISOString()
         } as RecruitmentCandidate);
@@ -179,14 +244,18 @@ export async function fetchAllCandidates(): Promise<RecruitmentCandidate[]> {
             id,
             candidateId,
             uid: id,
-            fullName: data.name || data.fullName || "Candidate",
-            email: (data.email || "").toLowerCase().trim(),
-            phone: data.phone || "",
-            location: data.location || "India",
-            targetRole: data.targetRole || "Candidate",
-            keySkills: Array.isArray(data.skills) ? data.skills : [],
+            fullName: safeString(data.name || data.fullName, "Candidate"),
+            name: safeString(data.name || data.fullName, "Candidate"),
+            email: safeString(data.email).toLowerCase(),
+            phone: safeString(data.phone),
+            location: safeString(data.location, "India"),
+            targetRole: safeString(data.targetRole, "Candidate"),
+            keySkills: safeStringArray(data.skills),
+            skills: safeStringArray(data.skills),
+            highestQualification: safeString(data.highestQualification || data.education, "Graduate"),
+            education: safeString(data.education || data.highestQualification, "Graduate"),
             resumeUrl: data.resumeUrl || data.resumeURL || null,
-            resumeFileName: data.resumeFileName || null,
+            resumeFileName: safeString(data.resumeFileName) || null,
             emailVerified: data.emailVerified === true || data.verificationStatus === "verified",
             verificationStatus: data.verificationStatus || (data.emailVerified ? "verified" : "pending"),
             accountStatus: data.accountStatus || data.status || "active",
@@ -745,13 +814,33 @@ export function calculateCandidateJobMatch(
 ): CandidateMatchResult {
   const reasons: string[] = [];
 
+  if (!candidate || !job) {
+    return {
+      candidate: candidate || ({} as any),
+      job: job || ({} as any),
+      overallScore: 0,
+      skillsScore: 0,
+      experienceScore: 0,
+      roleScore: 0,
+      locationScore: 0,
+      qualificationScore: 0,
+      preferenceScore: 0,
+      matchingSkills: [],
+      missingSkills: [],
+      reasons: ["Incomplete candidate or job data"],
+      grade: "Potential Match"
+    };
+  }
+
   // Normalize candidate skills
-  const candSkills = (candidate.keySkills || candidate.skills || [])
+  const rawCandSkills = candidate.keySkills || candidate.skills || [];
+  const candSkills = safeStringArray(rawCandSkills)
     .map((s) => s.toLowerCase().trim())
     .filter(Boolean);
 
   // Normalize job skills
-  const jobSkills = (job.skillsRequired || [])
+  const rawJobSkills = job.skillsRequired || job.skills || [];
+  const jobSkills = safeStringArray(rawJobSkills)
     .map((s) => s.toLowerCase().trim())
     .filter(Boolean);
 
@@ -775,7 +864,7 @@ export function calculateCandidateJobMatch(
   }
 
   // 2. Experience Match (20% Weight)
-  const candExp = candidate.totalExperienceYears || parseFloat(candidate.experience || "0") || 0;
+  const candExp = candidate.totalExperienceYears || parseFloat(safeString(candidate.experience) || "0") || 0;
   const minExp = job.minimumExperience || 0;
   const maxExp = job.maximumExperience || (minExp + 4);
 
@@ -793,16 +882,16 @@ export function calculateCandidateJobMatch(
   }
 
   // 3. Role & Designation Match (15% Weight)
-  const candRole = (candidate.targetRole || candidate.designation || "").toLowerCase();
-  const jobRole = job.title.toLowerCase();
+  const candRole = safeString(candidate.targetRole || candidate.designation || "").toLowerCase();
+  const jobRole = safeString(job.title || "").toLowerCase();
 
   let roleScore = 50;
   const jobWords = jobRole.split(/\s+/).filter((w) => w.length > 2);
   const matchedWords = jobWords.filter((w) => candRole.includes(w));
 
-  if (jobRole === candRole || candRole.includes(jobRole) || jobRole.includes(candRole)) {
+  if (jobRole && (jobRole === candRole || candRole.includes(jobRole) || jobRole.includes(candRole))) {
     roleScore = 100;
-    reasons.push(`Target role directly matches job title '${job.title}'`);
+    reasons.push(`Target role directly matches job title '${job.title || "Position"}'`);
   } else if (matchedWords.length > 0) {
     roleScore = 85;
     reasons.push(`Relevant background in ${matchedWords.join(", ")}`);
@@ -811,26 +900,29 @@ export function calculateCandidateJobMatch(
   }
 
   // 4. Location Match (10% Weight)
-  const candLoc = (candidate.location || candidate.city || candidate.preferredLocation || "").toLowerCase();
-  const jobLoc = (job.location || job.city || "").toLowerCase();
+  const candLoc = safeString(candidate.location || candidate.city || candidate.preferredLocation || "").toLowerCase();
+  const jobLoc = safeString(job.location || job.city || "").toLowerCase();
+  const jobCity = safeString(job.city || "").toLowerCase();
+  const jobWorkMode = safeString(job.workMode || "").toLowerCase();
 
   let locationScore = 60;
-  if (job.workMode?.toLowerCase() === "remote" || jobLoc.includes("remote")) {
+  if (jobWorkMode === "remote" || jobLoc.includes("remote")) {
     locationScore = 100;
     reasons.push("Job offers Remote flexibility — candidate location compatible");
-  } else if (candLoc && jobLoc && (candLoc.includes(jobLoc) || jobLoc.includes(candLoc) || candLoc.includes(job.city?.toLowerCase() || "___"))) {
+  } else if (candLoc && jobLoc && (candLoc.includes(jobLoc) || jobLoc.includes(candLoc) || (jobCity && candLoc.includes(jobCity)))) {
     locationScore = 100;
-    reasons.push(`Candidate is based in or prefers target city (${job.city || job.location})`);
+    reasons.push(`Candidate is based in or prefers target city (${job.city || job.location || "Location"})`);
   } else {
     locationScore = 65;
   }
 
   // 5. Qualification Match (10% Weight)
   let qualificationScore = 90;
-  const candQual = (candidate.highestQualification || candidate.education || "").toLowerCase();
+  const candQual = safeString(candidate.highestQualification || candidate.education || "").toLowerCase();
   if (candQual) {
     qualificationScore = 95;
-    reasons.push(`Academic credentials verified: ${candidate.highestQualification || "Graduate"}`);
+    const qualDisplay = safeString(candidate.highestQualification || candidate.education, "Graduate");
+    reasons.push(`Academic credentials verified: ${qualDisplay}`);
   }
 
   // 6. Preference / Verification Fit (10% Weight)

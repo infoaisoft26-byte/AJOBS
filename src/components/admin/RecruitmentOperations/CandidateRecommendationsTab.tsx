@@ -130,7 +130,7 @@ export default function CandidateRecommendationsTab({
                 onChange={(e) => setSelectedJobId(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 focus:outline-none focus:border-blue-500 cursor-pointer"
               >
-                {jobs.map((j) => (
+                {safeJobs.map((j) => (
                   <option key={j.id} value={j.id}>
                     [{j.jobId}] {j.title} at {j.companyName} ({j.location}) — Status: {j.status}
                   </option>
@@ -145,7 +145,7 @@ export default function CandidateRecommendationsTab({
                 onChange={(e) => setSelectedCandidateId(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 focus:outline-none focus:border-blue-500 cursor-pointer"
               >
-                {candidates.map((c) => (
+                {safeCandidates.map((c) => (
                   <option key={c.id} value={c.id}>
                     [{c.candidateId}] {c.fullName} — {c.targetRole} ({c.totalExperienceYears || 0} Yrs Exp)
                   </option>

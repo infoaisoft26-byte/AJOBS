@@ -14,14 +14,16 @@ interface CrmAiShortlistViewProps {
 }
 
 export default function CrmAiShortlistView({
-  jobs,
-  candidates,
+  jobs = [],
+  candidates = [],
   onSelectCandidate,
   onNavigateToTab,
   profile,
   userId
 }: CrmAiShortlistViewProps) {
-  const [selectedJob, setSelectedJob] = useState<ConsultancyJobModel | null>(jobs[0] || null);
+  const safeJobs = Array.isArray(jobs) ? jobs : [];
+  const safeCandidates = Array.isArray(candidates) ? candidates : [];
+  const [selectedJob, setSelectedJob] = useState<ConsultancyJobModel | null>(safeJobs[0] || null);
   const [searchMode, setSearchMode] = useState<"job" | "natural">("job");
 
   // Natural language query states

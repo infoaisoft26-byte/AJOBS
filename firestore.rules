@@ -576,22 +576,30 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
-    // Recruiter Assignments Pipeline
+    // Recruiter Assignments Pipeline (both camelCase and snake_case matches)
     match /recruiterAssignments/{assignmentId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && (isRecruiter() || isAdmin());
+      allow read, write: if isSignedIn();
+    }
+    match /recruiter_assignments/{assignmentId} {
+      allow read, write: if isSignedIn();
     }
 
     // Excel & Bulk Import Batches
     match /importBatches/{batchId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow read, write: if isSignedIn();
+    }
+    match /import_batches/{batchId} {
+      allow read, write: if isSignedIn();
     }
 
     // Candidate Profiles
     match /candidateProfiles/{profileId} {
-      allow read: if isSignedIn();
-      allow write: if isOwner(profileId) || isRecruiter() || isConsultancy() || isAdmin();
+      allow read, write: if isSignedIn();
+    }
+
+    // Recruitment Audit Logs
+    match /recruitment_audit_logs/{logId} {
+      allow read, write: if isSignedIn();
     }
 
     match /employee_audit_logs/{logId} {
