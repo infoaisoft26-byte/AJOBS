@@ -89,7 +89,8 @@ export class GeminiProvider implements AIProvider {
     responseMimeType?: string,
     imageInlineData?: { mimeType: string; data: string },
     model?: string,
-    enableSearch?: boolean
+    enableSearch?: boolean,
+    responseSchema?: any
   ): Promise<string> {
     if (!this.client) {
       console.warn("[GeminiProvider] fallback used: missing_key");
@@ -111,6 +112,9 @@ export class GeminiProvider implements AIProvider {
     }
     if (responseMimeType) {
       config.responseMimeType = responseMimeType;
+    }
+    if (responseSchema) {
+      config.responseSchema = responseSchema;
     }
     if (enableSearch) {
       config.tools = [{ googleSearch: {} }];
@@ -276,7 +280,8 @@ export class AIOrchestrator {
     imageInlineData?: { mimeType: string; data: string },
     model?: string,
     enableSearch?: boolean,
-    userKey = "global"
+    userKey = "global",
+    responseSchema?: any
   ): Promise<string> {
     if (activeUserRequests.has(userKey)) {
       console.warn(`[AIOrchestrator] Active request in progress for user [${userKey}]. Request throttled.`);
@@ -303,7 +308,8 @@ export class AIOrchestrator {
         responseMimeType,
         imageInlineData,
         model,
-        enableSearch
+        enableSearch,
+        responseSchema
       );
 
       const result = await Promise.race([apiPromise, timeoutPromise]);

@@ -543,7 +543,7 @@ export default function AgreementsView({
                       placeholder="123456"
                       className="w-44 mx-auto text-center font-mono text-xl tracking-widest bg-black/50 border border-indigo-500/50 rounded-xl py-2 text-white focus:outline-none focus:border-indigo-400"
                     />
-                    <p className="text-[10px] text-gray-400">Demo Code: 123456</p>
+                    <p className="text-[10px] text-gray-400">Enter 6-digit Signature Consent OTP</p>
                   </div>
 
                   {errorMsg && (

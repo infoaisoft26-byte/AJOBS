@@ -148,18 +148,18 @@ export default function TalentSearch() {
         const data = docSnap.data();
         list.push({
           id: docSnap.id,
-          name: data.name || "Aryan Sharma",
-          email: data.email || `${data.name?.toLowerCase().replace(/\s+/g, ".")}@gmail.com`,
-          title: data.title || "Full Stack SDE",
-          skills: Array.isArray(data.skills) ? data.skills : (data.skills?.technical || ["React", "TypeScript", "Node.js"]),
-          experience: data.experience || "Mid-Level (4 Years)",
-          resumeScore: data.resumeScore || data.resumeScoreLocal || 85,
-          interviewScore: data.aiInterviewScore || 80,
-          expectedSalary: data.expectedSalary || "₹18,00,000 PA",
-          location: data.preferredLocation || data.location || "Bengaluru",
-          availability: data.availability || "Immediate",
-          isAiVerified: (data.aiInterviewScore || 80) >= 80,
-          avatarUrl: `https://images.unsplash.com/photo-${docSnap.id === "demo_candidate_ananya" ? "1494790108377-be9c29b29330" : "1535713875002-d1d0cf377fde"}?auto=format&fit=crop&w=80&q=80`,
+          name: data.fullName || data.name || "Candidate",
+          email: data.email || "",
+          title: data.currentJobTitle || data.designation || data.title || "Candidate",
+          skills: Array.isArray(data.skills) ? data.skills : (data.skills?.technical || []),
+          experience: data.totalExperience || data.experience || "",
+          resumeScore: data.resumeScore || data.atsScore || 0,
+          interviewScore: data.aiInterviewScore || data.interviewScore || 0,
+          expectedSalary: data.expectedSalary || data.jobPreferences?.expectedSalary || "",
+          location: data.location || data.preferredLocation || "",
+          availability: data.availability || "",
+          isAiVerified: !!data.isAiVerified || (data.aiInterviewScore || 0) >= 80,
+          avatarUrl: data.avatarUrl || data.photoUrl || "",
           tags: data.tags || []
         });
       });

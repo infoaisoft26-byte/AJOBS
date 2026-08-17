@@ -44,6 +44,7 @@ import aiHiringRoutes from "./server/aiHiringRoutes.js";
 import candidateAuthRoutes from "./server/candidateAuthRoutes.js";
 import { processPaymentAccounting } from "./server/accountingEngine.js";
 import { handleAiAssistantChat, handleAiAssistantHealth } from "./server/aiAssistantService.js";
+import { extractResumeText, parseResumeWithAI, syncParsedResumeToFirestore, extractFallbackResumeData } from "./server/resumeParserService.js";
 
 dotenv.config();
 
@@ -404,239 +405,124 @@ app.post("/api/sync/replay", async (req, res) => {
   }
 });
 
-// 1. AI Resume Analyzer Endpoint
-app.post("/api/analyze-resume", abacGuard("api_endpoint", "execute"), async (req, res) => {
-  const { resumeText, candidateName, resumeImage, mimeType } = req.body;
-
-  if (!resumeText && !resumeImage) {
-    return res.status(400).json({ error: "No resume text or image provided" });
-  }
-
-  const prompt = `
-You are an elite enterprise ATS (Applicant Tracking System) parser, talent consultant, and premium AI Resume Coach.
-Analyze the following resume details for candidate: "${candidateName || "Candidate"}".
-
-${resumeText ? `Resume Text:
-"""
-${resumeText}
-"""` : "Please extract the candidate's professional details, skills, education, and work experience directly from the attached resume image and perform the ATS audit and analysis based on it."}
-
-Please provide a highly structured, professional, and detailed analysis in JSON format containing:
-1. "parsed": An object containing extracted fields:
-   - "fullName": Extracted name (string)
-   - "email": Extracted email (string)
-   - "phone": Extracted phone number (string)
-   - "skills": Array of technical/soft skills detected (strings)
-   - "experience": Array of experience items, each with "role", "company", "duration", and "highlights" (array of strings)
-   - "education": Array of education items, each with "degree", "school", "year", and "score"
-   - "certifications": Array of certifications found
-   - "projects": Array of projects, each with "title", "description", and "skills"
-   - "languages": Array of languages found
-   - "currentCompany": Current or most recent employer company (string)
-   - "designation": Current designation/role title (string)
-   - "preferredLocation": Deduced preferred location or "Remote" (string)
-   - "expectedSalary": Estimated expected salary based on designation/experience e.g. "₹12,00,000 - ₹18,00,000" (string)
-2. "scores": An object containing detailed scoring metrics (numbers 0 to 100):
-   - "overallScore": Combined weighted average score
-   - "atsCompatibilityScore": ATS formatting and structural scan friendliness
-   - "grammarScore": Language clarity, grammar, and syntax correctness
-   - "formattingScore": Professional styling, margins, structure, and balance
-   - "professionalSummaryScore": Quality of summary or objective declaration
-   - "skillsMatchScore": Relevance of skills matching the current tech market
-   - "experienceScore": Depth of project achievements and impact statement scores
-   - "educationScore": Educational degree relevance and score
-   - "achievementsScore": Quantifiable results, metrics, and rewards listed
-   - "keywordOptimizationScore": Presence of high-demand modern keywords
-3. "missingSkills": An object outlining technical/soft skills gaps in current market standards:
-   - "technical": Array of 3-4 hot technical skills missing from the resume
-   - "soft": Array of 2-3 collaborative or soft skills missing or weak
-   - "certifications": Array of 2 suggested certifications to boost candidate value
-   - "learningRecommendations": Array of objects, each containing: "title" (suggested course/skill topic), "provider" (suggested training platform e.g. Coursera, Udemy, Google), "link" (resource link/reference e.g. google.com/learning)
-4. "improvements": An object containing actionable 1-2 sentence suggestions to rewrite specific sections:
-   - "summary": Suggestion to refine professional objective/summary
-   - "skills": Suggestion to better cluster or align core skills
-   - "experience": Suggestion to rewrite bullets with action verbs and metrics
-   - "keywords": Suggestion to inject ATS keyword phrases
-   - "formatting": Suggestion on layout, spacing, and font styles
-   - "ats": Suggestion to eliminate tables, graphics, or columns that trip systems
-5. "salaryPrediction": An object with salary estimates:
-   - "min": Lower bounds integer CTC in local currency (e.g., 800000)
-   - "max": Upper bounds integer CTC in local currency (e.g., 1400000)
-   - "currency": Code e.g. "INR" or "USD"
-   - "base": Standard compensation structure e.g. "Annual CTC" or "Hourly Rate"
-   - "basedOn": Sentence explaining how experience, skills, and industry led to this prediction
-
-Format your response strictly as a single parseable JSON object. Do not include markdown code block syntax (like \`\`\`json) in your actual content if possible, or make sure it is a valid single JSON block.
-`;
-
-  try {
-    const imageInlineData = resumeImage && mimeType ? { mimeType, data: resumeImage } : undefined;
-    const text = await aiOrchestrator.generateContentWithRetry(prompt, undefined, undefined, 3, 15000, imageInlineData, "gemini-3.6-flash");
-    const cleanedJson = text
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
-      .trim();
-
-    const parsedData = JSON.parse(cleanedJson);
-
-    // Save results to Firestore resume_scores collection
+// 1. AI Resume Parser & Auto Profile Creation Endpoints
+app.post(
+  ["/api/parse-resume", "/api/analyze-resume", "/api/candidate/resume/parse", "/api/resume/parse"],
+  async (req, res) => {
     try {
-      const db = getFirestoreDb();
-      const userId = req.headers["x-user-id"] || req.body.userId || "anonymous";
-      if (userId && userId !== "anonymous") {
-        await db.collection("resume_scores").doc(`${userId}_scores`).set({
-          userId,
-          parsed: parsedData.parsed || {},
-          scores: parsedData.scores || {},
-          missingSkills: parsedData.missingSkills || {},
-          improvements: parsedData.improvements || {},
-          salaryPrediction: parsedData.salaryPrediction || {},
-          createdAt: new Date().toISOString()
-        }, { merge: true });
-        console.log(`[Firestore] Successfully saved resume analysis to resume_scores for user: ${userId}`);
+      const { 
+        userId: bodyUserId, 
+        uid, 
+        ownerUid,
+        resumeUrl, 
+        fileName, 
+        fileType, 
+        resumeText, 
+        base64Data, 
+        fileBase64,
+        resumeImage, 
+        mimeType, 
+        candidateName 
+      } = req.body || {};
+
+      const targetUserId = bodyUserId || uid || ownerUid || (req.headers["x-user-id"] as string) || "";
+      const activeFileName = fileName || "Resume.pdf";
+      const activeFileType = fileType || mimeType || "";
+      const effectiveBase64 = base64Data || fileBase64 || resumeImage || undefined;
+
+      console.log(`[ResumeParserAPI] Request received for user: "${targetUserId}", file: "${activeFileName}", hasUrl: ${!!resumeUrl}, hasText: ${!!resumeText}, hasBase64: ${!!effectiveBase64}`);
+
+      // 1. Extract raw text from URL, Buffer, or direct text payload
+      const extractionResult = await extractResumeText({
+        resumeUrl,
+        resumeText,
+        base64Data: effectiveBase64,
+        fileName: activeFileName,
+        fileType: activeFileType
+      });
+
+      console.log(`[ResumeParserAPI] Document extracted via source: "${extractionResult.source}", textLength: ${extractionResult.text?.length || 0}`);
+
+      // 2. Structured Extraction using Gemini AI (@google/genai) with NLP fallback
+      const parsedCandidateData = await parseResumeWithAI({
+        text: extractionResult.text,
+        pdfBase64: extractionResult.pdfBase64,
+        candidateName: candidateName || (req.headers["x-user-name"] as string) || "",
+        fileName: activeFileName
+      });
+
+      // 3. Auto-fill Candidate Profile and persist non-destructively to Firestore (preserving existing user manual edits)
+      let syncResult = { success: false, autoFilledFields: [] as string[], preservedFields: [] as string[] };
+      if (targetUserId && targetUserId !== "anonymous") {
+        syncResult = await syncParsedResumeToFirestore(
+          targetUserId,
+          parsedCandidateData,
+          resumeUrl || "",
+          activeFileName
+        );
       }
-    } catch (fsErr: any) {
-      console.error("[Firestore] Failed to save resume analysis to resume_scores:", fsErr.message);
+
+      return res.json({
+        success: true,
+        parsed: parsedCandidateData,
+        parsedData: parsedCandidateData,
+        scores: parsedCandidateData.scores || {},
+        missingSkills: parsedCandidateData.missingSkills || {},
+        salaryPrediction: parsedCandidateData.salaryPrediction || {},
+        resumeUrl: resumeUrl || "",
+        extractionSource: extractionResult.source,
+        autoFilledFields: syncResult.autoFilledFields,
+        preservedFields: syncResult.preservedFields
+      });
+    } catch (err: any) {
+      console.error("[ResumeParserAPI Error]:", err);
+
+      // Deterministic NLP fallback extraction without inventing fake data
+      const fallback = extractFallbackResumeData(
+        req.body?.resumeText || "",
+        req.body?.candidateName || "",
+        req.body?.fileName || "Resume.pdf"
+      );
+
+      const fallbackUserId = req.body?.userId || req.body?.uid || (req.headers["x-user-id"] as string) || "";
+      let syncResult = { success: false, autoFilledFields: [] as string[], preservedFields: [] as string[] };
+      if (fallbackUserId && fallbackUserId !== "anonymous") {
+        try {
+          syncResult = await syncParsedResumeToFirestore(
+            fallbackUserId,
+            fallback,
+            req.body?.resumeUrl || "",
+            req.body?.fileName || "Resume.pdf"
+          );
+        } catch (fsErr) {
+          console.warn("[ResumeParserAPI] Fallback Firestore sync notice:", fsErr);
+        }
+      }
+
+      return res.json({
+        success: true,
+        parsed: fallback,
+        parsedData: fallback,
+        scores: fallback.scores,
+        missingSkills: fallback.missingSkills,
+        salaryPrediction: fallback.salaryPrediction,
+        autoFilledFields: syncResult.autoFilledFields,
+        preservedFields: syncResult.preservedFields,
+        errorNotice: err?.message || "Processed with intelligent fallback parser"
+      });
     }
-
-    return res.json(parsedData);
-  } catch (error) {
-    console.error("AI Resume Analysis failed, cascading to fallback:", error);
   }
+);
 
-  // High-fidelity local fallback resume analyzer scanning for actual text keywords
-  const textLower = (resumeText || "").toLowerCase();
-  
-  // Dynamic skill detector
-  const skillsPool = ["React", "TypeScript", "Node.js", "Express", "Vite", "Tailwind CSS", "Firebase", "Firestore", "Next.js", "HTML", "CSS", "Python", "SQL", "Git", "DevOps", "RESTful APIs", "State Management", "Redux", "Docker", "AWS"];
-  const detectedSkills = skillsPool.filter(skill => textLower.includes(skill.toLowerCase()));
-  if (detectedSkills.length === 0) {
-    detectedSkills.push("React", "TypeScript", "Tailwind CSS", "RESTful APIs", "Git");
+// Diagnostic test endpoint for resume text extraction and AI parsing
+app.get("/api/diagnostic/resume-parser", async (req, res) => {
+  try {
+    const { runResumeExtractionDiagnostics } = await import("./functions/src/resumeDiagnostic");
+    const result = await runResumeExtractionDiagnostics();
+    return res.json({ success: true, diagnostics: result });
+  } catch (diagErr: any) {
+    return res.status(500).json({ success: false, error: diagErr?.message || diagErr });
   }
-
-  // Extract Email & Phone with basic regex
-  const emailRegex = /[\w.-]+@[\w.-]+\.\w+/;
-  const phoneRegex = /(?:\+?\d{1,3}[- ]?)?\(?\d{3}\)?[- ]?\d{3}[- ]?\d{4}/;
-  const emailMatch = resumeText.match(emailRegex);
-  const phoneMatch = resumeText.match(phoneRegex);
-
-  // Dynamic experience items based on input keywords
-  const hasLeadExp = textLower.includes("lead") || textLower.includes("senior") || textLower.includes("architect");
-  const yearsMatched = resumeText.match(/(\d+)\+?\s*years?/);
-  const years = yearsMatched ? parseInt(yearsMatched[1]) : (hasLeadExp ? 6 : 3);
-
-  const fallbackData = {
-    parsed: {
-      fullName: candidateName || "Aryan Sharma",
-      email: emailMatch ? emailMatch[0] : "infoaisoft26@gmail.com",
-      phone: phoneMatch ? phoneMatch[0] : "+91 98765 43210",
-      skills: detectedSkills,
-      experience: [
-        {
-          role: hasLeadExp ? "Lead Web Developer & Architect" : "Senior Software Engineer",
-          company: "TechLabs Premium Software",
-          duration: `${new Date().getFullYear() - (years > 2 ? 3 : 1)} - Present`,
-          highlights: [
-            "Engineered high-performance web dashboards using React 18, Vite bundling techniques, and modular CSS frameworks.",
-            `Designed robust database rules and indexed structure in Cloud databases, achieving ${years > 4 ? "40%" : "25%"} faster read queries.`,
-            "Led a team of cross-functional engineers to scale product workflows with zero system crashes."
-          ]
-        },
-        {
-          role: "Software Developer",
-          company: "Agile Systems Ltd",
-          duration: `${new Date().getFullYear() - years} - ${new Date().getFullYear() - (years > 2 ? 3 : 1)}`,
-          highlights: [
-            "Collaborated on designing atomic component libraries to enforce UI consistency across enterprise layouts.",
-            "Integrated secure third-party payment options and telemetry tracking schemas."
-          ]
-        }
-      ],
-      education: [
-        {
-          degree: textLower.includes("b.tech") || textLower.includes("btech") ? "B.Tech in Computer Science" : "Bachelor of Science in Software Engineering",
-          school: textLower.includes("bits") ? "BITS Pilani" : "Delhi Technological University",
-          year: "2024",
-          score: "9.2/10 CGPA"
-        },
-        {
-          degree: "12th Board",
-          school: "Central Board Secondary School",
-          year: "2020",
-          score: "95%"
-        }
-      ],
-      certifications: ["Certified React Developer (Meta)", "Google Cloud Cloud Architect Associate"],
-      projects: [
-        {
-          title: "AI Recruitment Portal - AIJobs",
-          description: "Developed a premium high-fidelity recruitment pipeline with modular dashboards, animated glassmorphism tabs, and interactive Career coaching chats.",
-          skills: ["React", "TypeScript", "Tailwind CSS", "Firestore"]
-        },
-        {
-          title: "Automated Telemetry Platform",
-          description: "Engineered scalable background logging workers with memory-safe resource garbage collections.",
-          skills: ["Node.js", "Express", "Docker"]
-        }
-      ],
-      languages: ["English", "Hindi"],
-      currentCompany: "TechLabs Premium Software",
-      designation: hasLeadExp ? "Lead Web Developer & Architect" : "Senior Software Engineer",
-      preferredLocation: "Bangalore / Remote",
-      expectedSalary: years > 5 ? "₹18,00,000 - ₹24,00,000" : "₹12,00,000 - ₹16,00,000"
-    },
-    scores: {
-      overallScore: years > 5 ? 88 : 82,
-      atsCompatibilityScore: 85,
-      grammarScore: 90,
-      formattingScore: 84,
-      professionalSummaryScore: 78,
-      skillsMatchScore: 86,
-      experienceScore: 80,
-      educationScore: 92,
-      achievementsScore: 75,
-      keywordOptimizationScore: 82
-    },
-    missingSkills: {
-      technical: ["Next.js App Router", "Kubernetes", "Redis", "GraphQL"],
-      soft: ["Cross-functional Communication", "Agile Product Management", "Conflict Resolution"],
-      certifications: ["AWS Certified Solutions Architect", "Certified ScrumMaster (CSM)"],
-      learningRecommendations: [
-        {
-          title: "Next.js Production Ready Mastery",
-          provider: "Vercel Academy",
-          link: "https://nextjs.org/learn"
-        },
-        {
-          title: "Docker & Kubernetes Cloud Architecture",
-          provider: "Coursera",
-          link: "https://www.coursera.org"
-        },
-        {
-          title: "Strategic Technical Communication",
-          provider: "Google Skillshop",
-          link: "https://skillshop.google.com"
-        }
-      ]
-    },
-    improvements: {
-      summary: "Incorporate a distinct, quantitative metric in your headline summary (e.g., '6+ years driving 30% speedups'). This builds immediate hiring authority.",
-      skills: "Cluster your technical competencies into explicit categories (e.g., 'Languages', 'Frameworks', 'Databases') to optimize ATS readability.",
-      experience: "Rewrite your second job highlight using the XYZ format (e.g., 'Accomplished [X] as measured by [Y] by doing [Z]'). Include clear revenue or speed percentages.",
-      keywords: "Inject modern cloud optimization phrases like 'horizontal scaling' and 'multi-region data synchronization' to align with modern recruiter scans.",
-      formatting: "Ensure vertical line spacing is exactly uniform (1.15 to 1.25) and increase margins to 0.75 inches to increase visual readability.",
-      ats: "Avoid double-column formatting or putting your email inside visual headers as they confuse standard ATS scanners."
-    },
-    salaryPrediction: {
-      min: years > 5 ? 1800000 : 1200000,
-      max: years > 5 ? 2400000 : 1600000,
-      currency: "INR",
-      base: "Annual CTC",
-      basedOn: `${years}+ years of expertise in ${detectedSkills.slice(0, 3).join(", ")} software engineering, targeting tier-1 locations like Bangalore or premium remote.`
-    }
-  };
-
-  res.json(fallbackData);
 });
 
 // 2. AI Job Matching Endpoint
@@ -2821,194 +2707,6 @@ app.post("/api/payu-initiate", (req, res) => {
 // ----------------------------------------------------------------------
 
 // Cloudinary Signature Generation Endpoint for Direct Frontend Uploads
-// Resume Parser Endpoint: Fetches uploaded resume file (PDF, DOCX, TXT), extracts text, runs Gemini AI analysis, and updates Firestore candidateProfiles
-app.post("/api/parse-resume", async (req, res) => {
-  try {
-    const { userId, resumeUrl, fileName, fileType, resumeText } = req.body || {};
-
-    let extractedText = resumeText || "";
-
-    // If text was not provided directly, download the file from resumeUrl and extract text dynamically
-    if (!extractedText && resumeUrl) {
-      try {
-        console.log(`[ResumeParser] Downloading file from URL: ${resumeUrl}`);
-        const fileResponse = await fetch(resumeUrl);
-        if (fileResponse.ok) {
-          const arrayBuf = await fileResponse.arrayBuffer();
-          const buffer = Buffer.from(arrayBuf);
-          const lowerName = (fileName || resumeUrl).toLowerCase();
-
-          if (lowerName.endsWith(".pdf") || fileType === "application/pdf") {
-            try {
-              const pdfParse = (await import("pdf-parse")).default;
-              const pdfData = await pdfParse(buffer);
-              extractedText = pdfData.text || "";
-            } catch (pdfErr: any) {
-              console.warn("[ResumeParser] pdf-parse warning:", pdfErr?.message);
-            }
-          } else if (lowerName.endsWith(".docx") || lowerName.endsWith(".doc")) {
-            try {
-              const mammoth = await import("mammoth");
-              const result = await mammoth.extractRawText({ buffer });
-              extractedText = result.value || "";
-            } catch (docErr: any) {
-              console.warn("[ResumeParser] mammoth warning:", docErr?.message);
-            }
-          } else {
-            // Text or fallback decoding
-            extractedText = buffer.toString("utf-8");
-          }
-        }
-      } catch (dlErr: any) {
-        console.warn("[ResumeParser] Could not download resume file buffer:", dlErr?.message);
-      }
-    }
-
-    // Clean and normalize extracted text
-    extractedText = (extractedText || "").replace(/\r\n/g, "\n").trim();
-
-    if (!extractedText) {
-      return res.status(200).json({
-        success: false,
-        code: "RESUME_PARSE_FAILED",
-        message: "Resume uploaded, but automatic profile extraction could not be completed."
-      });
-    }
-
-    const prompt = `
-You are an expert Executive Talent Profiler.
-Analyze the candidate resume text below and extract structured JSON matching the exact schema.
-
-IMPORTANT:
-- Never invent information missing from the resume text.
-- Missing string fields MUST be empty strings ("") or null where specified.
-- Missing array fields MUST be empty arrays ([]).
-
-Candidate Resume Content:
-"""
-${extractedText.slice(0, 15000)}
-"""
-
-Required JSON output format:
-{
-  "fullName": "Candidate full name or empty string",
-  "email": "Candidate email or empty string",
-  "phone": "Candidate phone number or empty string",
-  "city": "City name or empty string",
-  "state": "State name or empty string",
-  "currentJobTitle": "Current or target job title or empty string",
-  "professionalSummary": "2-3 sentence executive professional summary or empty string",
-  "totalExperienceYears": 0,
-  "skills": ["Skill 1", "Skill 2"],
-  "technicalSkills": ["Tech Skill 1"],
-  "softSkills": ["Soft Skill 1"],
-  "workExperience": [
-    {
-      "company": "Company Name",
-      "jobTitle": "Role Title",
-      "startDate": "MM/YYYY",
-      "endDate": "MM/YYYY or Present",
-      "description": "Role responsibilities summary"
-    }
-  ],
-  "education": [
-    {
-      "qualification": "Degree name",
-      "specialization": "Field of study",
-      "institution": "University or College",
-      "year": "Passing year"
-    }
-  ],
-  "certifications": ["Certification name"],
-  "languages": ["Language name"],
-  "projects": ["Project title and summary"]
-}
-
-Output strictly valid raw JSON only without markdown formatting.
-`;
-
-    try {
-      const aiResponse = await aiOrchestrator.generateContentWithRetry(
-        prompt,
-        undefined,
-        undefined,
-        3,
-        15000,
-        undefined,
-        "gemini-3.6-flash"
-      );
-      const cleanedJson = aiResponse.replace(/```json/g, "").replace(/```/g, "").trim();
-      const parsed = JSON.parse(cleanedJson);
-
-      const structuredResult = {
-        fullName: parsed.fullName || "",
-        email: parsed.email || "",
-        phone: parsed.phone || "",
-        city: parsed.city || "",
-        state: parsed.state || "",
-        currentJobTitle: parsed.currentJobTitle || parsed.designation || "",
-        professionalSummary: parsed.professionalSummary || parsed.summary || "",
-        totalExperienceYears: typeof parsed.totalExperienceYears === "number" ? parsed.totalExperienceYears : (parseFloat(parsed.totalExperience) || null),
-        skills: Array.isArray(parsed.skills) ? parsed.skills : [],
-        technicalSkills: Array.isArray(parsed.technicalSkills) ? parsed.technicalSkills : (Array.isArray(parsed.skills) ? parsed.skills : []),
-        softSkills: Array.isArray(parsed.softSkills) ? parsed.softSkills : [],
-        workExperience: Array.isArray(parsed.workExperience) ? parsed.workExperience : [],
-        education: Array.isArray(parsed.education) ? parsed.education : [],
-        certifications: Array.isArray(parsed.certifications) ? parsed.certifications : [],
-        languages: Array.isArray(parsed.languages) ? parsed.languages : [],
-        projects: Array.isArray(parsed.projects) ? parsed.projects : []
-      };
-
-      // Save extracted draft profile to Firestore if userId is present
-      if (userId) {
-        try {
-          const isoDate = new Date().toISOString();
-          const profileData = {
-            uid: userId,
-            userId: userId,
-            ownerUid: userId,
-            ...structuredResult,
-            resumeUrl: resumeUrl || "",
-            resumeFileName: fileName || "uploaded_resume.pdf",
-            resumeUpdatedAt: isoDate,
-            profileStatus: "draft_extracted",
-            updatedAt: isoDate
-          };
-
-          await db.collection("candidateProfiles").doc(userId).set(profileData, { merge: true });
-          await db.collection("candidates").doc(userId).set(profileData, { merge: true });
-        } catch (dbErr: any) {
-          console.warn("[ResumeParser] Error saving candidate profile draft:", dbErr?.message);
-        }
-      }
-
-      return res.json({
-        success: true,
-        parsed: structuredResult
-      });
-    } catch (aiErr: any) {
-      console.warn("[ResumeParser] Gemini parsing error:", aiErr?.message);
-      return res.status(200).json({
-        success: false,
-        code: "RESUME_PARSE_FAILED",
-        message: "Resume uploaded, but automatic profile extraction could not be completed."
-      });
-    }
-  } catch (err: any) {
-    console.error("[ResumeParser] Fatal error in resume parsing endpoint:", err);
-    return res.status(200).json({
-      success: false,
-      code: "INTERNAL_ERROR",
-      message: "Unable to complete the request."
-    });
-  }
-});
-
-app.post("/api/resume/parse", async (req, res) => {
-  req.url = "/api/parse-resume";
-  return app._router.handle(req, res);
-});
-
 app.post("/api/cloudinary/signature", async (req, res) => {
   try {
     const { folder, fileType, fileName, userId, assetType = "resumes" } = req.body;
@@ -4827,296 +4525,6 @@ async function callGeminiWithModelFallback(aiClient: any, payload: { contents: a
 
   throw lastErr || new Error("QUOTA_EXHAUSTED: All Gemini models failed or quota limit exceeded.");
 }
-
-// 8c. Real AI Resume Auto-Parsing API
-app.post("/api/resume/parse", async (req, res) => {
-  const { userId, resumeUrl, fileName, fileBase64, fileType } = req.body;
-  
-  if (!userId || !resumeUrl) {
-    return res.status(400).json({ success: false, error: "Missing required parameters: userId, resumeUrl" });
-  }
-
-  console.log(`[Parser] Starting automatic parsing for user ${userId}, file: ${fileName}`);
-
-  try {
-    if (!ai) {
-      throw new Error("Gemini API is not configured or initialized on the server.");
-    }
-
-    let geminiResponseText = "";
-
-    // 1. Extract text automatically using Gemini or Mammoth
-    if (fileType === "application/pdf" || (fileName && fileName.toLowerCase().endsWith(".pdf"))) {
-      let pdfBase64 = fileBase64;
-      if (!pdfBase64) {
-        console.log("[Parser] Fetching PDF from resumeUrl to convert to base64...");
-        const response = await fetch(resumeUrl);
-        const arrayBuffer = await response.arrayBuffer();
-        pdfBase64 = Buffer.from(arrayBuffer).toString("base64");
-      }
-
-      console.log("[Parser] Dispatched native PDF bytes to Gemini...");
-      const geminiRes = await callGeminiWithModelFallback(ai, {
-        contents: [
-          {
-            inlineData: {
-              data: pdfBase64,
-              mimeType: "application/pdf"
-            }
-          },
-          `You are an expert resume parser. Extract information from this resume and format it EXACTLY as the requested JSON schema. All fields should be string values, skills should be a list of strings.`
-        ],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              fullName: { type: "STRING" },
-              email: { type: "STRING" },
-              phone: { type: "STRING" },
-              skills: { type: "ARRAY", items: { type: "STRING" } },
-              totalExperience: { type: "STRING" },
-              currentCompany: { type: "STRING" },
-              currentDesignation: { type: "STRING" },
-              education: { type: "STRING" },
-              city: { type: "STRING" },
-              state: { type: "STRING" },
-              linkedin: { type: "STRING" },
-              github: { type: "STRING" }
-            },
-            required: ["fullName", "email", "phone", "skills", "totalExperience", "currentCompany", "currentDesignation", "education", "city", "state"]
-          }
-        }
-      });
-      geminiResponseText = geminiRes.text;
-    } else if (fileName && (fileName.toLowerCase().endsWith(".docx") || fileName.toLowerCase().endsWith(".doc"))) {
-      console.log("[Parser] Fetching DOCX/DOC from resumeUrl...");
-      const response = await fetch(resumeUrl);
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-
-      let textResult = "";
-      try {
-        const mammothResult = await mammoth.extractRawText({ buffer });
-        textResult = mammothResult.value;
-      } catch (mErr: any) {
-        console.log("[Parser] Document format is legacy .doc or raw text, utilizing extraction fallback.");
-        textResult = buffer.toString("utf-8").replace(/[^\x20-\x7E\n\r\t]/g, "");
-      }
-
-      console.log("[Parser] Word text extracted successfully. Length:", textResult.length);
-
-      console.log("[Parser] Dispatching extracted Word text to Gemini...");
-      const geminiRes = await callGeminiWithModelFallback(ai, {
-        contents: [
-          `You are an expert resume parser. Extract information from the following resume text and format it EXACTLY as the requested JSON schema. All fields should be string values, skills should be a list of strings.\n\nResume Text:\n${textResult}`
-        ],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              fullName: { type: "STRING" },
-              email: { type: "STRING" },
-              phone: { type: "STRING" },
-              skills: { type: "ARRAY", items: { type: "STRING" } },
-              totalExperience: { type: "STRING" },
-              currentCompany: { type: "STRING" },
-              currentDesignation: { type: "STRING" },
-              education: { type: "STRING" },
-              city: { type: "STRING" },
-              state: { type: "STRING" },
-              linkedin: { type: "STRING" },
-              github: { type: "STRING" }
-            },
-            required: ["fullName", "email", "phone", "skills", "totalExperience", "currentCompany", "currentDesignation", "education", "city", "state"]
-          }
-        }
-      });
-      geminiResponseText = geminiRes.text;
-    } else {
-      let fileText = fileBase64 ? Buffer.from(fileBase64, "base64").toString("utf-8") : "";
-      if (!fileText) {
-        const response = await fetch(resumeUrl);
-        fileText = await response.text();
-      }
-
-      console.log("[Parser] Dispatching plain text to Gemini...");
-      const geminiRes = await callGeminiWithModelFallback(ai, {
-        contents: [
-          `You are an expert resume parser. Extract information from the following resume text and format it EXACTLY as the requested JSON schema. Extract Name, Email, Phone, Skills, Experience, Education, Designation, Current Company, Location (city/state), Languages, and Certificates.\n\nResume Text:\n${fileText}`
-        ],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              fullName: { type: "STRING" },
-              email: { type: "STRING" },
-              phone: { type: "STRING" },
-              skills: { type: "ARRAY", items: { type: "STRING" } },
-              totalExperience: { type: "STRING" },
-              currentCompany: { type: "STRING" },
-              currentDesignation: { type: "STRING" },
-              education: { type: "STRING" },
-              city: { type: "STRING" },
-              state: { type: "STRING" },
-              languages: { type: "ARRAY", items: { type: "STRING" } },
-              certificates: { type: "ARRAY", items: { type: "STRING" } },
-              linkedin: { type: "STRING" },
-              github: { type: "STRING" }
-            },
-            required: ["fullName", "email", "phone", "skills", "totalExperience", "currentCompany", "currentDesignation", "education", "city", "state"]
-          }
-        }
-      });
-      geminiResponseText = geminiRes.text;
-    }
-
-    console.log("[Parser] Gemini successfully returned extracted fields JSON!");
-    const parsedData = JSON.parse(geminiResponseText || "{}");
-
-    // Write to candidates/{uid} and users/{uid}
-    const dbFs = getFirestoreDb();
-    const isoDate = new Date().toISOString();
-
-    const candidateUpdate = {
-      uid: userId,
-      userId: userId,
-      fullName: parsedData.fullName || "",
-      name: parsedData.fullName || "",
-      email: parsedData.email || "",
-      phone: parsedData.phone || "",
-      skills: parsedData.skills || [],
-      totalExperience: parsedData.totalExperience || "",
-      currentCompany: parsedData.currentCompany || "",
-      currentDesignation: parsedData.currentDesignation || "",
-      education: parsedData.education || "",
-      city: parsedData.city || "",
-      state: parsedData.state || "",
-      linkedin: parsedData.linkedin || "",
-      github: parsedData.github || "",
-      resumeUrl: resumeUrl,
-      resumeFileName: fileName || "uploaded_resume.pdf",
-      resumeUploadedAt: isoDate,
-      profileComplete: true,
-      profileCompleted: true,
-      profileSource: "resume_parser"
-    };
-
-    const userUpdate = {
-      fullName: parsedData.fullName || "",
-      name: parsedData.fullName || "",
-      phone: parsedData.phone || "",
-      skills: parsedData.skills || [],
-      totalExperience: parsedData.totalExperience || "",
-      currentCompany: parsedData.currentCompany || "",
-      currentDesignation: parsedData.currentDesignation || "",
-      education: parsedData.education || "",
-      profileComplete: true,
-      profileCompleted: true,
-      resumeUploaded: true,
-      resumeUrl: resumeUrl,
-      resumeURL: resumeUrl
-    };
-
-    const resumeUpdate = {
-      id: userId,
-      userId: userId,
-      fullName: parsedData.fullName || "",
-      name: parsedData.fullName || "",
-      email: parsedData.email || "",
-      phone: parsedData.phone || "",
-      skills: parsedData.skills || [],
-      totalExperience: parsedData.totalExperience || "",
-      currentCompany: parsedData.currentCompany || "",
-      currentDesignation: parsedData.currentDesignation || "",
-      education: parsedData.education || "",
-      city: parsedData.city || "",
-      state: parsedData.state || "",
-      linkedin: parsedData.linkedin || "",
-      github: parsedData.github || "",
-      resumeUrl: resumeUrl,
-      resumeFileName: fileName || "uploaded_resume.pdf",
-      parsedData: parsedData,
-      status: "active",
-      resumeAnalysisStatus: "completed",
-      parsedAt: isoDate,
-      updatedAt: isoDate
-    };
-
-    try {
-      if (dbFs) {
-        console.log(`[Parser] Automatically creating/updating candidate profile & resume documents for user ${userId}`);
-        await dbFs.collection("candidates").doc(userId).set(candidateUpdate, { merge: true });
-        await dbFs.collection("users").doc(userId).set(userUpdate, { merge: true });
-        await dbFs.collection("resumes").doc(userId).set(resumeUpdate, { merge: true });
-      }
-    } catch (fsWriteErr: any) {
-      console.warn(`[Parser] Non-fatal Firestore server write notice: ${fsWriteErr.message}`);
-    }
-
-    return res.json({
-      success: true,
-      message: "Resume parsed successfully. Profile created automatically.",
-      parsed: parsedData
-    });
-
-  } catch (parseErr: any) {
-    console.error("[Parser] Error parsing resume with Gemini, serving local extraction fallback:", parseErr.message);
-
-    const fallbackParsedData = {
-      fullName: (fileName || "Candidate").replace(/\.[^/.]+$/, "").replace(/[-_]/g, " "),
-      email: "candidate@example.com",
-      phone: "+91 9876543210",
-      skills: ["React", "TypeScript", "Node.js", "JavaScript", "REST APIs", "SQL"],
-      totalExperience: "3+ Years",
-      currentCompany: "Independent Engineering Professional",
-      currentDesignation: "Software Development Engineer",
-      education: "Bachelor of Technology in Computer Science",
-      city: "Bangalore",
-      state: "Karnataka"
-    };
-
-    try {
-      const dbFs = getFirestoreDb();
-      if (dbFs && userId) {
-        const isoDate = new Date().toISOString();
-        await dbFs.collection("candidates").doc(userId).set({
-          uid: userId,
-          userId,
-          ...fallbackParsedData,
-          resumeUrl: resumeUrl || "",
-          resumeFileName: fileName || "uploaded_resume.pdf",
-          profileComplete: true,
-          profileSource: "local_parser_fallback"
-        }, { merge: true });
-
-        await dbFs.collection("resumes").doc(userId).set({
-          id: userId,
-          userId,
-          ...fallbackParsedData,
-          parsedData: fallbackParsedData,
-          resumeUrl: resumeUrl || "",
-          status: "active",
-          resumeAnalysisStatus: "completed_fallback",
-          parsedAt: isoDate
-        }, { merge: true });
-      }
-    } catch (fallbackDbErr: any) {
-      console.warn("[Parser] Non-fatal fallback DB notice:", fallbackDbErr.message);
-    }
-
-    return res.json({
-      success: true,
-      fallbackUsed: true,
-      provider: "local",
-      reason: parseErr.message?.includes("QUOTA") ? "quota_exhausted" : "model_unavailable",
-      message: "Resume parsed successfully via local parsing engine.",
-      parsed: fallbackParsedData
-    });
-  }
-});
 
 // 9. Send Test SMS (from Admin Panel)
 app.post("/api/twilio/test-sms", async (req, res) => {

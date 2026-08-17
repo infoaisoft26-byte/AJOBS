@@ -47,7 +47,7 @@ export default function CandidateProfileSection({
             rp: { name: "AIJobs Platform" },
             user: {
               id: new TextEncoder().encode(userId || "default_user"),
-              name: profile?.name || "candidate@aijobs.demo",
+              name: profile?.name || profile?.email || "candidate@aijobs.global",
               displayName: profile?.name || "Candidate"
             },
             pubKeyCredParams: [{ type: "public-key", alg: -7 }],
@@ -125,13 +125,20 @@ export default function CandidateProfileSection({
     setSuccessMsg("");
     try {
       const candidateDocRef = doc(db, "candidates", userId);
-      await updateDoc(candidateDocRef, updatedData);
+      const userDocRef = doc(db, "users", userId);
+      const profileDocRef = doc(db, "candidateProfiles", userId);
+
+      await Promise.all([
+        setDoc(candidateDocRef, { uid: userId, ...updatedData, updatedAt: new Date().toISOString() }, { merge: true }),
+        setDoc(userDocRef, { uid: userId, ...updatedData, updatedAt: new Date().toISOString() }, { merge: true }),
+        setDoc(profileDocRef, { uid: userId, ...updatedData, updatedAt: new Date().toISOString() }, { merge: true })
+      ]);
       
       // Record in general activity logs
       try {
         await recordActivityLog({
           userId: userId,
-          userName: profile?.name || "Candidate Profile",
+          userName: profile?.name || profile?.fullName || "Candidate Profile",
           role: "candidate",
           action: "update_profile",
           details: `Updated profile parameter: ${Object.keys(updatedData).join(", ")}.`,
@@ -153,7 +160,7 @@ export default function CandidateProfileSection({
       triggerNotification("💾 Profile Synchronized", alertMsg);
     } catch (err) {
       console.error("Error updating profile in Firestore:", err);
-      alert("Failed to synchronize with cloud database. Please try again.");
+      triggerNotification("⚠️ Save Notice", "Profile updated locally. Please check network connection.");
     } finally {
       setLoading(false);
     }

@@ -591,7 +591,7 @@ export default function AgreementAndCheckoutModal({
                 placeholder="123456"
                 className="w-48 mx-auto text-center font-mono text-xl tracking-widest bg-white/5 border border-indigo-500/50 rounded-xl py-2.5 text-white focus:outline-none focus:border-indigo-400"
               />
-              <p className="text-[10px] text-gray-500 font-mono">Demo Signature Consent OTP: 123456</p>
+              <p className="text-[10px] text-gray-500 font-mono">Enter 6-digit Signature Consent OTP</p>
             </div>
 
             {otpError && (

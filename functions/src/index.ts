@@ -5,6 +5,7 @@ import * as admin from "firebase-admin";
 
 export * from "./agreement";
 export * from "./leads";
+export * from "./resumeDiagnostic";
 
 if (!admin.apps.length) {
   admin.initializeApp();

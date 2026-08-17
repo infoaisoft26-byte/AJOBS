@@ -32,83 +32,122 @@ export interface ParseResumeResponse {
   error?: string;
 }
 
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve) => {
+    if (typeof FileReader === "undefined") {
+      resolve("");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string) || "");
+    reader.onerror = () => resolve("");
+    reader.readAsDataURL(file);
+  });
+}
+
 /**
  * Parses resume details using the Gemini API and updates Firestore collections
  * ('candidateProfiles/{uid}', 'candidates/{uid}', 'users/{uid}', 'resumes/{uid}')
  * NEVER overwrites verified account email or mobile number with parser output.
  */
 export async function parseResumeData(
-  parsedOrUrl: any,
-  resumeUrlArg: string,
+  parsedOrUrlOrFile: any,
+  resumeUrlOrUidOrOptions?: any,
   fileNameArg?: string,
   uidArg?: string
 ): Promise<ParseResumeResponse> {
   let uid = uidArg || "";
-  let resumeUrl = resumeUrlArg || "";
+  let resumeUrl = "";
   let fileName = fileNameArg || "uploaded_resume.pdf";
+  let fileType = "application/pdf";
+  let base64Data = "";
   let parsed: ParsedResumeMetadata | null = null;
 
-  // Handle flexible signature: parseResumeData(parsedObj, resumeUrl, fileName, uid) vs parseResumeData(resumeUrl, uid, fileName, fileType)
-  if (typeof parsedOrUrl === "object" && parsedOrUrl !== null) {
+  // Case A: A File object is passed: parseResumeData(file, { userId: ... })
+  if (parsedOrUrlOrFile instanceof File || (parsedOrUrlOrFile && typeof parsedOrUrlOrFile.name === "string" && typeof parsedOrUrlOrFile.slice === "function")) {
+    const file = parsedOrUrlOrFile as File;
+    fileName = file.name;
+    fileType = file.type || (file.name.endsWith(".docx") ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : "application/pdf");
+    
+    if (typeof resumeUrlOrUidOrOptions === "object" && resumeUrlOrUidOrOptions !== null) {
+      uid = resumeUrlOrUidOrOptions.userId || resumeUrlOrUidOrOptions.uid || "";
+    } else if (typeof resumeUrlOrUidOrOptions === "string") {
+      uid = resumeUrlOrUidOrOptions;
+    }
+
+    try {
+      base64Data = await readFileAsBase64(file);
+    } catch {
+      // ignore
+    }
+  }
+  // Case B: A parsed object is passed: parseResumeData(parsedObj, resumeUrl, fileName, uid)
+  else if (typeof parsedOrUrlOrFile === "object" && parsedOrUrlOrFile !== null) {
     parsed = {
-      name: parsedOrUrl.fullName || parsedOrUrl.name || "",
-      fullName: parsedOrUrl.fullName || parsedOrUrl.name || "",
-      email: parsedOrUrl.email || "",
-      phone: parsedOrUrl.phone || "",
-      skills: Array.isArray(parsedOrUrl.skills) ? parsedOrUrl.skills : [],
-      technicalSkills: Array.isArray(parsedOrUrl.technicalSkills) ? parsedOrUrl.technicalSkills : (Array.isArray(parsedOrUrl.skills) ? parsedOrUrl.skills : []),
-      softSkills: Array.isArray(parsedOrUrl.softSkills) ? parsedOrUrl.softSkills : [],
-      experience: parsedOrUrl.totalExperienceYears ? `${parsedOrUrl.totalExperienceYears} Years` : (parsedOrUrl.totalExperience || ""),
-      totalExperience: parsedOrUrl.totalExperienceYears ? `${parsedOrUrl.totalExperienceYears} Years` : (parsedOrUrl.totalExperience || ""),
-      education: Array.isArray(parsedOrUrl.education) 
-        ? parsedOrUrl.education.map((e: any) => `${e.qualification || e.degree || ''} ${e.specialization ? '(' + e.specialization + ')' : ''} - ${e.institution || e.school || ''}`).join(', ') 
-        : (parsedOrUrl.education || ""),
-      designation: parsedOrUrl.currentJobTitle || parsedOrUrl.currentDesignation || parsedOrUrl.designation || "",
-      currentDesignation: parsedOrUrl.currentJobTitle || parsedOrUrl.currentDesignation || parsedOrUrl.designation || "",
-      currentCompany: parsedOrUrl.currentCompany || (Array.isArray(parsedOrUrl.workExperience) && parsedOrUrl.workExperience[0]?.company) || "",
-      location: [parsedOrUrl.city, parsedOrUrl.state].filter(Boolean).join(", ") || parsedOrUrl.location || "",
-      city: parsedOrUrl.city || "",
-      state: parsedOrUrl.state || "",
-      languages: Array.isArray(parsedOrUrl.languages) ? parsedOrUrl.languages : [],
-      certificates: Array.isArray(parsedOrUrl.certifications) ? parsedOrUrl.certifications : (Array.isArray(parsedOrUrl.certificates) ? parsedOrUrl.certificates : []),
-      linkedin: parsedOrUrl.linkedin || "",
-      github: parsedOrUrl.github || "",
-      rawParsed: parsedOrUrl
+      name: parsedOrUrlOrFile.fullName || parsedOrUrlOrFile.name || "",
+      fullName: parsedOrUrlOrFile.fullName || parsedOrUrlOrFile.name || "",
+      email: parsedOrUrlOrFile.email || "",
+      phone: parsedOrUrlOrFile.phone || "",
+      skills: Array.isArray(parsedOrUrlOrFile.skills) ? parsedOrUrlOrFile.skills : [],
+      technicalSkills: Array.isArray(parsedOrUrlOrFile.technicalSkills) ? parsedOrUrlOrFile.technicalSkills : (Array.isArray(parsedOrUrlOrFile.skills) ? parsedOrUrlOrFile.skills : []),
+      softSkills: Array.isArray(parsedOrUrlOrFile.softSkills) ? parsedOrUrlOrFile.softSkills : [],
+      experience: parsedOrUrlOrFile.totalExperienceYears ? `${parsedOrUrlOrFile.totalExperienceYears} Years` : (parsedOrUrlOrFile.totalExperience || ""),
+      totalExperience: parsedOrUrlOrFile.totalExperienceYears ? `${parsedOrUrlOrFile.totalExperienceYears} Years` : (parsedOrUrlOrFile.totalExperience || ""),
+      education: Array.isArray(parsedOrUrlOrFile.education) 
+        ? parsedOrUrlOrFile.education.map((e: any) => `${e.qualification || e.degree || ''} ${e.specialization ? '(' + e.specialization + ')' : ''} - ${e.institution || e.school || ''}`).join(', ') 
+        : (parsedOrUrlOrFile.education || ""),
+      designation: parsedOrUrlOrFile.currentJobTitle || parsedOrUrlOrFile.currentDesignation || parsedOrUrlOrFile.designation || "",
+      currentDesignation: parsedOrUrlOrFile.currentJobTitle || parsedOrUrlOrFile.currentDesignation || parsedOrUrlOrFile.designation || "",
+      currentCompany: parsedOrUrlOrFile.currentCompany || (Array.isArray(parsedOrUrlOrFile.workExperience) && parsedOrUrlOrFile.workExperience[0]?.company) || "",
+      location: [parsedOrUrlOrFile.city, parsedOrUrlOrFile.state].filter(Boolean).join(", ") || parsedOrUrlOrFile.location || "",
+      city: parsedOrUrlOrFile.city || "",
+      state: parsedOrUrlOrFile.state || "",
+      languages: Array.isArray(parsedOrUrlOrFile.languages) ? parsedOrUrlOrFile.languages : [],
+      certificates: Array.isArray(parsedOrUrlOrFile.certifications) ? parsedOrUrlOrFile.certifications : (Array.isArray(parsedOrUrlOrFile.certificates) ? parsedOrUrlOrFile.certificates : []),
+      linkedin: parsedOrUrlOrFile.linkedin || "",
+      github: parsedOrUrlOrFile.github || "",
+      rawParsed: parsedOrUrlOrFile
     };
-  } else if (typeof parsedOrUrl === "string") {
-    resumeUrl = parsedOrUrl;
-    uid = resumeUrlArg;
-    fileName = fileNameArg || "uploaded_resume.pdf";
+    if (typeof resumeUrlOrUidOrOptions === "string") {
+      resumeUrl = resumeUrlOrUidOrOptions;
+    }
+    if (fileNameArg) fileName = fileNameArg;
+  } 
+  // Case C: A URL string is passed: parseResumeData(resumeUrl, uid, fileName, fileType)
+  else if (typeof parsedOrUrlOrFile === "string") {
+    resumeUrl = parsedOrUrlOrFile;
+    if (typeof resumeUrlOrUidOrOptions === "string") {
+      uid = resumeUrlOrUidOrOptions;
+    }
+    if (fileNameArg) fileName = fileNameArg;
+    if (uidArg) fileType = uidArg;
   }
 
   if (!uid) {
     uid = auth.currentUser?.uid || "";
   }
 
-  if (!uid) {
-    return { success: false, error: "Missing user identifier (uid)." };
-  }
-
-  console.log(`[aiParser] Starting parseResumeData for UID: ${uid}, URL: ${resumeUrl}`);
+  console.log(`[aiParser] Starting parseResumeData for UID: ${uid}, URL: ${resumeUrl}, File: ${fileName}`);
 
   // If parsed data not directly passed, call server API endpoint
   if (!parsed) {
     try {
       const response = await fetch("/api/parse-resume", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-user-id": uid },
         body: JSON.stringify({
           userId: uid,
           resumeUrl,
           fileName,
-          fileType: "application/pdf"
+          fileType,
+          base64Data: base64Data || undefined
         })
       });
 
       if (response.ok) {
         const rawResponseData = await parseJsonResponse(response);
-        if (rawResponseData && rawResponseData.parsed) {
-          const p = rawResponseData.parsed;
+        if (rawResponseData && (rawResponseData.parsed || rawResponseData.parsedData)) {
+          const p = rawResponseData.parsed || rawResponseData.parsedData;
           parsed = {
             name: p.fullName || p.name || "",
             fullName: p.fullName || p.name || "",
@@ -119,7 +158,9 @@ export async function parseResumeData(
             softSkills: Array.isArray(p.softSkills) ? p.softSkills : [],
             experience: p.totalExperienceYears ? `${p.totalExperienceYears} Years` : (p.totalExperience || ""),
             totalExperience: p.totalExperienceYears ? `${p.totalExperienceYears} Years` : (p.totalExperience || ""),
-            education: typeof p.education === "string" ? p.education : "",
+            education: Array.isArray(p.education) 
+              ? p.education.map((e: any) => `${e.degree || e.qualification || ''} - ${e.school || e.institution || ''}`).join(', ') 
+              : (typeof p.education === "string" ? p.education : ""),
             designation: p.currentJobTitle || p.currentDesignation || p.designation || "",
             currentDesignation: p.currentJobTitle || p.currentDesignation || p.designation || "",
             currentCompany: p.currentCompany || "",

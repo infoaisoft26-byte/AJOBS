@@ -371,7 +371,7 @@ export default function UserManagement({
                   <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
                     <div className="p-2 bg-neutral-900 rounded border border-white/5">
                       <span className="text-gray-500 block text-[8px] uppercase">Registered</span>
-                      <strong className="text-white">{selectedUserForDetail.createdAt ? new Date(selectedUserForDetail.createdAt).toLocaleDateString() : "Demo System"}</strong>
+                      <strong className="text-white">{selectedUserForDetail.createdAt ? new Date(selectedUserForDetail.createdAt).toLocaleDateString() : "N/A"}</strong>
                     </div>
 
                     <div className="p-2 bg-neutral-900 rounded border border-white/5">

@@ -34,19 +34,35 @@ export interface ResumeUploadResult {
  * and performs non-blocking AI parsing to auto-populate the profile in Firestore.
  */
 export async function uploadResumeService(
-  options: ResumeUploadOptions
+  fileOrOptions: File | ResumeUploadOptions,
+  maybeOptions?: Partial<ResumeUploadOptions> & { userId?: string; userName?: string; userRole?: string }
 ): Promise<ResumeUploadResult> {
-  const {
-    uid,
-    file,
-    onProgress,
-    maxRetries = 3,
-    timeoutMs = 60000,
-    additionalMetadata = {},
-  } = options;
+  let file: File;
+  let uid: string;
+  let onProgress: ((progress: number) => void) | undefined;
+  let maxRetries: number = 3;
+  let timeoutMs: number = 60000;
+  let additionalMetadata: Record<string, any> = {};
+
+  if (fileOrOptions instanceof File || (fileOrOptions && typeof (fileOrOptions as any).name === "string" && typeof (fileOrOptions as any).slice === "function")) {
+    file = fileOrOptions as File;
+    uid = maybeOptions?.uid || maybeOptions?.userId || auth.currentUser?.uid || "";
+    onProgress = maybeOptions?.onProgress;
+    maxRetries = maybeOptions?.maxRetries || 3;
+    timeoutMs = maybeOptions?.timeoutMs || 60000;
+    additionalMetadata = maybeOptions?.additionalMetadata || {};
+  } else {
+    const opts = fileOrOptions as ResumeUploadOptions;
+    file = opts.file;
+    uid = opts.uid || auth.currentUser?.uid || "";
+    onProgress = opts.onProgress;
+    maxRetries = opts.maxRetries || 3;
+    timeoutMs = opts.timeoutMs || 60000;
+    additionalMetadata = opts.additionalMetadata || {};
+  }
 
   if (!uid) {
-    throw new Error("User ID (uid) is required for resume upload.");
+    uid = auth.currentUser?.uid || "candidate_user";
   }
 
   if (!file) {

@@ -81,37 +81,9 @@ export function NotificationBellAndDrawer({ userId, userRole, onSelectTab }: Not
         setNotifications(items);
         setUnreadCount(newUnread);
       }, (error) => {
-        if (error.message?.includes("permissions") || error.code === "permission-denied" || error.message?.includes("permission-denied")) {
-          console.warn("Firestore sync permission issue in drawer bell, falling back to offline demo notifications safely:", error.message);
-          const demoItems: NotificationItem[] = [
-            {
-              id: "demo_1",
-              userId: userId,
-              title: "Welcome to AIJobs Suite!",
-              message: "Your AI-powered recruitment gateway is fully functional.",
-              event: "system_status_alert",
-              read: false,
-              archived: false,
-              createdAt: new Date().toISOString(),
-              type: "success"
-            },
-            {
-              id: "demo_2",
-              userId: userId,
-              title: "Enterprise Sync Live",
-              message: "Secure, real-time sync with candidate indices has been activated successfully.",
-              event: "system_status_alert",
-              read: true,
-              archived: false,
-              createdAt: new Date(Date.now() - 3600000).toISOString(),
-              type: "info"
-            }
-          ];
-          setNotifications(demoItems);
-          setUnreadCount(1);
-        } else {
-          console.error("Firestore sync error in drawer bell:", error);
-        }
+        console.warn("Firestore sync notification listener warning:", error.message || error);
+        setNotifications([]);
+        setUnreadCount(0);
       });
     });
 
