@@ -581,7 +581,7 @@ ${contextData.contextText}
   // 9. Invoke AI Provider
   const activeConversationId = conversationId || `conv_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
   const timestamp = new Date().toISOString();
-  const primaryModel = process.env.GEMINI_MODEL || "gemini-3.7-flash";
+  const primaryModel = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
 
   console.log(`[AI Assistant] provider called: ${primaryModel}`);
 
@@ -592,7 +592,7 @@ ${contextData.contextText}
       systemInstruction,
       undefined,
       3,
-      15000,
+      25000,
       undefined,
       primaryModel,
       true, // enable search grounding for real-time market queries

@@ -35,13 +35,13 @@ export default function JobCard({
   const matchResult: JobMatchResult | null = profile ? calculateJobMatchScore(job, profile) : null;
 
   return (
-    <div className="bg-white p-5 rounded-2xl border border-gray-200 hover:border-blue-300 hover:shadow-xs transition-all flex flex-col justify-between space-y-4 relative">
+    <div className="bg-[rgba(4,12,35,0.75)] backdrop-blur-[18px] p-5 rounded-2xl border border-[rgba(37,99,235,0.35)] hover:border-cyan-400/70 hover:shadow-[0_12px_40px_rgba(0,140,255,0.25)] transition-all duration-300 flex flex-col justify-between space-y-4 relative group">
       {/* Header Info */}
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="flex items-center space-x-2">
-              <span className="text-xs font-semibold text-blue-700 block">{job.companyName}</span>
+              <span className="text-xs font-bold text-cyan-400 block tracking-wide">{job.companyName}</span>
               {matchResult && (
                 <button
                   type="button"
@@ -49,17 +49,17 @@ export default function JobCard({
                     e.stopPropagation();
                     setShowBreakdown(true);
                   }}
-                  className={`px-2 py-0.5 text-[11px] font-bold rounded-full border flex items-center space-x-1 cursor-pointer transition-transform hover:scale-105 ${matchResult.badgeColor}`}
+                  className="px-2.5 py-0.5 text-[10px] font-mono font-bold rounded-full border border-cyan-400/50 bg-cyan-500/15 text-cyan-300 flex items-center space-x-1 cursor-pointer transition-transform hover:scale-105 shadow-[0_0_10px_rgba(0,229,255,0.2)]"
                   title="Click to see AI Match score breakdown"
                 >
-                  <Sparkles className="w-3 h-3 text-current shrink-0" />
+                  <Sparkles className="w-3 h-3 text-cyan-400 shrink-0 animate-pulse" />
                   <span>{matchResult.totalScore}% Match</span>
                 </button>
               )}
             </div>
             <h3 
               onClick={() => onSelectDetails(job)}
-              className="font-bold text-base text-gray-900 hover:text-blue-600 transition-colors cursor-pointer line-clamp-1 mt-0.5"
+              className="font-bold text-base text-white group-hover:text-cyan-300 transition-colors cursor-pointer line-clamp-1 mt-1 tracking-tight"
             >
               {job.title}
             </h3>
@@ -69,32 +69,32 @@ export default function JobCard({
             onClick={() => onSave(job.id, isSaved)}
             className={`p-2 rounded-xl border transition-all cursor-pointer ${
               isSaved 
-                ? "bg-blue-50 border-blue-200 text-blue-600" 
-                : "bg-gray-50 border-gray-200 text-gray-400 hover:text-gray-600"
+                ? "bg-cyan-500/20 border-cyan-400/60 text-cyan-300 shadow-[0_0_10px_rgba(0,229,255,0.3)]" 
+                : "bg-slate-900/80 border-blue-500/30 text-slate-400 hover:text-cyan-300 hover:border-cyan-400/50"
             }`}
             title={isSaved ? "Saved" : "Save Job"}
           >
-            <Heart className={`w-4 h-4 ${isSaved ? "fill-blue-600 text-blue-600" : ""}`} />
+            <Heart className={`w-4 h-4 ${isSaved ? "fill-cyan-400 text-cyan-400 drop-shadow-[0_0_8px_#00E5FF]" : ""}`} />
           </button>
         </div>
 
         {/* Quick Details Chips */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-gray-600">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-300">
           <span className="flex items-center space-x-1">
-            <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+            <MapPin className="w-3.5 h-3.5 text-cyan-400/80 shrink-0" />
             <span>{job.location || "Remote"}</span>
           </span>
-          <span className="flex items-center space-x-1 font-medium text-gray-900">
+          <span className="flex items-center space-x-1 font-mono font-medium text-white">
             <span>💰 {salaryDisplay}</span>
           </span>
           <span className="flex items-center space-x-1">
-            <Briefcase className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+            <Briefcase className="w-3.5 h-3.5 text-cyan-400/80 shrink-0" />
             <span>{experienceDisplay}</span>
           </span>
-          <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[11px] font-semibold">
+          <span className="px-2 py-0.5 rounded-full bg-blue-950/80 border border-blue-500/40 text-cyan-300 text-[11px] font-semibold">
             {workTypeDisplay}
           </span>
-          <span className="flex items-center space-x-1 text-gray-400 text-[11px]">
+          <span className="flex items-center space-x-1 text-slate-400 text-[11px] font-mono">
             <Calendar className="w-3.5 h-3.5" />
             <span>{postedDate}</span>
           </span>
@@ -102,7 +102,7 @@ export default function JobCard({
 
         {/* Description snippet */}
         {job.description && (
-          <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
+          <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed font-normal">
             {job.description}
           </p>
         )}
@@ -113,13 +113,13 @@ export default function JobCard({
             {job.skillsRequired.slice(0, 5).map((sk, k) => (
               <span 
                 key={k} 
-                className="px-2.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-md font-medium border border-gray-200/60"
+                className="px-2.5 py-0.5 bg-slate-900/90 text-cyan-200 text-xs rounded-md font-medium border border-blue-500/25"
               >
                 {sk}
               </span>
             ))}
             {job.skillsRequired.length > 5 && (
-              <span className="text-xs text-gray-400 self-center">
+              <span className="text-xs text-slate-400 self-center font-mono">
                 +{job.skillsRequired.length - 5} more
               </span>
             )}
@@ -128,24 +128,24 @@ export default function JobCard({
       </div>
 
       {/* Card Action Buttons */}
-      <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-3">
+      <div className="pt-3 border-t border-blue-500/20 flex items-center justify-between gap-3">
         <button
           onClick={() => onSelectDetails(job)}
-          className="flex-1 py-2 px-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-xs font-semibold transition-all text-center cursor-pointer flex items-center justify-center space-x-1.5"
+          className="flex-1 py-2 px-3 bg-slate-900/80 hover:bg-slate-800 border border-blue-500/30 text-slate-200 hover:text-white rounded-xl text-xs font-semibold transition-all text-center cursor-pointer flex items-center justify-center space-x-1.5"
         >
-          <Eye className="w-3.5 h-3.5 text-gray-500" />
-          <span>View Job</span>
+          <Eye className="w-3.5 h-3.5 text-cyan-400" />
+          <span>View Details</span>
         </button>
 
         {applied ? (
-          <span className="flex-1 py-2 px-3 bg-green-50 border border-green-200 text-green-700 rounded-xl text-xs font-semibold text-center flex items-center justify-center space-x-1">
-            <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+          <span className="flex-1 py-2 px-3 bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 rounded-xl text-xs font-semibold text-center flex items-center justify-center space-x-1 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
             <span>Applied</span>
           </span>
         ) : (
           <button
             onClick={() => onApply(job)}
-            className="flex-1 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold transition-all text-center cursor-pointer shadow-xs"
+            className="flex-1 py-2 px-3 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white rounded-xl text-xs font-bold transition-all text-center cursor-pointer shadow-[0_0_15px_rgba(0,229,255,0.3)]"
           >
             Apply Now
           </button>
@@ -154,67 +154,67 @@ export default function JobCard({
 
       {/* AI Match Breakdown Modal */}
       {showBreakdown && matchResult && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-4 relative animate-in fade-in zoom-in duration-150">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#040d28] rounded-2xl max-w-md w-full p-6 shadow-[0_16px_50px_rgba(0,0,0,0.9)] border border-cyan-500/40 space-y-4 relative animate-in fade-in zoom-in duration-150 text-slate-100">
+            <div className="flex items-center justify-between border-b border-blue-500/25 pb-3">
               <div className="flex items-center space-x-2">
-                <Sparkles className="w-5 h-5 text-blue-600" />
-                <h3 className="text-base font-bold text-gray-900">AI Job Match Analysis</h3>
+                <Sparkles className="w-5 h-5 text-cyan-400 animate-pulse" />
+                <h3 className="text-base font-bold text-white tracking-wide">AI Match Neural Breakdown</h3>
               </div>
               <button
                 onClick={() => setShowBreakdown(false)}
-                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="text-center py-2 bg-blue-50/60 rounded-xl border border-blue-100">
-              <span className="text-2xl font-black text-blue-700">{matchResult.totalScore}%</span>
-              <p className="text-xs font-bold text-blue-900 mt-0.5">{matchResult.matchLevel}</p>
+            <div className="text-center py-3 bg-slate-950/80 rounded-xl border border-blue-500/30">
+              <span className="text-3xl font-black font-mono text-cyan-300 drop-shadow-[0_0_12px_#00E5FF]">{matchResult.totalScore}%</span>
+              <p className="text-xs font-bold text-cyan-400 uppercase tracking-wider font-mono mt-0.5">{matchResult.matchLevel}</p>
             </div>
 
             {/* Score Breakdown Bars */}
             <div className="space-y-2.5 text-xs">
-              <h4 className="font-bold text-gray-700">Scoring Model Breakdown</h4>
+              <h4 className="font-bold text-slate-200 tracking-wide font-mono uppercase text-[11px]">Scoring Model Breakdown</h4>
               <div className="space-y-2">
                 <div>
-                  <div className="flex justify-between text-gray-600 mb-1">
+                  <div className="flex justify-between text-slate-300 mb-1">
                     <span>Skills Alignment (35%)</span>
-                    <span className="font-bold text-gray-900">{matchResult.breakdown.skillsScore} / 35</span>
+                    <span className="font-mono font-bold text-cyan-300">{matchResult.breakdown.skillsScore} / 35</span>
                   </div>
-                  <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-blue-600 rounded-full" style={{ width: `${(matchResult.breakdown.skillsScore / 35) * 100}%` }} />
+                  <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-blue-500/20">
+                    <div className="h-full bg-gradient-to-r from-blue-600 to-cyan-400 rounded-full" style={{ width: `${(matchResult.breakdown.skillsScore / 35) * 100}%` }} />
                   </div>
                 </div>
 
                 <div>
-                  <div className="flex justify-between text-gray-600 mb-1">
+                  <div className="flex justify-between text-slate-300 mb-1">
                     <span>Role & Title Fit (20%)</span>
-                    <span className="font-bold text-gray-900">{matchResult.breakdown.titleScore} / 20</span>
+                    <span className="font-mono font-bold text-cyan-300">{matchResult.breakdown.titleScore} / 20</span>
                   </div>
-                  <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-indigo-600 rounded-full" style={{ width: `${(matchResult.breakdown.titleScore / 20) * 100}%` }} />
+                  <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-blue-500/20">
+                    <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full" style={{ width: `${(matchResult.breakdown.titleScore / 20) * 100}%` }} />
                   </div>
                 </div>
 
                 <div>
-                  <div className="flex justify-between text-gray-600 mb-1">
+                  <div className="flex justify-between text-slate-300 mb-1">
                     <span>Experience Level (15%)</span>
-                    <span className="font-bold text-gray-900">{matchResult.breakdown.experienceScore} / 15</span>
+                    <span className="font-mono font-bold text-purple-300">{matchResult.breakdown.experienceScore} / 15</span>
                   </div>
-                  <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-purple-600 rounded-full" style={{ width: `${(matchResult.breakdown.experienceScore / 15) * 100}%` }} />
+                  <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-blue-500/20">
+                    <div className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full" style={{ width: `${(matchResult.breakdown.experienceScore / 15) * 100}%` }} />
                   </div>
                 </div>
 
                 <div>
-                  <div className="flex justify-between text-gray-600 mb-1">
+                  <div className="flex justify-between text-slate-300 mb-1">
                     <span>Location & Mode (10%)</span>
-                    <span className="font-bold text-gray-900">{matchResult.breakdown.locationScore} / 10</span>
+                    <span className="font-mono font-bold text-emerald-300">{matchResult.breakdown.locationScore} / 10</span>
                   </div>
-                  <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-600 rounded-full" style={{ width: `${(matchResult.breakdown.locationScore / 10) * 100}%` }} />
+                  <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-blue-500/20">
+                    <div className="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 rounded-full" style={{ width: `${(matchResult.breakdown.locationScore / 10) * 100}%` }} />
                   </div>
                 </div>
               </div>
@@ -223,11 +223,11 @@ export default function JobCard({
             {/* Reasons list */}
             {matchResult.reasons.length > 0 && (
               <div className="pt-2 space-y-1.5">
-                <h4 className="font-bold text-xs text-gray-700">Key Insights</h4>
-                <ul className="space-y-1 text-xs text-gray-600">
+                <h4 className="font-bold text-xs text-slate-200 uppercase font-mono tracking-wider">Key Insights</h4>
+                <ul className="space-y-1 text-xs text-slate-300">
                   {matchResult.reasons.map((r, idx) => (
                     <li key={idx} className="flex items-start space-x-1.5">
-                      <span className="text-emerald-500 font-bold">✓</span>
+                      <span className="text-cyan-400 font-bold">✓</span>
                       <span>{r}</span>
                     </li>
                   ))}
@@ -237,7 +237,7 @@ export default function JobCard({
 
             <button
               onClick={() => setShowBreakdown(false)}
-              className="w-full py-2 bg-gray-900 hover:bg-gray-800 text-white font-semibold text-xs rounded-xl transition-colors"
+              className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold text-xs rounded-xl transition-all cursor-pointer shadow-[0_0_15px_rgba(0,229,255,0.3)]"
             >
               Close Analysis
             </button>

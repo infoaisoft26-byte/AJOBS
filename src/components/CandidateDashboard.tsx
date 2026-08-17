@@ -22,6 +22,7 @@ import CandidateHelpView from "./CandidateHelpView";
 import EasyApplyModal from "./EasyApplyModal";
 import CandidateMobileBottomNav from "./CandidateMobileBottomNav";
 import { NotificationCenterView } from "./NotificationCenter";
+import Candidate3DAnimatedBackground from "./Candidate3DAnimatedBackground";
 
 interface CandidateDashboardProps {
   userId: string;
@@ -64,7 +65,6 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
 
   // Apply Modal state
   const [applyModalJob, setApplyModalJob] = useState<JobPosting | null>(null);
-  const [showMobileMoreMenu, setShowMobileMoreMenu] = useState(false);
 
   // Resume state
   const [resumeText, setResumeText] = useState("");
@@ -224,9 +224,22 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 space-y-3">
-        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm font-semibold text-gray-600">Loading Candidate Portal...</p>
+      <div className="min-h-screen bg-[#020617] text-slate-100 flex flex-col items-center justify-center p-6 space-y-4 relative overflow-hidden font-sans">
+        <Candidate3DAnimatedBackground />
+        <div className="relative z-10 flex flex-col items-center p-8 rounded-2xl bg-[rgba(4,12,35,0.85)] border border-blue-500/30 backdrop-blur-2xl shadow-[0_0_50px_rgba(0,140,255,0.25)] space-y-4">
+          <div className="relative w-12 h-12 flex items-center justify-center">
+            <div className="w-12 h-12 border-3 border-cyan-400 border-t-transparent rounded-full animate-spin shadow-[0_0_20px_#00E5FF]" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
+            </div>
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-bold text-white tracking-wider uppercase font-mono">
+              AI<span className="text-cyan-400">JOBS</span> Neural Portal
+            </p>
+            <p className="text-xs text-slate-400 mt-1">Authenticating candidate dashboard...</p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -234,7 +247,10 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans flex flex-col" id="candidate-portal-root">
+    <div className="min-h-screen bg-[#020617] text-slate-100 font-sans flex flex-col relative overflow-x-hidden" id="candidate-portal-root">
+      {/* 3D Animated Hologram Background & Particle Starfield */}
+      <Candidate3DAnimatedBackground />
+
       {/* Top Header */}
       <CandidateHeader
         userName={userName}
@@ -251,7 +267,7 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
         setLang={setLang}
       />
 
-      <div className="flex-1 flex max-w-7xl w-full mx-auto relative pb-16 lg:pb-0">
+      <div className="flex-1 flex max-w-7xl w-full mx-auto relative z-10 pb-20 lg:pb-8 px-2 sm:px-4 lg:px-6">
         {/* Sidebar Navigation */}
         <CandidateSidebar
           activeTab={activeTab}
@@ -264,7 +280,7 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
         />
 
         {/* Main Work Area */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto max-w-full">
+        <main className="flex-1 p-3 sm:p-5 lg:p-6 overflow-y-auto max-w-full">
           {/* 1. HOME / OVERVIEW */}
           {activeTab === "overview" && (
             <CandidateDashboardOverview
@@ -334,7 +350,7 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
 
           {/* 6. NOTIFICATIONS */}
           {activeTab === "notifications" && (
-            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs">
+            <div className="bg-[rgba(4,12,35,0.72)] backdrop-blur-[18px] rounded-2xl border border-[rgba(37,99,235,0.35)] p-6 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
               <NotificationCenterView userId={userId} userRole="candidate" userName={userName} />
             </div>
           )}

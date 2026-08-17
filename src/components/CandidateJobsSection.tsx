@@ -114,13 +114,13 @@ export default function CandidateJobsSection({
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* Title & Search Header */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+      <div className="bg-[rgba(4,12,35,0.75)] backdrop-blur-[20px] p-6 rounded-2xl border border-[rgba(37,99,235,0.35)] shadow-[0_8px_32px_rgba(0,0,0,0.45)] space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-blue-500/20 pb-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-extrabold text-white tracking-tight">
               {activeTab === "saved-jobs" ? t("savedJobs") : t("findJobs")}
             </h1>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-slate-300 mt-1">
               {activeTab === "saved-jobs" 
                 ? "Manage positions you have saved for later application."
                 : "Explore verified career opportunities across top companies."
@@ -128,24 +128,24 @@ export default function CandidateJobsSection({
             </p>
           </div>
 
-          <div className="text-xs font-semibold text-gray-500 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200 self-start md:self-auto">
-            Showing <span className="text-blue-600 font-bold">{filteredJobs.length}</span> positions
+          <div className="text-xs font-semibold text-cyan-300 bg-blue-950/80 px-3.5 py-2 rounded-xl border border-cyan-500/40 self-start md:self-auto shadow-[0_0_15px_rgba(0,229,255,0.15)] font-mono">
+            Showing <span className="text-cyan-400 font-bold">{filteredJobs.length}</span> positions
           </div>
         </div>
 
         {/* Safety Notice */}
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center space-x-2 text-blue-900 text-xs font-medium">
-          <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
+        <div className="p-3 bg-blue-950/70 border border-cyan-500/35 rounded-xl flex items-center space-x-2 text-cyan-300 text-xs font-medium shadow-xs">
+          <ShieldCheck className="w-4 h-4 text-cyan-400 shrink-0 animate-pulse" />
           <span>{t("safetyNotice")}</span>
         </div>
 
         {/* Clean, Large Search & Filters Controls */}
         <div className="pt-2 space-y-4">
-          <div className="bg-gray-50/90 p-3 sm:p-3.5 rounded-2xl border border-gray-200/90 flex flex-col lg:flex-row items-stretch gap-3 shadow-inner/5">
+          <div className="bg-slate-950/80 p-3 sm:p-3.5 rounded-2xl border border-blue-500/30 flex flex-col lg:flex-row items-stretch gap-3 shadow-inner">
             {/* Field 1: Job Title or Skill */}
-            <div className="relative flex-1 bg-white rounded-xl border border-gray-200 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all p-3 flex flex-col justify-center">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1 flex items-center gap-1.5">
-                <Search className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <div className="relative flex-1 bg-slate-900/90 rounded-xl border border-blue-500/25 focus-within:border-cyan-400 focus-within:ring-2 focus-within:ring-cyan-500/20 transition-all p-3 flex flex-col justify-center">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-cyan-400/90 font-mono mb-1 flex items-center gap-1.5">
+                <Search className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                 <span>Job Title or Skill</span>
               </label>
               <input
@@ -153,14 +153,14 @@ export default function CandidateJobsSection({
                 value={localSearch}
                 onChange={(e) => setLocalSearch(e.target.value)}
                 placeholder={t("searchPlaceholderTitle")}
-                className="w-full bg-transparent text-sm sm:text-base font-semibold text-gray-900 placeholder:text-gray-400 focus:outline-none"
+                className="w-full bg-transparent text-sm sm:text-base font-semibold text-white placeholder:text-slate-500 focus:outline-none"
               />
             </div>
 
             {/* Field 2: Location */}
-            <div className="relative flex-1 bg-white rounded-xl border border-gray-200 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all p-3 flex flex-col justify-center">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <div className="relative flex-1 bg-slate-900/90 rounded-xl border border-blue-500/25 focus-within:border-cyan-400 focus-within:ring-2 focus-within:ring-cyan-500/20 transition-all p-3 flex flex-col justify-center">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-cyan-400/90 font-mono mb-1 flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                 <span>Location</span>
               </label>
               <input
@@ -168,20 +168,20 @@ export default function CandidateJobsSection({
                 value={locationFilter}
                 onChange={(e) => setLocationFilter(e.target.value)}
                 placeholder={t("searchPlaceholderLocation")}
-                className="w-full bg-transparent text-sm sm:text-base font-semibold text-gray-900 placeholder:text-gray-400 focus:outline-none"
+                className="w-full bg-transparent text-sm sm:text-base font-semibold text-white placeholder:text-slate-500 focus:outline-none"
               />
             </div>
 
             {/* Work Type Select */}
-            <div className="relative bg-white rounded-xl border border-gray-200 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all p-3 flex flex-col justify-center min-w-[150px]">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1 flex items-center gap-1.5">
-                <Briefcase className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <div className="relative bg-slate-900/90 rounded-xl border border-blue-500/25 focus-within:border-cyan-400 focus-within:ring-2 focus-within:ring-cyan-500/20 transition-all p-3 flex flex-col justify-center min-w-[150px]">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-cyan-400/90 font-mono mb-1 flex items-center gap-1.5">
+                <Briefcase className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                 <span>Work Type</span>
               </label>
               <select
                 value={workTypeFilter}
                 onChange={(e) => setWorkTypeFilter(e.target.value)}
-                className="w-full bg-transparent text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none cursor-pointer"
+                className="w-full bg-transparent text-xs sm:text-sm font-semibold text-white focus:outline-none cursor-pointer [&>option]:bg-slate-900 [&>option]:text-white"
               >
                 <option value="all">All Types</option>
                 <option value="remote">Remote Only</option>
@@ -200,7 +200,7 @@ export default function CandidateJobsSection({
                 setWorkTypeFilter("all");
                 setActiveTag(null);
               }}
-              className="w-full lg:w-auto px-6 py-3.5 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+              className="w-full lg:w-auto px-6 py-3.5 bg-slate-900/90 hover:bg-slate-800 border border-blue-500/30 active:scale-95 text-slate-200 hover:text-white font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer"
             >
               <span>Reset Filters</span>
             </button>
@@ -208,8 +208,8 @@ export default function CandidateJobsSection({
 
           {/* Quick Filter Tag Buttons (Pill Style) */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider mr-1 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1 flex items-center gap-1.5 font-mono">
+              <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
               Quick Filters:
             </span>
             {[
@@ -229,8 +229,8 @@ export default function CandidateJobsSection({
                   onClick={() => setActiveTag(isSelected ? null : tag.id)}
                   className={`px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all duration-150 cursor-pointer flex items-center gap-1.5 border ${
                     isSelected
-                      ? "bg-blue-600 text-white border-blue-600 shadow-xs scale-[1.02]"
-                      : "bg-gray-50 hover:bg-blue-50/80 text-gray-700 hover:text-blue-700 border-gray-200 hover:border-blue-300"
+                      ? "bg-gradient-to-r from-blue-600 to-cyan-500 text-white border-cyan-300 shadow-[0_0_15px_rgba(0,229,255,0.4)] scale-[1.02]"
+                      : "bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border-blue-500/25 hover:border-cyan-400/50"
                   }`}
                 >
                   {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
@@ -269,10 +269,10 @@ export default function CandidateJobsSection({
           ))}
         </div>
       ) : (
-        <div className="bg-white p-12 text-center rounded-2xl border border-gray-200 space-y-3">
-          <AlertCircle className="w-10 h-10 text-gray-300 mx-auto" />
-          <h3 className="font-bold text-gray-900 text-base">No Matching Jobs Found</h3>
-          <p className="text-xs text-gray-500 max-w-sm mx-auto">
+        <div className="bg-[rgba(4,12,35,0.75)] backdrop-blur-[20px] p-12 text-center rounded-2xl border border-[rgba(37,99,235,0.35)] space-y-3">
+          <AlertCircle className="w-10 h-10 text-slate-500 mx-auto" />
+          <h3 className="font-bold text-white text-base">No Matching Jobs Found</h3>
+          <p className="text-xs text-slate-400 max-w-sm mx-auto">
             Try adjusting your search keywords, location filters, or reset filters to browse all open positions.
           </p>
         </div>

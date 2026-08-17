@@ -338,7 +338,7 @@ export default function CandidateResumeUploader({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer ml-auto"
+              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white text-xs font-bold rounded-xl shadow-[0_0_15px_rgba(0,229,255,0.3)] transition-all flex items-center gap-1.5 cursor-pointer ml-auto"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               <span>Replace / Update Resume</span>

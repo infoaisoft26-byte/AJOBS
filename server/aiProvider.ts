@@ -15,12 +15,11 @@ export const telemetryStore = {
   }
 };
 
-// Production Model Fallback Order
+// Production Model Fallback Order - using latest supported Gemini models
 export const MODEL_FALLBACKS = [
-  "gemini-3.7-flash",
-  "gemini-2.5-flash",
   "gemini-3.1-flash-lite",
-  "gemini-2.5-pro"
+  "gemini-flash-latest",
+  "gemini-3.7-flash"
 ];
 
 export interface AIProvider {
@@ -130,106 +129,107 @@ export class GeminiProvider implements AIProvider {
       ];
     }
 
-    const primaryModel = model || process.env.GEMINI_MODEL || "gemini-3.7-flash";
-    const envFallback = process.env.GEMINI_FALLBACK_MODEL || "gemini-3.1-flash-lite";
+    const primaryModel = model || process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
+    const envFallback = process.env.GEMINI_FALLBACK_MODEL || "gemini-flash-latest";
     const candidateList = [primaryModel, envFallback, ...MODEL_FALLBACKS];
     const modelsToTry = Array.from(new Set(candidateList.filter(Boolean)));
 
-    let totalAttemptsCount = 0;
-    const maxTotalModelAttempts = 3;
-
     for (let i = 0; i < modelsToTry.length; i++) {
-      if (totalAttemptsCount >= maxTotalModelAttempts) {
-        break;
-      }
-
       const modelCandidate = modelsToTry[i];
       console.log(`[GeminiProvider] Model selected: ${modelCandidate}`);
 
-      let retriedThisModel = false;
-      while (totalAttemptsCount < maxTotalModelAttempts) {
-        totalAttemptsCount++;
+      try {
+        const callStart = Date.now();
+        let response: any;
         try {
-          const callStart = Date.now();
-          const response = await this.client.models.generateContent({
+          response = await this.client.models.generateContent({
             model: modelCandidate,
             contents,
             config
           });
-
-          const latencyMs = Date.now() - callStart;
-          console.log(`[GeminiProvider] HTTP status: 200`);
-          console.log(`[GeminiProvider] latency: ${latencyMs}ms`);
-
-          if (!response.text) {
-            throw new Error("Empty text response received from Gemini model");
-          }
-
-          let resultText = response.text;
-
-          // Grounding search sources
-          const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-          if (enableSearch && chunks && chunks.length > 0) {
-            let footer = "\n\n---\n*Live Web Results Powered by Google*\n\n**Sources:**\n";
-            const seenUris = new Set<string>();
-            chunks.forEach((chunk: any) => {
-              const title = chunk.web?.title || "Reference";
-              const uri = chunk.web?.uri;
-              if (uri && !seenUris.has(uri)) {
-                seenUris.add(uri);
-                footer += `- [${title}](${uri})\n`;
-              }
+        } catch (callErr: any) {
+          const callErrStr = String(callErr?.message || callErr);
+          // If googleSearch tool failed due to quota/rate limit, retry immediately without search tool
+          if (config.tools && (callErrStr.includes("429") || callErrStr.includes("RESOURCE_EXHAUSTED") || callErrStr.includes("quota"))) {
+            console.warn(`[GeminiProvider] Search tool quota limit on ${modelCandidate}, retrying without search grounding...`);
+            const fallbackConfig = { ...config };
+            delete fallbackConfig.tools;
+            response = await this.client.models.generateContent({
+              model: modelCandidate,
+              contents,
+              config: fallbackConfig
             });
-            if (seenUris.size > 0) {
-              resultText += footer;
-            }
+          } else {
+            throw callErr;
           }
-
-          // Store in 5-min cache
-          responseCache.set(cacheKey, {
-            response: resultText,
-            timestamp: Date.now()
-          });
-
-          return resultText;
-
-        } catch (err: any) {
-          const errMsg = String(err?.message || err);
-          const isNotFound =
-            errMsg.includes("404") ||
-            errMsg.includes("NOT_FOUND") ||
-            errMsg.includes("not found") ||
-            errMsg.includes("no longer available") ||
-            errMsg.includes("model unavailable");
-
-          const isQuota =
-            errMsg.includes("429") ||
-            errMsg.includes("RESOURCE_EXHAUSTED") ||
-            errMsg.includes("quota exceeded") ||
-            errMsg.includes("rate limit");
-
-          if (isNotFound) {
-            console.warn(`[GeminiProvider] Unsupported model skipped: ${modelCandidate}`);
-            break; // Skip to next model
-          }
-
-          if (isQuota) {
-            console.warn(`[GeminiProvider] HTTP status: 429`);
-            if (!retriedThisModel && totalAttemptsCount < maxTotalModelAttempts) {
-              retriedThisModel = true;
-              console.log(`[GeminiProvider] retry count: 1`);
-              const backoff = Math.floor(Math.random() * 3000) + 2000;
-              await new Promise(r => setTimeout(r, backoff));
-              continue; // Retry same model ONCE
-            } else {
-              console.warn(`[GeminiProvider] fallback used: quota_exhausted`);
-              break; // Skip to next candidate model
-            }
-          }
-
-          console.warn(`[GeminiProvider] HTTP status: 500`);
-          break; // Skip to next candidate model
         }
+
+        const latencyMs = Date.now() - callStart;
+        console.log(`[GeminiProvider] HTTP status: 200`);
+        console.log(`[GeminiProvider] latency: ${latencyMs}ms`);
+
+        if (!response.text) {
+          throw new Error("Empty text response received from Gemini model");
+        }
+
+        let resultText = response.text;
+
+        // Grounding search sources
+        const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+        if (enableSearch && chunks && chunks.length > 0) {
+          let footer = "\n\n---\n*Live Web Results Powered by Google*\n\n**Sources:**\n";
+          const seenUris = new Set<string>();
+          chunks.forEach((chunk: any) => {
+            const title = chunk.web?.title || "Reference";
+            const uri = chunk.web?.uri;
+            if (uri && !seenUris.has(uri)) {
+              seenUris.add(uri);
+              footer += `- [${title}](${uri})\n`;
+            }
+          });
+          if (seenUris.size > 0) {
+            resultText += footer;
+          }
+        }
+
+        // Store in 5-min cache
+        responseCache.set(cacheKey, {
+          response: resultText,
+          timestamp: Date.now()
+        });
+
+        return resultText;
+
+      } catch (err: any) {
+        const errMsg = String(err?.message || err);
+        const isNotFound =
+          errMsg.includes("404") ||
+          errMsg.includes("NOT_FOUND") ||
+          errMsg.includes("not found") ||
+          errMsg.includes("no longer available") ||
+          errMsg.includes("model unavailable");
+
+        const isQuotaOrUnavailable =
+          errMsg.includes("429") ||
+          errMsg.includes("503") ||
+          errMsg.includes("RESOURCE_EXHAUSTED") ||
+          errMsg.includes("UNAVAILABLE") ||
+          errMsg.includes("high demand") ||
+          errMsg.includes("quota exceeded") ||
+          errMsg.includes("rate limit");
+
+        if (isNotFound) {
+          console.warn(`[GeminiProvider] Unsupported model skipped: ${modelCandidate}`);
+          continue; // Skip to next model candidate
+        }
+
+        if (isQuotaOrUnavailable) {
+          console.warn(`[GeminiProvider] Model ${modelCandidate} high demand/quota limit, trying next fallback model...`);
+          continue; // Try next fallback model candidate
+        }
+
+        console.warn(`[GeminiProvider] Error with ${modelCandidate}: ${errMsg.slice(0, 150)}. Trying next model...`);
+        continue; // Skip to next candidate model
       }
     }
 

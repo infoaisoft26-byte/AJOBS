@@ -353,60 +353,60 @@ export default function CandidateResumeSection({
   };
 
   return (
-    <div className="w-full space-y-6" id="candidate-resume-section">
+    <div className="w-full space-y-6 max-w-7xl mx-auto pb-12" id="candidate-resume-section">
       
       {/* Header Banner */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-[rgba(4,12,35,0.75)] backdrop-blur-[20px] border border-[rgba(37,99,235,0.35)] rounded-2xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.45)] flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <h2 className="text-xl font-bold text-gray-900">Candidate Resume & Credentials</h2>
-            <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-full border border-blue-200">
+            <h2 className="text-xl font-extrabold text-white tracking-tight">Candidate Resume & Credentials</h2>
+            <span className="px-2.5 py-0.5 bg-blue-950/80 text-cyan-300 text-xs font-semibold rounded-full border border-cyan-500/40 font-mono shadow-[0_0_10px_rgba(0,229,255,0.2)]">
               Cloudinary Storage
             </span>
           </div>
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="text-sm text-slate-300 mt-1">
             Upload your resume for real-time Cloudinary hosting and automated AI candidate profile extraction.
           </p>
         </div>
 
         {/* Sub-navigation Tabs */}
-        <div className="flex items-center space-x-1 bg-gray-100 p-1 rounded-xl border border-gray-200 self-start md:self-auto">
+        <div className="flex items-center space-x-1 bg-slate-950/80 p-1.5 rounded-xl border border-blue-500/30 self-start md:self-auto">
           <button
             onClick={() => setActiveTab("overview")}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
+            className={`px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
               activeTab === "overview"
-                ? "bg-white text-gray-900 shadow-xs font-semibold"
-                : "text-gray-600 hover:text-gray-900"
+                ? "bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-[0_0_12px_rgba(0,229,255,0.3)] font-bold"
+                : "text-slate-400 hover:text-white"
             }`}
           >
             Overview
           </button>
           <button
             onClick={() => setActiveTab("parsed")}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
+            className={`px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
               activeTab === "parsed"
-                ? "bg-white text-gray-900 shadow-xs font-semibold"
-                : "text-gray-600 hover:text-gray-900"
+                ? "bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-[0_0_12px_rgba(0,229,255,0.3)] font-bold"
+                : "text-slate-400 hover:text-white"
             }`}
           >
             Parsed Profile
           </button>
           <button
             onClick={() => setActiveTab("insights")}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
+            className={`px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
               activeTab === "insights"
-                ? "bg-white text-gray-900 shadow-xs font-semibold"
-                : "text-gray-600 hover:text-gray-900"
+                ? "bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-[0_0_12px_rgba(0,229,255,0.3)] font-bold"
+                : "text-slate-400 hover:text-white"
             }`}
           >
             AI Insights
           </button>
           <button
             onClick={() => setActiveTab("documents")}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
+            className={`px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
               activeTab === "documents"
-                ? "bg-white text-gray-900 shadow-xs font-semibold"
-                : "text-gray-600 hover:text-gray-900"
+                ? "bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-[0_0_12px_rgba(0,229,255,0.3)] font-bold"
+                : "text-slate-400 hover:text-white"
             }`}
           >
             Document Vault
@@ -419,20 +419,20 @@ export default function CandidateResumeSection({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
           {/* LEFT: File Upload & Active State Card using shared CandidateResumeUploader */}
-          <div className="lg:col-span-7 bg-white border border-gray-200 rounded-2xl p-6 shadow-xs space-y-6">
+          <div className="lg:col-span-7 bg-[rgba(4,12,35,0.75)] backdrop-blur-[20px] border border-[rgba(37,99,235,0.35)] rounded-2xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.45)] space-y-6">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900 text-base flex items-center space-x-2">
-                <FileText className="w-5 h-5 text-blue-600" />
+              <h3 className="font-bold text-white text-base flex items-center space-x-2">
+                <FileText className="w-5 h-5 text-cyan-400" />
                 <span>Primary Active Resume</span>
               </h3>
               {uploadedFileUrl ? (
-                <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-medium">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
+                <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-emerald-950/70 text-emerald-300 border border-emerald-500/40 rounded-full text-xs font-medium shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                   <span>Resume Uploaded</span>
                 </span>
               ) : (
-                <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-medium">
-                  <AlertCircle className="w-3.5 h-3.5" />
+                <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-amber-950/70 text-amber-300 border border-amber-500/40 rounded-full text-xs font-medium">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
                   <span>No Resume</span>
                 </span>
               )}
@@ -460,61 +460,61 @@ export default function CandidateResumeSection({
             />
 
             {/* Optional Plain Text Transcript Box */}
-            <div className="space-y-2 pt-2 border-t border-gray-200">
-              <label className="block text-xs font-semibold text-gray-700">
+            <div className="space-y-2 pt-2 border-t border-blue-500/20">
+              <label className="block text-xs font-semibold text-slate-300">
                 Optional Resume Plain Text Transcript
               </label>
               <textarea
                 value={resumeText}
                 onChange={(e) => setResumeText(e.target.value)}
                 placeholder="Paste raw text transcript here for extra verification or manual AI parsing..."
-                className="w-full h-32 p-3 text-xs border border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 text-gray-800 bg-white placeholder:text-gray-400"
+                className="w-full h-32 p-3 text-xs border border-blue-500/30 rounded-xl focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-500/30 text-white bg-slate-950/80 placeholder:text-slate-500"
               />
             </div>
           </div>
 
           {/* RIGHT: AI Analysis Control & Status Panel */}
-          <div className="lg:col-span-5 bg-white border border-gray-200 rounded-2xl p-6 shadow-xs space-y-5 flex flex-col justify-between">
+          <div className="lg:col-span-5 bg-[rgba(4,12,35,0.75)] backdrop-blur-[20px] border border-[rgba(37,99,235,0.35)] rounded-2xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.45)] space-y-5 flex flex-col justify-between">
             <div>
-              <div className="flex items-center space-x-2 border-b border-gray-200 pb-3">
-                <Sparkles className="w-5 h-5 text-indigo-600" />
-                <h3 className="font-semibold text-gray-900 text-base">AI Candidate Parsing</h3>
+              <div className="flex items-center space-x-2 border-b border-blue-500/20 pb-3">
+                <Sparkles className="w-5 h-5 text-cyan-400 animate-pulse" />
+                <h3 className="font-bold text-white text-base">AI Candidate Parsing</h3>
               </div>
 
               <div className="py-4 space-y-4">
-                <p className="text-xs text-gray-600 leading-relaxed">
+                <p className="text-xs text-slate-300 leading-relaxed">
                   Our Gemini AI automatically parses your uploaded resume to fill your candidate profile (skills, total experience, designations, education) without overwriting any info you manually edited.
                 </p>
 
                 {/* Status Indicator */}
-                <div className="p-4 rounded-xl border space-y-2">
+                <div className="p-4 rounded-xl border border-blue-500/30 bg-slate-950/70 space-y-2">
                   <div className="flex items-center justify-between text-xs font-semibold">
-                    <span className="text-gray-700">AI Parsing Status:</span>
+                    <span className="text-slate-300">AI Parsing Status:</span>
                     {aiAnalysisStatus === "completed" && (
-                      <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 font-medium">
+                      <span className="text-emerald-300 bg-emerald-950/70 px-2.5 py-0.5 rounded-full border border-emerald-500/40 font-mono font-medium shadow-[0_0_10px_rgba(16,185,129,0.2)]">
                         Completed
                       </span>
                     )}
                     {aiAnalysisStatus === "in_progress" && (
-                      <span className="text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 font-medium flex items-center space-x-1">
-                        <RefreshCw className="w-3 h-3 animate-spin" />
+                      <span className="text-cyan-300 bg-blue-950/70 px-2.5 py-0.5 rounded-full border border-cyan-500/40 font-mono font-medium flex items-center space-x-1 shadow-[0_0_10px_rgba(0,229,255,0.2)]">
+                        <RefreshCw className="w-3 h-3 animate-spin text-cyan-400" />
                         <span>Analyzing...</span>
                       </span>
                     )}
                     {aiAnalysisStatus === "failed" && (
-                      <span className="text-red-700 bg-red-50 px-2 py-0.5 rounded-full border border-red-200 font-medium">
+                      <span className="text-red-300 bg-red-950/70 px-2.5 py-0.5 rounded-full border border-red-500/40 font-mono font-medium">
                         Failed
                       </span>
                     )}
                     {aiAnalysisStatus === "idle" && (
-                      <span className="text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200 font-medium">
+                      <span className="text-slate-400 bg-slate-900 px-2.5 py-0.5 rounded-full border border-blue-500/20 font-mono font-medium">
                         Pending Scan
                       </span>
                     )}
                   </div>
 
                   {aiErrorMsg && (
-                    <p className="text-xs text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-200 mt-2">
+                    <p className="text-xs text-red-300 bg-red-950/60 p-2.5 rounded-lg border border-red-500/30 mt-2">
                       {aiErrorMsg}
                     </p>
                   )}
@@ -523,11 +523,11 @@ export default function CandidateResumeSection({
             </div>
 
             {/* AI Action Buttons */}
-            <div className="space-y-2 pt-2 border-t border-gray-200">
+            <div className="space-y-2 pt-2 border-t border-blue-500/20">
               <button
                 onClick={() => runAiAnalysis()}
                 disabled={isAnalyzingAi || (!uploadedFileUrl && !resumeText.trim())}
-                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 text-white text-xs font-semibold rounded-xl flex items-center justify-center space-x-2 transition-all cursor-pointer shadow-xs"
+                className="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 disabled:from-slate-800 disabled:to-slate-800 text-white text-xs font-bold rounded-xl flex items-center justify-center space-x-2 transition-all cursor-pointer shadow-[0_0_20px_rgba(0,229,255,0.3)] disabled:shadow-none"
               >
                 <Sparkles className="w-4 h-4" />
                 <span>
@@ -539,7 +539,7 @@ export default function CandidateResumeSection({
                 </span>
               </button>
 
-              <p className="text-[11px] text-gray-500 text-center">
+              <p className="text-[11px] text-slate-400 text-center">
                 AI parsing is non-destructive and fills empty profile fields only.
               </p>
             </div>
@@ -549,14 +549,14 @@ export default function CandidateResumeSection({
 
       {/* PARSED PROFILE FIELDS TAB */}
       {activeTab === "parsed" && (
-        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-xs space-y-6">
-          <div className="flex items-center justify-between border-b border-gray-200 pb-4">
+        <div className="bg-[rgba(4,12,35,0.75)] backdrop-blur-[20px] border border-[rgba(37,99,235,0.35)] rounded-2xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.45)] space-y-6">
+          <div className="flex items-center justify-between border-b border-blue-500/20 pb-4">
             <div>
-              <h3 className="font-bold text-gray-900 text-base">Extracted Candidate Details</h3>
-              <p className="text-xs text-gray-500 mt-0.5">Information extracted directly from your resume by Gemini AI.</p>
+              <h3 className="font-extrabold text-white text-base tracking-tight">Extracted Candidate Details</h3>
+              <p className="text-xs text-slate-300 mt-0.5">Information extracted directly from your resume by Gemini AI.</p>
             </div>
             {parsedData && (
-              <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+              <span className="text-xs font-semibold text-emerald-300 bg-emerald-950/70 px-3 py-1 rounded-full border border-emerald-500/40 font-mono shadow-[0_0_10px_rgba(16,185,129,0.2)]">
                 AI Verified
               </span>
             )}
@@ -566,37 +566,37 @@ export default function CandidateResumeSection({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">Full Name</label>
-                  <p className="font-semibold text-gray-900 text-base mt-0.5">{parsedData.fullName || profile?.name || "Candidate"}</p>
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block font-mono">Full Name</label>
+                  <p className="font-bold text-white text-base mt-0.5">{parsedData.fullName || profile?.name || "Candidate"}</p>
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">Designation</label>
-                  <p className="font-semibold text-gray-900 mt-0.5">{parsedData.designation || parsedData.currentDesignation || profile?.designation || "Not specified"}</p>
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block font-mono">Designation</label>
+                  <p className="font-bold text-cyan-300 mt-0.5">{parsedData.designation || parsedData.currentDesignation || profile?.designation || "Not specified"}</p>
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">Current / Target Company</label>
-                  <p className="font-medium text-gray-800 mt-0.5">{parsedData.currentCompany || "Not specified"}</p>
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block font-mono">Current / Target Company</label>
+                  <p className="font-medium text-slate-200 mt-0.5">{parsedData.currentCompany || "Not specified"}</p>
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">Total Experience</label>
-                  <p className="font-medium text-gray-800 mt-0.5">{parsedData.totalExperience || profile?.totalExperience || "Not specified"}</p>
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block font-mono">Total Experience</label>
+                  <p className="font-medium text-slate-200 mt-0.5">{parsedData.totalExperience || profile?.totalExperience || "Not specified"}</p>
                 </div>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">Education & Degree</label>
-                  <p className="font-medium text-gray-800 mt-0.5">{parsedData.education || profile?.education || "Not specified"}</p>
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block font-mono">Education & Degree</label>
+                  <p className="font-medium text-slate-200 mt-0.5">{parsedData.education || profile?.education || "Not specified"}</p>
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block font-sans">Extracted Technical Skills</label>
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block font-mono">Extracted Technical Skills</label>
                   <div className="flex flex-wrap gap-1.5 mt-1.5">
                     {(parsedData.skills || profile?.skills || ["TypeScript", "React"]).map((skill: string, idx: number) => (
-                      <span key={idx} className="px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 text-xs font-medium rounded-lg">
+                      <span key={idx} className="px-2.5 py-1 bg-slate-900/90 text-cyan-300 border border-blue-500/30 text-xs font-medium rounded-lg">
                         {skill}
                       </span>
                     ))}
@@ -604,19 +604,19 @@ export default function CandidateResumeSection({
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">Location / City</label>
-                  <p className="font-medium text-gray-800 mt-0.5">{parsedData.location || parsedData.city || profile?.location || "Remote"}</p>
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block font-mono">Location / City</label>
+                  <p className="font-medium text-slate-200 mt-0.5">{parsedData.location || parsedData.city || profile?.location || "Remote"}</p>
                 </div>
               </div>
             </div>
           ) : (
             <div className="text-center py-12 space-y-3">
-              <Sparkles className="w-10 h-10 text-gray-400 mx-auto" />
-              <p className="text-sm text-gray-600 font-medium">No extracted AI data available yet.</p>
+              <Sparkles className="w-10 h-10 text-cyan-400 mx-auto animate-pulse" />
+              <p className="text-sm text-slate-300 font-medium">No extracted AI data available yet.</p>
               <button
                 onClick={() => runAiAnalysis()}
                 disabled={!uploadedFileUrl && !resumeText.trim()}
-                className="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-xl hover:bg-indigo-700 transition-all cursor-pointer"
+                className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-[0_0_15px_rgba(0,229,255,0.3)]"
               >
                 Run AI Analysis
               </button>
@@ -627,39 +627,39 @@ export default function CandidateResumeSection({
 
       {/* AI INSIGHTS TAB */}
       {activeTab === "insights" && (
-        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-xs space-y-6">
-          <div className="border-b border-gray-200 pb-4">
-            <h3 className="font-bold text-gray-900 text-base">Candidate AI Career Insights</h3>
-            <p className="text-xs text-gray-500 mt-0.5">Automated career feedback and improvement checklist.</p>
+        <div className="bg-[rgba(4,12,35,0.75)] backdrop-blur-[20px] border border-[rgba(37,99,235,0.35)] rounded-2xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.45)] space-y-6">
+          <div className="border-b border-blue-500/20 pb-4">
+            <h3 className="font-extrabold text-white text-base tracking-tight">Candidate AI Career Insights</h3>
+            <p className="text-xs text-slate-300 mt-0.5">Automated career feedback and improvement checklist.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-emerald-50/50 border border-emerald-200 rounded-xl space-y-2">
-              <div className="flex items-center space-x-2 text-emerald-800 font-bold text-xs">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <div className="p-4 bg-emerald-950/40 border border-emerald-500/30 rounded-xl space-y-2">
+              <div className="flex items-center space-x-2 text-emerald-300 font-bold text-xs">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                 <span>Key Profile Strengths</span>
               </div>
-              <p className="text-xs text-gray-700 leading-relaxed">
+              <p className="text-xs text-slate-300 leading-relaxed">
                 Strong technical stack alignment in modern framework tools. Clear experience timeline.
               </p>
             </div>
 
-            <div className="p-4 bg-blue-50/50 border border-blue-200 rounded-xl space-y-2">
-              <div className="flex items-center space-x-2 text-blue-800 font-bold text-xs">
-                <Award className="w-4 h-4 text-blue-600" />
+            <div className="p-4 bg-blue-950/40 border border-cyan-500/30 rounded-xl space-y-2">
+              <div className="flex items-center space-x-2 text-cyan-300 font-bold text-xs">
+                <Award className="w-4 h-4 text-cyan-400" />
                 <span>Recommended Upgrades</span>
               </div>
-              <p className="text-xs text-gray-700 leading-relaxed">
+              <p className="text-xs text-slate-300 leading-relaxed">
                 Include quantifiable impact metrics in past roles (e.g. "Increased performance by 30%").
               </p>
             </div>
 
-            <div className="p-4 bg-purple-50/50 border border-purple-200 rounded-xl space-y-2">
-              <div className="flex items-center space-x-2 text-purple-800 font-bold text-xs">
-                <ShieldCheck className="w-4 h-4 text-purple-600" />
+            <div className="p-4 bg-purple-950/40 border border-purple-500/30 rounded-xl space-y-2">
+              <div className="flex items-center space-x-2 text-purple-300 font-bold text-xs">
+                <ShieldCheck className="w-4 h-4 text-purple-400" />
                 <span>Recruiter Visibility</span>
               </div>
-              <p className="text-xs text-gray-700 leading-relaxed">
+              <p className="text-xs text-slate-300 leading-relaxed">
                 Profile is verified and visible to active recruiters on AIJobs.
               </p>
             </div>
@@ -669,32 +669,32 @@ export default function CandidateResumeSection({
 
       {/* DOCUMENT VAULT TAB */}
       {activeTab === "documents" && (
-        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-xs space-y-6">
-          <div className="flex items-center justify-between border-b border-gray-200 pb-4">
+        <div className="bg-[rgba(4,12,35,0.75)] backdrop-blur-[20px] border border-[rgba(37,99,235,0.35)] rounded-2xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.45)] space-y-6">
+          <div className="flex items-center justify-between border-b border-blue-500/20 pb-4">
             <div>
-              <h3 className="font-bold text-gray-900 text-base">Candidate Document Vault</h3>
-              <p className="text-xs text-gray-500 mt-0.5">Upload portfolios, certificates, or cover letters to Cloudinary.</p>
+              <h3 className="font-extrabold text-white text-base tracking-tight">Candidate Document Vault</h3>
+              <p className="text-xs text-slate-300 mt-0.5">Upload portfolios, certificates, or cover letters to Cloudinary.</p>
             </div>
           </div>
 
           {isLoadingDocs ? (
             <div className="text-center py-8">
-              <RefreshCw className="w-6 h-6 text-blue-600 animate-spin mx-auto" />
-              <p className="text-xs text-gray-500 mt-2">Loading documents...</p>
+              <RefreshCw className="w-6 h-6 text-cyan-400 animate-spin mx-auto" />
+              <p className="text-xs text-slate-400 mt-2">Loading documents...</p>
             </div>
           ) : documents.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {documents.map((dItem: any) => (
-                <div key={dItem.id} className="p-4 border border-gray-200 rounded-xl flex items-center justify-between bg-gray-50/50">
+                <div key={dItem.id} className="p-4 border border-blue-500/25 rounded-xl flex items-center justify-between bg-slate-950/70">
                   <div className="truncate space-y-1">
-                    <p className="font-semibold text-gray-900 text-xs truncate">{dItem.fileName}</p>
-                    <p className="text-[10px] text-gray-500">Uploaded {new Date(dItem.uploadedAt).toLocaleDateString()}</p>
+                    <p className="font-bold text-white text-xs truncate">{dItem.fileName}</p>
+                    <p className="text-[10px] text-slate-400 font-mono">Uploaded {new Date(dItem.uploadedAt).toLocaleDateString()}</p>
                   </div>
                   <a
                     href={dItem.fileUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                    className="p-2 text-cyan-400 hover:bg-cyan-500/20 rounded-lg transition-all"
                   >
                     <Download className="w-4 h-4" />
                   </a>
@@ -702,9 +702,9 @@ export default function CandidateResumeSection({
               ))}
             </div>
           ) : (
-            <div className="text-center py-10 border-2 border-dashed border-gray-200 rounded-xl space-y-2">
-              <FolderOpen className="w-8 h-8 text-gray-400 mx-auto" />
-              <p className="text-xs font-medium text-gray-600">No additional documents uploaded yet.</p>
+            <div className="text-center py-10 border-2 border-dashed border-blue-500/30 rounded-xl space-y-2 bg-slate-950/40">
+              <FolderOpen className="w-8 h-8 text-cyan-400/60 mx-auto" />
+              <p className="text-xs font-medium text-slate-300">No additional documents uploaded yet.</p>
             </div>
           )}
         </div>
