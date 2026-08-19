@@ -32,7 +32,24 @@ export function ThreeDBackground({ mode = "neural", onModeChange }: ThreeDBackgr
     );
     camera.position.set(0, 0, 400);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    // 3D is decorative only. Never let unavailable/blocked WebGL crash the
+    // authentication or dashboard UI (common in incognito, VMs and older GPUs).
+    const capabilityCanvas = document.createElement("canvas");
+    const webgl = capabilityCanvas.getContext("webgl2") || capabilityCanvas.getContext("webgl");
+    if (!webgl) {
+      console.warn("[ThreeDBackground] WebGL unavailable; using the CSS background fallback.");
+      container.innerHTML = "";
+      return;
+    }
+
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    } catch (error) {
+      console.warn("[ThreeDBackground] Renderer initialization failed; using the CSS background fallback.", error);
+      container.innerHTML = "";
+      return;
+    }
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setClearColor(0x030307, 1);
