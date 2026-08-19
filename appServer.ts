@@ -4852,6 +4852,141 @@ app.post("/api/admin/create-admin", async (req, res) => {
   }
 });
 
+// Admin Workspace Account Creation (Recruiter / Consultancy)
+// Creates Firebase Authentication and all matching Firestore role records in one transaction-like flow.
+app.post("/api/admin/create-workspace-user", async (req, res) => {
+  try {
+    const authHeader = String(req.headers.authorization || "");
+    if (!authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ success: false, error: "Admin authentication is required." });
+    }
+
+    const adminAuth = getFirebaseAuth();
+    const adminDb = getFirestoreDb();
+    const decoded = await adminAuth.verifyIdToken(authHeader.slice(7).trim());
+    const requesterUid = decoded.uid;
+
+    const [requesterUserDoc, requesterAdminDoc] = await Promise.all([
+      adminDb.collection("users").doc(requesterUid).get(),
+      adminDb.collection("admins").doc(requesterUid).get()
+    ]);
+    const requester = requesterUserDoc.data() || requesterAdminDoc.data() || {};
+    const requesterRole = String(requester.role || decoded.role || "").toLowerCase().replace(/[\s-]+/g, "_");
+    const isAuthorizedAdmin = ["admin", "superadmin", "super_admin"].includes(requesterRole)
+      && requester.status !== "suspended"
+      && requester.isActive !== false;
+
+    if (!isAuthorizedAdmin) {
+      return res.status(403).json({ success: false, error: "Only an active Admin can create workspace accounts." });
+    }
+
+    const { email, password, name, role, phone = "", companyName = "" } = req.body || {};
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const normalizedRole = String(role || "").trim().toLowerCase();
+    const cleanName = String(name || "").trim();
+
+    if (!["recruiter", "consultancy"].includes(normalizedRole)) {
+      return res.status(400).json({ success: false, error: "Role must be recruiter or consultancy." });
+    }
+    if (!normalizedEmail || !/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
+      return res.status(400).json({ success: false, error: "A valid email address is required." });
+    }
+    if (!cleanName) {
+      return res.status(400).json({ success: false, error: "Name is required." });
+    }
+    if (typeof password !== "string" || password.length < 8) {
+      return res.status(400).json({ success: false, error: "Temporary password must contain at least 8 characters." });
+    }
+
+    try {
+      await adminAuth.getUserByEmail(normalizedEmail);
+      return res.status(409).json({ success: false, error: "An account with this email already exists." });
+    } catch (lookupError: any) {
+      if (lookupError?.code && lookupError.code !== "auth/user-not-found") throw lookupError;
+    }
+
+    const userRecord = await adminAuth.createUser({
+      email: normalizedEmail,
+      password,
+      displayName: cleanName,
+      phoneNumber: phone ? String(phone).trim() : undefined,
+      emailVerified: true,
+      disabled: false
+    });
+
+    try {
+      await adminAuth.setCustomUserClaims(userRecord.uid, { role: normalizedRole });
+      const now = new Date().toISOString();
+      const profile = {
+        uid: userRecord.uid,
+        email: normalizedEmail,
+        name: cleanName,
+        phone: String(phone || "").trim(),
+        role: normalizedRole,
+        companyName: String(companyName || "").trim(),
+        status: "active",
+        accountStatus: "active",
+        verificationStatus: "verified",
+        emailVerified: true,
+        kycStatus: "verified",
+        isActive: true,
+        isApproved: true,
+        onboardingCompleted: true,
+        createdBy: requesterUid,
+        createdAt: now,
+        updatedAt: now
+      };
+
+      const writes: Promise<any>[] = [
+        adminDb.collection("users").doc(userRecord.uid).set(profile, { merge: true }),
+        adminDb.collection("audit_logs").doc(`admin_create_${userRecord.uid}_${Date.now()}`).set({
+          action: "CREATE_WORKSPACE_USER",
+          category: "User",
+          actorUid: requesterUid,
+          targetUid: userRecord.uid,
+          targetEmail: normalizedEmail,
+          targetRole: normalizedRole,
+          createdAt: now
+        })
+      ];
+
+      if (normalizedRole === "recruiter") {
+        writes.push(adminDb.collection("recruiters").doc(userRecord.uid).set({
+          ...profile,
+          recruiterId: userRecord.uid,
+          resumeAccessStatus: "inactive"
+        }, { merge: true }));
+      } else {
+        writes.push(adminDb.collection("consultancies").doc(userRecord.uid).set({
+          ...profile,
+          consultancyId: userRecord.uid,
+          agencyName: String(companyName || cleanName).trim(),
+          subscriptionStatus: "active"
+        }, { merge: true }));
+      }
+
+      await Promise.all(writes);
+    } catch (profileError) {
+      await adminAuth.deleteUser(userRecord.uid).catch(() => undefined);
+      throw profileError;
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: `${normalizedRole === "recruiter" ? "Recruiter" : "Consultancy"} account created successfully.`,
+      uid: userRecord.uid,
+      email: normalizedEmail,
+      role: normalizedRole
+    });
+  } catch (err: any) {
+    console.error("[/api/admin/create-workspace-user Error]:", err);
+    const message = err?.code === "auth/invalid-phone-number"
+      ? "Phone number must include the country code, for example +919324773994."
+      : (err?.message || "Unable to create workspace account.");
+    return res.status(500).json({ success: false, error: message });
+  }
+});
+
 // Approve Consultancy
 app.post("/api/admin/approve-consultancy", async (req, res) => {
   try {
