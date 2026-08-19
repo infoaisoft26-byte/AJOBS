@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 import { collection, deleteDoc, doc, setDoc } from "firebase/firestore";
-import { Ban, Chrome, Clock, Code, Delete, Eye, Filter, Inspect, Key, Rows, Search, ShieldCheck, Table, Trash2, User, Users, View } from "lucide-react";
+import { Ban, Building2, Chrome, Clock, Code, Delete, Eye, Filter, Inspect, Key, Plus, Rows, Search, ShieldCheck, Table, Trash2, User, UserPlus, Users, View } from "lucide-react";
 import { auth, db } from "../../firebase";
 import InteractiveExportTable from "../InteractiveExportTable";
 
@@ -18,13 +18,24 @@ export default function UserManagement({
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [selectedUserForDetail, setSelectedUserForDetail] = useState<UserProfile | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const [createSuccess, setCreateSuccess] = useState("");
+  const [newAccount, setNewAccount] = useState({
+    role: "recruiter" as "recruiter" | "consultancy",
+    name: "",
+    companyName: "",
+    email: "",
+    phone: "",
+    password: ""
+  });
 
   // Filtered users
   const filteredUsers = users.filter((u) => {
     const matchesSearch = 
-      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.uid.toLowerCase().includes(searchQuery.toLowerCase());
+      (u.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (u.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (u.uid || "").toLowerCase().includes(searchQuery.toLowerCase());
     
     // Simulate active status check since standard user profile might have suspended: true/false
     const userStatus = (u as any).isSuspended ? "suspended" : "active";
@@ -161,18 +172,87 @@ export default function UserManagement({
     }
   };
 
+  const handleCreateWorkspaceUser = async (event: FormEvent) => {
+    event.preventDefault();
+    setCreateError("");
+    setCreateSuccess("");
+    setIsSubmitting(true);
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error("Admin session expired. Please sign in again.");
+      const idToken = await currentUser.getIdToken(true);
+      const response = await fetch("/api/admin/create-workspace-user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`
+        },
+        body: JSON.stringify(newAccount)
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Account creation failed.");
+      }
+      setCreateSuccess(`${newAccount.role === "recruiter" ? "Recruiter" : "Consultancy"} created: ${newAccount.email}`);
+      setNewAccount({ role: "recruiter", name: "", companyName: "", email: "", phone: "", password: "" });
+      onRefresh();
+    } catch (error: any) {
+      setCreateError(error?.message || "Unable to create account.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-6" id="user-management-panel">
       {/* View Header */}
-      <div className="border-b border-white/5 pb-4">
-        <h3 className="text-xl font-bold text-white flex items-center gap-2">
-          <Users className="w-5 h-5 text-indigo-400" />
-          <span>System User Matrix</span>
-        </h3>
-        <p className="text-xs text-gray-400 mt-1">
-          Perform administrative user management. Filter candidates, corporate employers, or recruiters to adjust clearance tokens, review logs, reset credentials, or suspend access.
-        </p>
+      <div className="border-b border-white/5 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            <Users className="w-5 h-5 text-indigo-400" />
+            <span>System User Matrix</span>
+          </h3>
+          <p className="text-xs text-gray-400 mt-1">
+            Create and manage recruiter or consultancy workspace accounts without opening Firebase.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => { setShowCreateForm((value) => !value); setCreateError(""); setCreateSuccess(""); }}
+          className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-2"
+        >
+          <UserPlus className="w-4 h-4" />
+          Create Workspace ID
+        </button>
       </div>
+
+      {showCreateForm && (
+        <form onSubmit={handleCreateWorkspaceUser} className="bg-indigo-500/5 border border-indigo-500/25 rounded-2xl p-5 space-y-4">
+          <div className="flex items-center gap-2 text-white font-bold">
+            <Building2 className="w-4 h-4 text-indigo-400" />
+            New Recruiter / Consultancy Account
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <select value={newAccount.role} onChange={(e) => setNewAccount({ ...newAccount, role: e.target.value as "recruiter" | "consultancy" })} className="bg-neutral-950 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white">
+              <option value="recruiter">Recruiter</option>
+              <option value="consultancy">Consultancy</option>
+            </select>
+            <input required value={newAccount.name} onChange={(e) => setNewAccount({ ...newAccount, name: e.target.value })} placeholder={newAccount.role === "recruiter" ? "Recruiter full name" : "Authorized person name"} className="bg-neutral-950 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white" />
+            <input value={newAccount.companyName} onChange={(e) => setNewAccount({ ...newAccount, companyName: e.target.value })} placeholder="Company / Agency name" className="bg-neutral-950 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white" />
+            <input required type="email" value={newAccount.email} onChange={(e) => setNewAccount({ ...newAccount, email: e.target.value })} placeholder="Login email" className="bg-neutral-950 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white" />
+            <input value={newAccount.phone} onChange={(e) => setNewAccount({ ...newAccount, phone: e.target.value })} placeholder="Phone with country code (optional)" className="bg-neutral-950 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white" />
+            <input required minLength={8} type="password" value={newAccount.password} onChange={(e) => setNewAccount({ ...newAccount, password: e.target.value })} placeholder="Temporary password (8+ characters)" className="bg-neutral-950 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white" />
+          </div>
+          {createError && <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-3">{createError}</p>}
+          {createSuccess && <p className="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3">{createSuccess}</p>}
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setShowCreateForm(false)} className="px-4 py-2 text-xs font-bold text-gray-300 bg-white/5 rounded-lg">Cancel</button>
+            <button disabled={isSubmitting} type="submit" className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 rounded-lg flex items-center gap-2">
+              <Plus className="w-3.5 h-3.5" /> {isSubmitting ? "Creating..." : "Create & Activate Account"}
+            </button>
+          </div>
+        </form>
+      )}
 
       {/* Filter and Search controls */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white/5 p-4 rounded-2xl border border-white/5 text-xs text-gray-300">
