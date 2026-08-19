@@ -56,7 +56,8 @@ function safeLazy<T extends React.ComponentType<any>>(
 // Lazy-loaded dashboard and view components for minimal initial bundle size
 const CandidateDashboard = safeLazy(() => import("@/components/CandidateDashboard"), "CandidateDashboard");
 const ConsultancyDashboard = safeLazy(() => import("@/components/ConsultancyDashboard"), "ConsultancyDashboard");
-const EmployerDashboard = safeLazy(() => import("@/components/EmployerDashboard"), "EmployerDashboard");
+const EmployerDashboard = safeLazy(() => import("@/components/employer/EmployerDashboard"), "EmployerDashboard");
+const RecruiterDashboard = safeLazy(() => import("@/components/recruiter/RecruiterDashboard"), "RecruiterDashboard");
 const AdminDashboard = safeLazy(() => import("@/components/AdminDashboard"), "AdminDashboard");
 const EmployeeDashboard = safeLazy(() => import("@/components/employee/EmployeeDashboard"), "EmployeeDashboard");
 const VerificationOnboardingView = safeLazy(() => import("@/components/VerificationOnboardingView"), "VerificationOnboardingView");
@@ -69,6 +70,8 @@ const NotificationCenterViewLazy = safeLazy(() =>
 // Lazy-loaded secondary pages & modals
 const CandidatePreLaunchLoginLazy = safeLazy(() => import("@/components/CandidatePreLaunchLogin"), "CandidatePreLaunchLogin");
 const CandidateRegisterLazy = safeLazy(() => import("@/components/CandidateRegister"), "CandidateRegister");
+const UnifiedLoginLazy = safeLazy(() => import("@/components/UnifiedLogin"), "UnifiedLogin");
+const PublicJobOpeningsLazy = safeLazy(() => import("@/components/PublicJobOpenings"), "PublicJobOpenings");
 const CandidatePreLaunchProfileLazy = safeLazy(() => import("@/components/CandidatePreLaunchProfile"), "CandidatePreLaunchProfile");
 const InternalPlatformLoginLazy = safeLazy(() => import("@/components/InternalPlatformLogin"), "InternalPlatformLogin");
 const AdminLoginLazy = safeLazy(() => import("@/components/AdminLogin"), "AdminLogin");
@@ -99,57 +102,17 @@ import { GlobalMarketplaceProvider } from "@/context/GlobalMarketplaceContext";
 import { initGA, trackPageView, trackInteraction } from "@/utils/analytics";
 import { validateEnvironment } from "@/utils/envValidation";
 import { getOrCreateUserProfile } from "@/services/dbInitService";
-import { isAdminRole, normalizeRole } from "@/utils/roleUtils";
+import { isAdminRole, normalizeRole, routeUserByRole } from "@/utils/roleUtils";
+import { clearUserSessionState } from "@/utils/authSession";
 
 // Route Guards
 import CandidatePreLaunchGuard from "@/components/guards/CandidatePreLaunchGuard";
 import InternalAccessGuard from "@/components/guards/InternalAccessGuard";
 import AdminGuard from "@/components/guards/AdminGuard";
+import RoleBasedGuard from "@/components/guards/RoleBasedGuard";
 
 function PageTransitionParticles({ triggerKey }: { triggerKey: string }) {
-  const [particles, setParticles] = useState<Array<{ id: number; left: number; top: number; size: number; delay: number }>>([]);
-
-  useEffect(() => {
-    const newParticles = Array.from({ length: 45 }).map((_, i) => ({
-      id: i + Math.random(),
-      left: Math.random() * 100,
-      top: Math.random() * 100,
-      size: Math.random() * 6 + 3,
-      delay: Math.random() * 0.25,
-    }));
-    setParticles(newParticles);
-  }, [triggerKey]);
-
-  return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden z-40">
-      <AnimatePresence>
-        {particles.map((p) => (
-          <motion.div
-            key={p.id}
-            initial={{ opacity: 0, scale: 0, y: 40 }}
-            animate={{ 
-              opacity: [0, 0.75, 0], 
-              scale: [0, 1.4, 0], 
-              y: -100, 
-              x: (Math.random() - 0.5) * 60,
-            }}
-            transition={{ 
-              duration: 1.1, 
-              delay: p.delay,
-              ease: "easeOut" 
-            }}
-            className="absolute rounded bg-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.6)]"
-            style={{
-              left: `${p.left}%`,
-              top: `${p.top}%`,
-              width: p.size,
-              height: p.size,
-            }}
-          />
-        ))}
-      </AnimatePresence>
-    </div>
-  );
+  return null;
 }
 
 interface ProtectedRouteProps {
@@ -520,21 +483,28 @@ function MainAppContent() {
 
   const handleLogout = async () => {
     try {
+      clearUserSessionState();
       await auth.signOut();
       setUser(null);
       setActiveView("home");
+      if (typeof window !== "undefined") {
+        window.history.pushState({}, "", "/");
+      }
       showToast("Workspace session terminated successfully", "success");
       trackInteraction("logout", "auth");
     } catch (err) {
       console.error(err);
-      showToast("Failed to terminate workspace session", "error");
+      clearUserSessionState();
+      setUser(null);
+      setActiveView("home");
+      showToast("Session terminated", "info");
     }
   };
 
-  const handleAuthSuccess = (profile: UserProfile) => {
+  const handleAuthSuccess = (profile: UserProfile, targetRoute?: string) => {
     setUser(profile);
-    setActiveView("dashboard");
-    showToast(`Authenticated as: ${profile.name}`, "success");
+    routeUserByRole(profile, (v) => setActiveView(v));
+    showToast(`Authenticated as: ${profile.name || "User"}`, "success");
   };
 
   const handleUpdateUserRole = async (selectedRole: "candidate" | "consultancy" | "employer" | "admin") => {
@@ -650,6 +620,31 @@ function MainAppContent() {
           );
         }
       case "employer":
+        {
+          const isVerified = user.isApproved === true && user.status === "active" && user.kycStatus === "verified";
+          if (!isVerified || user.accountStatus === "pending_verification" || user.accountStatus === "suspended_for_review" || user.accountStatus === "resubmission_required") {
+            return (
+              <VerificationOnboardingView 
+                user={user} 
+                onLogout={handleLogout} 
+                onStatusUpdate={() => {
+                  auth.currentUser && getOrCreateUserProfile(auth.currentUser).then(setUser);
+                }} 
+              />
+            );
+          }
+          return (
+            <ProtectedRoute 
+              user={user} 
+              allowedRoles={["employer", "admin", "super_admin"]} 
+              fallbackView="home" 
+              setActiveView={setActiveView} 
+              setAuthMode={setAuthMode}
+            >
+              <EmployerDashboard userId={user.uid} userName={user.name} userRole={user.role} onLogout={handleLogout} />
+            </ProtectedRoute>
+          );
+        }
       case "recruiter":
         {
           const isVerified = user.isApproved === true && user.status === "active" && user.kycStatus === "verified";
@@ -667,12 +662,12 @@ function MainAppContent() {
           return (
             <ProtectedRoute 
               user={user} 
-              allowedRoles={["employer", "recruiter", "admin", "super_admin"]} 
+              allowedRoles={["recruiter", "admin", "super_admin"]} 
               fallbackView="home" 
               setActiveView={setActiveView} 
               setAuthMode={setAuthMode}
             >
-              <EmployerDashboard userId={user.uid} userName={user.name} userRole={user.role} />
+              <RecruiterDashboard userId={user.uid} userName={user.name} userRole={user.role} onLogout={handleLogout} />
             </ProtectedRoute>
           );
         }
@@ -840,7 +835,7 @@ function MainAppContent() {
                       <CompanySectionLazy pageType="contact" onClose={() => { setActiveView("home"); window.history.pushState({}, "", "/"); }} />
                     </Suspense>
                   </div>
-                ) : (activeView === "home" || activeView === "how-it-works" || activeView === "jobs") ? (
+                ) : (activeView === "home" || activeView === "how-it-works") ? (
                   <LandingPage
                     onGetStarted={() => {
                       if (user) {
@@ -858,6 +853,26 @@ function MainAppContent() {
                     }}
                     user={user}
                   />
+                ) : (activeView === "public-jobs" || activeView === "jobs") ? (
+                  <Suspense fallback={<GeneralLoading />}>
+                    <PublicJobOpeningsLazy
+                      onSelectJob={(jobId) => setActiveView(`job-details-${jobId}`)}
+                      onOpenAuth={(mode) => setAuthMode(mode)}
+                      onOpenResumeUpload={() => setActiveView("resume-onboarding")}
+                      user={user}
+                      setActiveView={setActiveView}
+                    />
+                  </Suspense>
+                ) : (activeView === "unified-login" || activeView === "login") ? (
+                  <Suspense fallback={<GeneralLoading />}>
+                    <UnifiedLoginLazy
+                      onSuccess={(profile) => {
+                        handleAuthSuccess(profile);
+                      }}
+                      onSwitchToRegister={() => setActiveView("candidate-register")}
+                      onClose={() => setActiveView("home")}
+                    />
+                  </Suspense>
                 ) : activeView === "candidate-login" ? (
                   <Suspense fallback={<GeneralLoading />}>
                     <CandidatePreLaunchLoginLazy
@@ -914,62 +929,113 @@ function MainAppContent() {
                     />
                   </Suspense>
                 ) : activeView === "admin-dashboard" ? (
-                  <AdminGuard
+                  <RoleBasedGuard
                     user={user}
-                    onNavigateToAdminLogin={() => setActiveView("admin-login")}
+                    allowedRoles={["admin", "super_admin"]}
+                    fallbackView="admin-login"
+                    setActiveView={setActiveView}
                   >
-                    <ErrorBoundary componentName="AdminDashboard" onLogout={handleLogout}>
+                    <AdminGuard
+                      user={user}
+                      onNavigateToAdminLogin={() => setActiveView("admin-login")}
+                    >
+                      <ErrorBoundary componentName="AdminDashboard" onLogout={handleLogout}>
+                        <Suspense fallback={<DashboardSkeleton />}>
+                          <AdminDashboard
+                            userId={user?.uid}
+                            userName={user?.name}
+                          />
+                        </Suspense>
+                      </ErrorBoundary>
+                    </AdminGuard>
+                  </RoleBasedGuard>
+                ) : activeView === "internal-candidate" ? (
+                  <RoleBasedGuard
+                    user={user}
+                    allowedRoles={["candidate", "admin", "super_admin"]}
+                    fallbackView="home"
+                    setActiveView={setActiveView}
+                  >
+                    <InternalAccessGuard
+                      user={user}
+                      onCandidateRedirect={() => setActiveView("pre-launch-profile")}
+                      onNavigateToInternalLogin={() => setActiveView("internal-login")}
+                    >
                       <Suspense fallback={<DashboardSkeleton />}>
-                        <AdminDashboard
-                          userId={user?.uid}
-                          userName={user?.name}
+                        <CandidateDashboard
+                          userId={user?.uid || ""}
+                          userName={user?.name || "Candidate"}
+                          userEmail={user?.email}
+                          onResumeUploadSuccess={() => {}}
+                          onFindJobsClick={() => setActiveView("home")}
+                          onNavigateToOnboarding={() => setActiveView("resume-onboarding")}
                         />
                       </Suspense>
-                    </ErrorBoundary>
-                  </AdminGuard>
-                ) : activeView === "internal-candidate" ? (
-                  <InternalAccessGuard
-                    user={user}
-                    onCandidateRedirect={() => setActiveView("pre-launch-profile")}
-                    onNavigateToInternalLogin={() => setActiveView("internal-login")}
-                  >
-                    <Suspense fallback={<DashboardSkeleton />}>
-                      <CandidateDashboard
-                        userId={user?.uid || ""}
-                        userName={user?.name || "Candidate"}
-                        userEmail={user?.email}
-                        onResumeUploadSuccess={() => {}}
-                        onFindJobsClick={() => setActiveView("home")}
-                        onNavigateToOnboarding={() => setActiveView("resume-onboarding")}
-                      />
-                    </Suspense>
-                  </InternalAccessGuard>
+                    </InternalAccessGuard>
+                  </RoleBasedGuard>
                 ) : activeView === "internal-employer" ? (
-                  <InternalAccessGuard
+                  <RoleBasedGuard
                     user={user}
-                    onCandidateRedirect={() => setActiveView("pre-launch-profile")}
-                    onNavigateToInternalLogin={() => setActiveView("internal-login")}
+                    allowedRoles={["employer", "admin", "super_admin"]}
+                    fallbackView="home"
+                    setActiveView={setActiveView}
                   >
-                    <Suspense fallback={<DashboardSkeleton />}>
-                      <EmployerDashboard
-                        userId={user?.uid || ""}
-                        companyName={user?.name || "Company"}
-                      />
-                    </Suspense>
-                  </InternalAccessGuard>
+                    <InternalAccessGuard
+                      user={user}
+                      onCandidateRedirect={() => setActiveView("pre-launch-profile")}
+                      onNavigateToInternalLogin={() => setActiveView("internal-login")}
+                    >
+                      <Suspense fallback={<DashboardSkeleton />}>
+                        <EmployerDashboard
+                          userId={user?.uid || ""}
+                          userName={user?.name}
+                          companyName={user?.name || "Company"}
+                          onLogout={handleLogout}
+                        />
+                      </Suspense>
+                    </InternalAccessGuard>
+                  </RoleBasedGuard>
+                ) : activeView === "internal-recruiter" ? (
+                  <RoleBasedGuard
+                    user={user}
+                    allowedRoles={["recruiter", "admin", "super_admin"]}
+                    fallbackView="home"
+                    setActiveView={setActiveView}
+                  >
+                    <InternalAccessGuard
+                      user={user}
+                      onCandidateRedirect={() => setActiveView("pre-launch-profile")}
+                      onNavigateToInternalLogin={() => setActiveView("internal-login")}
+                    >
+                      <Suspense fallback={<DashboardSkeleton />}>
+                        <RecruiterDashboard
+                          userId={user?.uid || ""}
+                          userName={user?.name}
+                          onLogout={handleLogout}
+                        />
+                      </Suspense>
+                    </InternalAccessGuard>
+                  </RoleBasedGuard>
                 ) : activeView === "internal-consultancy" ? (
-                  <InternalAccessGuard
+                  <RoleBasedGuard
                     user={user}
-                    onCandidateRedirect={() => setActiveView("pre-launch-profile")}
-                    onNavigateToInternalLogin={() => setActiveView("internal-login")}
+                    allowedRoles={["consultancy", "admin", "super_admin"]}
+                    fallbackView="home"
+                    setActiveView={setActiveView}
                   >
-                    <Suspense fallback={<DashboardSkeleton />}>
-                      <ConsultancyDashboard
-                        userId={user?.uid || ""}
-                        consultancyName={user?.name || "Consultancy"}
-                      />
-                    </Suspense>
-                  </InternalAccessGuard>
+                    <InternalAccessGuard
+                      user={user}
+                      onCandidateRedirect={() => setActiveView("pre-launch-profile")}
+                      onNavigateToInternalLogin={() => setActiveView("internal-login")}
+                    >
+                      <Suspense fallback={<DashboardSkeleton />}>
+                        <ConsultancyDashboard
+                          userId={user?.uid || ""}
+                          consultancyName={user?.name || "Consultancy"}
+                        />
+                      </Suspense>
+                    </InternalAccessGuard>
+                  </RoleBasedGuard>
                 ) : activeView.startsWith("job-details-") ? (
                   <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
                     <Suspense fallback={<GeneralLoading />}>

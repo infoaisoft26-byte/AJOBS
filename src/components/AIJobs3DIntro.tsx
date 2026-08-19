@@ -115,7 +115,8 @@ export const AIJobs3DIntro: React.FC<AIJobs3DIntroProps> = ({ onComplete }) => {
   };
 
   // =========================================================================
-  // CANVAS BACKGROUND: CINEMATIC LIGHT SWEEP & NEURAL PARTICLE FILAMENTS
+  // CANVAS BACKGROUND: CLEAN CINEMATIC LIGHT SWEEP & SOFT AMBIENT GRADIENT
+  // STRICT RULE: ZERO PARTICLES, NO DUST, NO STARS, NO NOISE
   // =========================================================================
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -134,61 +135,32 @@ export const AIJobs3DIntro: React.FC<AIJobs3DIntroProps> = ({ onComplete }) => {
     };
     window.addEventListener("resize", handleResize);
 
-    // 40 Ambient Electric-Blue Particles
-    const particles = Array.from({ length: 45 }).map(() => ({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      vx: (Math.random() - 0.5) * 0.35,
-      vy: (Math.random() - 0.5) * 0.35,
-      radius: Math.random() * 2 + 1,
-      alpha: Math.random() * 0.5 + 0.2,
-    }));
-
     const render = () => {
       ctx.clearRect(0, 0, width, height);
 
-      // Draw subtle connective filaments in AI Matching scenes (6-15s)
-      for (let i = 0; i < particles.length; i++) {
-        const p = particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
+      // Subtle stationary soft blue gradient glow in center
+      const radialGrad = ctx.createRadialGradient(
+        width / 2, height / 2, 50,
+        width / 2, height / 2, Math.max(width, height) * 0.6
+      );
+      radialGrad.addColorStop(0, "rgba(30, 58, 138, 0.25)"); // deep navy blue
+      radialGrad.addColorStop(0.6, "rgba(15, 23, 42, 0.15)");
+      radialGrad.addColorStop(1, "rgba(2, 6, 23, 0)");
 
-        if (p.x < 0) p.x = width;
-        if (p.x > width) p.x = 0;
-        if (p.y < 0) p.y = height;
-        if (p.y > height) p.y = 0;
+      ctx.fillStyle = radialGrad;
+      ctx.fillRect(0, 0, width, height);
 
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(56, 189, 248, ${p.alpha})`;
-        ctx.fill();
-
-        // Connect nearby particles with thin electric-blue lines
-        for (let j = i + 1; j < particles.length; j++) {
-          const p2 = particles[j];
-          const dist = Math.hypot(p.x - p2.x, p.y - p2.y);
-          if (dist < 120) {
-            ctx.beginPath();
-            ctx.moveTo(p.x, p.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.strokeStyle = `rgba(14, 165, 233, ${(1 - dist / 120) * 0.22})`;
-            ctx.lineWidth = 0.8;
-            ctx.stroke();
-          }
-        }
-      }
-
-      // Anamorphic horizontal light sweep for logo reveal (12.0s - 15.0s)
+      // Anamorphic horizontal blue light sweep for logo reveal (12.0s - 15.0s)
       if (elapsed >= 12.0) {
         const sweepProgress = (elapsed - 12.0) / 3.0;
         const sweepX = width * sweepProgress;
 
-        const grad = ctx.createLinearGradient(sweepX - 220, 0, sweepX + 220, 0);
-        grad.addColorStop(0, "rgba(59, 130, 246, 0)");
-        grad.addColorStop(0.5, "rgba(96, 165, 250, 0.25)");
-        grad.addColorStop(1, "rgba(59, 130, 246, 0)");
+        const sweepGrad = ctx.createLinearGradient(sweepX - 260, 0, sweepX + 260, 0);
+        sweepGrad.addColorStop(0, "rgba(59, 130, 246, 0)");
+        sweepGrad.addColorStop(0.5, "rgba(96, 165, 250, 0.22)");
+        sweepGrad.addColorStop(1, "rgba(59, 130, 246, 0)");
 
-        ctx.fillStyle = grad;
+        ctx.fillStyle = sweepGrad;
         ctx.fillRect(0, 0, width, height);
       }
 

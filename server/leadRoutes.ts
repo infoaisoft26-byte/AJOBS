@@ -172,9 +172,13 @@ async function handleListLeads(req: Request, res: Response) {
   // Always enforce JSON content type
   res.setHeader("Content-Type", "application/json");
 
+  console.log(`[Leads] request started: path=${req.path}, method=${req.method}, ip=${req.ip}, authPresent=${!!req.headers.authorization}`);
+
   try {
     // 1. Verify caller authorization server-side
     const authResult = await checkAdminAuthorization(req);
+    console.log(`[Leads] auth verified: authorized=${authResult.authorized}, statusCode=${authResult.statusCode || 200}, reason=${authResult.reason || 'authorized'}`);
+    
     if (!authResult.authorized) {
       return res.status(authResult.statusCode || 403).json({
         success: false,
@@ -187,14 +191,16 @@ async function handleListLeads(req: Request, res: Response) {
     // 2. Query Firestore with timeout protection
     const fetchPromise = (async () => {
       const leadsRef = db.collection("leads");
-      let leadsSnap;
+      let leadsSnap: any;
 
       try {
         leadsSnap = await leadsRef.orderBy("createdAt", "desc").limit(100).get();
+        console.log(`[Leads] database queried: collection=leads (ordered), fetched=${leadsSnap?.size ?? 0} docs`);
       } catch (queryErr: any) {
         console.warn("[Lead API] orderBy createdAt failed, attempting raw fetch:", queryErr?.message || queryErr);
         try {
           leadsSnap = await leadsRef.limit(100).get();
+          console.log(`[Leads] database queried: collection=leads (raw), fetched=${leadsSnap?.size ?? 0} docs`);
         } catch (rawErr: any) {
           console.error("[Lead API] Raw collection fetch error:", rawErr?.message || rawErr);
           throw rawErr;
@@ -212,7 +218,7 @@ async function handleListLeads(req: Request, res: Response) {
           try { return new Date(val).toISOString(); } catch { return new Date().toISOString(); }
         };
 
-        leadsSnap.forEach((docSnap) => {
+        leadsSnap.forEach((docSnap: any) => {
           const data = docSnap.data() || {};
           const name = data.candidateName || data.fullName || data.name || "Unknown Candidate";
           const email = data.candidateEmail || data.email || "";
@@ -249,6 +255,8 @@ async function handleListLeads(req: Request, res: Response) {
       const leadsList = Array.from(inMemoryLeadsMap.values());
       leadsList.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
+      console.log(`[Leads] records count: ${leadsList.length}`);
+
       return {
         success: true,
         count: leadsList.length,
@@ -266,6 +274,7 @@ async function handleListLeads(req: Request, res: Response) {
       console.warn("[Lead API] Fetching leads from Firestore timed out; returning cached/local leads");
       const leadsList = Array.from(inMemoryLeadsMap.values());
       leadsList.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      console.log(`[Leads] timeout records count: ${leadsList.length}`);
       return res.status(200).json({
         success: true,
         count: leadsList.length,
@@ -275,7 +284,7 @@ async function handleListLeads(req: Request, res: Response) {
 
     return res.status(200).json(result);
   } catch (error: any) {
-    console.error("[Lead API] List leads server-side exception:", error?.message || error);
+    console.error("[Leads] error code:", error?.code || error?.message || error);
     const leadsList = Array.from(inMemoryLeadsMap.values());
     leadsList.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     return res.status(200).json({

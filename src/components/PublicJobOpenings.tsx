@@ -48,9 +48,36 @@ export default function PublicJobOpenings({
   const [loadingMore, setLoadingMore] = useState(false);
 
   // Search & Filter State
-  const [searchTerm, setSearchTerm] = useState("");
-  const [locationTerm, setLocationTerm] = useState("");
-  const [experienceTerm, setExperienceTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(() => {
+    if (typeof window !== "undefined") {
+      const q = window.sessionStorage.getItem("aijobs_search_query");
+      if (q) {
+        window.sessionStorage.removeItem("aijobs_search_query");
+        return q;
+      }
+    }
+    return "";
+  });
+  const [locationTerm, setLocationTerm] = useState(() => {
+    if (typeof window !== "undefined") {
+      const loc = window.sessionStorage.getItem("aijobs_search_loc");
+      if (loc) {
+        window.sessionStorage.removeItem("aijobs_search_loc");
+        return loc;
+      }
+    }
+    return "";
+  });
+  const [experienceTerm, setExperienceTerm] = useState(() => {
+    if (typeof window !== "undefined") {
+      const exp = window.sessionStorage.getItem("aijobs_search_exp");
+      if (exp) {
+        window.sessionStorage.removeItem("aijobs_search_exp");
+        return exp;
+      }
+    }
+    return "";
+  });
   const [selectedChip, setSelectedChip] = useState("all");
 
   // Saved Jobs State

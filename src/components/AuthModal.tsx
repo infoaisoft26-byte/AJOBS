@@ -765,25 +765,18 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
 
         console.log("Registration successfully finalized. User Profile:", userProfile);
         if (role === "candidate" && !fbUser.emailVerified) {
-          setSuccess("Candidate account created! A verification link has been sent to your email address. Please check your inbox and verify your email to access your candidate dashboard.");
-          showToast("Verification email sent! Please check your inbox.", "info");
+          showToast("Account created! Please verify your email.", "info");
         } else {
-          setSuccess("Account provisioned successfully!");
-          onAuthSuccess(userProfile);
-          onClose();
+          showToast("Account provisioned successfully!", "success");
         }
+        setSuccess("Account provisioned successfully!");
+        onAuthSuccess(userProfile);
+        onClose();
       } else {
         console.log("Signing in user...");
         const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
         console.log("Sign-in success:", userCredential);
         const fbUser = userCredential.user;
-
-        if (role === "candidate") {
-          await fbUser.reload();
-          if (!fbUser.emailVerified) {
-            throw new Error("Candidate email address not verified yet. Please check your email inbox and click the verification link before logging in.");
-          }
-        }
 
         setSuccess("Sign-In successful!");
         await handlePostAuth(fbUser);

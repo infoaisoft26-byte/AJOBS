@@ -4,12 +4,15 @@ import { doc, setDoc } from "firebase/firestore";
 import { 
   AlertCircle, 
   CheckCircle2, 
+  Clock, 
   ExternalLink, 
   KeyRound, 
+  Lock, 
   LogOut, 
   Mail, 
   RefreshCw, 
   Send, 
+  ShieldAlert, 
   ShieldCheck, 
   Sparkles 
 } from "lucide-react";
@@ -18,6 +21,7 @@ import { UserProfile } from "../types";
 import { getOrCreateUserProfile } from "../services/dbInitService";
 import { initializeCandidateProfileAfterOtpVerification } from "../services/candidateProfileService";
 import { useToast } from "./GlobalToast";
+import { parseJsonResponse } from "../utils/apiHelper";
 
 interface CandidateEmailVerificationProps {
   user: UserProfile | null;
@@ -36,8 +40,11 @@ export default function CandidateEmailVerification({
   const [checking, setChecking] = useState(false);
   const [resending, setResending] = useState(false);
   const [cooldown, setCooldown] = useState(60);
+  const [otpExpirySeconds, setOtpExpirySeconds] = useState(600); // 10 minutes (600s) validity
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [isLocked, setIsLocked] = useState(false);
+  const [attemptsRemaining, setAttemptsRemaining] = useState<number | null>(null);
 
   // 6-digit OTP inputs
   const [otpDigits, setOtpDigits] = useState<string[]>(["", "", "", "", "", ""]);
@@ -55,6 +62,21 @@ export default function CandidateEmailVerification({
     }
   }, [cooldown]);
 
+  // 10-minute OTP expiration countdown timer
+  useEffect(() => {
+    if (otpExpirySeconds > 0) {
+      const timer = setTimeout(() => setOtpExpirySeconds(otpExpirySeconds - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [otpExpirySeconds]);
+
+  // Format seconds into MM:SS
+  const formatTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
   // Focus first input on mount
   useEffect(() => {
     inputRefs.current[0]?.focus();
@@ -62,6 +84,7 @@ export default function CandidateEmailVerification({
 
   // Handle individual digit input
   const handleDigitChange = (index: number, value: string) => {
+    if (isLocked) return;
     setErrorMsg("");
     const cleaned = value.replace(/\D/g, "");
 
@@ -90,12 +113,14 @@ export default function CandidateEmailVerification({
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (isLocked) return;
     if (e.key === "Backspace" && !otpDigits[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   };
 
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    if (isLocked) return;
     e.preventDefault();
     const pastedData = e.clipboardData.getData("text").replace(/\D/g, "");
     if (pastedData.length > 0) {
@@ -113,8 +138,15 @@ export default function CandidateEmailVerification({
   // 1. Verify OTP with Server
   const handleVerifyOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const fullOtp = otpDigits.join("");
+    if (isLocked) return;
 
+    if (otpExpirySeconds <= 0) {
+      setErrorMsg("This verification code has expired. Please click 'Resend Verification Code' below.");
+      showToast("Verification code expired. Please resend.", "warning");
+      return;
+    }
+
+    const fullOtp = otpDigits.join("");
     if (fullOtp.length !== 6) {
       setErrorMsg("Please enter all 6 digits of the verification code.");
       return;
@@ -126,18 +158,34 @@ export default function CandidateEmailVerification({
     try {
       const res = await fetch("/api/auth/candidate/verify-email-otp", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
         body: JSON.stringify({
           email: email.trim().toLowerCase(),
           otp: fullOtp
         })
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
 
-      if (!res.ok || !data.success) {
-        setErrorMsg(data.message || "Invalid or expired verification code. Please check and try again.");
-        showToast(data.message || "Verification failed.", "error");
+      if (!res.ok || !data || !data.success) {
+        if (data?.isLocked || data?.error === "ACCOUNT_LOCKED") {
+          setIsLocked(true);
+          const lockError = data?.message || "Account locked due to 5 consecutive failed verification attempts. Please contact an administrator or request a password reset.";
+          setErrorMsg(lockError);
+          showToast(lockError, "error");
+          return;
+        }
+
+        if (typeof data?.attemptsRemaining === "number") {
+          setAttemptsRemaining(data.attemptsRemaining);
+        }
+
+        const errorText = data?.message || data?.error || "Invalid or expired verification code. Please check and try again.";
+        setErrorMsg(errorText);
+        showToast(errorText, "error");
         return;
       }
 
@@ -181,7 +229,7 @@ export default function CandidateEmailVerification({
 
     } catch (err: any) {
       console.error("[Candidate OTP Verification Error]:", err);
-      setErrorMsg("Failed to verify code. Please verify your connection and try again.");
+      setErrorMsg(err?.message || "Failed to verify code. Please check your connection and try again.");
     } finally {
       setIsVerifyingOtp(false);
     }
@@ -189,7 +237,7 @@ export default function CandidateEmailVerification({
 
   // 2. Resend OTP Email
   const handleResendOtp = async () => {
-    if (cooldown > 0 || resending) return;
+    if (cooldown > 0 || resending || isLocked) return;
     setErrorMsg("");
     setSuccessMsg("");
     setResending(true);
@@ -198,17 +246,26 @@ export default function CandidateEmailVerification({
       // Trigger OTP endpoint
       const res = await fetch("/api/auth/candidate/send-email-otp", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
         body: JSON.stringify({
           email: email.trim().toLowerCase(),
           name: nameToDisplay
         })
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
 
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || "Failed to dispatch verification code.");
+      if (!res.ok || !data || !data.success) {
+        if (data?.isLocked || data?.error === "ACCOUNT_LOCKED") {
+          setIsLocked(true);
+        }
+        if (data?.cooldownRemainingSeconds) {
+          setCooldown(data.cooldownRemainingSeconds);
+        }
+        throw new Error(data?.message || data?.error || "Failed to dispatch verification code.");
       }
 
       // Also trigger standard firebase email link as backup
@@ -216,7 +273,9 @@ export default function CandidateEmailVerification({
         sendEmailVerification(auth.currentUser).catch(() => {});
       }
 
-      setCooldown(60);
+      setCooldown(data?.cooldownSeconds || 60);
+      setOtpExpirySeconds(data?.expiresInSeconds || 600);
+      setAttemptsRemaining(null);
       setOtpDigits(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
       setSuccessMsg(`New 6-digit verification code sent to ${email}!`);
@@ -338,7 +397,7 @@ export default function CandidateEmailVerification({
         </h2>
 
         {/* Description */}
-        <p className="text-xs text-gray-300 leading-relaxed max-w-sm mx-auto mb-5">
+        <p className="text-xs text-gray-300 leading-relaxed max-w-sm mx-auto mb-4">
           A 6-digit verification code has been sent to:
           <br />
           <span className="font-mono text-blue-300 font-bold bg-blue-500/10 border border-blue-500/20 px-2.5 py-1 rounded-lg inline-block mt-1.5 text-xs break-all">
@@ -346,19 +405,62 @@ export default function CandidateEmailVerification({
           </span>
         </p>
 
+        {/* OTP Expiration Countdown Banner */}
+        {!isLocked && (
+          <div className="mb-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-700/60 text-xs">
+            <Clock className={`w-3.5 h-3.5 ${otpExpirySeconds > 60 ? "text-blue-400" : otpExpirySeconds > 0 ? "text-amber-400 animate-pulse" : "text-red-400"}`} />
+            <span className="text-gray-400 font-medium">
+              {otpExpirySeconds > 0 ? (
+                <>Code expires in: <strong className={`font-mono ${otpExpirySeconds > 60 ? "text-blue-300" : "text-amber-300 font-bold"}`}>{formatTimer(otpExpirySeconds)}</strong></>
+              ) : (
+                <span className="text-red-400 font-semibold">Code expired. Please request a new code.</span>
+              )}
+            </span>
+          </div>
+        )}
+
+        {/* Account Lockout Warning State */}
+        {isLocked && (
+          <div className="mb-5 p-4 rounded-2xl bg-red-950/80 border border-red-500/50 text-red-200 text-xs text-left space-y-2">
+            <div className="flex items-center gap-2 text-red-400 font-bold text-sm">
+              <Lock className="w-4 h-4 text-red-400" />
+              <span>Account Locked (Exceeded 5 Attempts)</span>
+            </div>
+            <p className="text-red-300/90 leading-relaxed">
+              Your candidate account has been locked due to 5 consecutive failed verification attempts. Administrative intervention or a password reset is required to unlock your account.
+            </p>
+            <div className="pt-2 flex items-center justify-between">
+              <span className="text-gray-400 text-[11px]">Contact support or reset password:</span>
+              <a 
+                href="mailto:support@aijobs.app?subject=Account%20Unlock%20Request" 
+                className="text-blue-400 hover:text-blue-300 font-bold underline text-xs"
+              >
+                Contact Support
+              </a>
+            </div>
+          </div>
+        )}
+
         {/* Success Alert */}
-        {successMsg && (
+        {successMsg && !isLocked && (
           <div className="mb-4 p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center justify-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>{successMsg}</span>
           </div>
         )}
 
-        {/* Error Alert */}
-        {errorMsg && (
+        {/* Error Alert with Attempt Countdown */}
+        {errorMsg && !isLocked && (
           <div className="mb-4 p-3 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs flex items-start gap-2.5 text-left animate-shake">
             <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-            <span>{errorMsg}</span>
+            <div>
+              <p>{errorMsg}</p>
+              {attemptsRemaining !== null && attemptsRemaining > 0 && (
+                <p className="text-amber-300 text-[11px] mt-1 font-medium">
+                  ⚠️ {attemptsRemaining} attempt(s) remaining before security lockout.
+                </p>
+              )}
+            </div>
           </div>
         )}
 
@@ -377,11 +479,12 @@ export default function CandidateEmailVerification({
                   inputMode="numeric"
                   pattern="[0-9]*"
                   maxLength={1}
+                  disabled={isLocked || otpExpirySeconds <= 0}
                   value={digit}
                   onChange={(e) => handleDigitChange(idx, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(idx, e)}
                   onPaste={handlePaste}
-                  className="w-10 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-mono font-black text-white bg-black/60 border border-blue-500/30 rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30 focus:outline-none transition-all"
+                  className="w-10 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-mono font-black text-white bg-black/60 border border-blue-500/30 rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30 focus:outline-none transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                   autoFocus={idx === 0}
                 />
               ))}
@@ -391,13 +494,18 @@ export default function CandidateEmailVerification({
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={isVerifyingOtp || otpDigits.join("").length !== 6}
+            disabled={isVerifyingOtp || isLocked || otpExpirySeconds <= 0 || otpDigits.join("").length !== 6}
             className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-2xl shadow-lg shadow-blue-500/25 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isVerifyingOtp ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin text-white" />
                 <span>Verifying Code...</span>
+              </>
+            ) : isLocked ? (
+              <>
+                <ShieldAlert className="w-4 h-4 text-red-300" />
+                <span>Account Locked</span>
               </>
             ) : (
               <>
@@ -414,7 +522,7 @@ export default function CandidateEmailVerification({
             <button
               type="button"
               onClick={handleResendOtp}
-              disabled={resending || cooldown > 0}
+              disabled={resending || cooldown > 0 || isLocked}
               className="text-blue-400 hover:text-blue-300 font-semibold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {resending ? (
@@ -442,8 +550,8 @@ export default function CandidateEmailVerification({
           <button
             type="button"
             onClick={handleCheckEmailLink}
-            disabled={checking}
-            className="w-full py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 text-[11px] font-semibold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            disabled={checking || isLocked}
+            className="w-full py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 text-[11px] font-semibold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {checking ? (
               <RefreshCw className="w-3 h-3 animate-spin text-gray-400" />

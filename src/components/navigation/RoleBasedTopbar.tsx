@@ -101,19 +101,16 @@ export default function RoleBasedTopbar({
           </div>
 
         {/* ROLE-BASED CENTER NAVIGATION */}
-        <nav className="hidden lg:flex items-center space-x-4 text-xs font-bold text-gray-300 uppercase tracking-wider font-mono">
+        <nav className="hidden lg:flex items-center space-x-5 text-xs font-bold text-gray-300 uppercase tracking-wider font-mono">
           {/* GUEST NAVBAR */}
           {!user && (
             <>
-              <button onClick={() => scrollToSection("hero-section")} className="hover:text-blue-400 transition-colors cursor-pointer">Home</button>
-              <button onClick={() => scrollToSection("about-aijobs-section")} className="hover:text-blue-400 transition-colors cursor-pointer">About AIJOBS</button>
-              <button onClick={() => scrollToSection("how-it-works-section")} className="hover:text-blue-400 transition-colors cursor-pointer">How It Works</button>
-              <button onClick={() => onOpenCompanyPage?.("consultancies")} className="hover:text-blue-400 transition-colors cursor-pointer">Consultancies</button>
-              <button onClick={() => onOpenCompanyPage?.("privacy")} className="hover:text-blue-400 transition-colors cursor-pointer">Privacy Policy</button>
-              <button onClick={() => onOpenCompanyPage?.("terms")} className="hover:text-blue-400 transition-colors cursor-pointer">Terms</button>
-              <button onClick={() => onOpenCompanyPage?.("contact")} className="hover:text-blue-400 transition-colors cursor-pointer">Contact</button>
-              <button onClick={() => onShowAuth("signin")} className="px-3 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 font-bold transition-all cursor-pointer">Login</button>
-              <button onClick={() => onShowAuth("signup")} className="px-3 py-1 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold transition-all cursor-pointer">Register</button>
+              <button onClick={() => { soundSynth.playClick(); setActiveView("public-jobs"); }} className="hover:text-blue-400 transition-colors cursor-pointer">Jobs</button>
+              <button onClick={() => { soundSynth.playClick(); onOpenCompanyPage?.("career-tools"); }} className="hover:text-blue-400 transition-colors cursor-pointer">Career Tools</button>
+              <button onClick={() => { soundSynth.playClick(); setActiveView("resume-onboarding"); }} className="hover:text-blue-400 transition-colors cursor-pointer">Resume</button>
+              <button onClick={() => { soundSynth.playClick(); onOpenCompanyPage?.("companies"); }} className="hover:text-blue-400 transition-colors cursor-pointer">Companies</button>
+              <button onClick={() => { soundSynth.playClick(); onOpenCompanyPage?.("consultancies"); }} className="hover:text-blue-400 transition-colors cursor-pointer">Consultancies</button>
+              <button onClick={() => { soundSynth.playClick(); onOpenCompanyPage?.("career-guidance"); }} className="hover:text-blue-400 transition-colors cursor-pointer">Career Guidance</button>
             </>
           )}
 
@@ -329,16 +326,22 @@ export default function RoleBasedTopbar({
           ) : (
             <div className="flex items-center space-x-2">
               <button
-                onClick={() => { soundSynth.playClick(); setActiveView("candidate-login"); }}
-                className="px-3.5 py-1.5 text-xs font-bold text-gray-300 hover:text-white transition-all cursor-pointer"
+                onClick={() => { soundSynth.playClick(); onOpenCompanyPage?.("employers"); }}
+                className="hidden sm:inline-block px-3 py-1.5 text-xs font-bold text-gray-300 hover:text-white transition-all cursor-pointer"
               >
-                Already Registered? Login
+                For Employers
               </button>
               <button
-                onClick={() => { soundSynth.playClick(); setActiveView("candidate-register"); }}
-                className="px-4 py-1.5 rounded-xl border border-blue-500/30 bg-gradient-to-r from-blue-600 to-indigo-600 text-xs font-bold text-white shadow-lg shadow-blue-600/20 hover:scale-105 transition-all cursor-pointer"
+                onClick={() => { soundSynth.playClick(); onShowAuth("signin"); }}
+                className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-all cursor-pointer"
               >
-                Register as a Candidate
+                Login
+              </button>
+              <button
+                onClick={() => { soundSynth.playClick(); onShowAuth("signup"); }}
+                className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white shadow-lg shadow-blue-600/30 transition-all cursor-pointer"
+              >
+                Register
               </button>
             </div>
           )}
@@ -385,14 +388,18 @@ export default function RoleBasedTopbar({
               <nav className="space-y-1">
                 {!user && (
                   <>
-                    <button onClick={() => scrollToSection("hero-section")} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Home</button>
-                    <button onClick={() => scrollToSection("how-it-works-section")} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Find Jobs</button>
-                    <button onClick={() => scrollToSection("ai-features-section")} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">AI Interview</button>
-                    <button onClick={() => scrollToSection("why-aijobs-section")} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Companies</button>
+                    <button onClick={() => { setMobileMenuOpen(false); setActiveView("home"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Home</button>
+                    <button onClick={() => { setMobileMenuOpen(false); setActiveView("public-jobs"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Jobs</button>
+                    <button onClick={() => { setMobileMenuOpen(false); onOpenCompanyPage?.("career-tools"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Career Tools</button>
+                    <button onClick={() => { setMobileMenuOpen(false); setActiveView("resume-onboarding"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Resume</button>
+                    <button onClick={() => { setMobileMenuOpen(false); onOpenCompanyPage?.("companies"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Companies</button>
                     <button onClick={() => { setMobileMenuOpen(false); onOpenCompanyPage?.("consultancies"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Consultancies</button>
-                    <button onClick={() => scrollToSection("pricing-section")} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Pricing</button>
-                    <button onClick={() => { setMobileMenuOpen(false); onOpenCompanyPage?.("about"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">About</button>
-                    <button onClick={() => { setMobileMenuOpen(false); onOpenCompanyPage?.("contact"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Contact</button>
+                    <button onClick={() => { setMobileMenuOpen(false); onOpenCompanyPage?.("career-guidance"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Career Guidance</button>
+                    <button onClick={() => { setMobileMenuOpen(false); onOpenCompanyPage?.("employers"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">For Employers</button>
+                    <div className="pt-2 border-t border-white/10 space-y-2">
+                      <button onClick={() => { setMobileMenuOpen(false); onShowAuth("signin"); }} className="w-full py-2.5 rounded-xl bg-white/10 text-center text-xs font-bold text-white hover:bg-white/20 cursor-pointer">Login</button>
+                      <button onClick={() => { setMobileMenuOpen(false); onShowAuth("signup"); }} className="w-full py-2.5 rounded-xl bg-blue-600 text-center text-xs font-bold text-white shadow-lg shadow-blue-600/30 cursor-pointer">Register</button>
+                    </div>
                   </>
                 )}
 

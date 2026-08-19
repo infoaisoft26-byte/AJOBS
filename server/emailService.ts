@@ -211,7 +211,66 @@ export async function dispatchEmail(params: DispatchEmailParams): Promise<Dispat
   } catch (sendErr: any) {
     sentStatus = "failed";
     errorMessage = sendErr.message || "Failed to send email via SMTP.";
-    console.error(`[EmailService] SMTP send error to ${recipient}:`, errorMessage);
+
+    // Classify provider error to distinguish auth issues, rate limits, invalid recipients, or network faults
+    const errorCode = sendErr.code || (sendErr.responseCode ? `HTTP_${sendErr.responseCode}` : "SMTP_ERROR");
+    const responseCode = sendErr.responseCode || null;
+    const command = sendErr.command || null;
+    const providerResponse = sendErr.response || sendErr.message || null;
+    const lowerResp = `${providerResponse} ${errorCode} ${errorMessage}`.toLowerCase();
+
+    let errorCategory = "PROVIDER_ERROR";
+    if (errorCode === "EAUTH" || responseCode === 535 || lowerResp.includes("535") || lowerResp.includes("username and password") || lowerResp.includes("badcredentials") || lowerResp.includes("invalid_api_key") || lowerResp.includes("authentication failed")) {
+      errorCategory = "AUTHENTICATION_ERROR";
+    } else if (responseCode === 421 || responseCode === 429 || responseCode === 451 || lowerResp.includes("rate") || lowerResp.includes("limit") || lowerResp.includes("quota") || lowerResp.includes("too many requests") || lowerResp.includes("exceeded")) {
+      errorCategory = "RATE_LIMIT_ERROR";
+    } else if (errorCode === "EENVELOPE" || responseCode === 550 || responseCode === 551 || responseCode === 553 || responseCode === 501 || lowerResp.includes("does not exist") || lowerResp.includes("unknown user") || lowerResp.includes("invalid recipient") || lowerResp.includes("mailbox unavailable") || lowerResp.includes("unrecognized domain")) {
+      errorCategory = "INVALID_RECIPIENT_ERROR";
+    } else if (errorCode === "ECONNREFUSED" || errorCode === "ETIMEDOUT" || errorCode === "ESOCKET" || errorCode === "EDNS" || lowerResp.includes("timeout") || lowerResp.includes("connection refused")) {
+      errorCategory = "NETWORK_ERROR";
+    }
+
+    // Structured logging for operational monitoring and log tracing
+    console.error("[EmailService] SMTP delivery failed:", JSON.stringify({
+      recipient,
+      template: templateName,
+      errorCategory,
+      errorCode,
+      responseCode,
+      command,
+      providerResponse,
+      errorMessage,
+      timestamp: now
+    }));
+
+    // Record Email Log in Firestore email_logs/{emailId}
+    await recordEmailLog({
+      emailId,
+      userId,
+      recipient,
+      recipientName: templateData.recipientName || recipient.split("@")[0],
+      recipientRole,
+      template: templateName,
+      subject: rendered.subject,
+      status: "failed",
+      provider: "gmail_smtp",
+      messageId: null,
+      errorCategory,
+      errorCode,
+      responseCode,
+      command,
+      errorMessage,
+      errorDetails: providerResponse,
+      createdBy,
+      createdAt: now,
+      updatedAt: now
+    });
+
+    return {
+      success: false,
+      emailId,
+      error: errorMessage || "Email could not be sent."
+    };
   }
 
   // Record Email Log in Firestore email_logs/{emailId} (Requirement 8)
@@ -226,26 +285,18 @@ export async function dispatchEmail(params: DispatchEmailParams): Promise<Dispat
     status: sentStatus,
     provider: "gmail_smtp",
     messageId,
-    errorMessage,
+    errorMessage: null,
     createdBy,
     createdAt: now,
     updatedAt: now
   });
 
-  if (sentStatus === "sent") {
-    return {
-      success: true,
-      emailId,
-      messageId: messageId || undefined,
-      message: "Email sent successfully"
-    };
-  } else {
-    return {
-      success: false,
-      emailId,
-      error: errorMessage || "Email could not be sent."
-    };
-  }
+  return {
+    success: true,
+    emailId,
+    messageId: messageId || undefined,
+    message: "Email sent successfully"
+  };
 }
 
 /**

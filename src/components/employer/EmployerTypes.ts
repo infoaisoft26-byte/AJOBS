@@ -1,51 +1,36 @@
-export interface CompanyProfile {
-  id: string;
-  userId: string;
-  companyName: string;
-  logoUrl: string;
-  industry: string;
-  website: string;
-  gstNumber: string;
-  email: string;
-  phone: string;
-  officeAddress: string;
-  locations: string[];
-  hrName: string;
-  hrEmail: string;
-  verificationDocs: string;
-  description: string;
-  linkedinUrl: string;
-  companySize: string;
-  isVerified: boolean;
-  createdAt: string;
-}
-
 export interface CompanyJob {
   id: string;
-  companyId: string;
-  companyName: string;
+  userId?: string;
+  companyId?: string;
+  employerId?: string;
   title: string;
-  description: string;
-  requiredSkills: string[];
-  experience: string;
-  education: string;
+  companyName: string;
   location: string;
-  salary: string;
-  benefits: string;
-  interviewProcess: string[];
-  openPositions: number;
-  status: "Draft" | "Pending Approval" | "Approved" | "Live" | "Closed" | "Rejected";
-  createdAt: string;
-  department: string;
-  consultancy?: string;
+  workMode?: "Remote" | "Hybrid" | "On-site" | string;
+  type?: string;
+  salary?: string;
+  salaryMin?: number;
+  salaryMax?: number;
+  experience?: string;
+  education?: string;
+  openings?: number;
   industry?: string;
   category?: string;
-  employmentType?: string;
-  workMode?: string;
-  languages?: string[];
+  department?: string;
+  skillsRequired?: string[];
+  languages?: string;
+  benefits?: string;
+  interviewProcess?: string;
   responsibilities?: string;
   requirements?: string;
-  expiryDate?: string;
+  description?: string;
+  screeningQuestions?: string[];
+  status: "active" | "open" | "paused" | "closed" | "draft" | "pending_approval" | string;
+  approved?: boolean;
+  publishedAt?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+  applicationsCount?: number;
 }
 
 export interface CompanyApplication {
@@ -55,61 +40,58 @@ export interface CompanyApplication {
   candidateId: string;
   candidateName: string;
   candidateEmail: string;
-  resumeUrl: string;
-  resumeScore: number;
-  interviewScore: number;
-  expectedSalary?: string;
-  distance?: string;
-  availability?: string;
-  status: 
-    | "Applied" 
-    | "Screening" 
-    | "Shortlisted" 
-    | "Interview Scheduled" 
-    | "HR Round" 
-    | "Final Round" 
-    | "Offer" 
-    | "Joined" 
-    | "Rejected";
+  candidatePhone?: string;
+  candidateLocation?: string;
+  candidateExperience?: string;
+  candidateEducation?: string;
+  candidateSkills?: string[];
+  resumeUrl?: string;
+  coverLetter?: string;
+  status: "new" | "reviewed" | "shortlisted" | "interview" | "selected" | "rejected" | string;
+  aiMatchScore?: number;
   appliedAt: string;
+  notes?: string;
+  matchBreakdown?: {
+    skillsMatch?: number;
+    experienceMatch?: number;
+    locationMatch?: number;
+    cultureFit?: number;
+  };
 }
 
 export interface CompanyInterview {
   id: string;
-  applicationId: string;
-  candidateId: string;
-  candidateName: string;
   jobId: string;
   jobTitle: string;
-  date: string;
-  time: string;
-  type: "Online" | "Offline";
-  locationOrLink: string;
+  candidateId: string;
+  candidateName: string;
+  candidateEmail?: string;
+  dateTime: string;
+  roundName: string;
   interviewer: string;
-  status: "Scheduled" | "Completed" | "Cancelled";
+  meetLink?: string;
+  status: "scheduled" | "completed" | "cancelled" | "rescheduled";
   feedback?: string;
-  score?: number; // feedback evaluation score
+  score?: number;
 }
 
-export interface CompanyOffer {
+export interface CompanyProfile {
   id: string;
-  applicationId: string;
-  candidateId: string;
-  candidateName: string;
-  jobId: string;
-  jobTitle: string;
-  joiningDate: string;
-  salaryPackage: string;
-  offerStatus: "Released" | "Accepted" | "Declined";
-  acceptanceStatus: string;
-  createdAt: string;
-  offerLetterText?: string;
-}
-
-export interface CompanyActivityLog {
-  id: string;
-  companyId: string;
-  type: "job" | "application" | "interview" | "offer" | "registration";
-  description: string;
+  userId: string;
+  companyName: string;
+  industry: string;
+  companySize: string;
+  logoUrl?: string;
+  website?: string;
+  gstNumber?: string;
+  email?: string;
+  phone?: string;
+  officeAddress?: string;
+  locations?: string[];
+  hrName?: string;
+  hrEmail?: string;
+  description?: string;
+  linkedinUrl?: string;
+  isVerified?: boolean;
   createdAt: string;
 }

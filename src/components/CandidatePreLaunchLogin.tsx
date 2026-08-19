@@ -39,10 +39,9 @@ export default function CandidatePreLaunchLogin({
   const syncCandidateProfile = async (fbUser: any): Promise<UserProfile> => {
     const userRef = doc(db, "users", fbUser.uid);
     const snap = await getDoc(userRef);
-    const isEmailVerified = fbUser.emailVerified === true;
-
     if (snap.exists()) {
       const data = snap.data();
+      const isEmailVerified = fbUser.emailVerified === true || data.emailVerified === true || data.verificationStatus === "verified";
       const profile: UserProfile = {
         uid: fbUser.uid,
         name: data.name || fbUser.displayName || fbUser.email?.split("@")[0] || "Candidate",
@@ -108,7 +107,7 @@ export default function CandidatePreLaunchLogin({
 
       const profile = await syncCandidateProfile(fbUser);
 
-      if (!fbUser.emailVerified) {
+      if (!fbUser.emailVerified && !profile.emailVerified) {
         // BLOCK CANDIDATE DASHBOARD
         setUnverifiedProfile(profile);
         setShowVerificationScreen(true);
@@ -145,7 +144,7 @@ export default function CandidatePreLaunchLogin({
       const res = await signInWithPopup(auth, googleProvider);
       const profile = await syncCandidateProfile(res.user);
       
-      if (!res.user.emailVerified) {
+      if (!res.user.emailVerified && !profile.emailVerified) {
         setUnverifiedProfile(profile);
         setShowVerificationScreen(true);
         showToast("Email verification required.", "warning");

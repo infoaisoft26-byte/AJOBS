@@ -62,10 +62,12 @@ export default function LiveLeadsCRM() {
       clearTimeout(timeoutId);
       const data = await parseJsonResponse(res);
       if (data && data.success) {
-        setLeads(data.leads || []);
+        const leadsArray = Array.isArray(data?.leads) ? data.leads : [];
+        setLeads(leadsArray);
       } else {
         const msg = data?.error || "Lead service is temporarily unavailable.";
         setErrorMessage(msg);
+        setLeads([]);
       }
     } catch (err: any) {
       clearTimeout(timeoutId);
@@ -76,6 +78,7 @@ export default function LiveLeadsCRM() {
 
       console.error("[LiveLeadsCRM] Lead fetch error:", err);
       setErrorMessage(errStr);
+      setLeads([]);
 
       if (!isRetry && !hasRetried) {
         setHasRetried(true);
@@ -90,7 +93,7 @@ export default function LiveLeadsCRM() {
 
   const handleOpenLeadModal = (lead: CrmLead) => {
     setSelectedLead(lead);
-    setEditStatus(lead.status);
+    setEditStatus(lead.status || "new");
     setEditNotes(lead.adminNotes || "");
     setEditFollowUp(lead.nextFollowUpAt || "");
     setAssigneeId(lead.assignedTo || "");
@@ -116,7 +119,7 @@ export default function LiveLeadsCRM() {
         method: "POST",
         headers,
         body: JSON.stringify({
-          leadId: selectedLead.leadId,
+          leadId: selectedLead.leadId || selectedLead.id,
           status: editStatus,
           assignedTo: assigneeId,
           nextFollowUpAt: editFollowUp,
@@ -124,12 +127,7 @@ export default function LiveLeadsCRM() {
         })
       });
 
-      const contentType = res.headers.get("content-type") || "";
-      const text = await res.text();
-      let data: any = null;
-      if (text && contentType.includes("application/json")) {
-        try { data = JSON.parse(text); } catch (e) {}
-      }
+      const data = await parseJsonResponse(res);
 
       if (data && data.success) {
         setToastMsg("Lead record updated successfully!");
@@ -146,16 +144,27 @@ export default function LiveLeadsCRM() {
     }
   };
 
-  // Filtered Leads
-  const filteredLeads = leads.filter((lead) => {
-    const matchesSearch =
-      lead.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lead.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lead.mobile.includes(searchQuery);
+  // Filtered Leads with safe normalization & defensive guards
+  const safeLeadsList = Array.isArray(leads) ? leads : [];
+  const filteredLeads = safeLeadsList.filter((lead) => {
+    if (!lead || typeof lead !== "object") return false;
+    const name = (lead.fullName || lead.candidateName || "").toLowerCase();
+    const email = (lead.email || lead.candidateEmail || "").toLowerCase();
+    const mobile = String(lead.mobile || lead.phone || lead.candidatePhone || "");
+    const source = (lead.source || "").toLowerCase();
+    const status = lead.status || lead.currentStatus || "new";
+    const role = lead.role || "Candidate";
 
-    const matchesSource = filterSource === "all" || lead.source.toLowerCase() === filterSource.toLowerCase();
-    const matchesStatus = filterStatus === "all" || lead.status === filterStatus;
-    const matchesRole = filterRole === "all" || lead.role === filterRole;
+    const query = (searchQuery || "").toLowerCase();
+    const matchesSearch =
+      !query ||
+      name.includes(query) ||
+      email.includes(query) ||
+      mobile.includes(query);
+
+    const matchesSource = filterSource === "all" || source === filterSource.toLowerCase();
+    const matchesStatus = filterStatus === "all" || status === filterStatus;
+    const matchesRole = filterRole === "all" || role.toLowerCase() === filterRole.toLowerCase();
 
     return matchesSearch && matchesSource && matchesStatus && matchesRole;
   });
@@ -290,29 +299,29 @@ export default function LiveLeadsCRM() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {filteredLeads.map((lead) => (
-                  <tr key={lead.leadId} className="hover:bg-white/[0.02] transition-colors">
+                {filteredLeads.map((lead, idx) => (
+                  <tr key={lead.leadId || lead.id || `lead_${idx}`} className="hover:bg-white/[0.02] transition-colors">
                     <td className="py-3 px-4">
-                      <div className="font-bold text-white text-sm">{lead.fullName}</div>
+                      <div className="font-bold text-white text-sm">{lead.fullName || lead.candidateName || "Lead"}</div>
                       <span className="inline-block px-2 py-0.5 rounded text-[10px] uppercase font-mono bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 mt-1">
-                        {lead.role}
+                        {lead.role || "Candidate"}
                       </span>
                     </td>
 
                     <td className="py-3 px-4 space-y-1">
                       <div className="flex items-center gap-1.5 text-gray-300">
                         <Mail className="w-3.5 h-3.5 text-gray-500" />
-                        <span>{lead.email}</span>
+                        <span>{lead.email || lead.candidateEmail || "N/A"}</span>
                       </div>
                       <div className="flex items-center gap-1.5 text-gray-400 font-mono">
                         <Phone className="w-3.5 h-3.5 text-gray-500" />
-                        <span>{lead.mobile || "N/A"}</span>
+                        <span>{lead.mobile || lead.phone || lead.candidatePhone || "N/A"}</span>
                       </div>
                     </td>
 
                     <td className="py-3 px-4">
-                      <div className="font-semibold text-white">{lead.source}</div>
-                      <div className="text-[10px] text-gray-400 font-mono">{lead.campaign}</div>
+                      <div className="font-semibold text-white">{lead.source || "Direct"}</div>
+                      <div className="text-[10px] text-gray-400 font-mono">{lead.campaign || "Organic"}</div>
                     </td>
 
                     <td className="py-3 px-4">
@@ -325,7 +334,7 @@ export default function LiveLeadsCRM() {
 
                     <td className="py-3 px-4">
                       <span className="capitalize font-semibold text-indigo-300">
-                        {lead.status.replace("_", " ")}
+                        {(lead.status || lead.currentStatus || "new").replace("_", " ")}
                       </span>
                     </td>
 

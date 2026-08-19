@@ -23,6 +23,7 @@ import EasyApplyModal from "./EasyApplyModal";
 import CandidateMobileBottomNav from "./CandidateMobileBottomNav";
 import { NotificationCenterView } from "./NotificationCenter";
 import Candidate3DAnimatedBackground from "./Candidate3DAnimatedBackground";
+import CandidateLegalBanner from "./CandidateLegalBanner";
 
 interface CandidateDashboardProps {
   userId: string;
@@ -280,7 +281,9 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
         />
 
         {/* Main Work Area */}
-        <main className="flex-1 p-3 sm:p-5 lg:p-6 overflow-y-auto max-w-full">
+        <main className="flex-1 p-3 sm:p-5 lg:p-6 overflow-y-auto max-w-full space-y-4">
+          <CandidateLegalBanner />
+
           {/* 1. HOME / OVERVIEW */}
           {activeTab === "overview" && (
             <CandidateDashboardOverview

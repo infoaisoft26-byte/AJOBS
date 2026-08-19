@@ -117,6 +117,7 @@ app.use("/api/", (req: any, res: any, next: any) => {
 });
 
 app.use("/api/auth/candidate", candidateAuthRoutes);
+app.use("/api/auth", candidateAuthRoutes);
 app.use("/api/candidate-auth", candidateAuthRoutes);
 app.use("/api/email", emailRoutes);
 app.use("/api/kyc", kycRoutes);
@@ -4290,17 +4291,17 @@ app.post("/api/auth/smart-onboard", async (req, res) => {
           };
           await userRef.set(userProfile, { merge: true }).catch(() => {});
 
-          const skillsList = skills && Array.isArray(skills) ? skills : ["React", "TypeScript", "Tailwind CSS", "Node.js", "Firebase", "Gemini SDK"];
+          const skillsList = skills && Array.isArray(skills) ? skills : [];
           await dbFs.collection("candidates").doc(uid).set({
             userId: uid,
-            resumeUrl: resumeURL || "https://demo.pdf",
+            resumeUrl: resumeURL || "",
             resumeFileName: resumeFileName || "Resume.pdf",
-            resumeScore: scores?.overallScore || 85,
+            resumeScore: scores?.overallScore || 0,
             skills: skillsList,
-            experience: experience || "3+ Years Web Developer",
-            aiInterviewScore: 88,
-            resumeText: resumeText || "Candidate resume details",
-            summary: `Skilled Software Engineer focused on interactive user dashboards. City: ${city || "Unknown"}`,
+            experience: experience || "",
+            aiInterviewScore: 0,
+            resumeText: resumeText || "",
+            summary: summary || "",
             careerCoachChat: [
               { id: "init_coach", sender: "ai", text: `Hi ${finalName}! I'm your AI Career Coach. Let's optimize your technical journey and interview pipeline today!`, timestamp: isoDate }
             ]
@@ -4310,9 +4311,9 @@ app.post("/api/auth/smart-onboard", async (req, res) => {
             id: uid,
             userId: uid,
             fileName: resumeFileName || "Resume.pdf",
-            fileUrl: resumeURL || "https://demo.pdf",
-            text: resumeText || "Candidate resume details",
-            score: scores?.overallScore || 85,
+            fileUrl: resumeURL || "",
+            text: resumeText || "",
+            score: scores?.overallScore || 0,
             parsedSkills: skillsList,
             createdAt: isoDate
           }, { merge: true }).catch(() => {});
@@ -4321,8 +4322,8 @@ app.post("/api/auth/smart-onboard", async (req, res) => {
             id: `${uid}_scores`,
             userId: uid,
             scores: {
-              overallScore: scores?.overallScore || 85,
-              atsCompatibilityScore: scores?.atsCompatibilityScore || 85,
+              overallScore: scores?.overallScore || 0,
+              atsCompatibilityScore: scores?.atsCompatibilityScore || 0,
               grammarScore: scores?.grammarScore || 90,
               formattingScore: scores?.formattingScore || 85,
               professionalSummaryScore: scores?.professionalSummaryScore || 80,
