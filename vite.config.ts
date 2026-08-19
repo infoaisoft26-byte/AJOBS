@@ -21,6 +21,12 @@ export default defineConfig(() => {
       rollupOptions: {
         output: {
           manualChunks(id) {
+            // Keep Vite's dynamic-import bootstrap helper in a tiny, dependency-free
+            // runtime chunk. If Rollup places it in a heavy vendor chunk (for example
+            // jsPDF), that vendor executes before React and can blank the whole app.
+            if (id.includes('vite/preload-helper')) {
+              return 'vendor-runtime';
+            }
             if (id.includes('node_modules')) {
               if (id.includes('three') || id.includes('@react-three')) {
                 return 'vendor-3d-engine';
@@ -75,4 +81,3 @@ export default defineConfig(() => {
     },
   };
 });
-
