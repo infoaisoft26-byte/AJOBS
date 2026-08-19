@@ -360,7 +360,16 @@ function MainAppContent() {
         }
 
         if (profile) {
-          setUser(profile);
+          // Older/manually-created Firestore profiles may not contain a name.
+          // Normalize it once so shared headers and dashboards never crash while
+          // rendering an avatar initial with `.charAt()`.
+          const safeProfile: UserProfile = {
+            ...profile,
+            name: profile.name || fbUser.displayName || fbUser.email?.split("@")[0] || "AIJOBS User",
+            email: profile.email || fbUser.email || ""
+          };
+          profile = safeProfile;
+          setUser(safeProfile);
           const normRole = normalizeRole(profile.role);
           console.log(`[Trace Auth] Authenticated UID: ${fbUser.uid}, Resolved Role: ${profile.role}, Normalized Role: ${normRole}`);
           trackInteraction("login_success", "auth", profile.role);
