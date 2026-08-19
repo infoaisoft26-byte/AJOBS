@@ -313,7 +313,7 @@ export default function RoleBasedTopbar({
                 <span className="text-[9px] text-gray-400 capitalize font-mono">{user.role}</span>
               </div>
               <div className="w-8 h-8 rounded-full bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-xs font-bold text-blue-300 shadow-md">
-                {user.name.charAt(0).toUpperCase()}
+                {(user.name || user.email || "U").charAt(0).toUpperCase()}
               </div>
               <button
                 onClick={() => { soundSynth.playClick(); onLogout(); }}
@@ -475,7 +475,7 @@ export default function RoleBasedTopbar({
                 <>
                   <div className="flex items-center space-x-3 pb-3 border-b border-white/5">
                     <div className="w-9 h-9 rounded-full bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-sm font-bold text-blue-300">
-                      {user.name.charAt(0).toUpperCase()}
+                      {(user.name || user.email || "U").charAt(0).toUpperCase()}
                     </div>
                     <div className="flex flex-col truncate">
                       <span className="text-xs font-bold text-white truncate">{user.name}</span>
