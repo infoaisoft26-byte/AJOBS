@@ -341,12 +341,14 @@ export function ThreeDBackground({ mode = "neural", onModeChange }: ThreeDBackgr
     // ANIMATION & RENDER LOOP (60 FPS)
     // ==========================================
     let animationFrameId: number;
-    let clock = new THREE.Clock();
+    const timer = new THREE.Timer();
+    timer.connect(document);
 
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
 
-      const elapsedTime = clock.getElapsedTime();
+      timer.update();
+      const elapsedTime = timer.getElapsed();
       const currentMode = currentModeRef.current;
 
       // Mouse Parallax Smooth Interpolation
@@ -457,6 +459,7 @@ export function ThreeDBackground({ mode = "neural", onModeChange }: ThreeDBackgr
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("resize", handleResize);
       cancelAnimationFrame(animationFrameId);
+      timer.disconnect();
 
       // Memory Disposal: Destroy geometries, materials, textures, and renderer
       scene.traverse((obj) => {

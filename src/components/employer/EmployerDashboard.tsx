@@ -35,7 +35,6 @@ import EmployerInterviews from "./EmployerInterviews";
 import EmployerMessages from "./EmployerMessages";
 import EmployerCompanyProfile from "./EmployerCompanyProfile";
 import SubscriptionBillingHub from "../SubscriptionBillingHub";
-import NotificationCenter from "../NotificationCenter";
 import { CompanyJob, CompanyApplication, CompanyInterview, CompanyProfile } from "./EmployerTypes";
 import EmployerSidebar from "./EmployerSidebar";
 
@@ -410,14 +409,6 @@ export default function EmployerDashboard({
                   isMobile={true}
                   onCloseMobile={() => setMobileDrawerOpen(false)}
                 />
-              </motion.aside>
-            </div>
-          )}
-        </AnimatePresence>
-                    <LogOut className="w-4 h-4" />
-                    <span>Logout</span>
-                  </button>
-                </div>
               </motion.aside>
             </div>
           )}

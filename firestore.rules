@@ -602,6 +602,17 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
+    // Database-access agreements. A signed-in subscriber may only create and
+    // maintain agreements attached to their own Firebase UID; admins retain
+    // review access across all agreements.
+    match /agreements/{agreementId} {
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read, update: if isAdmin() || (
+        isSignedIn() && resource.data.userId == request.auth.uid
+      );
+      allow delete: if isAdmin();
+    }
+
     match /employee_audit_logs/{logId} {
       allow read, create, update, write: if isSignedIn();
     }

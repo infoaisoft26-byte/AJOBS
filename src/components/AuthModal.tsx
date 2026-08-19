@@ -1,7 +1,8 @@
-import React, { ClipboardEvent, Dispatch, FormEvent, HTMLInputElement, KeyboardEvent, useEffect, useRef, useState } from "react";
-import { GoogleAuthProvider, createUserWithEmailAndPassword, getRedirectResult, sendPasswordResetEmail, signInWithCustomToken, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect, updateProfile } from "firebase/auth";
+import React, { ClipboardEvent, Dispatch, FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
+import { GoogleAuthProvider, createUserWithEmailAndPassword, getRedirectResult, sendEmailVerification, sendPasswordResetEmail, signInWithCustomToken, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect, updateProfile } from "firebase/auth";
 import { collection, doc, getDocs, query, where } from "firebase/firestore";
 import { motion } from "motion/react";
+import confetti from "canvas-confetti";
 import { AlertCircle, ArrowLeft, Briefcase, Building2, Check, CheckCircle2, CheckSquare, Code, Container, Eye, EyeOff, Infinity, Link, Lock, Mail, Phone, Search, Send, Shield, ShieldCheck, Type, User, UserPlus, X } from "lucide-react";
 import { auth, db, firebaseConfigError, isFirebaseConfigured } from "../firebase";
 
@@ -10,6 +11,7 @@ import { initializeUserCollectionsAndDocs, getOrCreateUserProfile } from "../ser
 import { trackLeadSubmission } from "../utils/leadAttribution";
 import { useToast } from "./GlobalToast";
 import { parseJsonResponse } from "../utils/apiHelper";
+import soundSynth from "../utils/audioSynth";
 
 interface AuthModalProps {
   onClose: () => void;

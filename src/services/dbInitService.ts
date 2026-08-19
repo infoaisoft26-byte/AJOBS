@@ -459,7 +459,9 @@ export async function getOrCreateUserProfile(
     const emailLower = (fbUser.email || "").toLowerCase();
     if (loginSource === "candidate") {
       targetRole = "candidate";
-    } else if (emailLower.includes("employer") || emailLower.includes("company") || emailLower.includes("corporate") || emailLower.includes("recruiter")) {
+    } else if (emailLower.includes("recruiter")) {
+      targetRole = "recruiter";
+    } else if (emailLower.includes("employer") || emailLower.includes("company") || emailLower.includes("corporate")) {
       targetRole = "employer";
     } else if (emailLower.includes("consultancy") || emailLower.includes("agency")) {
       targetRole = "consultancy";
@@ -499,4 +501,3 @@ export async function getOrCreateUserProfile(
     };
   }
 }
-

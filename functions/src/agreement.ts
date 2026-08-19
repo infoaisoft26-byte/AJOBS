@@ -7,10 +7,10 @@ if (!getApps().length) {
   initializeApp();
 }
 
-const targetDbId = process.env.FIRESTORE_DATABASE_ID || "ai-studio-aijobs-1424b91d-989e-47eb-a336-779ca0dbfc42";
+const targetDbId = process.env.FIRESTORE_DATABASE_ID;
 
 function getDb() {
-  return targetDbId ? getFirestore(targetDbId) : getFirestore();
+  return targetDbId && targetDbId !== "(default)" ? getFirestore(targetDbId) : getFirestore();
 }
 
 const DEFAULT_SELLER_INFO = {

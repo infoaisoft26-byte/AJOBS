@@ -62,7 +62,13 @@ const isValidCert =
 
 const adminApp = initAdminApp();
 
-const targetDatabaseId = config.firestoreDatabaseId || process.env.FIRESTORE_DATABASE_ID;
+const configuredDatabaseId = process.env.FIRESTORE_DATABASE_ID || config.firestoreDatabaseId;
+// Firebase's primary database must be initialized without a custom database
+// id. Older AI Studio exports placed an unrelated generated id in config,
+// which made every Admin SDK request fail in Vercel.
+const targetDatabaseId = configuredDatabaseId && configuredDatabaseId !== "(default)"
+  ? configuredDatabaseId
+  : undefined;
 
 export const adminDb: Firestore = targetDatabaseId
   ? getFirestore(adminApp, targetDatabaseId)
