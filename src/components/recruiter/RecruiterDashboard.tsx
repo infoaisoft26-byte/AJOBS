@@ -314,7 +314,7 @@ export default function RecruiterDashboard({
                 className="flex items-center gap-2.5 p-1.5 pr-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-purple-500/20 transition-all cursor-pointer"
               >
                 <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 text-white font-bold flex items-center justify-center text-xs shadow-md">
-                  {userName.charAt(0)}
+                  {(userName || "R").charAt(0)}
                 </div>
                 <div className="hidden sm:block text-left">
                   <div className="text-xs font-bold text-white truncate max-w-[120px]">{userName}</div>
