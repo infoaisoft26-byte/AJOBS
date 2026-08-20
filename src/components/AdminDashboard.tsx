@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { BarChart2, Baseline, Bell, BookOpen, Brain, Briefcase, Building, Check, CheckCircle, ChevronLeft, ChevronRight, Clock, CreditCard, Database, DollarSign, FileText, Funnel, Globe, HelpCircle, Layers, Lock, LogOut, Mail, Menu, MessageSquare, Navigation, RefreshCw, Scale, Settings, ShieldAlert, ShieldCheck, Sidebar, Store, Terminal, Tickets, User, UserCheck, Users, Verified, X } from "lucide-react";
 import { auth, db } from "../firebase";
 import { parseJsonResponse } from "../utils/apiHelper";
+import { normalizeRole } from "../utils/roleUtils";
 
 import { recordActivityLog } from "../services/activityLogService";
 
@@ -307,22 +308,26 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
     }
 
     // Calculate aggregated Live Stats safely from real Firestore collections
-    const candidatesList = users.filter(u => u.role === "candidate");
+    const normalizedUserRole = (u: any) => normalizeRole(u?.role);
+    const candidatesList = users.filter(u => normalizedUserRole(u) === "candidate");
     const candidatesCount = candidatesList.length;
     const verifiedCandidatesCount = candidatesList.filter(u => u.emailVerified === true || u.verificationStatus === "verified" || ((u.accountStatus === "active" || u.status === "active") && u.emailVerified !== false && u.verificationStatus !== "pending")).length;
     const unverifiedCandidatesCount = candidatesList.length - verifiedCandidatesCount;
 
-    const employersCount = users.filter(u => u.role === "employer").length;
-    const consultanciesCount = users.filter(u => u.role === "consultancy").length;
+    const employersCount = users.filter(u => ["employer", "recruiter"].includes(normalizedUserRole(u))).length;
+    const consultanciesCount = users.filter(u => normalizedUserRole(u) === "consultancy").length;
 
-    const activeJobsCount = jobs.filter(j => j.status === "open" || j.status === "Active" || !j.status).length;
-    const pendingVerificationCount = approvals.filter(a => a.status === "PENDING").length;
-    const openSupportCount = support.filter(s => s.status === "OPEN" || s.status === "ESCALATED").length;
+    const activeJobsCount = jobs.filter(j => ["open", "active", "live", "published"].includes(String(j.status || "active").toLowerCase())).length;
+    const pendingVerificationCount = approvals.filter(a => String(a.status || "pending").toLowerCase().includes("pending")).length;
+    const openSupportCount = support.filter(s => ["open", "escalated", "pending"].includes(String(s.status || "open").toLowerCase())).length;
 
     const todayIsoStr = new Date().toISOString().split("T")[0];
     const todayRegsCount = users.filter(u => u.createdAt && typeof u.createdAt === "string" && u.createdAt.startsWith(todayIsoStr)).length;
     const totalResumesCount = resumes.length || users.filter(u => u.resumeUrl || u.resumeFileName).length;
-    const totalAppsCount = applications.length;
+    const totalAppsCount = applications.filter(a => {
+      const dateValue = a.appliedAt || a.createdAt;
+      return typeof dateValue === "string" && dateValue.startsWith(todayIsoStr);
+    }).length;
 
     // Billing aggregations
     const successPayments = payments.filter(p => p.status === "SUCCESS");
