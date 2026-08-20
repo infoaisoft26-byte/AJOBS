@@ -121,8 +121,10 @@ export function getCapturedLeadAttribution(): LeadAttribution {
  */
 export async function trackLeadSubmission(payload: {
   userId?: string;
+  uid?: string;
   role: string;
-  fullName: string;
+  fullName?: string;
+  name?: string;
   email: string;
   mobile?: string;
   city?: string;
@@ -131,14 +133,20 @@ export async function trackLeadSubmission(payload: {
 }): Promise<void> {
   try {
     const attribution = getCapturedLeadAttribution();
-    await fetch("/api/leads/create", {
+    const response = await fetch("/api/leads/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...attribution,
-        ...payload
+        ...payload,
+        userId: payload.userId || payload.uid,
+        fullName: payload.fullName || payload.name || "New Prospect",
+        role: String(payload.role || "candidate").toLowerCase()
       })
     });
+    if (!response.ok) throw new Error(`Lead API returned ${response.status}`);
+    const result = await response.json().catch(() => null);
+    if (!result?.success) throw new Error(result?.error || "Lead was not persisted");
   } catch (err) {
     console.warn("Failed to record lead in CRM:", err);
   }
