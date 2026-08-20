@@ -57,24 +57,36 @@ export default function LiveDashboard({
     setIsPanelLoading(true);
     try {
       // 1. Fetch Latest Applications
-      const appsSnap = await getDocs(query(collection(db, "applications"), orderBy("createdAt", "desc"), limit(5)));
+      let appsSnap;
+      try {
+        appsSnap = await getDocs(query(collection(db, "applications"), orderBy("createdAt", "desc"), limit(20)));
+      } catch {
+        appsSnap = await getDocs(query(collection(db, "applications"), limit(20)));
+      }
       const apps: any[] = [];
       appsSnap.forEach(d => {
         apps.push({ id: d.id, ...d.data() });
       });
 
       // 2. Fetch Leads
-      const leadsSnap = await getDocs(query(collection(db, "leads"), orderBy("createdAt", "desc"), limit(5)));
+      let leadsSnap;
+      try {
+        leadsSnap = await getDocs(query(collection(db, "leads"), orderBy("createdAt", "desc"), limit(20)));
+      } catch {
+        leadsSnap = await getDocs(query(collection(db, "leads"), limit(20)));
+      }
       const leadsList: any[] = [];
       leadsSnap.forEach(d => {
         leadsList.push({ id: d.id, ...d.data() });
       });
 
       // 3. Fetch Recruiters
-      const usersSnap = await getDocs(query(collection(db, "users"), where("role", "==", "employer"), limit(5)));
+      const usersSnap = await getDocs(query(collection(db, "users"), limit(100)));
       const recruitersList: any[] = [];
       usersSnap.forEach(d => {
-        recruitersList.push({ id: d.id, ...d.data() });
+        const data: any = d.data();
+        const role = String(data.role || "").toLowerCase().replace(/[\s-]+/g, "_");
+        if (["employer", "recruiter", "corporate"].includes(role)) recruitersList.push({ id: d.id, ...data });
       });
 
       // 4. Fetch Approvals
@@ -85,10 +97,12 @@ export default function LiveDashboard({
       });
 
       // 5. Fetch Pending Jobs
-      const jobsSnap = await getDocs(query(collection(db, "jobs"), where("status", "==", "Pending Approval"), limit(5)));
+      const jobsSnap = await getDocs(query(collection(db, "jobs"), limit(50)));
       const pendingJobs: any[] = [];
       jobsSnap.forEach(d => {
-        pendingJobs.push({ id: d.id, ...d.data() });
+        const data: any = d.data();
+        const status = String(data.status || "pending").toLowerCase().replace(/[\s-]+/g, "_");
+        if (["pending", "pending_approval", "draft", "under_review"].includes(status)) pendingJobs.push({ id: d.id, ...data });
       });
 
       // 6. Fetch Notifications
