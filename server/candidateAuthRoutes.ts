@@ -20,6 +20,7 @@ interface OtpRecord {
   used: boolean;
   createdAt: string;
   purpose: string;
+  role?: string;
   lastRequestedAtMs: number;
   lastRequestedAt: string;
   isLocked?: boolean;
@@ -45,9 +46,12 @@ function hashOtp(otp: string, email: string): string {
 router.post("/send-email-otp", async (req: Request, res: Response) => {
   res.setHeader("Content-Type", "application/json");
 
-  const { email, name } = req.body;
+  const { email, name, role } = req.body;
   const normalizedEmail = (email || "").trim().toLowerCase();
-  const candidateName = (name || "").trim() || "Candidate";
+  const normalizedRole = ["candidate", "consultancy", "employer", "recruiter"].includes(String(role || "").toLowerCase())
+    ? String(role).toLowerCase()
+    : "candidate";
+  const candidateName = (name || "").trim() || (normalizedRole === "consultancy" ? "Consultancy" : "Candidate");
 
   if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
     return res.status(400).json({
@@ -173,7 +177,8 @@ router.post("/send-email-otp", async (req: Request, res: Response) => {
       verified: false,
       used: false,
       createdAt: isoCreatedAt,
-      purpose: "candidate_registration",
+      purpose: `${normalizedRole}_registration`,
+      role: normalizedRole,
       lastRequestedAtMs: now,
       lastRequestedAt: isoCreatedAt,
       isLocked: false,
@@ -212,8 +217,8 @@ router.post("/send-email-otp", async (req: Request, res: Response) => {
       },
       userId: "pre_registration",
       recipientName: candidateName,
-      recipientRole: "candidate",
-      createdBy: "candidate_otp_service",
+      recipientRole: normalizedRole,
+      createdBy: `${normalizedRole}_otp_service`,
       category: "transactional"
     });
 
@@ -427,9 +432,52 @@ router.post("/verify-email-otp", async (req: Request, res: Response) => {
       }).catch(() => {});
     }
 
-    // H. If candidate UID is provided, initialize candidateProfiles/{uid} document with profileStatus: 'incomplete'
+    // H. Initialize only the collection that belongs to the verified role.
     if (uid && db && db.collection) {
       const candidateName = fullName || storedRecord.name || "Candidate";
+      const verifiedRole = ["candidate", "consultancy", "employer", "recruiter"].includes(String(storedRecord.role || ""))
+        ? String(storedRecord.role)
+        : String(storedRecord.purpose || "candidate_registration").split("_")[0];
+      const commonVerifiedProfile = {
+        uid,
+        name: candidateName,
+        email: normalizedEmail,
+        role: verifiedRole,
+        emailVerified: true,
+        verificationStatus: "verified",
+        updatedAt: verifiedIso
+      };
+
+      if (verifiedRole !== "candidate") {
+        const businessStatus = "pending_kyc";
+        const businessProfile = {
+          ...commonVerifiedProfile,
+          status: businessStatus,
+          accountStatus: businessStatus,
+          isActive: false,
+          isApproved: false
+        };
+        try {
+          await db.collection("users").doc(uid).set(businessProfile, { merge: true });
+          if (verifiedRole === "consultancy") {
+            await db.collection("consultancies").doc(uid).set({
+              ...businessProfile,
+              agencyName: candidateName,
+              subscriptionStatus: "pending"
+            }, { merge: true });
+          }
+        } catch (businessErr: any) {
+          console.warn("[CandidateAuth] Business profile verification notice:", businessErr?.message || businessErr);
+        }
+        return res.json({
+          success: true,
+          verified: true,
+          email: normalizedEmail,
+          role: verifiedRole,
+          message: "Email verified. Business account is pending KYC and Admin approval."
+        });
+      }
+
       const candidateProfileDoc = {
         uid,
         fullName: candidateName,
@@ -468,12 +516,11 @@ router.post("/verify-email-otp", async (req: Request, res: Response) => {
             updatedAt: verifiedIso
           }, { merge: true }),
           db.collection("users").doc(uid).set({
-            uid,
-            name: candidateName,
-            email: normalizedEmail,
-            emailVerified: true,
-            verificationStatus: "verified",
+            ...commonVerifiedProfile,
             accountStatus: "active",
+            status: "active",
+            isActive: true,
+            isApproved: true,
             profileStatus: "incomplete",
             updatedAt: verifiedIso
           }, { merge: true })
