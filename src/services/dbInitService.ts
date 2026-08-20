@@ -395,8 +395,24 @@ export async function getOrCreateUserProfile(
       }
 
       console.log(`[Trace dbInitService] User doc non-admin found for UID: ${userId}, Role: ${data.role}`);
-      // Preserve existing non-candidate role (recruiter, consultancy, employer, candidate)
-      return data;
+      // Preserve the authoritative database role and record every successful
+      // login so Admin reporting reflects real platform usage.
+      const loginAt = new Date().toISOString();
+      const loginLogId = `login_${userId}_${Date.now()}`;
+      const refreshedProfile = { ...data, lastLogin: loginAt, updatedAt: loginAt } as UserProfile;
+      await Promise.all([
+        safeSetDoc("users", userId, { lastLogin: loginAt, updatedAt: loginAt }),
+        safeSetDoc("login_logs", loginLogId, {
+          id: loginLogId,
+          userId,
+          email: fbUser.email || data.email || "",
+          role: data.role,
+          status: "success",
+          source: "unified_login",
+          createdAt: loginAt
+        })
+      ]).catch(e => console.warn("[getOrCreateUserProfile] Login audit warning:", e));
+      return refreshedProfile;
     }
   }
 
