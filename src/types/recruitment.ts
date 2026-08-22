@@ -42,6 +42,8 @@ export interface RecruitmentCandidate {
   assignmentPriority?: "Urgent" | "High" | "Medium" | "Low";
   source: "Email Registration" | "Google Sign-In" | "Mobile OTP" | "Excel Import" | "Admin Manual" | "Consultancy Referral" | string;
   importBatchId?: string;
+  invitationStatus?: "pending_activation" | "activated";
+  importedProfileId?: string;
   adminNotes?: string;
   notesHistory?: Array<{
     note: string;
