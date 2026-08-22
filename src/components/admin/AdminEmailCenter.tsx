@@ -54,6 +54,7 @@ export default function AdminEmailCenter() {
     totalSent: 0,
     successCount: 0,
     failedCount: 0,
+    pendingCount: 0,
     optedInCandidates: 0
   });
   const [isStatsLoading, setIsStatsLoading] = useState(false);
@@ -105,7 +106,8 @@ export default function AdminEmailCenter() {
           totalSent: data.stats.totalSent || 0,
           successCount: data.stats.successCount || 0,
           failedCount: data.stats.failedCount || 0,
-          optedInCandidates: data.stats.optedInCandidates || 38
+          pendingCount: data.stats.pendingCount || 0,
+          optedInCandidates: data.stats.optedInCandidates || 0
         });
       }
     } catch (err) {
@@ -291,7 +293,7 @@ export default function AdminEmailCenter() {
       });
       const data = await parseJsonResponse(res);
       if (data.success) {
-        alert("🎉 Email delivery retried and sent successfully via Gmail SMTP!");
+        alert("🎉 Email delivery retry accepted successfully.");
         fetchTelemetry();
         fetchLogsAndDeliveries();
       } else {
@@ -312,9 +314,10 @@ export default function AdminEmailCenter() {
                         (l.event || l.category || "").toLowerCase().includes(q);
     if (!matchSearch) return false;
 
-    if (statusFilter === "SENT_SMTP") return l.status === "SENT_SMTP";
-    if (statusFilter === "QUEUED_FIRESTORE") return l.status === "QUEUED_FIRESTORE";
-    if (statusFilter === "FAILED") return l.status.includes("FAIL") || l.status.includes("ERROR");
+    const normalizedStatus = (l.status || "").toLowerCase();
+    if (statusFilter === "SENT_SMTP") return normalizedStatus === "sent" || normalizedStatus === "sent_smtp";
+    if (statusFilter === "QUEUED_FIRESTORE") return normalizedStatus === "pending" || normalizedStatus === "queued_firestore";
+    if (statusFilter === "FAILED") return normalizedStatus.includes("fail") || normalizedStatus.includes("error");
     return true;
   });
 
@@ -330,14 +333,14 @@ export default function AdminEmailCenter() {
                 <Mail className="w-5 h-5" />
               </span>
               <span className="text-[10px] font-mono tracking-widest text-indigo-400 uppercase font-extrabold">
-                ENTERPRISE GMAIL SMTP & FIRESTORE LOGS ENGINE
+                AUTOMATIC EMAIL DELIVERY & FIRESTORE REPORTING
               </span>
             </div>
             <h1 className="text-xl md:text-2xl font-black text-white tracking-tight">
               Admin Email & Broadcast Center
             </h1>
             <p className="text-xs text-gray-400 mt-1 max-w-2xl">
-              Dispatch custom emails to Candidates, Recruiters, Consultancies, and Employers using secure Nodemailer SMTP integration with real-time Firestore activity logging.
+              Candidate, Recruiter, Consultancy and Admin emails use SMTP first, with automatic Firebase queue fallback and real-time delivery reporting.
             </p>
           </div>
 
@@ -363,7 +366,7 @@ export default function AdminEmailCenter() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-white/10">
           <div className="bg-black/30 border border-white/5 p-4 rounded-2xl">
             <div className="text-[10px] font-mono text-gray-400 uppercase">Total Emails Dispatched</div>
-            <div className="text-2xl font-black text-white mt-1">{stats.totalSent || logs.length || 148}</div>
+            <div className="text-2xl font-black text-white mt-1">{stats.totalSent}</div>
             <div className="text-[10px] text-indigo-400 mt-1 flex items-center gap-1">
               <CheckCircle2 className="w-3 h-3 text-indigo-400" /> Across all channels
             </div>
@@ -371,25 +374,25 @@ export default function AdminEmailCenter() {
 
           <div className="bg-black/30 border border-emerald-500/20 p-4 rounded-2xl">
             <div className="text-[10px] font-mono text-gray-400 uppercase">SMTP Success Count</div>
-            <div className="text-2xl font-black text-emerald-400 mt-1">{stats.successCount || 142}</div>
+            <div className="text-2xl font-black text-emerald-400 mt-1">{stats.successCount}</div>
             <div className="text-[10px] text-emerald-400 mt-1 flex items-center gap-1">
               <Check className="w-3 h-3" /> Delivered via Nodemailer
             </div>
           </div>
 
           <div className="bg-black/30 border border-rose-500/20 p-4 rounded-2xl">
-            <div className="text-[10px] font-mono text-gray-400 uppercase">Failed / Pending</div>
-            <div className="text-2xl font-black text-rose-400 mt-1">{stats.failedCount || 6}</div>
+            <div className="text-[10px] font-mono text-gray-400 uppercase">Queued / Pending</div>
+            <div className="text-2xl font-black text-blue-400 mt-1">{stats.pendingCount}</div>
             <div className="text-[10px] text-rose-400 mt-1 flex items-center gap-1">
-              <AlertCircle className="w-3 h-3" /> Retry available in logs
+              <Clock className="w-3 h-3" /> Waiting for provider delivery
             </div>
           </div>
 
           <div className="bg-black/30 border border-blue-500/20 p-4 rounded-2xl">
             <div className="text-[10px] font-mono text-gray-400 uppercase">Opted-In Audience</div>
-            <div className="text-2xl font-black text-blue-400 mt-1">{stats.optedInCandidates || 38}</div>
+            <div className="text-2xl font-black text-blue-400 mt-1">{stats.failedCount}</div>
             <div className="text-[10px] text-blue-400 mt-1 flex items-center gap-1">
-              <Users className="w-3 h-3" /> Active Candidates & Employers
+              <AlertCircle className="w-3 h-3" /> Failed delivery records
             </div>
           </div>
         </div>
@@ -448,7 +451,7 @@ export default function AdminEmailCenter() {
               </p>
             </div>
             <span className="text-[10px] font-mono text-gray-400 bg-white/5 px-3 py-1 rounded-full border border-white/10">
-              SMTP: Gmail / Nodemailer
+              AUTO: SMTP → Firebase Queue
             </span>
           </div>
 
@@ -803,8 +806,9 @@ export default function AdminEmailCenter() {
                     </tr>
                   ) : (
                     filteredLogs.map((log, idx) => {
-                      const isSmtp = log.status === "SENT_SMTP";
-                      const isFailed = (log.status || "").includes("FAIL") || (log.status || "").includes("ERROR");
+                      const normalizedStatus = (log.status || "").toLowerCase();
+                      const isSmtp = normalizedStatus === "sent" || normalizedStatus === "sent_smtp";
+                      const isFailed = normalizedStatus.includes("fail") || normalizedStatus.includes("error");
 
                       return (
                         <tr key={log.id || log.emailId || `log-${idx}-${log.recipient}`} className="hover:bg-white/5 transition-all">
