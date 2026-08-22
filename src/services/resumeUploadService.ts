@@ -1,5 +1,4 @@
 import { doc, limit, setDoc } from "firebase/firestore";
-import { File, Save, Upload, User } from "lucide-react";
 import { auth, db } from "../firebase";
 import { uploadToCloudinary, CloudinaryUploadResult } from "./cloudinaryService";
 import { parseResumeData } from "./aiParser";
@@ -44,7 +43,8 @@ export async function uploadResumeService(
   let timeoutMs: number = 60000;
   let additionalMetadata: Record<string, any> = {};
 
-  if (fileOrOptions instanceof File || (fileOrOptions && typeof (fileOrOptions as any).name === "string" && typeof (fileOrOptions as any).slice === "function")) {
+  const isNativeFile = typeof window !== "undefined" && typeof window.File === "function" && fileOrOptions instanceof window.File;
+  if (isNativeFile || (fileOrOptions && typeof (fileOrOptions as any).name === "string" && typeof (fileOrOptions as any).slice === "function")) {
     file = fileOrOptions as File;
     uid = maybeOptions?.uid || maybeOptions?.userId || auth.currentUser?.uid || "";
     onProgress = maybeOptions?.onProgress;
