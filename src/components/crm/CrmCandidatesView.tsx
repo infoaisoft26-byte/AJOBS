@@ -11,12 +11,16 @@ interface CrmCandidatesViewProps {
   candidates: ConsultancyCandidateModel[];
   onRefresh: () => void;
   userRole: "Admin" | "Manager" | "Recruiter" | "Viewer";
+  consultancyId: string;
+  consultancyName: string;
 }
 
 export default function CrmCandidatesView({
   candidates = [],
   onRefresh,
-  userRole
+  userRole,
+  consultancyId,
+  consultancyName
 }: CrmCandidatesViewProps) {
   const [selectedCand, setSelectedCand] = useState<ConsultancyCandidateModel | null>(null);
   const [isAdding, setIsAdding] = useState(false);
@@ -101,7 +105,7 @@ export default function CrmCandidatesView({
             id: candId,
             name: rName.toString().trim(),
             email: emailStr,
-            phone: rPhone ? rPhone.toString().trim() : "+91-9876543210",
+            phone: rPhone ? rPhone.toString().trim() : "",
             skills: skillsArr,
             experience: rExp.toString().trim(),
             location: rLoc.toString().trim(),
@@ -109,8 +113,11 @@ export default function CrmCandidatesView({
             notes: rNotes.toString().trim(),
             tags: tagsArr,
             status: "active",
-            resumeScore: 82,
-            aiInterviewScore: 78
+            resumeScore: 0,
+            aiInterviewScore: 0,
+            consultancyId,
+            consultancyName,
+            source: "WhatsApp Group"
           };
 
           // Write to consultancy_candidates (Agency CRM)
@@ -124,12 +131,18 @@ export default function CrmCandidatesView({
             title: parsedCandidateObj.skills[0] ? `${parsedCandidateObj.skills[0]} Specialist` : "SDE Professional",
             skills: parsedCandidateObj.skills,
             experience: parsedCandidateObj.experience,
-            resumeScore: 82,
-            aiInterviewScore: 78,
+            phone: parsedCandidateObj.phone,
+            resumeScore: 0,
+            aiInterviewScore: 0,
             expectedSalary: parsedCandidateObj.expectedSalary + " LPA",
             location: parsedCandidateObj.location,
             availability: "Immediate",
-            isAiVerified: true,
+            isAiVerified: false,
+            verificationStatus: "pending",
+            accountStatus: "pending_activation",
+            consultancyId,
+            consultancyName,
+            source: "WhatsApp Group",
             tags: parsedCandidateObj.tags
           };
           await setDoc(doc(db, "candidates", candId), generalCandidateObj);
@@ -391,7 +404,10 @@ export default function CrmCandidatesView({
         tags,
         status,
         resumeScore: isEditing && selectedCand ? selectedCand.resumeScore : 80,
-        aiInterviewScore: isEditing && selectedCand ? selectedCand.aiInterviewScore : 75
+        aiInterviewScore: isEditing && selectedCand ? selectedCand.aiInterviewScore : 0,
+        consultancyId,
+        consultancyName,
+        source: selectedCand?.source || "Consultancy Manual Entry"
       };
 
       await setDoc(doc(db, "consultancy_candidates", candId), candObj);
@@ -610,8 +626,8 @@ export default function CrmCandidatesView({
                       />
                     </th>
                     <th className="p-4">Candidate Profile</th>
-                    <th className="p-4">Key Tech Skills</th>
-                    <th className="p-4 text-center">ATS Score</th>
+                    <th className="p-4">Contact & Applied Job</th>
+                    <th className="p-4 text-center">Status</th>
                     <th className="p-4 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -638,14 +654,12 @@ export default function CrmCandidatesView({
                           <div className="text-[10px] text-gray-400 font-mono">{cand.location} • {cand.experience}</div>
                         </td>
                         <td className="p-4">
-                          <div className="flex flex-wrap gap-1">
-                            {cand.skills.slice(0, 3).map((sk, idx) => (
-                              <span key={idx} className="text-[9px] px-1.5 py-0.5 bg-white/5 text-gray-300 rounded border border-white/5 font-mono">{sk}</span>
-                            ))}
-                          </div>
+                          <div className="text-[10px] text-gray-300">{cand.phone || "Mobile not provided"}</div>
+                          <div className="text-[10px] text-indigo-300 font-semibold">{cand.appliedJobTitle || "No job application yet"}</div>
+                          <div className="text-[9px] text-gray-500">{cand.companyName || cand.email}</div>
                         </td>
                         <td className="p-4 text-center font-mono font-bold text-indigo-400">
-                          {cand.resumeScore || 75}%
+                          {cand.applicationStatus || cand.status}
                         </td>
                         <td className="p-4 text-right" onClick={e => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-2">
@@ -840,6 +854,23 @@ export default function CrmCandidatesView({
               </div>
 
               <div className="space-y-3.5 text-xs">
+                <div className="space-y-2 bg-indigo-500/5 p-3 rounded-xl border border-indigo-500/20">
+                  <div><span className="text-gray-500">Email:</span> <span className="text-white break-all">{selectedCand.email || "Not provided"}</span></div>
+                  <div><span className="text-gray-500">Mobile:</span> <span className="text-white">{selectedCand.phone || "Not provided"}</span></div>
+                  <div><span className="text-gray-500">Consultancy:</span> <span className="text-indigo-300">{selectedCand.consultancyName || consultancyName}</span></div>
+                  <div><span className="text-gray-500">Source:</span> <span className="text-white">{selectedCand.source || "AIJobs"}</span></div>
+                </div>
+
+                <div className="space-y-2">
+                  <span className="text-gray-400 font-semibold">Job Applications ({selectedCand.applications?.length || 0})</span>
+                  {selectedCand.applications?.length ? selectedCand.applications.map(app => (
+                    <div key={app.id} className="p-3 bg-white/5 rounded-xl border border-white/5">
+                      <div className="font-bold text-white">{app.jobTitle}</div>
+                      <div className="text-[10px] text-gray-400">{app.companyName} • <span className="text-emerald-400 uppercase">{app.status}</span></div>
+                      {app.appliedAt && <div className="text-[9px] text-gray-500 mt-1">Applied: {new Date(app.appliedAt).toLocaleString()}</div>}
+                    </div>
+                  )) : <div className="text-[10px] text-gray-500 italic">No job application recorded yet.</div>}
+                </div>
                 <div className="grid grid-cols-2 gap-3 bg-white/5 p-3 rounded-xl border border-white/5 font-mono text-center">
                   <div className="space-y-0.5">
                     <span className="text-[9px] text-gray-400 uppercase tracking-wider block">Resume Score</span>
