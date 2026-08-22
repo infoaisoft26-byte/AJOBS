@@ -1,6 +1,6 @@
 import AIJobsLogo from "./AIJobsLogo";
 import React, { useEffect, useState } from "react";
-import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, onSnapshot, setDoc } from "firebase/firestore";
 import { motion } from "motion/react";
 import { BarChart2, Baseline, Bell, BookOpen, Brain, Briefcase, Building, Check, CheckCircle, ChevronLeft, ChevronRight, Clock, CreditCard, Database, DollarSign, FileText, Funnel, Globe, HelpCircle, Layers, Lock, LogOut, Mail, Menu, MessageSquare, Navigation, RefreshCw, Scale, Settings, ShieldAlert, ShieldCheck, Sidebar, Store, Terminal, Tickets, User, UserCheck, Users, Verified, X } from "lucide-react";
 import { auth, db } from "../firebase";
@@ -406,6 +406,34 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
     fetchWorkspaceData();
     syncAdminRoleFromFirestore();
   }, [currentUserId]);
+
+  // Core admin directory and headline counters remain live without manual refresh.
+  useEffect(() => {
+    const unsubs = [
+      onSnapshot(collection(db, "users"), snapshot => {
+        const rows = snapshot.docs.map(d => ({ uid: d.id, ...d.data() } as any));
+        setUserList(rows);
+        setStats(previous => ({
+          ...previous,
+          totalCandidates: rows.filter(u => normalizeRole(u.role) === "candidate").length,
+          totalConsultancies: rows.filter(u => normalizeRole(u.role) === "consultancy").length,
+          totalEmployers: rows.filter(u => ["employer", "recruiter"].includes(normalizeRole(u.role))).length,
+          liveOnlineUsers: rows.filter(u => Date.now() - new Date(u.lastActiveAt || 0).getTime() < 120000).length
+        }));
+      }, error => console.warn("Admin realtime users:", error.message)),
+      onSnapshot(collection(db, "jobs"), snapshot => {
+        const rows = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as any));
+        setJobsList(rows);
+        setStats(previous => ({ ...previous, totalJobs: rows.length, activeJobs: rows.filter(j => ["open", "active", "live", "published"].includes(String(j.status || "").toLowerCase())).length }));
+      }, error => console.warn("Admin realtime jobs:", error.message)),
+      onSnapshot(collection(db, "applications"), snapshot => {
+        const today = new Date().toISOString().slice(0, 10);
+        const rows = snapshot.docs.map(d => d.data());
+        setStats(previous => ({ ...previous, applicationsToday: rows.filter(a => String(a.appliedAt || a.createdAt || "").slice(0, 10) === today).length }));
+      }, error => console.warn("Admin realtime applications:", error.message))
+    ];
+    return () => unsubs.forEach(unsubscribe => unsubscribe());
+  }, []);
 
   const handleSeedMockDatabase = async () => {
     setSeeding(true);
