@@ -1305,12 +1305,14 @@ export async function executeCandidateBatchImport(params: {
     chunk.forEach((row, chunkIdx) => {
       const overallIdx = i + chunkIdx;
       const candidateId = sequentialIds[overallIdx];
+      // Imported rows are pre-registration invitations, not authenticated users.
+      // A real Firebase UID is attached when the candidate verifies the same email.
       const docId = `can_imp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
       const candidateRecord: RecruitmentCandidate = {
         id: docId,
         candidateId,
-        uid: docId,
+        uid: "",
         fullName: row.fullName,
         name: row.fullName,
         email: row.email,
@@ -1334,12 +1336,14 @@ export async function executeCandidateBatchImport(params: {
         expectedCtc: row.expectedCtc || "",
         noticePeriodDays: row.noticePeriodDays || "",
         resumeUrl: row.resumeUrl || null,
-        emailVerified: true,
-        verificationStatus: "verified",
-        accountStatus: "active",
+        emailVerified: false,
+        verificationStatus: "pending",
+        accountStatus: "pending_verification",
         profileStatus: row.resumeUrl ? "complete" : "incomplete",
         profileCompletion: row.resumeUrl ? 85 : 40,
         source: "Excel Import",
+        invitationStatus: "pending_activation",
+        importedProfileId: docId,
         importBatchId: batchSequentialId,
         createdAt: nowIso,
         updatedAt: nowIso
@@ -1347,23 +1351,9 @@ export async function executeCandidateBatchImport(params: {
 
       const candDocRef = doc(db, "candidates", docId);
       const candProfileDocRef = doc(db, "candidateProfiles", docId);
-      const userDocRef = doc(db, "users", docId);
 
       firestoreBatch.set(candDocRef, candidateRecord);
       firestoreBatch.set(candProfileDocRef, candidateRecord);
-      firestoreBatch.set(userDocRef, {
-        uid: docId,
-        name: candidateRecord.fullName,
-        email: candidateRecord.email,
-        phone: candidateRecord.phone || "",
-        role: "candidate",
-        candidateId,
-        accountStatus: "active",
-        emailVerified: true,
-        verificationStatus: "verified",
-        createdAt: nowIso,
-        updatedAt: nowIso
-      });
     });
 
     try {
