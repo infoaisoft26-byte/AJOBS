@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from "react";
-import { collection, deleteDoc, doc, setDoc } from "firebase/firestore";
+import { collection, doc, setDoc } from "firebase/firestore";
+import { sendPasswordResetEmail } from "firebase/auth";
 import { Ban, Building2, Chrome, Clock, Code, Delete, Eye, Filter, Inspect, Key, Plus, Rows, Search, ShieldCheck, Table, Trash2, User, UserPlus, Users, View } from "lucide-react";
 import { auth, db } from "../../firebase";
 import InteractiveExportTable from "../InteractiveExportTable";
@@ -48,10 +49,21 @@ export default function UserManagement({
     else if (selectedStatus === "verified_candidates") matchesStatus = isCand && isVerifiedCand;
     else if (selectedStatus === "unverified_candidates") matchesStatus = isCand && !isVerifiedCand;
 
-    const matchesRole = selectedRole === "all" || u.role === selectedRole;
+    const matchesRole = selectedRole === "all" || u.role === selectedRole || (selectedRole === "recruiter" && u.role === "employer");
 
     return matchesSearch && matchesStatus && matchesRole;
   });
+  const roleCounts = {
+    candidate: users.filter(u => u.role === "candidate").length,
+    recruiter: users.filter(u => u.role === "recruiter" || u.role === "employer").length,
+    consultancy: users.filter(u => u.role === "consultancy").length
+  };
+  const isRecentlyOnline = (u: UserProfile) => Date.now() - new Date((u as any).lastActiveAt || 0).getTime() < 120000;
+  const formatActivity = (u: UserProfile) => {
+    const value = (u as any).lastActiveAt || u.lastLogin || u.createdAt;
+    const date = value ? new Date(value) : null;
+    return date && !Number.isNaN(date.getTime()) ? date.toLocaleString() : "No activity recorded";
+  };
 
   const handleToggleSuspend = async (user: UserProfile) => {
     setIsSubmitting(true);
@@ -97,13 +109,8 @@ export default function UserManagement({
   };
 
   const handleTriggerResetPassword = async (user: UserProfile) => {
-    const dummyResetCode = Math.floor(100000 + Math.random() * 900000);
     try {
-      // Update in user profile (simulated code stored for demo support logs)
-      await setDoc(doc(db, "users", user.uid), {
-        tempResetCode: dummyResetCode,
-        passwordResetRequired: true
-      }, { merge: true });
+      await sendPasswordResetEmail(auth, user.email);
 
       // Create log
       const logId = "log_" + Math.random().toString(36).substr(2, 9);
@@ -115,60 +122,15 @@ export default function UserManagement({
         role: "Super Admin",
         action: "SETTINGS_CHANGE",
         category: "Security",
-        description: `Issued remote password override reset code for ${user.name}. Code: ${dummyResetCode}`,
-        ipAddress: "157.45.18.221",
-        deviceInfo: "Chrome 124.0",
+        description: `Sent a secure Firebase password reset email to ${user.email}.`,
+        ipAddress: "server-managed",
+        deviceInfo: "Admin Console",
         createdAt: new Date().toISOString()
       });
 
-      alert(`🔑 Administrative Reset Triggered!\n\nTemporary reset token generated: ${dummyResetCode}\nAn auto-mailer simulation containing verification links has been broadcasted.`);
+      alert(`Secure password reset email sent to ${user.email}.`);
     } catch (err) {
       console.error(err);
-    }
-  };
-
-  const handleDeleteUser = async (user: UserProfile) => {
-    if (!confirm(`⚠️ WARNING: Are you sure you want to permanently delete user "${user.name}"? This operation cannot be undone and will strip all corresponding job logs.`)) {
-      return;
-    }
-    setIsSubmitting(true);
-    try {
-      // Delete user doc
-      await deleteDoc(doc(db, "users", user.uid));
-      
-      // Delete from corresponding child collection
-      if (user.role === "candidate") {
-        await deleteDoc(doc(db, "candidates", user.uid));
-      } else if (user.role === "consultancy") {
-        await deleteDoc(doc(db, "consultancies", user.uid));
-      } else if (user.role === "employer") {
-        await deleteDoc(doc(db, "employers", user.uid));
-      }
-
-      // Log action
-      const logId = "log_" + Math.random().toString(36).substr(2, 9);
-      await setDoc(doc(db, "audit_logs", logId), {
-        id: logId,
-        userId: user.uid,
-        userName: user.name,
-        userEmail: user.email,
-        role: "Super Admin",
-        action: "DELETE",
-        category: "User",
-        description: `Permanently expunged user dataset for candidate ${user.name} from Firebase schema.`,
-        ipAddress: "157.45.18.221",
-        deviceInfo: "Chrome 124.0",
-        createdAt: new Date().toISOString()
-      });
-
-      alert(`Successfully deleted user ${user.name}`);
-      setSelectedUserForDetail(null);
-      onRefresh();
-    } catch (err) {
-      console.error(err);
-      alert("Error deleting user dataset.");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -193,6 +155,7 @@ export default function UserManagement({
       if (!response.ok || !data.success) {
         throw new Error(data.error || "Account creation failed.");
       }
+
       setCreateSuccess(`${newAccount.role === "recruiter" ? "Recruiter" : "Consultancy"} created: ${newAccount.email}`);
       setNewAccount({ role: "recruiter", name: "", companyName: "", email: "", phone: "", password: "" });
       onRefresh();
@@ -253,6 +216,20 @@ export default function UserManagement({
           </div>
         </form>
       )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {([
+          ["candidate", "Candidates", roleCounts.candidate],
+          ["recruiter", "Recruiters", roleCounts.recruiter],
+          ["consultancy", "Consultancies", roleCounts.consultancy]
+        ] as const).map(([role, label, count]) => (
+          <button key={role} onClick={() => setSelectedRole(role)} className={`p-4 rounded-2xl border text-left transition-all ${selectedRole === role ? "bg-indigo-500/15 border-indigo-500/40" : "bg-white/5 border-white/10 hover:border-white/20"}`}>
+            <div className="text-[10px] uppercase tracking-wider text-gray-400">{label}</div>
+            <div className="text-2xl font-black text-white mt-1">{count}</div>
+            <div className="text-[9px] text-emerald-400 mt-1">Realtime directory</div>
+          </button>
+        ))}
+      </div>
 
       {/* Filter and Search controls */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white/5 p-4 rounded-2xl border border-white/5 text-xs text-gray-300">
@@ -359,18 +336,19 @@ export default function UserManagement({
               },
               {
                 key: "isSuspended",
-                label: "Status",
+                label: "Live Status",
                 sortable: true,
                 render: (val: any, u: UserProfile) => {
                   const isSusp = (u as any).isSuspended || false;
+                  const online = isRecentlyOnline(u);
                   return (
-                    <span className={`px-2 py-0.5 rounded font-mono text-[9px] font-bold ${
+                    <div className="space-y-1"><span className={`px-2 py-0.5 rounded font-mono text-[9px] font-bold ${
                       isSusp 
                         ? "bg-rose-500/10 text-rose-400 border border-rose-500/20" 
-                        : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                        : online ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-gray-500/10 text-gray-400 border border-gray-500/20"
                     }`}>
-                      {isSusp ? "SUSPENDED" : "ACTIVE"}
-                    </span>
+                      {isSusp ? "SUSPENDED" : online ? "● ONLINE" : "OFFLINE"}
+                    </span><div className="text-[8px] text-gray-500">{formatActivity(u)}</div></div>
                   );
                 }
               },
@@ -410,13 +388,6 @@ export default function UserManagement({
                         <Key className="w-3.5 h-3.5" />
                       </button>
 
-                      <button
-                        onClick={() => handleDeleteUser(u)}
-                        className="p-1.5 bg-red-500/10 hover:bg-red-500 border border-red-500/20 text-red-400 hover:text-white rounded-lg transition-all cursor-pointer inline-flex items-center"
-                        title="Delete User permanently"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
                     </div>
                   );
                 }
@@ -438,7 +409,7 @@ export default function UserManagement({
                 {/* User avatar mockup */}
                 <div className="flex items-center gap-3 bg-white/5 p-3 rounded-xl border border-white/5">
                   <div className="w-10 h-10 rounded-lg bg-indigo-600/20 text-indigo-400 flex items-center justify-center font-bold text-sm uppercase">
-                    {selectedUserForDetail.name.charAt(0)}
+                    {(selectedUserForDetail.name || selectedUserForDetail.email || "U").charAt(0)}
                   </div>
                   <div>
                     <h5 className="font-extrabold text-xs text-white">{selectedUserForDetail.name}</h5>
@@ -473,7 +444,7 @@ export default function UserManagement({
                   </div>
                 </div>
 
-                {/* Audit simulated login history */}
+                {/* Actual activity timestamp */}
                 <div className="space-y-2">
                   <span className="text-[9px] font-mono font-bold text-gray-500 uppercase tracking-widest block flex items-center gap-1">
                     <Clock className="w-3.5 h-3.5" />
@@ -481,18 +452,9 @@ export default function UserManagement({
                   </span>
 
                   <div className="bg-neutral-950/30 p-2.5 rounded-xl border border-white/5 font-mono text-[9px] text-gray-400 space-y-1.5 leading-normal">
-                    <p className="flex justify-between border-b border-white/5 pb-1 text-[8px]">
-                      <span>TIMESTAMP</span>
-                      <span>IP ADDRESS • REGION</span>
-                    </p>
-                    <p className="flex justify-between">
-                      <span className="text-white">{new Date(Date.now() - 10 * 60 * 1000).toLocaleTimeString()}</span>
-                      <span>157.45.18.221 (Bengaluru, KA)</span>
-                    </p>
-                    <p className="flex justify-between text-[8px]">
-                      <span className="text-gray-500">{new Date(Date.now() - 1.5 * 24 * 60 * 60 * 1000).toLocaleDateString()}</span>
-                      <span>182.70.19.103 (Hyderabad, TS)</span>
-                    </p>
+                    <p className="flex justify-between border-b border-white/5 pb-1"><span>Current</span><strong className={isRecentlyOnline(selectedUserForDetail) ? "text-emerald-400" : "text-gray-400"}>{isRecentlyOnline(selectedUserForDetail) ? "ONLINE" : "OFFLINE"}</strong></p>
+                    <p className="flex justify-between gap-3"><span>Last active</span><span className="text-white text-right">{formatActivity(selectedUserForDetail)}</span></p>
+                    <p className="flex justify-between gap-3"><span>Registered</span><span className="text-white text-right">{selectedUserForDetail.createdAt ? new Date(selectedUserForDetail.createdAt).toLocaleString() : "N/A"}</span></p>
                   </div>
                 </div>
 
