@@ -16,11 +16,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 interface InternalPlatformLoginProps {
   onAuthorizedSuccess: (userProfile: UserProfile, targetInternalRoute: string) => void;
   onCandidateRedirect: () => void;
+  expectedRole?: "recruiter" | "consultancy" | "employer";
 }
 
 export default function InternalPlatformLogin({
   onAuthorizedSuccess,
-  onCandidateRedirect
+  onCandidateRedirect,
+  expectedRole
 }: InternalPlatformLoginProps) {
   const { showToast } = useToast();
   const [email, setEmail] = useState("");
@@ -45,6 +47,12 @@ export default function InternalPlatformLogin({
     }
 
     const normRole = normalizeRole(profile.role);
+    if (expectedRole && normRole !== expectedRole && !(expectedRole === "employer" && normRole === "recruiter")) {
+      await auth.signOut();
+      setErrorMsg(`This login page is only for ${expectedRole} accounts.`);
+      showToast(`Use the correct ${normRole} login portal.`, "error");
+      return;
+    }
     const hasInternalAccess = profile.internalAccess === true || profile.isBetaTester === true || isAdminRole(profile.role);
 
     if (!hasInternalAccess && normRole === "candidate") {
@@ -58,7 +66,9 @@ export default function InternalPlatformLogin({
     let targetRoute = "/internal/candidate";
     if (isAdminRole(profile.role)) {
       targetRoute = "/admin/dashboard";
-    } else if (normRole === "employer" || normRole === "recruiter") {
+    } else if (normRole === "recruiter") {
+      targetRoute = "/internal/recruiter";
+    } else if (normRole === "employer") {
       targetRoute = "/internal/employer";
     } else if (normRole === "consultancy") {
       targetRoute = "/internal/consultancy";
@@ -132,7 +142,12 @@ export default function InternalPlatformLogin({
   };
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center px-4 py-12 relative z-10">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 relative z-10 bg-[#02040a] overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-[12%] left-[15%] w-48 h-48 rounded-full bg-blue-600/15 blur-3xl animate-pulse" />
+        <div className="absolute bottom-[10%] right-[12%] w-64 h-64 rounded-full bg-fuchsia-600/15 blur-3xl animate-pulse" />
+        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.25)_1px,transparent_1px)] bg-[length:28px_28px]" />
+      </div>
       <div className="w-full max-w-md bg-gray-950/85 backdrop-blur-2xl border border-indigo-500/30 rounded-3xl p-8 shadow-[0_0_60px_rgba(99,102,241,0.2)] relative overflow-hidden">
         
         {/* Ambient Top Glow */}
@@ -142,13 +157,13 @@ export default function InternalPlatformLogin({
         <div className="text-center space-y-3 mb-8 relative">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-mono font-semibold uppercase tracking-wider">
             <LockKeyhole className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Authorized Internal Workspace</span>
+            <span>{expectedRole ? `${expectedRole} secure workspace` : "Authorized Internal Workspace"}</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-            Internal Platform Access
+            {expectedRole ? `${expectedRole.charAt(0).toUpperCase() + expectedRole.slice(1)} Login` : "Internal Platform Access"}
           </h2>
           <p className="text-xs text-gray-400 max-w-xs mx-auto">
-            Authorized team members, testers, and recruiters login here to access full workspace features.
+            Sign in with your registered email and password. Your account role is verified before dashboard access.
           </p>
         </div>
 
