@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
+import { collection, doc, onSnapshot, Unsubscribe } from "firebase/firestore";
 import { Bell, Briefcase, Building, Calendar, CheckCircle2, DollarSign, FileText, Import, LayoutDashboard, List, LogOut, Menu, Plus, RefreshCw, Router, Settings, ShieldAlert, ShieldCheck, Sidebar, Sparkles, TrendingUp, Users, X } from "lucide-react";
 import { auth, db } from "../firebase";
 
@@ -71,114 +71,102 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
 
   const [showMainPostForm, setShowMainPostForm] = useState(false);
 
-  // Fetch and Sync CRM Data
-  const fetchCrmData = async () => {
+  const [refreshKey, setRefreshKey] = useState(0);
+  const fetchCrmData = () => setRefreshKey(value => value + 1);
+
+  // Realtime CRM sync. Primary application collections and legacy CRM collections
+  // are merged so existing data remains visible while new registrations appear instantly.
+  useEffect(() => {
     setLoading(true);
     setError(null);
-    let syncErrorsList: string[] = [];
+    const cache: Record<string, any[]> = {};
+    let agencyName = userName || "Consultancy";
+    const clean = (value: any, fallback = "") => typeof value === "string" && value.trim() ? value.trim() : fallback;
+    const iso = (value: any) => value?.toDate?.().toISOString?.() || clean(value);
 
-    try {
-      // 1. Fetch/Initialize profile
-      const profRef = doc(db, "consultancies", userId);
-      const profSnap = await getDoc(profRef);
-      if (profSnap.exists()) {
-        setProfile(profSnap.data() as ConsultancyProfile);
-      } else {
-        // Create initial default profile
-        const newProfile: ConsultancyProfile = {
-          userId,
-          agencyName: "Nexus Talent Partners",
-          subscriptionStatus: "active",
-          pricingPlan: "Professional",
-          clientsCount: 3,
-          revenue: 350000
+    const rebuild = () => {
+      const allJobs = [...(cache.jobs || []), ...(cache.consultancy_jobs || [])];
+      const uniqueJobs = Array.from(new Map(allJobs.map(j => [j.id, j])).values());
+      const scopedJobs = uniqueJobs.filter(j =>
+        j.consultancyId === userId || j.createdBy === userId || j.userId === userId ||
+        clean(j.consultancyName || j.consultancy).toLowerCase() === agencyName.toLowerCase()
+      );
+      setJobs((scopedJobs.length ? scopedJobs : uniqueJobs).map(j => ({
+        ...j, title: clean(j.title || j.jobTitle, "Untitled Job"),
+        companyName: clean(j.companyName || j.company, "Company not provided"),
+        skillsRequired: Array.isArray(j.skillsRequired || j.skills) ? (j.skillsRequired || j.skills) : [],
+        status: j.status || "open", createdAt: iso(j.createdAt)
+      })) as ConsultancyJobModel[]);
+
+      const jobIds = new Set(scopedJobs.map(j => j.id));
+      const applications = (cache.applications || []).filter(a =>
+        jobIds.has(a.jobId) || a.consultancyId === userId || a.createdBy === userId ||
+        clean(a.consultancyName || a.consultancy).toLowerCase() === agencyName.toLowerCase()
+      );
+      const relatedApplications = applications.length ? applications : (cache.applications || []);
+      const sources = [...(cache.candidates || []), ...(cache.candidateProfiles || []), ...(cache.users || []), ...(cache.consultancy_candidates || [])];
+      const merged = new Map<string, any>();
+      sources.forEach(c => {
+        if (c.role && !["candidate", "jobseeker", "job_seeker"].includes(String(c.role).toLowerCase())) return;
+        const key = clean(c.uid || c.userId || c.candidateId || c.email || c.id).toLowerCase();
+        if (!key) return;
+        const old = merged.get(key) || {};
+        merged.set(key, { ...old, ...c, id: c.uid || c.userId || c.candidateId || old.id || c.id });
+      });
+      relatedApplications.forEach(a => {
+        const key = clean(a.candidateId || a.userId || a.candidateEmail || a.email || a.id).toLowerCase();
+        const old = merged.get(key) || {};
+        merged.set(key, { ...a, ...old, id: old.id || a.candidateId || a.userId || a.id });
+      });
+      const candidateRows: ConsultancyCandidateModel[] = Array.from(merged.values()).map(c => {
+        const apps = relatedApplications.filter(a =>
+          (a.candidateId && [c.id, c.uid, c.userId, c.candidateId].includes(a.candidateId)) ||
+          (clean(a.candidateEmail || a.email).toLowerCase() && clean(a.candidateEmail || a.email).toLowerCase() === clean(c.email || c.candidateEmail).toLowerCase())
+        ).sort((a, b) => iso(b.appliedAt || b.createdAt).localeCompare(iso(a.appliedAt || a.createdAt)));
+        const latest = apps[0] || {};
+        return {
+          id: c.id, candidateId: c.id,
+          name: clean(c.name || c.fullName || c.displayName || c.candidateName, "Candidate"),
+          email: clean(c.email || c.candidateEmail, "Not provided"),
+          phone: clean(c.phone || c.mobile || c.mobileNumber || c.phoneNumber || c.personalDetails?.mobile || c.candidatePhone || latest.candidatePhone, "Not provided"),
+          skills: Array.isArray(c.skills || c.candidateSkills) ? (c.skills || c.candidateSkills) : [],
+          experience: clean(c.experience || c.yearsOfExperience || c.candidateExperience, "Not provided"),
+          location: clean(c.location || c.city || c.candidateLocation, "Not provided"),
+          expectedSalary: clean(c.expectedSalary || c.expectedCTC, "Not provided"),
+          notes: clean(c.notes), tags: Array.isArray(c.tags) ? c.tags : [],
+          status: c.status === "rejected" || c.status === "shortlisted" || c.status === "saved" ? c.status : "active",
+          resumeScore: Number(c.resumeScore || 0), aiInterviewScore: Number(c.aiInterviewScore || c.interviewScore || 0),
+          applicationId: latest.id, applicationStatus: clean(latest.status),
+          appliedJobId: latest.jobId, appliedJobTitle: clean(latest.jobTitle), companyName: clean(latest.companyName || latest.company),
+          appliedAt: iso(latest.appliedAt || latest.createdAt), consultancyId: userId,
+          consultancyName: clean(latest.consultancyName || latest.consultancy || c.consultancyName, agencyName),
+          source: clean(latest.source || c.source, "AIJobs"), resumeUrl: c.resumeUrl || latest.resumeUrl,
+          applications: apps.map(a => ({ id: a.id, jobId: a.jobId || "", jobTitle: clean(a.jobTitle, "Untitled Job"), companyName: clean(a.companyName || a.company, "Company not provided"), status: clean(a.status, "applied"), appliedAt: iso(a.appliedAt || a.createdAt) }))
         };
-        await setDoc(profRef, newProfile);
-        setProfile(newProfile);
-      }
-    } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve or initialize consultancy profile:", err.message);
-      syncErrorsList.push("profile");
-    }
+      });
+      setCandidates(candidateRows);
+    };
 
-    // 3. Retrieve clients
-    try {
-      const clientsSnap = await getDocs(collection(db, "clients"));
-      const clList: ClientModel[] = [];
-      clientsSnap.forEach(d => clList.push({ id: d.id, ...d.data() } as ClientModel));
-      setClients(clList);
-    } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve clients:", err.message);
-      syncErrorsList.push("clients");
-      setClients([]);
-    }
-
-    // 4. Retrieve jobs
-    try {
-      const jobsSnap = await getDocs(collection(db, "consultancy_jobs"));
-      const jList: ConsultancyJobModel[] = [];
-      jobsSnap.forEach(d => jList.push({ id: d.id, ...d.data() } as ConsultancyJobModel));
-      setJobs(jList);
-    } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve consultancy_jobs:", err.message);
-      syncErrorsList.push("consultancy_jobs");
-      setJobs([]);
-    }
-
-    // 5. Retrieve candidates
-    try {
-      const candSnap = await getDocs(collection(db, "consultancy_candidates"));
-      const cList: ConsultancyCandidateModel[] = [];
-      candSnap.forEach(d => cList.push({ id: d.id, ...d.data() } as ConsultancyCandidateModel));
-      setCandidates(cList);
-    } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve consultancy_candidates:", err.message);
-      syncErrorsList.push("consultancy_candidates");
-      setCandidates([]);
-    }
-
-    // 6. Retrieve placements
-    try {
-      const placeSnap = await getDocs(collection(db, "placements"));
-      const pList: PlacementModel[] = [];
-      placeSnap.forEach(d => pList.push({ id: d.id, ...d.data() } as PlacementModel));
-      setPlacements(pList);
-    } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve placements:", err.message);
-      syncErrorsList.push("placements");
-      setPlacements([]);
-    }
-
-    // 7. Retrieve team members
-    try {
-      const teamSnap = await getDocs(collection(db, "team_members"));
-      const tList: TeamMemberModel[] = [];
-      teamSnap.forEach(d => tList.push({ id: d.id, ...d.data() } as TeamMemberModel));
-      setTeam(tList);
-    } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve team_members:", err.message);
-      syncErrorsList.push("team_members");
-      setTeam([]);
-    }
-
-    // 8. Retrieve interviews scheduled
-    try {
-      const intSnap = await getDocs(collection(db, "interviews_scheduled"));
-      const iList: InterviewModel[] = [];
-      intSnap.forEach(d => iList.push({ id: d.id, ...d.data() } as InterviewModel));
-      setInterviews(iList);
-    } catch (err: any) {
-      console.warn("Resilient Fetch: Failed to retrieve interviews_scheduled:", err.message);
-      syncErrorsList.push("interviews_scheduled");
-      setInterviews([]);
-    }
-
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchCrmData();
-  }, [userId]);
+    const unsubs: Unsubscribe[] = [];
+    const listen = (name: string, setter?: (rows: any[]) => void) => {
+      unsubs.push(onSnapshot(collection(db, name), snapshot => {
+        cache[name] = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        setter?.(cache[name]); rebuild(); setLoading(false);
+      }, err => { console.warn(`Realtime ${name} sync failed:`, err.message); setError(`Some ${name} data could not be synchronized.`); setLoading(false); }));
+    };
+    unsubs.push(onSnapshot(doc(db, "consultancies", userId), snapshot => {
+      if (snapshot.exists()) { const value = snapshot.data() as ConsultancyProfile; agencyName = clean(value.agencyName, agencyName); setProfile(value); rebuild(); }
+      else setError("Consultancy profile not found. Please contact administrator.");
+      setLoading(false);
+    }));
+    listen("clients", rows => setClients(rows as ClientModel[]));
+    listen("jobs"); listen("consultancy_jobs"); listen("applications");
+    listen("candidates"); listen("candidateProfiles"); listen("users"); listen("consultancy_candidates");
+    listen("placements", rows => setPlacements(rows as PlacementModel[]));
+    listen("team_members", rows => setTeam(rows as TeamMemberModel[]));
+    listen("interviews_scheduled", rows => setInterviews(rows as InterviewModel[]));
+    return () => unsubs.forEach(unsubscribe => unsubscribe());
+  }, [userId, userName, refreshKey]);
 
   if (loading) {
     return (
@@ -419,6 +407,8 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
                 candidates={candidates}
                 onRefresh={fetchCrmData}
                 userRole={currentUserRole}
+                consultancyId={userId}
+                consultancyName={profile.agencyName || userName}
               />
             )}
 
