@@ -44,14 +44,14 @@ export default function CrmDashboardView({
 
     candidates.forEach((c) => {
       // Clean expectedSalary to numeric value (e.g. "42" or "18 LPA" -> 42, 18)
-      let salNum = parseFloat(c.expectedSalary.replace(/[^0-9.]/g, ""));
-      if (isNaN(salNum)) salNum = 30; // fallback default
+      let salNum = parseFloat(String(c.expectedSalary || "").replace(/[^0-9.]/g, ""));
+      if (isNaN(salNum)) salNum = 0;
       if (salNum > 100000) salNum = Math.round(salNum / 100000); // convert PA rupees to LPA standard
 
       // Categorize candidate based on tags, notes, or skills
       let categorized = false;
-      const skillsLower = c.skills.map(s => s.toLowerCase());
-      const tagsLower = (c.tags || []).map(t => t.toLowerCase());
+      const skillsLower = (Array.isArray(c.skills) ? c.skills : []).map(s => String(s || "").toLowerCase());
+      const tagsLower = (Array.isArray(c.tags) ? c.tags : []).map(t => String(t || "").toLowerCase());
 
       if (skillsLower.includes("react") || skillsLower.includes("typescript") || tagsLower.includes("mern stack")) {
         categories["Full Stack Engineer"].totalSalary += salNum;
@@ -222,29 +222,18 @@ export default function CrmDashboardView({
           </h4>
 
           <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
-            <div className="p-3 bg-white/5 rounded-xl border border-white/5 space-y-1 text-xs">
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-gray-300">Aryan Sharma Placed</span>
-                <span className="text-[9px] text-gray-500">2 hrs ago</span>
+            {candidates.flatMap(candidate => (candidate.applications || []).map(application => ({ candidate, application }))).slice(0, 5).map(({ candidate, application }) => (
+              <div key={application.id} className="p-3 bg-white/5 rounded-xl border border-white/5 space-y-1 text-xs">
+                <div className="flex justify-between items-center gap-2">
+                  <span className="font-bold text-gray-300">{candidate.name} applied</span>
+                  <span className="text-[9px] text-gray-500 uppercase">{application.status}</span>
+                </div>
+                <p className="text-[10px] text-gray-400">{application.jobTitle} • {application.companyName}</p>
               </div>
-              <p className="text-[10px] text-gray-400">Google India finalized placement. Invoice issued for INR 3.5 Lakhs.</p>
-            </div>
-
-            <div className="p-3 bg-white/5 rounded-xl border border-white/5 space-y-1 text-xs">
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-gray-300">Staff DevOps Open</span>
-                <span className="text-[9px] text-gray-500">Yesterday</span>
-              </div>
-              <p className="text-[10px] text-gray-400">Created Staff DevOps role for Stripe Payment Systems. Recruiter assigned: Kunal.</p>
-            </div>
-
-            <div className="p-3 bg-white/5 rounded-xl border border-white/5 space-y-1 text-xs">
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-gray-300">Candidate Pool Synced</span>
-                <span className="text-[9px] text-gray-500">2 days ago</span>
-              </div>
-              <p className="text-[10px] text-gray-400">Synchronized resume analytics scores for 4 primary candidate profiles from the ATS master.</p>
-            </div>
+            ))}
+            {!candidates.some(candidate => (candidate.applications || []).length > 0) && (
+              <div className="p-4 text-center text-xs text-gray-500 border border-dashed border-white/10 rounded-xl">No real application activity yet.</div>
+            )}
           </div>
         </div>
 
