@@ -26,6 +26,8 @@ export interface ConsultancyJobModel {
   timeline: string;
   status: "open" | "closed" | "draft" | "onhold";
   createdAt: string;
+  consultancyId?: string;
+  consultancyName?: string;
 }
 
 export interface ConsultancyCandidateModel {
