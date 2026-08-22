@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { collection, deleteDoc, doc, getDoc, getDocs, updateDoc } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, updateDoc } from "firebase/firestore";
 import { 
   Building2, 
   Calendar, 
@@ -71,6 +71,29 @@ export interface RecruiterOption {
   email: string;
   role: string;
 }
+
+const normalizeApplication = (id: string, data: any): AdminApplicationRecord => ({
+  id,
+  jobId: String(data.jobId || ""),
+  jobTitle: String(data.jobTitle || "Job not provided"),
+  companyName: String(data.companyName || data.company || "Company not provided"),
+  candidateId: String(data.candidateId || data.userId || ""),
+  candidateName: String(data.candidateName || data.name || "Candidate"),
+  candidateEmail: String(data.candidateEmail || data.email || ""),
+  candidatePhone: String(data.candidatePhone || data.phone || data.mobile || data.mobileNumber || ""),
+  candidateLocation: String(data.candidateLocation || data.location || ""),
+  candidateExperience: String(data.candidateExperience || data.experience || ""),
+  candidateSkills: (Array.isArray(data.candidateSkills) ? data.candidateSkills : Array.isArray(data.skills) ? data.skills : []).filter((v: any) => typeof v === "string"),
+  resumeUrl: String(data.resumeUrl || data.resumeFileName || ""),
+  resumeScore: Number(data.resumeScore || 0), source: String(data.source || "AIJobs"),
+  assignedRecruiterId: data.assignedRecruiterId || null, assignedRecruiterName: data.assignedRecruiterName || null,
+  assignedAt: data.assignedAt || null, assignedBy: data.assignedBy || null,
+  status: String(data.status || "applied"),
+  appliedAt: data.appliedAt?.toDate?.().toISOString?.() || String(data.appliedAt || data.createdAt || ""),
+  updatedAt: data.updatedAt, interviewDate: data.interviewDate, interviewTime: data.interviewTime,
+  interviewMode: data.interviewMode, interviewLocation: data.interviewLocation,
+  meetingLink: data.meetingLink, interviewerName: data.interviewerName, interviewNotes: data.interviewNotes
+});
 
 export default function ApplicationManagement({
   onRefresh
@@ -149,36 +172,7 @@ export default function ApplicationManagement({
         const appsSnap = await getDocs(collection(db, "applications"));
         appsSnap.forEach((d) => {
           const data = d.data();
-          list.push({
-            id: d.id,
-            jobId: data.jobId || "job_unk",
-            jobTitle: data.jobTitle || "Job Title",
-            companyName: data.companyName || "Employer",
-            candidateId: data.candidateId || data.userId || "cand_unk",
-            candidateName: data.candidateName || "Candidate",
-            candidateEmail: data.candidateEmail || data.email || "",
-            candidatePhone: data.candidatePhone || data.phone || data.mobile || "",
-            candidateLocation: data.candidateLocation || data.location || "Undisclosed",
-            candidateExperience: data.candidateExperience || data.experience || "Not specified",
-            candidateSkills: Array.isArray(data.candidateSkills) ? data.candidateSkills : (Array.isArray(data.skills) ? data.skills : []),
-            resumeUrl: data.resumeUrl || data.resumeFileName || "",
-            resumeScore: data.resumeScore || 75,
-            source: data.source || "AIJobs",
-            assignedRecruiterId: data.assignedRecruiterId || null,
-            assignedRecruiterName: data.assignedRecruiterName || null,
-            assignedAt: data.assignedAt || null,
-            assignedBy: data.assignedBy || null,
-            status: data.status || "applied",
-            appliedAt: data.appliedAt || data.createdAt || new Date().toISOString(),
-            updatedAt: data.updatedAt,
-            interviewDate: data.interviewDate,
-            interviewTime: data.interviewTime,
-            interviewMode: data.interviewMode,
-            interviewLocation: data.interviewLocation,
-            meetingLink: data.meetingLink,
-            interviewerName: data.interviewerName,
-            interviewNotes: data.interviewNotes
-          });
+          list.push(normalizeApplication(d.id, data));
         });
       } catch (err) {
         console.warn("Admin Applications fetch warning:", err);
@@ -198,6 +192,14 @@ export default function ApplicationManagement({
 
   useEffect(() => {
     fetchAllData();
+    const unsubscribe = onSnapshot(collection(db, "applications"), snapshot => {
+      const live = snapshot.docs.map(d => normalizeApplication(d.id, d.data()));
+      live.sort((a, b) => new Date(b.appliedAt || 0).getTime() - new Date(a.appliedAt || 0).getTime());
+      setApplications(live);
+      setLoading(false);
+      onRefresh?.();
+    }, error => console.warn("Admin realtime applications listener:", error));
+    return unsubscribe;
   }, []);
 
   // Stats calculation
@@ -238,12 +240,12 @@ export default function ApplicationManagement({
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const mName = app.candidateName.toLowerCase().includes(q);
-        const mTitle = app.jobTitle.toLowerCase().includes(q);
-        const mComp = app.companyName.toLowerCase().includes(q);
+        const mName = String(app.candidateName || "").toLowerCase().includes(q);
+        const mTitle = String(app.jobTitle || "").toLowerCase().includes(q);
+        const mComp = String(app.companyName || "").toLowerCase().includes(q);
         const mEmail = (app.candidateEmail || "").toLowerCase().includes(q);
         const mRecruiter = (app.assignedRecruiterName || "").toLowerCase().includes(q);
-        const mSkills = (app.candidateSkills || []).some(k => k.toLowerCase().includes(q));
+        const mSkills = (app.candidateSkills || []).some(k => String(k || "").toLowerCase().includes(q));
         if (!mName && !mTitle && !mComp && !mEmail && !mRecruiter && !mSkills) return false;
       }
       return true;
