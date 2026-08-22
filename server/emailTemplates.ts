@@ -9,6 +9,7 @@ export interface EmailTemplateData {
   salary?: string;
   jobUrl?: string;
   applicationId?: string;
+  candidatePhone?: string;
   interviewDate?: string;
   interviewTime?: string;
   interviewLink?: string;
@@ -1136,6 +1137,30 @@ export const EMAIL_TEMPLATES: Record<string, (data: EmailTemplateData) => { subj
         </div>
       </div>
     `;
+    return wrapBaseLayout(subject, body, false, undefined, appUrl);
+  },
+
+  'consultancy_application_received': (data) => {
+    const recipient = escapeHtml(data.recipientName || 'Consultancy Partner');
+    const candidate = escapeHtml(data.candidateName || 'Candidate');
+    const job = escapeHtml(data.jobTitle || 'Job opening');
+    const company = escapeHtml(data.companyName || 'Employer');
+    const phone = escapeHtml(data.candidatePhone || 'Not provided');
+    const appUrl = data.appUrl || DEFAULT_APP_URL;
+    const subject = `New application received: ${job}`;
+    const body = `
+      <div style="text-align:left">
+        <h2 style="color:#ffffff;font-size:21px;margin:0 0 12px">New candidate application</h2>
+        <p style="color:#cbd5e1;font-size:14px">Hello ${recipient}, AIJOBS Administration has shared a new application with your consultancy workspace.</p>
+        <div style="background:#111827;border:1px solid #334155;border-radius:12px;padding:18px;margin:18px 0;color:#cbd5e1;font-size:14px;line-height:1.8">
+          <strong style="color:#ffffff">Candidate:</strong> ${candidate}<br/>
+          <strong style="color:#ffffff">Applied job:</strong> ${job}<br/>
+          <strong style="color:#ffffff">Company:</strong> ${company}<br/>
+          <strong style="color:#ffffff">Contact:</strong> ${phone}
+        </div>
+        <a href="${appUrl}/consultancy/dashboard" style="background:#4f46e5;color:#ffffff;padding:12px 20px;border-radius:9px;text-decoration:none;font-weight:700;display:inline-block">Review application</a>
+        <p style="color:#94a3b8;font-size:12px;margin-top:20px">Sent by AIJOBS Administration. Candidate services remain free of charge.</p>
+      </div>`;
     return wrapBaseLayout(subject, body, false, undefined, appUrl);
   }
 };
