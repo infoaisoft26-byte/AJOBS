@@ -616,5 +616,23 @@ service cloud.firestore {
     match /employee_audit_logs/{logId} {
       allow read, create, update, write: if isSignedIn();
     }
+
+    // Agreements collection for Recruiter/Employer legal database access compliance
+    match /agreements/{agreementId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // Invoices collection
+    match /invoices/{invoiceId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // Plans collection
+    match /plans/{planId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
   }
 }
