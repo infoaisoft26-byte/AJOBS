@@ -41,6 +41,15 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
   const safeInitialRole: "candidate" | "consultancy" | "employer" | "recruiter" = 
     (initialRole === "consultancy" || initialRole === "employer" || initialRole === "recruiter") ? initialRole : "candidate";
   const [role, setRole] = useState<"candidate" | "consultancy" | "employer" | "recruiter">(safeInitialRole);
+
+  // Keep the registration role in sync when the modal is opened from a
+  // role-specific CTA. Without this, a previously mounted/default Candidate
+  // state can leak into Consultancy registration and create the wrong profile.
+  useEffect(() => {
+    if (initialRole === "consultancy" || initialRole === "employer" || initialRole === "recruiter" || initialRole === "candidate") {
+      setRole(initialRole);
+    }
+  }, [initialRole]);
   
   // Inputs
   const [name, setName] = useState("");
@@ -705,9 +714,29 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
         console.log("Updating user profile display name:", displayName);
         await updateProfile(fbUser, { displayName });
 
-        if (role === "candidate") {
-          console.log("Sending Firebase email verification to candidate:", email.trim());
-          await sendEmailVerification(fbUser);
+        // Every email/password registration must verify ownership of the email,
+        // including Consultancy, Recruiter and Employer accounts.
+        console.log(`Sending Firebase email verification to ${role}:`, email.trim());
+        await sendEmailVerification(fbUser);
+
+        // Dispatch the branded 6-digit email code as well. The standard
+        // Firebase verification link remains the fallback delivery channel.
+        try {
+          const otpResponse = await fetch("/api/auth/send-email-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Accept": "application/json" },
+            body: JSON.stringify({
+              email: email.trim().toLowerCase(),
+              name: displayName,
+              role
+            })
+          });
+          const otpResult = await parseJsonResponse(otpResponse);
+          if (!otpResponse.ok || !otpResult?.success) {
+            console.warn("[AuthModal] Branded email OTP delivery notice:", otpResult?.message || otpResult?.error);
+          }
+        } catch (otpErr) {
+          console.warn("[AuthModal] Branded email OTP delivery failed; Firebase verification link remains active:", otpErr);
         }
 
         console.log("Initializing user Firestore collections & profile for role:", role);
@@ -766,12 +795,13 @@ export default function AuthModal({ onClose, onAuthSuccess, initialMode = "signi
         }
 
         console.log("Registration successfully finalized. User Profile:", userProfile);
-        if (role === "candidate" && !fbUser.emailVerified) {
-          showToast("Account created! Please verify your email.", "info");
+        if (!fbUser.emailVerified) {
+          showToast("Account created! Verification email and 6-digit code sent.", "info");
+          setSuccess("Account created! Please verify your registered email.");
         } else {
           showToast("Account provisioned successfully!", "success");
+          setSuccess("Account provisioned successfully!");
         }
-        setSuccess("Account provisioned successfully!");
         onAuthSuccess(userProfile);
         onClose();
       } else {
