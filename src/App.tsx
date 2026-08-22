@@ -3,6 +3,8 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 import { AnimatePresence, motion } from "motion/react";
 import { AlertTriangle, Bot, Cookie, Route, Type, User, UserCheck } from "lucide-react";
 import { auth, isFirebaseConfigured } from "./firebase";
+import { db } from "./firebase";
+import { doc, setDoc } from "firebase/firestore";
 import CandidateEmailVerification from "./components/CandidateEmailVerification";
 
 // Helper function to dynamically import components with automatic retry logic on chunk/network errors
@@ -341,9 +343,18 @@ function MainAppContent() {
 
   // Sync auth state
   useEffect(() => {
+    let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
     const unsubscribe = auth.onAuthStateChanged(async (fbUser) => {
       setAuthLoading(true);
       if (fbUser) {
+        const writePresence = () => setDoc(doc(db, "users", fbUser.uid), {
+          isOnline: true,
+          lastActiveAt: new Date().toISOString(),
+          lastLogin: new Date().toISOString()
+        }, { merge: true }).catch(() => {});
+        await writePresence();
+        if (heartbeatTimer) clearInterval(heartbeatTimer);
+        heartbeatTimer = setInterval(writePresence, 60000);
         let profile: UserProfile | null = null;
         try {
           // Attempt 1: Fetch or auto-create profile snapshot
@@ -402,12 +413,13 @@ function MainAppContent() {
           setUser(defaultProfile);
         }
       } else {
+        if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
         setUser(null);
       }
       setAuthLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => { unsubscribe(); if (heartbeatTimer) clearInterval(heartbeatTimer); };
   }, []);
 
   // Handle URL Routing & Popstate
