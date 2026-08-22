@@ -1,5 +1,5 @@
 import React, { ChangeEvent, FormEvent, HTMLInputElement, useState } from "react";
-import { deleteDoc, doc, setDoc } from "firebase/firestore";
+import { deleteDoc, doc, setDoc, updateDoc } from "firebase/firestore";
 import { Contact, Delete, Download, Edit, FileDown, Filter, Info, Key, Map as MapIcon, MessageSquare, Phone, Plus, Save, Search, Table, Tag, Tags, Trash2, Upload, Users, X } from "lucide-react";
 import { db } from "../../firebase";
 
@@ -480,6 +480,22 @@ export default function CrmCandidatesView({
     }
   };
 
+  const updateLiveApplicationStatus = async (applicationId: string | undefined, nextStatus: string) => {
+    if (!applicationId || isReadOnly) return;
+    try {
+      await updateDoc(doc(db, "applications", applicationId), {
+        status: nextStatus,
+        updatedAt: new Date().toISOString(),
+        lastActionByConsultancyId: consultancyId,
+        lastActionByConsultancyName: consultancyName
+      });
+      setSelectedCand(current => current ? { ...current, applicationStatus: nextStatus } : current);
+    } catch (error) {
+      console.error("Application follow-up update failed:", error);
+      alert("Application status could not be updated. Please check your access.");
+    }
+  };
+
   // Filter candidates
   const filteredCandidates = candidates.filter(cand => {
     const q = String(searchQuery || "").toLowerCase();
@@ -860,7 +876,22 @@ export default function CrmCandidatesView({
                   <div><span className="text-gray-500">Mobile:</span> <span className="text-white">{selectedCand.phone || "Not provided"}</span></div>
                   <div><span className="text-gray-500">Consultancy:</span> <span className="text-indigo-300">{selectedCand.consultancyName || consultancyName}</span></div>
                   <div><span className="text-gray-500">Source:</span> <span className="text-white">{selectedCand.source || "AIJobs"}</span></div>
+                  <div className="grid grid-cols-3 gap-1.5 pt-2">
+                    <a href={selectedCand.phone && selectedCand.phone !== "Not provided" ? `tel:${selectedCand.phone}` : undefined} className="py-1.5 text-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">Call</a>
+                    <a href={selectedCand.email && selectedCand.email !== "Not provided" ? `mailto:${selectedCand.email}` : undefined} className="py-1.5 text-center rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-300">Email</a>
+                    <a href={selectedCand.phone && selectedCand.phone !== "Not provided" ? `https://wa.me/${selectedCand.phone.replace(/\D/g, "")}` : undefined} target="_blank" rel="noreferrer" className="py-1.5 text-center rounded-lg bg-green-500/10 border border-green-500/20 text-green-300">WhatsApp</a>
+                  </div>
                 </div>
+
+                {selectedCand.applicationId && !isReadOnly && (
+                  <div className="space-y-2 p-3 rounded-xl bg-white/5 border border-white/10">
+                    <span className="text-gray-400 font-semibold">Application Follow-up</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button onClick={() => updateLiveApplicationStatus(selectedCand.applicationId, "under_review")} className="py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 font-bold">Under Review</button>
+                      <button onClick={() => updateLiveApplicationStatus(selectedCand.applicationId, "shortlisted")} className="py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-bold">Shortlist</button>
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <span className="text-gray-400 font-semibold">Job Applications ({selectedCand.applications?.length || 0})</span>
