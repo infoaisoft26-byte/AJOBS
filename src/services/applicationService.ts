@@ -40,15 +40,34 @@ export async function applyToJob(
   }
 
   // 2. Check candidate role & basic profile info
-  const candidateName = profile?.name || profile?.fullName || auth.currentUser.displayName || "Candidate";
-  const candidateEmail = auth.currentUser.email || profile?.email || "";
-  const candidatePhone = profile?.phone || profile?.mobileNumber || profile?.personalDetails?.mobile || profile?.profileDetails?.mobileNumber || "";
-  const candidateLocation = profile?.location || profile?.city || profile?.personalDetails?.city || "Remote / Undisclosed";
-  const candidateExperience = profile?.experience || profile?.yearsOfExperience || profile?.employmentDetails?.designation || "Fresher";
-  const candidateSkills = profile?.skills || profile?.skillsRequired || [];
-  const resumeUrl = profile?.resumeUrl || profile?.resumeURL || null;
+  let candidateName = profile?.name || profile?.fullName || auth.currentUser.displayName || "Candidate";
+  let candidateEmail = auth.currentUser.email || profile?.email || "";
+  let candidatePhone = profile?.phone || profile?.mobileNumber || profile?.personalDetails?.mobile || profile?.profileDetails?.mobileNumber || "";
+  let candidateLocation = profile?.location || profile?.city || profile?.personalDetails?.city || "";
+  let candidateExperience = profile?.experience || profile?.yearsOfExperience || profile?.employmentDetails?.designation || "";
+  let candidateSkills = Array.isArray(profile?.skills || profile?.skillsRequired) ? (profile?.skills || profile?.skillsRequired) : [];
+  let resumeUrl = profile?.resumeUrl || profile?.resumeURL || null;
 
   try {
+    // Resolve contact/profile fields from all canonical candidate records. This prevents
+    // stale component state from saving an empty or incorrect phone number.
+    const profileDocs = await Promise.all([
+      getDoc(doc(db, "users", userId)),
+      getDoc(doc(db, "candidates", userId)),
+      getDoc(doc(db, "candidateProfiles", userId)),
+      getDoc(doc(db, "candidate_profiles", userId))
+    ]);
+    const records = profileDocs.filter(s => s.exists()).map(s => s.data());
+    const pick = (...values: any[]) => values.find(v => typeof v === "string" && v.trim())?.trim() || "";
+    for (const data of records) {
+      candidateName = pick(candidateName, data.name, data.fullName, data.displayName) || "Candidate";
+      candidateEmail = pick(candidateEmail, data.email, data.contactEmail);
+      candidatePhone = pick(candidatePhone, data.phone, data.mobile, data.mobileNumber, data.phoneNumber, data.personalDetails?.mobile, data.profileDetails?.mobileNumber);
+      candidateLocation = pick(candidateLocation, data.location, data.city, data.personalDetails?.city);
+      candidateExperience = pick(candidateExperience, data.experience, data.yearsOfExperience, data.employmentDetails?.designation);
+      if (!candidateSkills.length && Array.isArray(data.skills)) candidateSkills = data.skills.filter((s: any) => typeof s === "string");
+      resumeUrl = resumeUrl || data.resumeUrl || data.resumeURL || null;
+    }
     // 3. Prevent duplicate applications (Section M)
     const applicationsRef = collection(db, "applications");
     const q = query(
@@ -108,6 +127,8 @@ export async function applyToJob(
       candidateName: candidateName,
       candidateEmail: candidateEmail,
       candidatePhone: candidatePhone,
+      consultancyId: (job as any).consultancyId || null,
+      consultancyName: (job as any).consultancyName || (job as any).consultancy || null,
       resumeUrl: resumeUrl || "No Resume Attached",
       resumeScore: Number(profile?.resumeScore || 0),
       interviewScore: profile?.aiInterviewScore || 0,
@@ -165,17 +186,19 @@ export async function applyToJob(
     // Trigger GA4 Telemetry
     trackJobApplicationSubmitted(job.id, job.title, job.companyName);
 
-    // 4. Trigger Recruiter & Candidate Notifications
-    const recruiterId = job.employerId || job.createdBy || "employer";
+    // 4. Trigger realtime notifications for every responsible workspace.
+    const recruiterId = job.recruiterId || job.employerId || job.createdBy || "";
+    const consultancyId = (job as any).consultancyId || (job as any).consultancyUserId || "";
     try {
-      await NotificationService.triggerEvent({
-        userId: recruiterId,
-        event: "NEW_APPLICATION",
-        title: "Candidate Applied 💼",
-        message: `${candidateName} has applied for your job opening "${job.title}".`,
-        type: "success",
-        link: `jobId=${job.id}`
-      });
+      const workspaceRecipients = Array.from(new Set([recruiterId, consultancyId].filter(Boolean)));
+      await Promise.all(workspaceRecipients.map(recipientId => NotificationService.triggerEvent({
+          userId: recipientId,
+          event: recipientId === consultancyId ? "JOB_APPLICATION_RECEIVED" : "NEW_APPLICATION",
+          title: "New Candidate Application",
+          message: `${candidateName} applied for "${job.title}" at ${job.companyName}. Contact: ${candidatePhone || "not provided"}.`,
+          type: "success",
+          link: `/applications?jobId=${job.id}&applicationId=${appId}`
+      })));
 
       await NotificationService.triggerEvent({
         userId: userId,
@@ -189,7 +212,7 @@ export async function applyToJob(
           userName: candidateName,
           jobTitle: job.title,
           companyName: job.companyName,
-          resumeScore: String(profile?.resumeScore || 80)
+          resumeScore: String(profile?.resumeScore || 0)
         },
         link: `/candidate/applications`
       });
