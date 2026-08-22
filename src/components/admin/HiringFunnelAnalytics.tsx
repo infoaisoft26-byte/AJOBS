@@ -45,7 +45,7 @@ export default function HiringFunnelAnalytics({
             title: data.title || "Untitled Job",
             companyName: data.companyName || "Employer",
             category: data.category || "Technology",
-            viewsCount: data.viewCount || data.views || Math.floor(Math.random() * 200) + 50,
+            viewsCount: Number(data.viewCount || data.views || 0),
             applicationCount: data.applicationCount || 0,
             shortlistedCount: 0,
             interviewCount: 0,
@@ -78,51 +78,7 @@ export default function HiringFunnelAnalytics({
 
       const items = Array.from(jobsMap.values());
 
-      if (items.length === 0) {
-        setJobList([
-          {
-            id: "job_01",
-            title: "Senior AI Full Stack Engineer",
-            companyName: "Nexus Labs Global",
-            category: "Engineering",
-            viewsCount: 342,
-            applicationCount: 48,
-            shortlistedCount: 12,
-            interviewCount: 6,
-            hiredCount: 2,
-            status: "Active",
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: "job_02",
-            title: "Lead DevOps & Cloud Architect",
-            companyName: "Nexus Labs Global",
-            category: "Cloud Infrastructure",
-            viewsCount: 215,
-            applicationCount: 29,
-            shortlistedCount: 8,
-            interviewCount: 4,
-            hiredCount: 1,
-            status: "Active",
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: "job_03",
-            title: "AI Product Designer & UX Lead",
-            companyName: "Aura Systems",
-            category: "Design",
-            viewsCount: 180,
-            applicationCount: 22,
-            shortlistedCount: 5,
-            interviewCount: 3,
-            hiredCount: 1,
-            status: "Active",
-            createdAt: new Date().toISOString()
-          }
-        ]);
-      } else {
-        setJobList(items);
-      }
+      setJobList(items);
     } catch (err) {
       console.error("Error loading funnel analytics:", err);
     } finally {
