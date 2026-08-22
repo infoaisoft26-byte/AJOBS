@@ -863,55 +863,6 @@ export default function LandingPage({
       </section>
 
       {/* =========================================================================
-          SECTION 8 — EMPLOYER & RECRUITER SECTION
-          ========================================================================= */}
-      <section className="py-16 bg-slate-50 border-b border-slate-200/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            <div className="lg:col-span-8 space-y-4">
-              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 uppercase tracking-wider">
-                <Building2 className="w-3.5 h-3.5" />
-                <span>For Employers & Consultancies</span>
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                Hiring Talent? Find Relevant Candidates Faster.
-              </h2>
-              <p className="text-sm text-slate-600 leading-relaxed max-w-2xl">
-                Post job openings, discover pre-screened talent across India, and manage candidate pipelines efficiently with AIJobs.
-              </p>
-            </div>
-
-            <div className="lg:col-span-4 flex flex-col sm:flex-row lg:flex-col gap-3">
-              <button
-                onClick={() => {
-                  if (user) {
-                    setActiveView("dashboard");
-                  } else {
-                    if (onOpenAuth) onOpenAuth("signup", "employer");
-                    else setActiveView("candidate-register");
-                  }
-                }}
-                className="w-full py-3.5 px-6 bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold rounded-2xl shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span>Post a Job</span>
-              </button>
-              <button
-                onClick={() => {
-                  if (onOpenAuth) onOpenAuth("signin", "employer");
-                  else setActiveView("unified-login");
-                }}
-                className="w-full py-3.5 px-6 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs sm:text-sm font-bold rounded-2xl shadow-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
-              >
-                <LogIn className="w-4 h-4" />
-                <span>Employer / Recruiter Login</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* =========================================================================
           SECTION 9 — TRUST & PLATFORM PILLARS
           ========================================================================= */}
       <section className="py-16 bg-white border-b border-slate-100">
@@ -978,18 +929,6 @@ export default function LandingPage({
                 <li><button onClick={() => handleCategoryClick("remote")} className="hover:text-white transition-colors">Work From Home</button></li>
                 <li><button onClick={handleResumeButtonClick} className="hover:text-white transition-colors">Upload Resume</button></li>
                 <li><button onClick={() => onOpenAuth ? onOpenAuth("signin", "candidate") : setActiveView("unified-login")} className="hover:text-white transition-colors">Candidate Login</button></li>
-              </ul>
-            </div>
-
-            {/* Column 3: Employers */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider">For Employers</h4>
-              <ul className="space-y-2 text-xs text-slate-400">
-                <li><button onClick={() => onOpenCompanyPage?.("employers")} className="hover:text-white transition-colors">Employer Overview</button></li>
-                <li><button onClick={() => onOpenCompanyPage?.("consultancies")} className="hover:text-white transition-colors">Consultancies</button></li>
-                <li><button onClick={() => onOpenAuth ? onOpenAuth("signup", "employer") : setActiveView("candidate-register")} className="hover:text-white transition-colors">Post a Job</button></li>
-                <li><button onClick={() => onOpenAuth ? onOpenAuth("signin", "employer") : setActiveView("unified-login")} className="hover:text-white transition-colors">Employer Login</button></li>
-                <li><button onClick={() => onOpenCompanyPage?.("contact")} className="hover:text-white transition-colors">Enterprise Inquiries</button></li>
               </ul>
             </div>
 
