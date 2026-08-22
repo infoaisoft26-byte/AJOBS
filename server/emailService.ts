@@ -69,8 +69,72 @@ export interface DispatchEmailResult {
   messageId?: string;
   emailId?: string;
   alreadySent?: boolean;
+  queued?: boolean;
   message?: string;
   error?: string;
+}
+
+async function queueEmailInFirestore({
+  emailId,
+  userId,
+  recipient,
+  recipientRole,
+  templateName,
+  templateData,
+  rendered,
+  createdBy,
+  createdAt,
+  fallbackReason
+}: any): Promise<boolean> {
+  const db = getFirestoreDb();
+  if (!db || !db.collection) return false;
+
+  try {
+    // Compatible with Firebase's official "Trigger Email" extension.
+    await db.collection("mail").doc(emailId).set({
+      to: [recipient],
+      replyTo: REPLY_TO,
+      message: {
+        subject: rendered.subject,
+        html: rendered.html,
+        text: rendered.text
+      },
+      metadata: {
+        emailId,
+        userId,
+        recipientRole,
+        template: templateName,
+        createdBy
+      },
+      createdAt
+    }, { merge: true });
+
+    await recordEmailLog({
+      emailId,
+      userId,
+      recipient,
+      recipientName: templateData.recipientName || recipient.split("@")[0],
+      recipientRole,
+      template: templateName,
+      templateData,
+      subject: rendered.subject,
+      category: "transactional",
+      status: "pending",
+      provider: "firebase_trigger_email",
+      deliveryMode: "queued",
+      messageId: null,
+      errorMessage: null,
+      fallbackReason,
+      createdBy,
+      createdAt,
+      updatedAt: createdAt
+    });
+    console.log(`[EmailService] Email queued in Firestore for ${recipient} [${emailId}]`);
+    return true;
+  } catch (queueErr: any) {
+    console.error(`[EmailService] Firestore email queue failed for ${recipient}:`, queueErr.message);
+    return false;
+  }
 }
 
 /**
@@ -160,8 +224,21 @@ export async function dispatchEmail(params: DispatchEmailParams): Promise<Dispat
 
   const smtpTransporter = getTransporter();
   if (!smtpTransporter) {
-    const errorMsg = "SMTP configuration is incomplete.";
-    // Log failed attempt to Firestore
+    const queued = await queueEmailInFirestore({
+      emailId, userId, recipient, recipientRole, templateName, templateData,
+      rendered, createdBy, createdAt: now,
+      fallbackReason: "SMTP credentials unavailable"
+    });
+    if (queued) {
+      return {
+        success: true,
+        queued: true,
+        emailId,
+        message: "Email queued for automatic delivery."
+      };
+    }
+
+    const errorMsg = "Email provider and Firebase queue are unavailable.";
     await recordEmailLog({
       emailId,
       userId,
@@ -169,6 +246,7 @@ export async function dispatchEmail(params: DispatchEmailParams): Promise<Dispat
       recipientName: templateData.recipientName || recipient.split("@")[0],
       recipientRole,
       template: templateName,
+      templateData,
       subject: rendered.subject,
       status: "failed",
       provider: "gmail_smtp",
@@ -243,6 +321,24 @@ export async function dispatchEmail(params: DispatchEmailParams): Promise<Dispat
       timestamp: now
     }));
 
+    // Invalid addresses must remain failed. Provider/config/network failures are
+    // safely handed to the Firebase Trigger Email queue for automatic delivery.
+    if (errorCategory !== "INVALID_RECIPIENT_ERROR") {
+      const queued = await queueEmailInFirestore({
+        emailId, userId, recipient, recipientRole, templateName, templateData,
+        rendered, createdBy, createdAt: now,
+        fallbackReason: `${errorCategory}: ${errorMessage}`
+      });
+      if (queued) {
+        return {
+          success: true,
+          queued: true,
+          emailId,
+          message: "SMTP was unavailable; email queued for automatic delivery."
+        };
+      }
+    }
+
     // Record Email Log in Firestore email_logs/{emailId}
     await recordEmailLog({
       emailId,
@@ -251,6 +347,7 @@ export async function dispatchEmail(params: DispatchEmailParams): Promise<Dispat
       recipientName: templateData.recipientName || recipient.split("@")[0],
       recipientRole,
       template: templateName,
+      templateData,
       subject: rendered.subject,
       status: "failed",
       provider: "gmail_smtp",
@@ -281,6 +378,7 @@ export async function dispatchEmail(params: DispatchEmailParams): Promise<Dispat
     recipientName: templateData.recipientName || recipient.split("@")[0],
     recipientRole,
     template: templateName,
+    templateData,
     subject: rendered.subject,
     status: sentStatus,
     provider: "gmail_smtp",
