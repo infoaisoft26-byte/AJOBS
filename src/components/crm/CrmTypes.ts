@@ -42,6 +42,25 @@ export interface ConsultancyCandidateModel {
   notes: string;
   tags: string[];
   status: "active" | "saved" | "shortlisted" | "rejected";
+  candidateId?: string;
+  applicationId?: string;
+  applicationStatus?: string;
+  appliedJobId?: string;
+  appliedJobTitle?: string;
+  companyName?: string;
+  appliedAt?: string;
+  consultancyId?: string;
+  consultancyName?: string;
+  source?: string;
+  resumeUrl?: string;
+  applications?: Array<{
+    id: string;
+    jobId: string;
+    jobTitle: string;
+    companyName: string;
+    status: string;
+    appliedAt: string;
+  }>;
 }
 
 export interface InterviewModel {
