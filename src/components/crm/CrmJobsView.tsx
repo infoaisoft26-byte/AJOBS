@@ -10,13 +10,17 @@ interface CrmJobsViewProps {
   clients: ClientModel[];
   onRefresh: () => void;
   userRole: "Admin" | "Manager" | "Recruiter" | "Viewer";
+  consultancyId: string;
+  consultancyName: string;
 }
 
 export default function CrmJobsView({
   jobs,
   clients,
   onRefresh,
-  userRole
+  userRole,
+  consultancyId,
+  consultancyName
 }: CrmJobsViewProps) {
   const [selectedJob, setSelectedJob] = useState<ConsultancyJobModel | null>(null);
   const [isAdding, setIsAdding] = useState(false);
@@ -43,15 +47,10 @@ export default function CrmJobsView({
       return;
     }
     setTitle("");
-    setCompanyName(clients[0]?.companyName || "Google India");
+    setCompanyName(clients[0]?.companyName || "");
     setDepartment("");
-    setAssignedRecruiter("Amit Roy");
-    setExperience("Mid-Level (5+ Years)");
-    setLocation("Bengaluru, Karnataka");
-    setSalaryMin("15");
-    setSalaryMax("25");
-    setSkillsRequiredText("React, TypeScript, Node.js");
-    setTimeline("30 Days");
+    setAssignedRecruiter(""); setExperience(""); setLocation("");
+    setSalaryMin(""); setSalaryMax(""); setSkillsRequiredText(""); setTimeline("");
     setStatus("open");
     setIsAdding(true);
     setIsEditing(false);
@@ -105,7 +104,9 @@ export default function CrmJobsView({
         skillsRequired: skills,
         timeline,
         status,
-        createdAt: isEditing && selectedJob ? selectedJob.createdAt : new Date().toISOString()
+        createdAt: isEditing && selectedJob ? selectedJob.createdAt : new Date().toISOString(),
+        consultancyId,
+        consultancyName
       };
 
       await setDoc(doc(db, "consultancy_jobs", jobId), jobObj);
@@ -124,7 +125,9 @@ export default function CrmJobsView({
         openings: 1,
         industry: "Information Technology",
         category: "Software Development",
-        consultancy: "Agency Recruiters",
+        consultancy: consultancyName,
+        consultancyId,
+        consultancyName,
         applyDeadline: "",
         expiryDate: "",
         skillsRequired: skills,
@@ -135,8 +138,8 @@ export default function CrmJobsView({
         requirements: "Demonstrated production experience, deep familiarity with enterprise code pipelines.",
         description: `Strategic role at ${companyName}. Team seeks a motivated ${title} to join the ${department} department.`,
         status: status === "open" ? "Live" : status === "closed" ? "Closed" : status === "draft" ? "Draft" : "Pending Approval",
-        createdBy: "recruiter_crm",
-        employerId: "recruiter_crm_" + companyName.toLowerCase().replace(/[^a-z0-9]/g, ""),
+        createdBy: consultancyId,
+        employerId: consultancyId,
         createdAt: jobObj.createdAt
       };
       await setDoc(doc(db, "jobs", jobId), standardJob);
@@ -162,7 +165,7 @@ export default function CrmJobsView({
         ...job,
         id: newId,
         title: job.title + " (Copy)",
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(), consultancyId, consultancyName
       };
 
       await setDoc(doc(db, "consultancy_jobs", newId), duplicatedObj);
@@ -181,7 +184,7 @@ export default function CrmJobsView({
         openings: 1,
         industry: "Information Technology",
         category: "Software Development",
-        consultancy: "Agency Recruiters",
+        consultancy: consultancyName, consultancyId, consultancyName,
         applyDeadline: "",
         expiryDate: "",
         skillsRequired: duplicatedObj.skillsRequired,
@@ -192,8 +195,8 @@ export default function CrmJobsView({
         requirements: "Demonstrated production experience, deep familiarity with enterprise code pipelines.",
         description: `Strategic role at ${duplicatedObj.companyName}. Team seeks a motivated ${duplicatedObj.title} to join the ${duplicatedObj.department || "Engineering"} department.`,
         status: "Draft", // Duplicates default to draft
-        createdBy: "recruiter_crm",
-        employerId: "recruiter_crm_" + duplicatedObj.companyName.toLowerCase().replace(/[^a-z0-9]/g, ""),
+        createdBy: consultancyId,
+        employerId: consultancyId,
         createdAt: duplicatedObj.createdAt
       };
       await setDoc(doc(db, "jobs", newId), standardJob);
