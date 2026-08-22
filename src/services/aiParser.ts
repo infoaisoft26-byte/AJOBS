@@ -64,7 +64,8 @@ export async function parseResumeData(
   let parsed: ParsedResumeMetadata | null = null;
 
   // Case A: A File object is passed: parseResumeData(file, { userId: ... })
-  if (parsedOrUrlOrFile instanceof File || (parsedOrUrlOrFile && typeof parsedOrUrlOrFile.name === "string" && typeof parsedOrUrlOrFile.slice === "function")) {
+  const isNativeFile = typeof window !== "undefined" && typeof window.File === "function" && parsedOrUrlOrFile instanceof window.File;
+  if (isNativeFile || (parsedOrUrlOrFile && typeof parsedOrUrlOrFile.name === "string" && typeof parsedOrUrlOrFile.slice === "function")) {
     const file = parsedOrUrlOrFile as File;
     fileName = file.name;
     fileType = file.type || (file.name.endsWith(".docx") ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : "application/pdf");
@@ -326,4 +327,3 @@ export async function parseResumeData(
 
   return { success: true, parsedData: parsed };
 }
-
