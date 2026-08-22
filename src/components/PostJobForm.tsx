@@ -69,7 +69,7 @@ export default function PostJobForm({ userId, userRole, userName, onJobPosted, o
       } else if (userRole === "consultancy") {
         // Consultancy posted job
         finalConsultancy = userName || userId; // Set consultancy field to consultancy agency
-        finalEmployerId = "employer_partner_" + Math.random().toString(36).substr(2, 5); // Simulated partner/employer ID
+        finalEmployerId = userId;
       } else {
         finalEmployerId = userId;
       }
@@ -88,6 +88,8 @@ export default function PostJobForm({ userId, userRole, userName, onJobPosted, o
         industry,
         category,
         consultancy: finalConsultancy.trim(),
+        consultancyId: userRole === "consultancy" ? userId : null,
+        consultancyName: userRole === "consultancy" ? finalConsultancy.trim() : null,
         applyDeadline: applyDeadline || "",
         expiryDate: expiryDate || applyDeadline || "",
         skillsRequired: skillsArray,
@@ -136,6 +138,9 @@ export default function PostJobForm({ userId, userRole, userName, onJobPosted, o
             location: location.trim(),
             status: "pending_approval",
             approved: false,
+            consultancyId: userId,
+            consultancyName: finalConsultancy.trim(),
+            createdBy: userId,
             createdAt: new Date().toISOString()
           });
         }
