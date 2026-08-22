@@ -137,7 +137,7 @@ export default function CandidateResumeUploader({
         }
       });
 
-      const uploadedUrl = uploadResult.secureUrl || uploadResult.url;
+      const uploadedUrl = uploadResult.downloadUrl;
       if (!uploadedUrl) {
         throw new Error("Unable to obtain secure document URL. Please try again.");
       }
@@ -146,12 +146,12 @@ export default function CandidateResumeUploader({
       setUploadStep("Extracting skills & profile with AI...");
 
       // 4. Parse Resume Data with AI
-      let parsed = null;
+      let parsed: any = uploadResult.parsedProfile || null;
       try {
-        parsed = await parseResumeData(file, {
-          userId: effectiveUserId,
-          targetRole: profile?.targetRole || ""
-        });
+        if (!parsed) {
+          const parseResponse = await parseResumeData(file, { userId: effectiveUserId, targetRole: profile?.targetRole || "" });
+          parsed = parseResponse.parsedData || null;
+        }
       } catch (parseErr: any) {
         console.warn("[CandidateResumeUploader] Non-blocking AI parse notice:", parseErr?.message || parseErr);
       }
@@ -160,7 +160,7 @@ export default function CandidateResumeUploader({
       setUploadStep("Finalizing candidate profile...");
 
       const nowIso = new Date().toISOString();
-      const calculatedScore = parsed?.atsScore || parsed?.score || 85;
+      const calculatedScore = Number(parsed?.atsScore || parsed?.score || uploadResult.parsedProfile?.resumeScore || 0);
 
       const profileUpdates: any = {
         resumeUrl: uploadedUrl,
