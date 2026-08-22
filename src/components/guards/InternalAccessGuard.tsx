@@ -1,5 +1,7 @@
 import React, { ReactNode } from "react";
 import { AlertTriangle, ShieldAlert } from "lucide-react";
+import { UserProfile } from "../../types";
+import { normalizeRole } from "../../utils/roleUtils";
 interface InternalAccessGuardProps {
   user: UserProfile | null;
   children: React.ReactNode;
@@ -13,8 +15,6 @@ export default function InternalAccessGuard({
   onCandidateRedirect,
   onNavigateToInternalLogin
 }: InternalAccessGuardProps) {
-  const { showToast } = useToast();
-
   if (!user) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 text-center space-y-4">
