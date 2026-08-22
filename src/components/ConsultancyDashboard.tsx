@@ -87,11 +87,12 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
     const rebuild = () => {
       const allJobs = [...(cache.jobs || []), ...(cache.consultancy_jobs || [])];
       const uniqueJobs = Array.from(new Map(allJobs.map(j => [j.id, j])).values());
+      const agencyKey = clean(agencyName).toLowerCase();
       const scopedJobs = uniqueJobs.filter(j =>
         j.consultancyId === userId || j.createdBy === userId || j.userId === userId ||
-        clean(j.consultancyName || j.consultancy).toLowerCase() === agencyName.toLowerCase()
+        (!!agencyKey && clean(j.consultancyName || j.consultancy).toLowerCase() === agencyKey)
       );
-      setJobs((scopedJobs.length ? scopedJobs : uniqueJobs).map(j => ({
+      setJobs(scopedJobs.map(j => ({
         ...j, title: clean(j.title || j.jobTitle, "Untitled Job"),
         companyName: clean(j.companyName || j.company, "Company not provided"),
         skillsRequired: Array.isArray(j.skillsRequired || j.skills) ? (j.skillsRequired || j.skills) : [],
@@ -101,15 +102,17 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
       const jobIds = new Set(scopedJobs.map(j => j.id));
       const applications = (cache.applications || []).filter(a =>
         jobIds.has(a.jobId) || a.consultancyId === userId || a.createdBy === userId ||
-        clean(a.consultancyName || a.consultancy).toLowerCase() === agencyName.toLowerCase()
+        (!!agencyKey && clean(a.consultancyName || a.consultancy).toLowerCase() === agencyKey)
       );
-      const relatedApplications = applications.length ? applications : (cache.applications || []);
+      const relatedApplications = applications;
       const sources = [...(cache.candidates || []), ...(cache.candidateProfiles || []), ...(cache.users || []), ...(cache.consultancy_candidates || [])];
       const merged = new Map<string, any>();
+      const allowedCandidateKeys = new Set(relatedApplications.flatMap(a => [a.candidateId, a.userId, a.candidateEmail, a.email].filter(Boolean).map((v: any) => clean(v).toLowerCase())));
       sources.forEach(c => {
         if (c.role && !["candidate", "jobseeker", "job_seeker"].includes(String(c.role).toLowerCase())) return;
         const key = clean(c.uid || c.userId || c.candidateId || c.email || c.id).toLowerCase();
-        if (!key) return;
+        const emailKey = clean(c.email || c.candidateEmail).toLowerCase();
+        if (!key || (!allowedCandidateKeys.has(key) && !allowedCandidateKeys.has(emailKey))) return;
         const old = merged.get(key) || {};
         merged.set(key, { ...old, ...c, id: c.uid || c.userId || c.candidateId || old.id || c.id });
       });
@@ -129,11 +132,11 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
           name: clean(c.name || c.fullName || c.displayName || c.candidateName, "Candidate"),
           email: clean(c.email || c.candidateEmail, "Not provided"),
           phone: clean(c.phone || c.mobile || c.mobileNumber || c.phoneNumber || c.personalDetails?.mobile || c.candidatePhone || latest.candidatePhone, "Not provided"),
-          skills: Array.isArray(c.skills || c.candidateSkills) ? (c.skills || c.candidateSkills) : [],
+          skills: Array.isArray(c.skills || c.candidateSkills) ? (c.skills || c.candidateSkills).filter((v: any) => typeof v === "string" && v.trim()) : [],
           experience: clean(c.experience || c.yearsOfExperience || c.candidateExperience, "Not provided"),
           location: clean(c.location || c.city || c.candidateLocation, "Not provided"),
           expectedSalary: clean(c.expectedSalary || c.expectedCTC, "Not provided"),
-          notes: clean(c.notes), tags: Array.isArray(c.tags) ? c.tags : [],
+          notes: clean(c.notes), tags: Array.isArray(c.tags) ? c.tags.filter((v: any) => typeof v === "string" && v.trim()) : [],
           status: c.status === "rejected" || c.status === "shortlisted" || c.status === "saved" ? c.status : "active",
           resumeScore: Number(c.resumeScore || 0), aiInterviewScore: Number(c.aiInterviewScore || c.interviewScore || 0),
           applicationId: latest.id, applicationStatus: clean(latest.status),
@@ -399,6 +402,8 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
                 clients={clients}
                 onRefresh={fetchCrmData}
                 userRole={currentUserRole}
+                consultancyId={userId}
+                consultancyName={profile.agencyName || userName}
               />
             )}
 
