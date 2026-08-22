@@ -192,6 +192,7 @@ function MainAppContent() {
   const [activeCompanyPage, setActiveCompanyPage] = useState<string | null>(null);
   const [authMode, setAuthMode] = useState<"signin" | "signup" | null>(null);
   const [authRole, setAuthRole] = useState<"candidate" | "consultancy" | "employer" | "recruiter" | undefined>(undefined);
+  const [internalLoginRole, setInternalLoginRole] = useState<"recruiter" | "consultancy" | "employer" | undefined>(undefined);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [authLoading, setAuthLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(() => {
@@ -396,6 +397,12 @@ function MainAppContent() {
             if (currentPath === "/candidate-login" || currentPath === "/login" || activeView === "candidate-login" || activeView === "internal-login") {
               setActiveView("dashboard");
             }
+          } else if (normRole === "recruiter") {
+            setActiveView("internal-recruiter");
+          } else if (normRole === "consultancy") {
+            setActiveView("internal-consultancy");
+          } else if (normRole === "employer") {
+            setActiveView("internal-employer");
           }
         } else {
           // Default fallback for missing profile - MUST default to candidate
@@ -441,9 +448,16 @@ function MainAppContent() {
         setActiveView("candidate-register");
       } else if (p === "/candidate/pre-launch-profile") {
         setActiveView("pre-launch-profile");
+      } else if (p === "/recruiter/login" || p === "/recruiter-login") {
+        setInternalLoginRole("recruiter"); setActiveView("internal-login");
+      } else if (p === "/consultancy/login" || p === "/consultancy-login") {
+        setInternalLoginRole("consultancy"); setActiveView("internal-login");
+      } else if (p === "/employer/login" || p === "/employer-login") {
+        setInternalLoginRole("employer"); setActiveView("internal-login");
       } else if (p === "/internal-login") {
+        setInternalLoginRole(undefined);
         setActiveView("internal-login");
-      } else if (p === "/admin-login") {
+      } else if (p === "/admin-login" || p === "/admin/login") {
         setActiveView("admin-login");
       } else if (p === "/admin/dashboard" || p.startsWith("/admin")) {
         setActiveView("admin-dashboard");
@@ -930,10 +944,12 @@ function MainAppContent() {
                 ) : activeView === "internal-login" ? (
                   <Suspense fallback={<GeneralLoading />}>
                     <InternalPlatformLoginLazy
+                      expectedRole={internalLoginRole}
                       onAuthorizedSuccess={(profile, targetRoute) => {
                         setUser(profile);
                         if (targetRoute === "/admin/dashboard") setActiveView("admin-dashboard");
                         else if (targetRoute === "/internal/employer") setActiveView("internal-employer");
+                        else if (targetRoute === "/internal/recruiter") setActiveView("internal-recruiter");
                         else if (targetRoute === "/internal/consultancy") setActiveView("internal-consultancy");
                         else setActiveView("internal-candidate");
                       }}
