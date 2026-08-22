@@ -200,6 +200,32 @@ export async function applyToJob(
           link: `/applications?jobId=${job.id}&applicationId=${appId}`
       })));
 
+      // Send a branded administration email to the owning consultancy once per application.
+      if (consultancyId) {
+        const [consultancySnap, consultancyUserSnap] = await Promise.all([
+          getDoc(doc(db, "consultancies", consultancyId)),
+          getDoc(doc(db, "users", consultancyId))
+        ]);
+        const consultancyData = consultancySnap.exists() ? consultancySnap.data() : {};
+        const consultancyUser = consultancyUserSnap.exists() ? consultancyUserSnap.data() : {};
+        const consultancyEmail = consultancyData.email || consultancyData.officialEmail || consultancyUser.email || "";
+        const consultancyName = consultancyData.agencyName || consultancyData.companyName || consultancyUser.name || (job as any).consultancyName || "Consultancy Partner";
+        if (consultancyEmail) {
+          await fetch("/api/email/trigger", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              triggerType: "consultancy_application_received",
+              email: consultancyEmail,
+              recipientName: consultancyName,
+              recipientRole: "consultancy",
+              userId: consultancyId,
+              data: { candidateName, candidatePhone, jobTitle: job.title, companyName: job.companyName, applicationId: appId }
+            })
+          }).catch(error => console.warn("Consultancy application email warning:", error));
+        }
+      }
+
       await NotificationService.triggerEvent({
         userId: userId,
         event: "APPLICATION_SUBMITTED",
