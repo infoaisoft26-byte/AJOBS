@@ -502,17 +502,43 @@ router.post("/verify-email-otp", async (req: Request, res: Response) => {
       };
 
       try {
+        // Claim a matching Excel-imported profile by verified email. This keeps
+        // the admin's bulk data while replacing the temporary import document
+        // with the candidate's real Firebase Auth UID.
+        const [importedCandidates, importedProfiles] = await Promise.all([
+          db.collection("candidates").where("email", "==", normalizedEmail).get(),
+          db.collection("candidateProfiles").where("email", "==", normalizedEmail).get()
+        ]);
+        const importedCandidate = importedCandidates.docs.find((d: any) =>
+          d.id !== uid && (d.data()?.source === "Excel Import" || d.id.startsWith("can_imp_"))
+        );
+        const importedProfile = importedProfiles.docs.find((d: any) =>
+          d.id !== uid && (d.data()?.source === "Excel Import" || d.id.startsWith("can_imp_"))
+        );
+        const importedData = importedCandidate?.data() || importedProfile?.data() || {};
+        const claimedProfile = {
+          ...candidateProfileDoc,
+          ...importedData,
+          uid,
+          userId: uid,
+          ...(importedData.candidateId ? { candidateId: importedData.candidateId } : {}),
+          fullName: importedData.fullName || candidateName,
+          name: importedData.name || importedData.fullName || candidateName,
+          phone: importedData.phone || "",
+          source: importedData.source || "Email Registration",
+          invitationStatus: "activated",
+          activatedAt: verifiedIso,
+          createdAt: importedData.createdAt || verifiedIso,
+          updatedAt: verifiedIso
+        };
+
         await Promise.all([
-          db.collection("candidateProfiles").doc(uid).set(candidateProfileDoc, { merge: true }),
+          db.collection("candidateProfiles").doc(uid).set(claimedProfile, { merge: true }),
           db.collection("candidates").doc(uid).set({
-            uid,
-            name: candidateName,
-            email: normalizedEmail,
+            ...claimedProfile,
             emailVerified: true,
             verificationStatus: "verified",
             accountStatus: "active",
-            profileStatus: "incomplete",
-            profileCompletion: 20,
             updatedAt: verifiedIso
           }, { merge: true }),
           db.collection("users").doc(uid).set({
@@ -525,6 +551,21 @@ router.post("/verify-email-otp", async (req: Request, res: Response) => {
             updatedAt: verifiedIso
           }, { merge: true })
         ]);
+
+        // Remove only the superseded import placeholders so Admin sees one
+        // canonical candidate, not duplicate pre/post-activation rows.
+        const staleRefs = new Map<string, any>();
+        importedCandidates.docs.forEach((d: any) => {
+          if (d.id !== uid && (d.data()?.source === "Excel Import" || d.id.startsWith("can_imp_"))) {
+            staleRefs.set(`candidates/${d.id}`, d.ref);
+          }
+        });
+        importedProfiles.docs.forEach((d: any) => {
+          if (d.id !== uid && (d.data()?.source === "Excel Import" || d.id.startsWith("can_imp_"))) {
+            staleRefs.set(`candidateProfiles/${d.id}`, d.ref);
+          }
+        });
+        await Promise.all(Array.from(staleRefs.values()).map((ref: any) => ref.delete()));
       } catch (profErr: any) {
         console.warn("[CandidateAuth] Profile document bootstrap notice:", profErr?.message || profErr);
       }
