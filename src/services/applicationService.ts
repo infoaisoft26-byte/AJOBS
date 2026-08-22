@@ -85,6 +85,8 @@ export async function applyToJob(
       companyName: job.companyName,
       recruiterId: job.recruiterId || job.employerId || null,
       employerId: job.employerId || null,
+      consultancyId: (job as any).consultancyId || ((job as any).consultancyUserId) || null,
+      consultancyName: (job as any).consultancyName || (job as any).consultancy || null,
       assignedRecruiterId: null,
       assignedRecruiterName: null,
       assignedAt: null,
@@ -94,7 +96,7 @@ export async function applyToJob(
       source: "AIJobs",
       appliedAt: nowIso,
       updatedAt: nowIso,
-      resumeScore: profile?.resumeScore || 80
+      resumeScore: Number(profile?.resumeScore || 0)
     };
 
     // Application document in company-specific collection for backwards compatibility
@@ -107,7 +109,7 @@ export async function applyToJob(
       candidateEmail: candidateEmail,
       candidatePhone: candidatePhone,
       resumeUrl: resumeUrl || "No Resume Attached",
-      resumeScore: profile?.resumeScore || 80,
+      resumeScore: Number(profile?.resumeScore || 0),
       interviewScore: profile?.aiInterviewScore || 0,
       status: "applied",
       appliedAt: nowIso
@@ -126,7 +128,8 @@ export async function applyToJob(
       jobTitle: job.title,
       company: job.companyName,
       recruiter: job.employerId || job.createdBy || "Direct Employer",
-      consultancy: job.consultancy || "Direct",
+      consultancyId: (job as any).consultancyId || (job as any).consultancyUserId || null,
+      consultancy: (job as any).consultancyName || job.consultancy || "Direct",
       currentStatus: "applied",
       createdAt: nowIso,
       updatedAt: nowIso
@@ -504,4 +507,3 @@ export async function scheduleApplicationInterview(
     return { success: false, message: error.message || "Failed to schedule interview." };
   }
 }
-
