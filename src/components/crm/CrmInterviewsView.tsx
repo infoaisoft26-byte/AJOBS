@@ -39,7 +39,7 @@ export default function CrmInterviewsView({
       alert("Role Permission Restriction: Viewers cannot schedule interviews.");
       return;
     }
-    setCandidateName(candidates[0]?.name || "Aryan Sharma");
+    setCandidateName(candidates[0]?.name || "");
     setJobTitle(jobs[0]?.title || "Senior Fullstack Architect");
     setDate("2026-06-28");
     setTime("10:00");
