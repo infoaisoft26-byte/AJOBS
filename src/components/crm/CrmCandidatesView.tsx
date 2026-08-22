@@ -482,11 +482,12 @@ export default function CrmCandidatesView({
 
   // Filter candidates
   const filteredCandidates = candidates.filter(cand => {
-    const matchesSearch = cand.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      cand.skills.some(sk => sk.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      cand.location.toLowerCase().includes(searchQuery.toLowerCase());
+    const q = String(searchQuery || "").toLowerCase();
+    const matchesSearch = String(cand.name || "").toLowerCase().includes(q) ||
+      (Array.isArray(cand.skills) ? cand.skills : []).some(sk => String(sk || "").toLowerCase().includes(q)) ||
+      String(cand.location || "").toLowerCase().includes(q);
     
-    const matchesExp = filterExp ? cand.experience.toLowerCase().includes(filterExp.toLowerCase()) : true;
+    const matchesExp = filterExp ? String(cand.experience || "").toLowerCase().includes(filterExp.toLowerCase()) : true;
     const matchesStatus = filterStatus ? cand.status === filterStatus : true;
 
     return matchesSearch && matchesExp && matchesStatus;
