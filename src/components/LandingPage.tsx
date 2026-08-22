@@ -218,15 +218,15 @@ export default function LandingPage({
         candidateName = candidateName.replace(/\b(Resume|CV|New|Latest|Format|Updated|Draft|Doc)\b/gi, "").trim() || "Candidate";
       }
 
-      const cleanEmail = parsed.email || `${candidateName.toLowerCase().replace(/\s+/g, ".")}@candidate.aijobs.local`;
-      let cleanPhone = parsed.phone || "+919876543210";
+      const cleanEmail = parsed.email || user?.email || "";
+      let cleanPhone = parsed.phone || user?.phone || "";
       if (cleanPhone && !cleanPhone.startsWith("+")) {
         cleanPhone = "+91" + cleanPhone.replace(/\D/g, "");
       }
 
       const extractedSkills = parsed.skills && Array.isArray(parsed.skills) && parsed.skills.length > 0
         ? parsed.skills
-        : ["Software Engineering", "Problem Solving", "Communication", "Data Analytics"];
+        : [];
 
       setOnboardStep("Uploading resume securely to Cloudinary...");
       setOnboardProgress(70);
@@ -255,7 +255,7 @@ export default function LandingPage({
         experience: parsed.totalExperience || "Relevant Experience",
         education: parsed.education,
         city: parsed.city,
-        atsScore: 94,
+        atsScore: Number(parsed.atsScore || parsed.resumeScore || 0),
         resumeUrl: downloadURL,
         resumeFileName: file.name
       });
