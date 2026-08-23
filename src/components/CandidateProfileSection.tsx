@@ -2,7 +2,7 @@ import { db } from "../firebase";
 import React, { ChangeEvent, HTMLInputElement, useEffect, useRef, useState } from "react";
 import { doc, setDoc, updateDoc } from "firebase/firestore";
 import { ref } from "firebase/storage";
-import { Award, Briefcase, Camera, Check, Computer, Contact, Edit, Edit3, File, Framer, GraduationCap, Grid, Handshake, Image, Languages, List, Plus, Save, Scan, School, Section, ShieldAlert, ShieldCheck, Sparkles, Target, Trash2, Type, University, Upload, User, Verified, X } from "lucide-react";
+import { Award, Briefcase, Camera, Check, Computer, Contact, Edit, Edit3, File as FileIcon, Framer, GraduationCap, Grid, Handshake, Image as ImageIcon, Languages, List, Plus, Save, Scan, School, Section, ShieldAlert, ShieldCheck, Sparkles, Target, Trash2, Type, University, Upload, User, Verified, X } from "lucide-react";
 import { recordActivityLog } from "../services/activityLogService";
 import { uploadToCloudinary } from "../services/cloudinaryService";
 
@@ -208,7 +208,7 @@ export default function CandidateProfileSection({
           });
         }
 
-        const img = new Image();
+        const img = new window.Image();
         img.src = rawDataUrl;
         await new Promise((res) => { img.onload = res; });
 
@@ -229,7 +229,7 @@ export default function CandidateProfileSection({
 
         // Convert canvas to blob for Cloudinary upload
         const blob: Blob = await new Promise((res) => canvas.toBlob((b) => res(b!), "image/jpeg", 0.88));
-        const photoFile = new File([blob], `profile_${userId || "user"}_${Date.now()}.jpg`, { type: "image/jpeg" });
+        const photoFile = new window.File([blob], `profile_${userId || "user"}_${Date.now()}.jpg`, { type: "image/jpeg" });
 
         let finalPhotoUrl = compressedDataUrl;
         try {
