@@ -937,8 +937,8 @@ export default function LandingPage({
               <h4 className="text-xs font-bold text-white uppercase tracking-wider">Company & Legal</h4>
               <ul className="space-y-2 text-xs text-slate-400">
                 <li><button onClick={() => onOpenCompanyPage?.("about")} className="hover:text-white transition-colors">About AIJobs</button></li>
-                <li><button onClick={() => setActiveLegalDoc("privacy")} className="hover:text-white transition-colors">Privacy Policy</button></li>
-                <li><button onClick={() => setActiveLegalDoc("terms")} className="hover:text-white transition-colors">Terms of Service</button></li>
+                <li><a href="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</a></li>
+                <li><a href="/terms" className="hover:text-white transition-colors">Terms of Service</a></li>
                 <li><button onClick={() => onOpenCompanyPage?.("contact")} className="hover:text-white transition-colors">Contact Support</button></li>
                 <li><button onClick={() => onOpenCompanyPage?.("help")} className="hover:text-white transition-colors">Help Center</button></li>
               </ul>
@@ -951,9 +951,9 @@ export default function LandingPage({
               © {new Date().getFullYear()} AIJOBS. All rights reserved. Find Smarter. Hire Faster.
             </div>
             <div className="flex items-center gap-4">
-              <button onClick={() => setActiveLegalDoc("privacy")} className="hover:text-slate-300 transition-colors">Privacy</button>
+              <a href="/privacy-policy" className="hover:text-slate-300 transition-colors">Privacy</a>
               <span>•</span>
-              <button onClick={() => setActiveLegalDoc("terms")} className="hover:text-slate-300 transition-colors">Terms</button>
+              <a href="/terms" className="hover:text-slate-300 transition-colors">Terms</a>
               <span>•</span>
               <button onClick={() => onOpenCompanyPage?.("contact")} className="hover:text-slate-300 transition-colors">Support</button>
             </div>
