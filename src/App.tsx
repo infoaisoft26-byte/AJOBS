@@ -331,8 +331,8 @@ function MainAppContent() {
     schemaScript.textContent = JSON.stringify({
       "@context": "https://schema.org",
       "@type": "WebApplication",
-      "name": "AIJobs",
-      "alternateName": "AIJobs Recruitment",
+      "name": "AIJOBS",
+      "alternateName": "AIJOBS Recruitment Platform",
       "url": window.location.origin,
       "description": currentMeta.desc,
       "applicationCategory": "BusinessApplication, Recruitment",
