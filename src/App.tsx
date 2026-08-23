@@ -77,6 +77,8 @@ const PublicJobOpeningsLazy = safeLazy(() => import("@/components/PublicJobOpeni
 const CandidatePreLaunchProfileLazy = safeLazy(() => import("@/components/CandidatePreLaunchProfile"), "CandidatePreLaunchProfile");
 const InternalPlatformLoginLazy = safeLazy(() => import("@/components/InternalPlatformLogin"), "InternalPlatformLogin");
 const AdminLoginLazy = safeLazy(() => import("@/components/AdminLogin"), "AdminLogin");
+const PortalLoginLazy = safeLazy(() => import("@/components/portal/PortalLoginSystem").then(m => ({ default: m.PortalLogin })), "PortalLogin");
+const PortalSelectionLazy = safeLazy(() => import("@/components/portal/PortalLoginSystem").then(m => ({ default: m.PortalSelection })), "PortalSelection");
 const UnsubscribeViewLazy = safeLazy(() => import("@/components/UnsubscribeView"), "UnsubscribeView");
 const ResumeOnboardingLazy = safeLazy(() => import("@/components/ResumeOnboarding"), "ResumeOnboarding");
 const AuthModalLazy = safeLazy(() => import("@/components/AuthModal"), "AuthModal");
@@ -193,6 +195,7 @@ function MainAppContent() {
   const [authMode, setAuthMode] = useState<"signin" | "signup" | null>(null);
   const [authRole, setAuthRole] = useState<"candidate" | "consultancy" | "employer" | "recruiter" | undefined>(undefined);
   const [internalLoginRole, setInternalLoginRole] = useState<"recruiter" | "consultancy" | "employer" | undefined>(undefined);
+  const [portalLoginRole, setPortalLoginRole] = useState<"recruiter" | "consultancy" | "admin" | undefined>(undefined);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [authLoading, setAuthLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(() => {
@@ -448,17 +451,19 @@ function MainAppContent() {
         setActiveView("candidate-register");
       } else if (p === "/candidate/pre-launch-profile") {
         setActiveView("pre-launch-profile");
+      } else if (p === "/portal-login") {
+        setActiveView("portal-login");
       } else if (p === "/recruiter/login" || p === "/recruiter-login") {
-        setInternalLoginRole("recruiter"); setActiveView("internal-login");
+        setPortalLoginRole("recruiter"); setActiveView("portal-role-login");
       } else if (p === "/consultancy/login" || p === "/consultancy-login") {
-        setInternalLoginRole("consultancy"); setActiveView("internal-login");
+        setPortalLoginRole("consultancy"); setActiveView("portal-role-login");
       } else if (p === "/employer/login" || p === "/employer-login") {
         setInternalLoginRole("employer"); setActiveView("internal-login");
       } else if (p === "/internal-login") {
         setInternalLoginRole(undefined);
         setActiveView("internal-login");
       } else if (p === "/admin-login" || p === "/admin/login") {
-        setActiveView("admin-login");
+        setPortalLoginRole("admin"); setActiveView("portal-role-login");
       } else if (p === "/admin/dashboard" || p.startsWith("/admin")) {
         setActiveView("admin-dashboard");
       } else if (p === "/internal/candidate") {
@@ -941,6 +946,32 @@ function MainAppContent() {
                       />
                     </Suspense>
                   </CandidatePreLaunchGuard>
+                ) : activeView === "portal-login" ? (
+                  <Suspense fallback={<GeneralLoading />}>
+                    <PortalSelectionLazy
+                      onSelect={(role) => {
+                        setPortalLoginRole(role);
+                        window.history.pushState({}, "", `/${role}/login`);
+                        setActiveView("portal-role-login");
+                      }}
+                      onBack={() => { window.history.pushState({}, "", "/"); setActiveView("home"); }}
+                    />
+                  </Suspense>
+                ) : activeView === "portal-role-login" && portalLoginRole ? (
+                  <Suspense fallback={<GeneralLoading />}>
+                    <PortalLoginLazy
+                      role={portalLoginRole}
+                      onBack={() => { window.history.pushState({}, "", "/portal-login"); setActiveView("portal-login"); }}
+                      onSuccess={(profile, targetPath) => {
+                        setUser(profile);
+                        window.history.pushState({}, "", targetPath);
+                        const role = normalizeRole(profile.role);
+                        if (isAdminRole(role)) setActiveView("admin-dashboard");
+                        else if (role === "recruiter") setActiveView("internal-recruiter");
+                        else if (role === "consultancy") setActiveView("internal-consultancy");
+                      }}
+                    />
+                  </Suspense>
                 ) : activeView === "internal-login" ? (
                   <Suspense fallback={<GeneralLoading />}>
                     <InternalPlatformLoginLazy
