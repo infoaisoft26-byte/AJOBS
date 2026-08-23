@@ -23,6 +23,28 @@ const formatPrivateKey = (key?: string) => {
 
 const privateKey = formatPrivateKey(process.env.FIREBASE_ADMIN_PRIVATE_KEY);
 
+const parseServiceAccountJson = () => {
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON || process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT;
+  if (!raw) return null;
+  try {
+    let value = raw.trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    // Accept either direct JSON or base64-encoded JSON.
+    if (!value.startsWith("{")) value = Buffer.from(value, "base64").toString("utf8");
+    const parsed = JSON.parse(value);
+    const parsedKey = formatPrivateKey(parsed.private_key || parsed.privateKey);
+    const parsedProjectId = parsed.project_id || parsed.projectId;
+    const parsedClientEmail = parsed.client_email || parsed.clientEmail;
+    if (!parsedProjectId || !parsedClientEmail || !parsedKey) return null;
+    return { projectId: parsedProjectId, clientEmail: parsedClientEmail, privateKey: parsedKey };
+  } catch (err: any) {
+    console.error("[Firebase Admin] FIREBASE_SERVICE_ACCOUNT_JSON is invalid:", err?.message || err);
+    return null;
+  }
+};
+
 const configPath = path.join(process.cwd(), "firebase-applet-config.json");
 const config = fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, "utf-8")) : {};
 const fallbackProjectId = config.projectId || process.env.GCP_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || "planning-with-ai-1ea1c";
@@ -32,22 +54,27 @@ const initAdminApp = () => {
     return getApps()[0];
   }
 
-const isValidCert =
-    Boolean(projectId) &&
-    Boolean(clientEmail) &&
-    Boolean(privateKey) &&
-    (privateKey!.includes("BEGIN PRIVATE KEY") || privateKey!.includes("BEGIN RSA PRIVATE KEY")) &&
-    (privateKey!.includes("END PRIVATE KEY") || privateKey!.includes("END RSA PRIVATE KEY")) &&
-    !projectId!.toLowerCase().includes("your_") &&
-    !clientEmail!.toLowerCase().includes("your_");
+  const jsonCredentials = parseServiceAccountJson();
+  const activeProjectId = jsonCredentials?.projectId || projectId;
+  const activeClientEmail = jsonCredentials?.clientEmail || clientEmail;
+  const activePrivateKey = jsonCredentials?.privateKey || privateKey;
+
+  const isValidCert =
+    Boolean(activeProjectId) &&
+    Boolean(activeClientEmail) &&
+    Boolean(activePrivateKey) &&
+    (activePrivateKey!.includes("BEGIN PRIVATE KEY") || activePrivateKey!.includes("BEGIN RSA PRIVATE KEY")) &&
+    (activePrivateKey!.includes("END PRIVATE KEY") || activePrivateKey!.includes("END RSA PRIVATE KEY")) &&
+    !activeProjectId!.toLowerCase().includes("your_") &&
+    !activeClientEmail!.toLowerCase().includes("your_");
 
   if (isValidCert) {
     try {
       return initializeApp({
         credential: cert({
-          projectId: projectId!,
-          clientEmail: clientEmail!,
-          privateKey: privateKey!
+          projectId: activeProjectId!,
+          clientEmail: activeClientEmail!,
+          privateKey: activePrivateKey!
         })
       });
     } catch (err: any) {
@@ -56,7 +83,7 @@ const isValidCert =
   }
 
   return initializeApp({
-    projectId: projectId || fallbackProjectId
+    projectId: activeProjectId || fallbackProjectId
   });
 };
 
