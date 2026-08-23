@@ -804,7 +804,7 @@ router.post("/payments/webhook", async (req, res) => {
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #0b0f19; color: #ffffff; border-radius: 12px;">
                 <h2 style="color: #10b981; margin-bottom: 10px;">Payment Received Successfully</h2>
                 <p>Hello <strong>${uSnap.data()?.name || "Subscriber"}</strong>,</p>
-                <p>Your payment of <strong>₹${payData.totalAmount}</strong> for <strong>${invoiceDoc.planSummary?.planName || "AIJOBS Database Access Plan"}</strong> has been received and verified.</p>
+                <p>Your payment of <strong>₹${payData.totalAmount}</strong> for <strong>${agreementData?.planSummary?.planName || "AIJOBS Database Access Plan"}</strong> has been received and verified.</p>
                 
                 <div style="background-color: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 15px; border-radius: 8px; margin: 20px 0;">
                   <p style="margin: 0; font-size: 13px;"><strong>Tax Invoice Number:</strong> ${invoiceNumber}</p>
