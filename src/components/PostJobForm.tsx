@@ -40,11 +40,16 @@ export default function PostJobForm({ userId, userRole, userName, onJobPosted, o
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [feePolicyConfirmed, setFeePolicyConfirmed] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !companyName.trim() || !location.trim() || !description.trim() || !requiredSkills.trim()) {
       setErrorMsg("Please fill out all required fields marked with *.");
+      return;
+    }
+    if (!feePolicyConfirmed) {
+      setErrorMsg("Please confirm that candidates will never be charged for this job.");
       return;
     }
 
@@ -99,8 +104,13 @@ export default function PostJobForm({ userId, userRole, userName, onJobPosted, o
         responsibilities: responsibilities.trim(),
         requirements: requirements.trim(),
         description: description.trim(),
-        status: "pending_approval",
+        status: "pending_admin_verification",
         approved: false,
+        verificationStatus: "pending",
+        adminApprovalRequired: true,
+        candidateFeePolicyConfirmed: true,
+        googlePublishingStatus: "NOT_SUBMITTED",
+        submittedByRole: userRole,
         publishedAt: null,
         createdBy: userId,
         employerId: finalEmployerId,
@@ -122,8 +132,11 @@ export default function PostJobForm({ userId, userRole, userName, onJobPosted, o
             skillsRequired: skillsArray,
             salary: salary,
             experience: experience,
-            status: "pending_approval",
+            status: "pending_admin_verification",
             approved: false,
+            verificationStatus: "pending",
+            adminApprovalRequired: true,
+            googlePublishingStatus: "NOT_SUBMITTED",
             publishedAt: null,
             createdAt: new Date().toISOString()
           });
@@ -136,8 +149,12 @@ export default function PostJobForm({ userId, userRole, userName, onJobPosted, o
             salaryMin: parseInt(salary.replace(/[^0-9]/g, "")) || 10,
             salaryMax: parseInt(salary.replace(/[^0-9]/g, "")) || 20,
             location: location.trim(),
-            status: "pending_approval",
+            status: "pending_admin_verification",
             approved: false,
+            verificationStatus: "pending",
+            adminApprovalRequired: true,
+            candidateFeePolicyConfirmed: true,
+            googlePublishingStatus: "NOT_SUBMITTED",
             consultancyId: userId,
             consultancyName: finalConsultancy.trim(),
             createdBy: userId,
@@ -529,6 +546,20 @@ export default function PostJobForm({ userId, userRole, userName, onJobPosted, o
             </div>
           </div>
         </div>
+
+        <label className="flex items-start gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 p-4 text-amber-100 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={feePolicyConfirmed}
+            onChange={(e) => setFeePolicyConfirmed(e.target.checked)}
+            className="mt-0.5 h-4 w-4"
+            required
+          />
+          <span>
+            <strong className="block text-xs">Candidate Free-Job Policy Confirmation</strong>
+            <span className="mt-1 block text-[11px] text-amber-200/80">I confirm this is a real vacancy, the employer has authorized it, and no candidate will be charged for applying, interviewing or placement.</span>
+          </span>
+        </label>
 
         {/* Actions buttons */}
         <div className="flex gap-3 justify-end pt-4 border-t border-white/5">
