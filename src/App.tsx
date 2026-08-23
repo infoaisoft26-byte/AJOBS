@@ -105,8 +105,9 @@ import { LanguageProvider } from "@/context/LanguageContext";
 import { GlobalMarketplaceProvider } from "@/context/GlobalMarketplaceContext";
 import { initGA, trackPageView, trackInteraction } from "@/utils/analytics";
 import { validateEnvironment } from "@/utils/envValidation";
-import { getOrCreateUserProfile } from "@/services/dbInitService";
+import { getOrCreateUserProfile, initializeUserCollectionsAndDocs } from "@/services/dbInitService";
 import { isAdminRole, normalizeRole, routeUserByRole } from "@/utils/roleUtils";
+import type { UserProfile } from "@/types";
 import { clearUserSessionState } from "@/utils/authSession";
 
 // Route Guards
