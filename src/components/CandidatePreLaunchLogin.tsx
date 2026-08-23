@@ -69,6 +69,7 @@ export default function CandidatePreLaunchLogin({
       return profile;
     } else {
       // New record fallback
+      const isEmailVerified = fbUser.emailVerified === true;
       const newProfile: UserProfile = {
         uid: fbUser.uid,
         name: fbUser.displayName || fbUser.email?.split("@")[0] || "Candidate",
