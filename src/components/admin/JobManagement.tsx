@@ -1,7 +1,7 @@
 import React, { FormEvent, useState } from "react";
 import { deleteDoc, doc, setDoc } from "firebase/firestore";
-import { Briefcase, CheckCircle, Chrome, Database, Delete, Filter, List, MapPin, Option, Package, Plus, Search, Star, Table, Tags, Trash2, View, X } from "lucide-react";
-import { db } from "../../firebase";
+import { Briefcase, CheckCircle, Chrome, Database, Delete, Filter, Globe2, List, MapPin, Option, Package, Plus, Search, Star, Table, Tags, Trash2, View, X } from "lucide-react";
+import { auth, db } from "../../firebase";
 
 import InteractiveExportTable from "../InteractiveExportTable";
 
@@ -72,45 +72,25 @@ export default function JobManagement({
     setIsSubmitting(true);
     const nextStatus = approve ? "live" : "rejected";
     try {
-      const updatePayload = approve 
-        ? {
-            status: "live",
-            approved: true,
-            publishedAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        : {
-            status: "rejected",
-            approved: false,
-            updatedAt: new Date().toISOString()
-          };
-
-      // 1. Sync jobs
-      await setDoc(doc(db, "jobs", job.id), updatePayload, { merge: true });
-
-      // 2. Sync company_jobs
-      try {
-        await setDoc(doc(db, "company_jobs", job.id), updatePayload, { merge: true });
-      } catch (ce) {
-        console.warn("Could not sync company_jobs status for job:", job.id, ce);
-      }
-
-      const logId = "log_" + Math.random().toString(36).substr(2, 9);
-      await setDoc(doc(db, "audit_logs", logId), {
-        id: logId,
-        userId: job.employerId || "admin",
-        userName: job.companyName || "AIJobs System",
-        userEmail: "recruitment@aijobs.global",
-        role: "Super Admin",
-        action: approve ? "APPROVAL" : "REJECTION",
-        category: "Job",
-        description: `Job verification: marked ${job.title} at ${job.companyName} as ${nextStatus.toUpperCase()}.`,
-        ipAddress: "157.45.18.221",
-        deviceInfo: "Chrome 124.0",
-        createdAt: new Date().toISOString()
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error("Admin login session is required.");
+      const token = await currentUser.getIdToken(true);
+      const rejectionReason = approve ? "" : (window.prompt("Reason for rejecting this job:") || "Job verification requirements were not met.");
+      const response = await fetch("/api/admin/jobs/review", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+          "x-user-id": currentUser.uid,
+          "x-user-email": currentUser.email || ""
+        },
+        body: JSON.stringify({ jobId: job.id, decision: approve ? "approve" : "reject", rejectionReason })
       });
-
-      alert(`Job vacancy marked as: ${nextStatus.toUpperCase()}`);
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || "Job review failed.");
+      alert(approve
+        ? `Verified and published. Google submission: ${result.indexing?.status || "queued"}.`
+        : "Job rejected and returned to the consultancy.");
       onRefresh();
     } catch (err) {
       console.error(err);
@@ -330,7 +310,7 @@ export default function JobManagement({
                     return (
                       <span className={`px-2 py-0.5 rounded font-mono text-[9px] font-bold uppercase border ${
                         st === "live" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25" :
-                        st === "pending_approval" || st === "pending approval" ? "bg-amber-500/10 text-amber-400 border-amber-500/25 animate-pulse" :
+                        st === "pending_approval" || st === "pending approval" || st === "pending_admin_verification" ? "bg-amber-500/10 text-amber-400 border-amber-500/25 animate-pulse" :
                         st === "draft" ? "bg-blue-500/10 text-blue-400 border-blue-500/25" :
                         st === "approved" ? "bg-purple-500/10 text-purple-400 border-purple-500/25" :
                         st === "closed" ? "bg-neutral-500/10 text-neutral-400 border-neutral-500/25" :
@@ -368,10 +348,10 @@ export default function JobManagement({
                             <button
                               onClick={() => handleApproveJob(j, true)}
                               className="p-1.5 bg-emerald-500/10 hover:bg-emerald-500 border border-emerald-500/20 text-emerald-400 hover:text-white rounded-lg transition-all cursor-pointer inline-flex items-center gap-1 text-[10px] font-bold"
-                              title="Approve Job & Set Live"
+                              title="Verify, Publish & Submit to Google"
                             >
-                              <CheckCircle className="w-3.5 h-3.5" />
-                              <span>Approve</span>
+                              <Globe2 className="w-3.5 h-3.5" />
+                              <span>Approve & Publish to Google</span>
                             </button>
                             <button
                               onClick={() => handleApproveJob(j, false)}
