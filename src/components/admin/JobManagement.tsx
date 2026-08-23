@@ -76,7 +76,7 @@ export default function JobManagement({
       if (!currentUser) throw new Error("Admin login session is required.");
       const token = await currentUser.getIdToken(true);
       const rejectionReason = approve ? "" : (window.prompt("Reason for rejecting this job:") || "Job verification requirements were not met.");
-      const response = await fetch("/api/admin/jobs/review", {
+      const response = await fetch("/api/applications/admin/jobs/review", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
