@@ -526,7 +526,7 @@ export default function CandidateResumeSection({
                   ...updatedProfile
                 }));
                 if (updatedProfile.parsedData) {
-                  setParsedProfileData(updatedProfile.parsedData);
+                  setParsedData(updatedProfile.parsedData);
                 }
               }}
             />
