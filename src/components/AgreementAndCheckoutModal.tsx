@@ -3,7 +3,7 @@ import { doc, setDoc, where } from "firebase/firestore";
 import { ref } from "firebase/storage";
 import { AlertCircle, Building2, CheckCircle2, Container, CreditCard, Database, KeyRound, ScrollText, Send, ShieldCheck, Signature, Table, Type, Verified, X } from "lucide-react";
 import { parseJsonResponse } from "../utils/apiHelper";
-import { db } from "../firebase";
+import { auth, db } from "../firebase";
 interface AgreementAndCheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -218,7 +218,7 @@ export default function AgreementAndCheckoutModal({
   };
 
   // Step 2 -> Send OTP for eSign Consent
-  const handleRequestOtp = () => {
+  const handleRequestOtp = async () => {
     // Validate checkboxes
     const allChecked = Object.values(checkboxes).every(Boolean);
     if (!allChecked) {
@@ -226,8 +226,24 @@ export default function AgreementAndCheckoutModal({
       return;
     }
     setErrorMsg("");
-    setOtpSent(true);
-    setStep("otp");
+    setOtpVerifying(true);
+    try {
+      const token = await auth.currentUser?.getIdToken(true);
+      if (!token) throw new Error("Your login session expired. Please sign in again.");
+      const response = await fetch("/api/agreements/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ userId: user?.uid, agreementId: agreement?.agreementId })
+      });
+      const data = await safeParseJson(response, "Failed to send verification code");
+      if (!response.ok || !data.success) throw new Error(data.message || data.error || "Failed to send verification code.");
+      setOtpSent(true);
+      setStep("otp");
+    } catch (err: any) {
+      setErrorMsg(err.message || "Could not send verification code.");
+    } finally {
+      setOtpVerifying(false);
+    }
   };
 
   // Step 3 -> Verify OTP & Accept Agreement
@@ -240,15 +256,16 @@ export default function AgreementAndCheckoutModal({
     setOtpVerifying(true);
     setOtpError("");
     try {
+      const token = await auth.currentUser?.getIdToken(true);
+      if (!token) throw new Error("Your login session expired. Please sign in again.");
       const res = await fetch("/api/agreements/accept", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({
           agreementId: agreement?.agreementId || `agmt_${user?.uid}`,
           userId: user?.uid,
           otp: otp.trim(),
           acceptedName: buyerInfo.authorizedPerson || user?.name || user?.displayName,
-          checkboxAccepted: true,
           checkboxes
         })
       });
@@ -286,31 +303,11 @@ export default function AgreementAndCheckoutModal({
     setErrorMsg("");
 
     try {
-      // Execute payment webhook call
-      const res = await fetch("/api/payments/webhook", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          paymentId: paymentOrder.paymentId,
-          orderId: paymentOrder.orderId,
-          gatewayPaymentId: `pay_gateway_${Date.now()}`,
-          signature: "valid_gateway_signature"
-        })
-      });
-
-      const data = await safeParseJson(res, "Payment verification failed");
-      if (!data.success) throw new Error(data.error || "Payment verification failed.");
-
-      // Fetch generated Tax Invoice
-      const invRes = await fetch(`/api/invoices/${data.invoiceId}`);
-      const invData = await safeParseJson(invRes, "Failed to fetch invoice");
-
-      if (invData.success) {
-        setInvoice(invData.invoice);
+      const checkoutUrl = String(paymentOrder?.checkoutUrl || paymentOrder?.paymentLink || "");
+      if (!checkoutUrl.startsWith("https://")) {
+        throw new Error("Secure payment gateway checkout is not configured. Agreement is saved; please contact AIJOBS Admin to activate payment.");
       }
-
-      setStep("completed");
-      onSuccess(data.invoiceId);
+      window.location.assign(checkoutUrl);
     } catch (err: any) {
       setErrorMsg(err.message || "Payment execution failed.");
     } finally {

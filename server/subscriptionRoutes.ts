@@ -1,11 +1,28 @@
 import { Router } from "express";
 import { getFirestoreDb, getFirebaseAuth } from "./firestoreHelper.js";
-import { sendOTP, verifyOTP, isTwilioConfigured } from "./twilioService.js";
 import { processPaymentAccounting } from "./accountingEngine.js";
 import { dispatchEmail } from "./emailService.js";
 import crypto from "crypto";
 
 const router = Router();
+
+const agreementOtpMemory = new Map<string, any>();
+const hashAgreementOtp = (otp: string, userId: string, agreementId: string) =>
+  crypto.createHash("sha256").update(`${otp}:${userId}:${agreementId}:aijobs_agreement_esign_2026`).digest("hex");
+
+async function requireAuthenticatedUser(req: any, res: any) {
+  const header = String(req.headers.authorization || "");
+  if (!header.startsWith("Bearer ")) {
+    res.status(401).json({ success: false, error: "UNAUTHORIZED", message: "Please sign in again to continue." });
+    return null;
+  }
+  try {
+    return await getFirebaseAuth().verifyIdToken(header.slice(7).trim());
+  } catch {
+    res.status(401).json({ success: false, error: "UNAUTHORIZED", message: "Your login session expired. Please sign in again." });
+    return null;
+  }
+}
 
 function sanitizeFirestoreData(obj: any): any {
   if (obj === null || obj === undefined) return null;
@@ -320,59 +337,55 @@ router.post(["/generate", "/agreements/generate"], async (req, res) => {
 
 /**
  * POST /api/agreements/send-otp
- * Dispatches eSign verification OTP via Twilio Verify Service (or test fallback)
+ * Dispatches a secure eSign verification OTP to the authenticated user's email.
  */
 router.post(["/send-otp", "/agreements/send-otp"], async (req, res) => {
   try {
     const db = getFirestoreDb();
-    const { userId, agreementId, phone } = req.body || {};
+    const decoded = await requireAuthenticatedUser(req, res);
+    if (!decoded) return;
+    const { userId, agreementId } = req.body || {};
+    if (userId && String(userId) !== decoded.uid) return res.status(403).json({ success: false, error: "FORBIDDEN", message: "Account mismatch." });
+    const effectiveUserId = decoded.uid;
+    const resolvedAgreementId = String(agreementId || `agmt_${effectiveUserId}`).trim();
+    const [agreementSnap, userSnap] = await Promise.all([
+      db.collection("agreements").doc(resolvedAgreementId).get(),
+      db.collection("users").doc(effectiveUserId).get()
+    ]);
+    if (!agreementSnap.exists) return res.status(404).json({ success: false, error: "AGREEMENT_NOT_FOUND", message: "Generate the agreement before requesting a verification code." });
+    const agreement = agreementSnap.data() || {};
+    if (agreement.userId && agreement.userId !== effectiveUserId) return res.status(403).json({ success: false, error: "FORBIDDEN", message: "This agreement does not belong to your account." });
+    const user = userSnap.data() || {};
+    const targetEmail = String(decoded.email || user.email || agreement.buyer?.email || "").trim().toLowerCase();
+    if (!targetEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetEmail)) return res.status(400).json({ success: false, error: "EMAIL_REQUIRED", message: "A valid verified email is required for agreement signing." });
 
-    let targetPhone = phone;
-
-    if (!targetPhone && agreementId) {
-      try {
-        const agrSnap = await db.collection("agreements").doc(agreementId).get();
-        if (agrSnap.exists) {
-          const agrData = agrSnap.data();
-          targetPhone = agrData?.buyer?.phone || agrData?.buyer?.mobile;
-        }
-      } catch (e) {
-        console.warn("[Agreements Send-OTP] Agreement lookup notice:", e);
-      }
+    const otpKey = `${effectiveUserId}_${resolvedAgreementId}`;
+    const otpRef = db.collection("agreement_esign_otps").doc(otpKey);
+    const previous = await otpRef.get().catch(() => null);
+    const previousData = previous?.exists ? previous.data() : agreementOtpMemory.get(otpKey);
+    const now = Date.now();
+    if (previousData?.lastSentAtMs && now - previousData.lastSentAtMs < 60_000) {
+      const retryAfter = Math.ceil((60_000 - (now - previousData.lastSentAtMs)) / 1000);
+      return res.status(429).json({ success: false, error: "RATE_LIMITED", message: `Please wait ${retryAfter} seconds before requesting another code.`, retryAfter });
     }
 
-    if (!targetPhone && userId) {
-      try {
-        const userSnap = await db.collection("users").doc(userId).get();
-        if (userSnap.exists) {
-          targetPhone = userSnap.data()?.phone || userSnap.data()?.mobile;
-        }
-      } catch (e) {
-        console.warn("[Agreements Send-OTP] User lookup notice:", e);
-      }
-    }
-
-    if (await isTwilioConfigured()) {
-      if (targetPhone) {
-        try {
-          const twilioRes = await sendOTP(targetPhone);
-          return res.json({
-            success: true,
-            message: twilioRes.message || "Twilio Verify OTP dispatched to mobile.",
-            provider: "Twilio Verify"
-          });
-        } catch (err: any) {
-          console.warn("[Agreements Send-OTP] Twilio send failed, using test OTP fallback:", err.message);
-        }
-      }
-    }
-
-    return res.json({
-      success: true,
-      message: "Digital signature OTP 123456 active.",
-      testOtp: "123456",
-      provider: "TestMode"
+    const rawOtp = crypto.randomInt(100000, 1000000).toString();
+    const record = { userId: effectiveUserId, agreementId: resolvedAgreementId, email: targetEmail, otpHash: hashAgreementOtp(rawOtp, effectiveUserId, resolvedAgreementId), expiresAtMs: now + 10 * 60_000, attempts: 0, used: false, lastSentAtMs: now, createdAt: new Date(now).toISOString() };
+    agreementOtpMemory.set(otpKey, record);
+    await otpRef.set(record);
+    const recipientName = user.name || user.displayName || agreement.buyer?.authorizedPerson || "AIJOBS Partner";
+    const delivery = await dispatchEmail({
+      to: targetEmail,
+      templateName: "candidate_email_otp",
+      data: { candidateName: recipientName, recipientName, email: targetEmail, customMessage: rawOtp },
+      userId: effectiveUserId,
+      recipientName,
+      recipientRole: String(user.role || agreement.role || "consultancy"),
+      createdBy: "agreement_esign_service",
+      category: "transactional"
     });
+    if (!delivery.success && !delivery.queued) return res.status(503).json({ success: false, error: "EMAIL_DELIVERY_FAILED", message: "Verification email could not be sent. Please check email configuration and retry." });
+    return res.json({ success: true, message: `6-digit agreement verification code sent to ${targetEmail.replace(/^(.{2}).*(@.*)$/, "$1***$2")}.`, provider: delivery.queued ? "email_queue" : "smtp", expiresInSeconds: 600 });
   } catch (err: any) {
     console.error("Error sending agreement OTP:", err);
     return res.status(500).json({ success: false, error: err.message || "Failed to dispatch OTP." });
@@ -402,24 +415,9 @@ router.post(["/accept", "/agreements/accept"], async (req, res) => {
       role: bodyRole
     } = req.body || {};
 
-    // 1. Firebase ID Token Verification (if Authorization header provided)
-    let decodedToken: any = null;
-    const authHeader = req.headers.authorization || "";
-    if (authHeader.startsWith("Bearer ")) {
-      const token = authHeader.split("Bearer ")[1]?.trim();
-      if (token) {
-        try {
-          decodedToken = await auth.verifyIdToken(token);
-        } catch (tokenErr: any) {
-          console.warn("[Agreements Accept] Invalid/Expired Firebase ID token:", tokenErr?.message);
-          return res.status(401).json({
-            success: false,
-            error: "UNAUTHORIZED",
-            message: "Authentication token is invalid or expired. Please sign in again."
-          });
-        }
-      }
-    }
+    // 1. Firebase ID Token Verification
+    const decodedToken: any = await requireAuthenticatedUser(req, res);
+    if (!decodedToken) return;
 
     let effectiveUserId = (decodedToken?.uid || userId || "").toString().trim();
     if (!effectiveUserId) {
@@ -523,36 +521,25 @@ router.post(["/accept", "/agreements/accept"], async (req, res) => {
 
     // 4. OTP Verification Logic
     const otpStr = String(otp || "").trim();
-    const isTestOtp = otpStr === "123456" || otpStr === "000000" || otpStr === "1234" || Boolean(checkboxAccepted);
-
-    if (!isTestOtp && otpStr.length >= 4 && (await isTwilioConfigured())) {
-      let phone = agrData.buyer?.phone || agrData.buyer?.mobile;
-      if (!phone && effectiveUserId) {
-        try {
-          const uSnap = await db.collection("users").doc(effectiveUserId).get();
-          if (uSnap.exists) phone = uSnap.data()?.phone || uSnap.data()?.mobile;
-        } catch (pErr) {}
-      }
-      if (phone) {
-        try {
-          const twResult = await verifyOTP(phone, otpStr);
-          if (!twResult.success) {
-            return res.status(400).json({
-              success: false,
-              error: "INVALID_OTP",
-              message: twResult.message || "Invalid or expired OTP code."
-            });
-          }
-        } catch (e: any) {
-          console.warn("[Agreements Accept] verifyOTP error:", e.message);
-          return res.status(400).json({
-            success: false,
-            error: "OTP_VERIFICATION_FAILED",
-            message: e.message || "Invalid or expired OTP code."
-          });
-        }
-      }
+    if (!/^\d{6}$/.test(otpStr)) return res.status(400).json({ success: false, error: "INVALID_OTP", message: "Enter the 6-digit verification code sent to your email." });
+    const otpKey = `${effectiveUserId}_${resolvedAgreementId}`;
+    const otpRef = db.collection("agreement_esign_otps").doc(otpKey);
+    const otpSnap = await otpRef.get().catch(() => null);
+    const otpRecord: any = otpSnap?.exists ? otpSnap.data() : agreementOtpMemory.get(otpKey);
+    if (!otpRecord || otpRecord.used) return res.status(400).json({ success: false, error: "OTP_NOT_REQUESTED", message: "Request a new verification code before signing." });
+    if (Date.now() > Number(otpRecord.expiresAtMs || 0)) return res.status(400).json({ success: false, error: "OTP_EXPIRED", message: "Verification code expired. Request a new code." });
+    const attempts = Number(otpRecord.attempts || 0);
+    if (attempts >= 5) return res.status(429).json({ success: false, error: "OTP_LOCKED", message: "Too many incorrect attempts. Request a new code." });
+    const expected = Buffer.from(String(otpRecord.otpHash || ""), "hex");
+    const received = Buffer.from(hashAgreementOtp(otpStr, effectiveUserId, resolvedAgreementId), "hex");
+    if (expected.length !== received.length || !crypto.timingSafeEqual(expected, received)) {
+      const nextAttempts = attempts + 1;
+      await otpRef.set({ attempts: nextAttempts, lastAttemptAt: new Date().toISOString() }, { merge: true }).catch(() => {});
+      agreementOtpMemory.set(otpKey, { ...otpRecord, attempts: nextAttempts });
+      return res.status(400).json({ success: false, error: "INVALID_OTP", message: `Incorrect verification code. ${Math.max(0, 5 - nextAttempts)} attempt(s) remaining.` });
     }
+    await otpRef.set({ used: true, usedAt: new Date().toISOString() }, { merge: true });
+    agreementOtpMemory.set(otpKey, { ...otpRecord, used: true });
 
     const nowIso = new Date().toISOString();
     const eSignTxnId = `TXN_ESIGN_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;

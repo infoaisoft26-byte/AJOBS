@@ -2,7 +2,7 @@ import { HTMLDivElement, useEffect, useRef, useState } from "react";
 import { collection, doc, getDocs, orderBy, query, where } from "firebase/firestore";
 import { ref } from "firebase/storage";
 import { AlertCircle, Badge, CheckCircle2, CheckSquare, Code, Contact, Database, FileCheck, FileText, KeyRound, Printer, RefreshCw, Save, Scroll, ScrollText, Section, ShieldCheck, Signature, Type, User } from "lucide-react";
-import { db } from "../../firebase";
+import { auth, db } from "../../firebase";
 
 
 interface AgreementsViewProps {
@@ -150,10 +150,12 @@ export default function AgreementsView({
 
     // Trigger OTP dispatch via backend Twilio / Verify API
     try {
+      const token = await auth.currentUser?.getIdToken(true);
+      if (!token) throw new Error("Your login session expired. Please sign in again.");
       const res = await fetch("/api/agreements/send-otp", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, agreementId: activeAgreement?.agreementId, phone: "" })
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ userId, agreementId: activeAgreement?.agreementId })
       });
       const data = await parseJsonResponse(res, "Failed to send OTP");
       if (data.success) {
@@ -179,27 +181,18 @@ export default function AgreementsView({
     setErrorMsg("");
 
     try {
-      // Capture User Agent and IP
+      // Server records the request IP; the browser does not disclose it to a third party.
       const userAgent = typeof navigator !== "undefined" ? navigator.userAgent : "Browser";
-      let ipAddress = "127.0.0.1";
-      try {
-        const ipRes = await fetch("https://api.ipify.org?format=json");
-        if (ipRes.ok) {
-          const ipData = await ipRes.json();
-          if (ipData?.ip) ipAddress = ipData.ip;
-        }
-      } catch (e) {
-        // Fallback IP
-      }
 
+      const token = await auth.currentUser?.getIdToken(true);
+      if (!token) throw new Error("Your login session expired. Please sign in again.");
       const res = await fetch("/api/agreements/accept", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({
           agreementId: activeAgreement?.agreementId || `agmt_${userId}`,
           userId,
           otp: otp.trim(),
-          ipAddress,
           userAgent,
           checkboxes
         })
