@@ -36,6 +36,8 @@ export interface RecruitmentCandidate {
   profileCompletion: number;
   assignedRecruiterId?: string | null;
   assignedRecruiterName?: string | null;
+  assignedConsultancyId?: string | null;
+  assignedConsultancyName?: string | null;
   assignedAt?: string | null;
   assignedJobId?: string | null;
   assignedJobTitle?: string | null;
@@ -112,6 +114,7 @@ export interface RecruiterUser {
   activeJobCount?: number;
   totalPlacements?: number;
   createdAt: string;
+  partnerType?: "recruiter" | "consultancy" | "employer";
 }
 
 export interface CandidateMatchResult {
@@ -145,6 +148,7 @@ export interface RecruiterAssignment {
   recruiterSequentialId?: string;
   recruiterName: string;
   recruiterEmail: string;
+  partnerType?: "recruiter" | "consultancy" | "employer";
   priority: "Urgent" | "High" | "Medium" | "Low";
   deadlineDate?: string;
   adminNotes?: string;
