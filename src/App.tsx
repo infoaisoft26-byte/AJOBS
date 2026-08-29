@@ -79,6 +79,10 @@ const InternalPlatformLoginLazy = safeLazy(() => import("@/components/InternalPl
 const AdminLoginLazy = safeLazy(() => import("@/components/AdminLogin"), "AdminLogin");
 const PortalLoginLazy = safeLazy(() => import("@/components/portal/PortalLoginSystem").then(m => ({ default: m.PortalLogin })), "PortalLogin");
 const PortalSelectionLazy = safeLazy(() => import("@/components/portal/PortalLoginSystem").then(m => ({ default: m.PortalSelection })), "PortalSelection");
+const HrmsLandingLazy = safeLazy(() => import("@/components/hrms/HrmsPortalSystem").then(m => ({ default: m.HrmsLanding })), "HrmsLanding");
+const HrmsLoginLazy = safeLazy(() => import("@/components/hrms/HrmsPortalSystem").then(m => ({ default: m.HrmsLogin })), "HrmsLogin");
+const HrmsRegisterLazy = safeLazy(() => import("@/components/hrms/HrmsPortalSystem").then(m => ({ default: m.HrmsRegister })), "HrmsRegister");
+const HrmsCompanyDashboardLazy = safeLazy(() => import("@/components/hrms/HrmsPortalSystem").then(m => ({ default: m.HrmsCompanyDashboard })), "HrmsCompanyDashboard");
 const UnsubscribeViewLazy = safeLazy(() => import("@/components/UnsubscribeView"), "UnsubscribeView");
 const ResumeOnboardingLazy = safeLazy(() => import("@/components/ResumeOnboarding"), "ResumeOnboarding");
 const AuthModalLazy = safeLazy(() => import("@/components/AuthModal"), "AuthModal");
@@ -108,6 +112,7 @@ import { validateEnvironment } from "@/utils/envValidation";
 import { getOrCreateUserProfile, initializeUserCollectionsAndDocs } from "@/services/dbInitService";
 import { isAdminRole, normalizeRole, routeUserByRole } from "@/utils/roleUtils";
 import type { UserProfile } from "@/types";
+import type { HrmsWorkspaceUser } from "@/types/hrms";
 import { clearUserSessionState } from "@/utils/authSession";
 
 // Route Guards
@@ -186,6 +191,7 @@ function ProtectedRoute({
 
 function MainAppContent() {
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [hrmsUser, setHrmsUser] = useState<HrmsWorkspaceUser | null>(null);
   const [activeView, setActiveView] = useState<string>(() => {
     if (typeof window !== "undefined" && window.location.pathname === "/unsubscribe") {
       return "unsubscribe";
@@ -461,6 +467,14 @@ function MainAppContent() {
         setActiveView("pre-launch-profile");
       } else if (p === "/portal-login") {
         setActiveView("portal-login");
+      } else if (p === "/hrms" || p === "/hrms/") {
+        setActiveView("hrms");
+      } else if (p === "/hrms/login") {
+        setActiveView("hrms-login");
+      } else if (p === "/hrms/register") {
+        setActiveView("hrms-register");
+      } else if (p === "/hrms/dashboard") {
+        setActiveView("hrms-dashboard");
       } else if (p === "/recruiter/login" || p === "/recruiter-login") {
         setPortalLoginRole("recruiter"); setActiveView("portal-role-login");
       } else if (p === "/consultancy/login" || p === "/consultancy-login") {
@@ -534,6 +548,7 @@ function MainAppContent() {
       clearUserSessionState();
       await auth.signOut();
       setUser(null);
+      setHrmsUser(null);
       setActiveView("home");
       if (typeof window !== "undefined") {
         window.history.pushState({}, "", "/");
@@ -544,6 +559,7 @@ function MainAppContent() {
       console.error(err);
       clearUserSessionState();
       setUser(null);
+      setHrmsUser(null);
       setActiveView("home");
       showToast("Session terminated", "info");
     }
@@ -812,7 +828,7 @@ function MainAppContent() {
       )}
 
       {/* Header */}
-      {activeView !== "dashboard" && (
+      {activeView !== "dashboard" && !activeView.startsWith("hrms") && (
         <Header
           user={user}
           onLogout={handleLogout}
@@ -863,6 +879,41 @@ function MainAppContent() {
                   <Suspense fallback={<GeneralLoading />}>
                     <UnsubscribeViewLazy />
                   </Suspense>
+                ) : activeView === "hrms" ? (
+                  <Suspense fallback={<GeneralLoading />}>
+                    <HrmsLandingLazy
+                      onLogin={() => { window.history.pushState({}, "", "/hrms/login"); setActiveView("hrms-login"); }}
+                      onRegister={() => { window.history.pushState({}, "", "/hrms/register"); setActiveView("hrms-register"); }}
+                      onBack={() => { window.history.pushState({}, "", "/"); setActiveView("home"); }}
+                    />
+                  </Suspense>
+                ) : activeView === "hrms-register" ? (
+                  <Suspense fallback={<GeneralLoading />}>
+                    <HrmsRegisterLazy
+                      onBack={() => { window.history.pushState({}, "", "/hrms"); setActiveView("hrms"); }}
+                      onSuccess={(workspaceUser) => { setHrmsUser(workspaceUser); window.history.pushState({}, "", "/hrms/dashboard"); setActiveView("hrms-dashboard"); }}
+                    />
+                  </Suspense>
+                ) : activeView === "hrms-login" ? (
+                  <Suspense fallback={<GeneralLoading />}>
+                    <HrmsLoginLazy
+                      onBack={() => { window.history.pushState({}, "", "/hrms"); setActiveView("hrms"); }}
+                      onSuccess={(workspaceUser) => { setHrmsUser(workspaceUser); window.history.pushState({}, "", "/hrms/dashboard"); setActiveView("hrms-dashboard"); }}
+                    />
+                  </Suspense>
+                ) : activeView === "hrms-dashboard" ? (
+                  hrmsUser ? (
+                    <Suspense fallback={<GeneralLoading />}>
+                      <HrmsCompanyDashboardLazy user={hrmsUser} onLogout={handleLogout} />
+                    </Suspense>
+                  ) : (
+                    <Suspense fallback={<GeneralLoading />}>
+                      <HrmsLoginLazy
+                        onBack={() => { window.history.pushState({}, "", "/hrms"); setActiveView("hrms"); }}
+                        onSuccess={(workspaceUser) => { setHrmsUser(workspaceUser); setActiveView("hrms-dashboard"); }}
+                      />
+                    </Suspense>
+                  )
                 ) : activeView === "privacy-policy" ? (
                   <div className="min-h-[80vh] flex items-center justify-center p-4">
                     <LegalModal docType="privacy" onClose={() => { setActiveView("home"); window.history.pushState({}, "", "/"); }} />
