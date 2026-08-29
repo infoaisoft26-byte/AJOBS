@@ -112,9 +112,9 @@ export default function CandidateDatabaseTab({
       // Recruiter assigned filter
       const matchesRecruiter = 
         recruiterFilter === "ALL" ||
-        (recruiterFilter === "ASSIGNED" && Boolean(c.assignedRecruiterId)) ||
-        (recruiterFilter === "UNASSIGNED" && !c.assignedRecruiterId) ||
-        c.assignedRecruiterId === recruiterFilter;
+        (recruiterFilter === "ASSIGNED" && Boolean(c.assignedRecruiterId || c.assignedConsultancyId)) ||
+        (recruiterFilter === "UNASSIGNED" && !c.assignedRecruiterId && !c.assignedConsultancyId) ||
+        c.assignedRecruiterId === recruiterFilter || c.assignedConsultancyId === recruiterFilter;
 
       // Source filter
       const matchesSource = 
@@ -307,8 +307,8 @@ export default function CandidateDatabaseTab({
             onChange={(e) => setRecruiterFilter(e.target.value)}
             className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 focus:outline-none focus:border-blue-500 cursor-pointer"
           >
-            <option value="ALL">All Recruiter Routings</option>
-            <option value="ASSIGNED">Assigned to Recruiter</option>
+            <option value="ALL">All Partner Routings</option>
+            <option value="ASSIGNED">Assigned to Partner</option>
             <option value="UNASSIGNED">Unassigned (Open Pool)</option>
             {recruiters.map((r) => (
               <option key={r.id} value={r.id}>
@@ -419,10 +419,10 @@ export default function CandidateDatabaseTab({
                 {/* Right Column: Routing status & Action buttons */}
                 <div className="flex flex-wrap items-center justify-between lg:justify-end gap-3 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-800/60">
                   <div className="text-left lg:text-right space-y-0.5">
-                    <span className="text-[10px] text-slate-500 uppercase font-mono block">Recruiter Status</span>
-                    {cand.assignedRecruiterName ? (
+                    <span className="text-[10px] text-slate-500 uppercase font-mono block">Assignment Status</span>
+                    {cand.assignedRecruiterName || cand.assignedConsultancyName ? (
                       <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/30">
-                        {cand.assignedRecruiterName}
+                        {cand.assignedConsultancyName ? `Consultancy: ${cand.assignedConsultancyName}` : `Recruiter: ${cand.assignedRecruiterName}`}
                       </span>
                     ) : (
                       <span className="px-2 py-0.5 rounded text-[11px] text-slate-400 bg-slate-800 border border-slate-700">
@@ -444,7 +444,7 @@ export default function CandidateDatabaseTab({
                     <button
                       onClick={() => onOpenAssignModal([cand])}
                       className="p-2 bg-slate-800 hover:bg-slate-700 text-indigo-400 hover:text-indigo-300 rounded-xl border border-slate-700 transition-all cursor-pointer"
-                      title="Assign candidate to recruiter"
+                      title="Assign candidate to recruiter or consultancy"
                     >
                       <UserCheck className="w-4 h-4" />
                     </button>
