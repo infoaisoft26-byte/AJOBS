@@ -121,8 +121,8 @@ export default function AssignRecruiterModal({
               <UserCheck className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white">Assign Candidate(s) to Recruiter</h2>
-              <p className="text-xs text-slate-400">Route selected profiles directly to recruiter pipelines with SLA & tracking.</p>
+              <h2 className="text-base font-bold text-white">Assign Candidate(s) to Hiring Partner</h2>
+              <p className="text-xs text-slate-400">Tag profiles to a recruiter or consultancy with SLA and audit tracking.</p>
             </div>
           </div>
           <button
@@ -172,7 +172,7 @@ export default function AssignRecruiterModal({
           {/* Recruiter Selector */}
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold text-slate-300">
-              Select Recruiter / Talent Partner <span className="text-rose-400">*</span>
+              Select Recruiter / Consultancy <span className="text-rose-400">*</span>
             </label>
             <select
               value={selectedRecruiterId}
@@ -185,7 +185,7 @@ export default function AssignRecruiterModal({
               )}
               {safeRecruiters.map((rec) => (
                 <option key={rec.id} value={rec.id}>
-                  {rec.name} ({rec.recruiterId || "REC"}) — {rec.agencyOrCompany || "Talent Operations"} ({rec.email})
+                  [{(rec.partnerType || "recruiter").toUpperCase()}] {rec.name} — {rec.agencyOrCompany || "Talent Operations"} ({rec.email})
                 </option>
               ))}
             </select>
