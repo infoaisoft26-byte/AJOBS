@@ -176,6 +176,8 @@ export async function fetchAllCandidates(): Promise<RecruitmentCandidate[]> {
           profileCompletion: data.profileCompletion || data.profileCompletionPercentage || (data.resumeUrl ? 80 : 25),
           assignedRecruiterId: data.assignedRecruiterId || null,
           assignedRecruiterName: safeString(data.assignedRecruiterName) || null,
+          assignedConsultancyId: data.assignedConsultancyId || null,
+          assignedConsultancyName: safeString(data.assignedConsultancyName) || null,
           assignedAt: data.assignedAt || null,
           assignedJobId: data.assignedJobId || null,
           assignedJobTitle: safeString(data.assignedJobTitle) || null,
@@ -630,7 +632,8 @@ export async function fetchAllRecruiters(): Promise<RecruiterUser[]> {
           activeCandidateCount: data.activeCandidateCount || 0,
           activeJobCount: data.activeJobCount || 0,
           totalPlacements: data.totalPlacements || 0,
-          createdAt: data.createdAt || new Date().toISOString()
+          createdAt: data.createdAt || new Date().toISOString(),
+          partnerType: "recruiter"
         });
       });
     } catch (e) {
@@ -655,7 +658,8 @@ export async function fetchAllRecruiters(): Promise<RecruiterUser[]> {
             activeCandidateCount: 0,
             activeJobCount: 0,
             totalPlacements: 0,
-            createdAt: data.createdAt || new Date().toISOString()
+            createdAt: data.createdAt || new Date().toISOString(),
+            partnerType: data.role === "consultancy" ? "consultancy" : data.role === "employer" ? "employer" : "recruiter"
           });
         }
       });
@@ -692,6 +696,8 @@ export async function assignCandidatesToRecruiter(params: {
     const candidate = candidates.find((c) => c.id === cId);
     if (!candidate) continue;
 
+    const partnerType = recruiter.partnerType || "recruiter";
+    const isConsultancy = partnerType === "consultancy";
     const assignmentDocId = `assign_${candidate.id}_${recruiter.id}_${Date.now()}`;
     const assignmentRecord: RecruiterAssignment = {
       id: assignmentDocId,
@@ -708,6 +714,7 @@ export async function assignCandidatesToRecruiter(params: {
       recruiterSequentialId: recruiter.recruiterId,
       recruiterName: recruiter.name,
       recruiterEmail: recruiter.email,
+      partnerType,
       priority,
       deadlineDate: deadlineDate || "",
       adminNotes: adminNotes || "",
@@ -730,15 +737,22 @@ export async function assignCandidatesToRecruiter(params: {
     await setDoc(doc(db, "recruiterAssignments", assignmentDocId), assignmentRecord);
 
     // 2. Update Candidate record with active assigned recruiter
-    await updateDoc(doc(db, "candidates", candidate.id), {
-      assignedRecruiterId: recruiter.id,
-      assignedRecruiterName: recruiter.name,
+    const candidateAssignmentUpdate = {
+      assignedRecruiterId: isConsultancy ? null : recruiter.id,
+      assignedRecruiterName: isConsultancy ? null : recruiter.name,
+      assignedConsultancyId: isConsultancy ? recruiter.id : null,
+      assignedConsultancyName: isConsultancy ? recruiter.name : null,
       assignedJobId: job?.id || null,
       assignedJobTitle: job?.title || null,
       assignmentPriority: priority,
       assignedAt: nowIso,
       updatedAt: nowIso
-    }).catch(() => {});
+    };
+    await Promise.all([
+      updateDoc(doc(db, "candidates", candidate.id), candidateAssignmentUpdate).catch(() => {}),
+      updateDoc(doc(db, "candidateProfiles", candidate.id), candidateAssignmentUpdate).catch(() => {}),
+      updateDoc(doc(db, "users", candidate.id), candidateAssignmentUpdate).catch(() => {})
+    ]);
 
     // 3. Trigger Email Notification to Recruiter
     if (recruiter.email) {
@@ -746,7 +760,7 @@ export async function assignCandidatesToRecruiter(params: {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          triggerType: "recruiter_candidate_assigned",
+          triggerType: isConsultancy ? "consultancy_candidate_assigned" : "recruiter_candidate_assigned",
           email: recruiter.email,
           recipientName: recruiter.name,
           candidateName: candidate.fullName,
@@ -756,7 +770,7 @@ export async function assignCandidatesToRecruiter(params: {
           priority,
           adminNotes: adminNotes || "Please review candidate profile and initiate contact."
         })
-      }).catch((e) => console.warn("Recruiter email trigger warning:", e));
+      }).catch((e) => console.warn("Partner assignment email trigger warning:", e));
     }
 
     successCount++;
