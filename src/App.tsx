@@ -450,6 +450,13 @@ function MainAppContent() {
         setActiveView("candidate-login");
       } else if (p === "/candidate-register") {
         setActiveView("candidate-register");
+      } else if (p === "/register" || p === "/candidate/register") {
+        // Keep campaign/deep-link registration URLs functional. The public
+        // header uses the shared AuthModal, so direct visits should open the
+        // same candidate signup experience instead of silently showing home.
+        setAuthRole("candidate");
+        setAuthMode("signup");
+        setActiveView("home");
       } else if (p === "/candidate/pre-launch-profile") {
         setActiveView("pre-launch-profile");
       } else if (p === "/portal-login") {
