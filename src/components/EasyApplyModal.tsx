@@ -40,7 +40,23 @@ export default function EasyApplyModal({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [hasReviewedDetails, setHasReviewedDetails] = useState(false);
+  const fastApplyKey = `aijobs_fast_apply_${userId}`;
+  const [fastApplyEnabled, setFastApplyEnabled] = useState(() => localStorage.getItem(fastApplyKey) === "true");
+  const [hasReviewedDetails, setHasReviewedDetails] = useState(() => localStorage.getItem(fastApplyKey) === "true");
+  const [rememberForFastApply, setRememberForFastApply] = useState(() => localStorage.getItem(fastApplyKey) === "true");
+
+  const proceedWithApplication = () => {
+    if (!hasReviewedDetails) return;
+    if (rememberForFastApply) {
+      localStorage.setItem(fastApplyKey, "true");
+      setFastApplyEnabled(true);
+      void handleExecuteApplication();
+      return;
+    }
+    localStorage.removeItem(fastApplyKey);
+    setFastApplyEnabled(false);
+    setStep("confirm_dialog");
+  };
 
   const resumeFileName = profile?.resumeFileName || (profile?.resumeUrl ? "Uploaded_Resume.pdf" : "Candidate_Resume.pdf");
   const candidateEmail = profile?.email || profile?.profileDetails?.email || "candidate@example.com";
@@ -197,6 +213,16 @@ export default function EasyApplyModal({
               </span>
             </label>
 
+            <label className="flex items-start gap-2.5 px-3 text-xs text-slate-400 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={rememberForFastApply}
+                onChange={(e) => setRememberForFastApply(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-slate-700 bg-slate-900"
+              />
+              <span>Remember this reviewed profile on this device for faster one-click applications.</span>
+            </label>
+
             {errorMessage && (
               <p className="text-xs text-red-300 font-medium bg-red-950/70 p-3 rounded-xl border border-red-500/40 flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
@@ -212,10 +238,11 @@ export default function EasyApplyModal({
                 Cancel
               </button>
               <button
-                onClick={() => setStep("confirm_dialog")}
-                className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white rounded-xl text-xs font-bold shadow-[0_0_20px_rgba(0,229,255,0.35)] transition-all flex items-center space-x-2 cursor-pointer"
+                onClick={proceedWithApplication}
+                disabled={!hasReviewedDetails || isSubmitting}
+                className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white rounded-xl text-xs font-bold shadow-[0_0_20px_rgba(0,229,255,0.35)] transition-all flex items-center space-x-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <span>Proceed to Submit</span>
+                <span>{fastApplyEnabled || rememberForFastApply ? (isSubmitting ? "Applying..." : "Fast Apply Now") : "Proceed to Submit"}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -373,4 +400,3 @@ export default function EasyApplyModal({
     </div>
   );
 }
-
