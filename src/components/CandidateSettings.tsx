@@ -1,5 +1,5 @@
 import React, { FormEvent, useState } from "react";
-import { updatePassword } from "firebase/auth";
+import { deleteUser, updatePassword } from "firebase/auth";
 import { deleteDoc, doc, query } from "firebase/firestore";
 import { Bell, Check, Delete, Eye, Lock, Save, Settings, ShieldAlert, Trash2, Type, User, Verified, X } from "lucide-react";
 import { auth, db } from "../firebase";

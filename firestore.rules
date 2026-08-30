@@ -54,7 +54,7 @@ service cloud.firestore {
 
     // Users Profiles Collection
     match /users/{userId} {
-      allow read: if isSignedIn();
+      allow read: if isOwner(userId) || isRecruiter() || isConsultancy() || isAdmin();
       allow create: if isSignedIn() && 
         (!('role' in request.resource.data) || !(request.resource.data.role in ['admin', 'superadmin', 'super_admin'])) &&
         (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == false) &&
@@ -83,8 +83,12 @@ service cloud.firestore {
     
     // Candidates & Candidate Profiles Collection
     match /candidates/{candidateId} {
-      allow read: if isSignedIn();
+      allow read: if isOwner(candidateId) || isRecruiter() || isConsultancy() || isAdmin();
       allow write: if isOwner(candidateId) || isRecruiter() || isConsultancy() || isAdmin();
+
+      match /bookmarks/{jobId} {
+        allow read, write: if isOwner(candidateId) || isAdmin();
+      }
     }
     match /candidate_profiles/{profileId} {
       allow read: if isSignedIn();
@@ -186,7 +190,9 @@ service cloud.firestore {
     
     // Resumes and Resume Versions
     match /resumes/{resumeId} {
-      allow read, write: if isSignedIn();
+      allow read: if isOwner(resumeId) || isRecruiter() || isConsultancy() || isAdmin();
+      allow create, update: if isOwner(resumeId) || isAdmin();
+      allow delete: if isOwner(resumeId) || isAdmin();
     }
     match /resume_versions/{versionId} {
       allow read, write: if isSignedIn();

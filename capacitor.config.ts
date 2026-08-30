@@ -1,0 +1,38 @@
+import type { CapacitorConfig } from "@capacitor/cli";
+
+const config: CapacitorConfig = {
+  appId: "in.aijobs.candidate",
+  appName: "AIJOBS Candidate",
+  webDir: "dist",
+  bundledWebRuntime: false,
+  backgroundColor: "#07152F",
+  android: {
+    allowMixedContent: false,
+    captureInput: true,
+    webContentsDebuggingEnabled: true
+  },
+  plugins: {
+    SplashScreen: {
+      launchShowDuration: 1800,
+      launchAutoHide: true,
+      backgroundColor: "#07152FFF",
+      androidScaleType: "CENTER_CROP",
+      showSpinner: false
+    },
+    StatusBar: {
+      style: "DARK",
+      backgroundColor: "#07152F",
+      overlaysWebView: false
+    },
+    Keyboard: {
+      resize: "body",
+      resizeOnFullScreen: true
+    },
+    FirebaseAuthentication: {
+      skipNativeAuth: false,
+      providers: ["google.com"]
+    }
+  }
+};
+
+export default config;

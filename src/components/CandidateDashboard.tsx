@@ -24,6 +24,8 @@ import CandidateMobileBottomNav from "./CandidateMobileBottomNav";
 import { NotificationCenterView } from "./NotificationCenter";
 import Candidate3DAnimatedBackground from "./Candidate3DAnimatedBackground";
 import CandidateLegalBanner from "./CandidateLegalBanner";
+import CandidateSettings from "./CandidateSettings";
+import LiveChatSection from "./LiveChatSection";
 
 interface CandidateDashboardProps {
   userId: string;
@@ -39,6 +41,8 @@ export type CandidateTab =
   | "saved-jobs" 
   | "notifications" 
   | "profile" 
+  | "messages"
+  | "settings"
   | "help";
 
 export default function CandidateDashboard({ userId, userName }: CandidateDashboardProps) {
@@ -215,6 +219,16 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
       showToast(`You have already applied for "${job.title}"!`, "warning");
       return;
     }
+    const missing: string[] = [];
+    if (!(profile?.name || userName)) missing.push("name");
+    if (!(profile?.email || auth.currentUser?.email)) missing.push("email");
+    if (!profile?.phone) missing.push("mobile number");
+    if (!(profile?.resumeUrl || profile?.resumeURL || profile?.resumeText || resumeText)) missing.push("resume");
+    if (missing.length) {
+      setActiveTab(missing.includes("resume") && missing.length === 1 ? "resume" : "profile");
+      showToast(`Apply karne se pehle ${missing.join(", ")} complete karein.`, "warning");
+      return;
+    }
     setApplyModalJob(job);
   };
 
@@ -367,6 +381,14 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
               triggerNotification={triggerNotification}
               activeSubTab="profile"
             />
+          )}
+
+          {activeTab === "messages" && (
+            <LiveChatSection currentUserId={userId} currentUserRole="candidate" currentUserName={userName} />
+          )}
+
+          {activeTab === "settings" && (
+            <CandidateSettings userId={userId} triggerNotification={triggerNotification} />
           )}
 
           {/* 8. HELP */}

@@ -12,6 +12,8 @@ import {
   LogOut, 
   X,
   ShieldCheck
+  ,MessageSquare
+  ,Settings
 } from "lucide-react";
 import { SupportedLanguage, getTranslation } from "../utils/candidateTranslations";
 
@@ -50,6 +52,8 @@ export default function CandidateSidebar({
       badge: unreadCount > 0 ? unreadCount : undefined 
     },
     { id: "profile", label: t("profile"), icon: User },
+    { id: "messages", label: "Recruiter / HR Chat", icon: MessageSquare },
+    { id: "settings", label: "Settings", icon: Settings },
     { id: "help", label: t("help"), icon: HelpCircle },
   ];
 

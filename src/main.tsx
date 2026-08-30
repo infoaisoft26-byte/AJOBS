@@ -19,7 +19,11 @@ root.render(
   </div>
 );
 
-import('./App.tsx')
+const appModule = import.meta.env.VITE_CANDIDATE_APP === 'true'
+  ? import('./mobile/CandidateMobileApp.tsx')
+  : import('./App.tsx');
+
+appModule
   .then(({ default: App }) => {
     root.render(
       <StrictMode>
