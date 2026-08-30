@@ -307,6 +307,22 @@ function MainAppContent() {
       notifications: {
         title: "Secure Communication Gateways | AIJOBS",
         desc: "Access instant updates from system endpoints and automated email notifications dispatch logs."
+      },
+      hrms: {
+        title: "AIJOBS HRMS | Payroll, Attendance & Employee Management",
+        desc: "AIJOBS HRMS is a secure multi-company platform for employee management, attendance, leave, payroll, payslips and recruitment."
+      },
+      "hrms-login": {
+        title: "HRMS Login | AIJOBS",
+        desc: "Secure company administrator and employee login for AIJOBS HRMS."
+      },
+      "hrms-register": {
+        title: "Start HRMS Free Trial | AIJOBS",
+        desc: "Create your company workspace and start a 14-day AIJOBS HRMS trial."
+      },
+      "hrms-dashboard": {
+        title: "Company HRMS Dashboard | AIJOBS",
+        desc: "Manage employees, attendance, leave, payroll and company HR operations securely."
       }
     };
 
@@ -1239,7 +1255,7 @@ function MainAppContent() {
       )}
 
       {/* 15-Second Ultra-Realistic Cinematic Commercial Brand Intro Overlay */}
-      {showSplash && (
+      {showSplash && !activeView.startsWith("hrms") && (
         <Suspense fallback={null}>
           <AIJobs3DIntroLazy
             onComplete={() => {
