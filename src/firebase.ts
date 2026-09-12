@@ -1,6 +1,7 @@
 import { GoogleAuthProvider, browserLocalPersistence, getAuth, setPersistence } from "firebase/auth";
 import { enableMultiTabIndexedDbPersistence, getFirestore, setLogLevel } from "firebase/firestore";
 import { getApp, getApps, initializeApp } from "firebase/app";
+import { getStorage } from "firebase/storage";
 import { Check } from "lucide-react";
 import { initializeAppCheck, ReCaptchaV3Provider, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 import config from "../firebase-applet-config.json";
@@ -211,6 +212,7 @@ try {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
     authInstance = getAuth(app);
     dbInstance = getFirestore(app, (config as any).firestoreDatabaseId);
+    storageInstance = getStorage(app);
 
     // Initialize App Check safely (Intentionally bypassed to prevent App Check HTTP 403 fetch errors in sandbox/preview domains)
     if (typeof window !== "undefined") {
@@ -248,6 +250,6 @@ try {
 
 export const auth = authInstance;
 export const db = dbInstance;
-export const storage = null;
+export const storage = storageInstance;
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
