@@ -104,10 +104,10 @@ export function GoogleIndexingLogView() {
       <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-300 text-xs leading-relaxed space-y-1">
         <div className="font-semibold text-sky-400 text-sm flex items-center gap-2">
           <span>Primary Domain Configured:</span>
-          <span className="font-mono bg-slate-800 px-2 py-0.5 rounded text-white">https://aijobs1.vercel.app</span>
+          <span className="font-mono bg-slate-800 px-2 py-0.5 rounded text-white">https://aijobs1.in</span>
         </div>
         <p>
-          All published job postings automatically generate a public SEO canonical URL (<code className="text-sky-300">https://aijobs1.vercel.app/jobs/&#123;slug&#125;</code>) with Schema.org JobPosting JSON-LD.
+          All published job postings automatically generate a public SEO canonical URL (<code className="text-sky-300">https://aijobs1.in/jobs/&#123;slug&#125;</code>) with Schema.org JobPosting JSON-LD.
           When service account credentials are provided in <code className="text-amber-300">GOOGLE_INDEXING_CLIENT_EMAIL</code> & <code className="text-amber-300">GOOGLE_INDEXING_PRIVATE_KEY</code>, real-time push notifications are transmitted directly to Google's indexing pipeline.
         </p>
       </div>
