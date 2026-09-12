@@ -5370,8 +5370,29 @@ app.get("/api/indexing/logs", async (req, res) => {
 
 // ==================== SEO: ROBOTS.TXT & SITEMAPS ====================
 
+const getPublicSiteUrl = () => (
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.VITE_SITE_URL ||
+  process.env.APP_URL ||
+  "https://aijobs1.in"
+).replace(/\/+$/, "");
+
+const escapeSitemapXml = (value: string) => value
+  .replace(/&/g, "&amp;")
+  .replace(/</g, "&lt;")
+  .replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;")
+  .replace(/'/g, "&apos;");
+
+const toSitemapDate = (value: any, fallback: string) => {
+  if (!value) return fallback;
+  const raw = typeof value?.toDate === "function" ? value.toDate() : value;
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? fallback : parsed.toISOString().split("T")[0];
+};
+
 app.get("/robots.txt", (req, res) => {
-  const siteUrl = process.env.APP_URL || process.env.VITE_SITE_URL || "https://aijobs1.vercel.app";
+  const siteUrl = getPublicSiteUrl();
   const robotsTxt = `User-agent: *
 Allow: /
 
@@ -5389,7 +5410,7 @@ Sitemap: ${siteUrl}/sitemap.xml
 });
 
 app.get("/sitemap.xml", async (req, res) => {
-  const siteUrl = process.env.APP_URL || process.env.VITE_SITE_URL || "https://aijobs1.vercel.app";
+  const siteUrl = getPublicSiteUrl();
   const today = new Date().toISOString().split("T")[0];
 
   let jobUrls: string[] = [];
@@ -5402,17 +5423,21 @@ app.get("/sitemap.xml", async (req, res) => {
         const data = docSnapshot.data();
         const status = (data.status || "").toLowerCase();
         const expiry = data.validThrough || data.expiryDate || data.applyDeadline;
-        const isExpired = expiry ? new Date(expiry) < currentDate : false;
+        const expiryDate = expiry && typeof expiry?.toDate === "function" ? expiry.toDate() : expiry ? new Date(expiry) : null;
+        const isExpired = expiryDate instanceof Date && !Number.isNaN(expiryDate.getTime()) && expiryDate < currentDate;
+        const excludedStatus = ["draft", "pending", "pending_approval", "pending approval", "pending_admin_verification", "rejected", "expired", "closed", "deleted"].includes(status);
+        const isApproved = data.approved === true || data.isApproved === true || ["approved", "live", "published"].includes(status);
+        const isPublic = data.isPublic !== false && data.publicVisibility !== false && data.visibility !== "private";
 
-        if (["published", "live", "open", "approved", "active"].includes(status) && !isExpired) {
+        if (isApproved && isPublic && !excludedStatus && !isExpired) {
           const title = data.title || "job";
           const cleanTitle = title.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
           const slug = data.slug || `${cleanTitle}-${docSnapshot.id}`;
-          const canonical = data.canonicalUrl || `${siteUrl}/jobs/${slug}`;
-          const lastmod = data.updatedAt ? new Date(data.updatedAt).toISOString().split("T")[0] : today;
+          const canonical = `${siteUrl}/jobs/${encodeURIComponent(slug)}`;
+          const lastmod = toSitemapDate(data.updatedAt || data.publishedAt || data.createdAt, today);
 
           jobUrls.push(`  <url>
-    <loc>${canonical}</loc>
+    <loc>${escapeSitemapXml(canonical)}</loc>
     <lastmod>${lastmod}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -5471,7 +5496,8 @@ app.get("/sitemap.xml", async (req, res) => {
 ${jobUrls.join("\n")}
 </urlset>`;
 
-  res.setHeader("Content-Type", "application/xml");
+  res.setHeader("Content-Type", "application/xml; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=0, s-maxage=300, stale-while-revalidate=600");
   return res.status(200).send(xml);
 });
 

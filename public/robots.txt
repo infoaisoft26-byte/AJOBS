@@ -8,4 +8,4 @@ Disallow: /consultancy/dashboard
 Disallow: /candidate/dashboard
 Disallow: /api/
 
-Sitemap: https://aijobs1.vercel.app/sitemap.xml
+Sitemap: https://aijobs1.in/sitemap.xml
