@@ -1,5 +1,6 @@
-import { doc, limit, setDoc } from "firebase/firestore";
-import { auth, db } from "../firebase";
+import { doc, setDoc } from "firebase/firestore";
+import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
+import { auth, db, storage } from "../firebase";
 import { uploadToCloudinary, CloudinaryUploadResult } from "./cloudinaryService";
 import { parseResumeData } from "./aiParser";
 
@@ -25,6 +26,47 @@ export interface ResumeUploadResult {
   uploadedAt: string;
   error?: string;
   parsedProfile?: any;
+}
+
+async function uploadResumeToFirebase(
+  file: globalThis.File,
+  uid: string,
+  onProgress?: (progress: number) => void
+): Promise<CloudinaryUploadResult> {
+  if (!storage || !auth.currentUser || auth.currentUser.uid !== uid) {
+    throw new Error("Secure resume storage is unavailable. Please sign in again and retry.");
+  }
+
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const storagePath = `resumes/${uid}/${Date.now()}-${safeName}`;
+  const storageRef = ref(storage, storagePath);
+
+  const snapshot = await new Promise<any>((resolve, reject) => {
+    const task = uploadBytesResumable(storageRef, file, {
+      contentType: file.type || "application/octet-stream",
+      customMetadata: { candidateId: uid, originalFileName: file.name }
+    });
+    task.on(
+      "state_changed",
+      (state) => {
+        if (state.totalBytes > 0) onProgress?.(Math.round((state.bytesTransferred / state.totalBytes) * 100));
+      },
+      reject,
+      () => resolve(task.snapshot)
+    );
+  });
+
+  return {
+    secure_url: await getDownloadURL(snapshot.ref),
+    public_id: storagePath,
+    asset_id: storagePath,
+    folder: `resumes/${uid}`,
+    original_filename: file.name,
+    format: file.name.split(".").pop()?.toLowerCase() || "",
+    bytes: file.size,
+    resource_type: "raw",
+    created_at: new Date().toISOString()
+  };
 }
 
 /**
@@ -101,8 +143,13 @@ export async function uploadResumeService(
       }
     });
   } catch (err: any) {
-    console.error("[ResumeUploadService] Cloudinary upload error:", err);
-    throw new Error(err.message || "Failed to upload resume to Cloudinary. Please check your network and try again.");
+    console.warn("[ResumeUploadService] Cloudinary unavailable; trying Firebase Storage:", err?.message || err);
+    try {
+      cloudinaryRes = await uploadResumeToFirebase(file, uid, onProgress);
+    } catch (storageErr: any) {
+      console.error("[ResumeUploadService] All resume upload providers failed:", storageErr);
+      throw new Error(storageErr?.message || err?.message || "Resume upload failed. Please sign in again and retry.");
+    }
   }
 
   const uploadedAt = new Date().toISOString();
