@@ -146,10 +146,10 @@ router.post("/preview", (req: Request, res: Response) => {
     companyName: data?.companyName || "AIJobs Partner Tech",
     location: data?.location || "Bangalore, India",
     salary: data?.salary || "₹18,00,000 - ₹25,00,000 CTC",
-    jobUrl: data?.jobUrl || "https://aijobs1.vercel.app/#jobs",
+    jobUrl: data?.jobUrl || "https://aijobs1.in/#jobs",
     interviewDate: data?.interviewDate || "15 August 2026",
     interviewTime: data?.interviewTime || "02:30 PM IST",
-    interviewLink: data?.interviewLink || "https://aijobs1.vercel.app/interviews/session-123",
+    interviewLink: data?.interviewLink || "https://aijobs1.in/interviews/session-123",
     offerDetails: data?.offerDetails || "Base CTC: ₹22,00,000 + Joining Bonus: ₹2,00,000",
     customSubject: data?.customSubject,
     customMessage: data?.customMessage,
@@ -564,7 +564,7 @@ router.post("/trigger-job-alerts", async (req: Request, res: Response) => {
               companyName: jobData?.companyName || "AIJobs Partner Enterprise",
               location: jobData?.location || "Pan-India / Remote",
               salary: jobData?.salary || "Competitive CTC",
-              jobUrl: `${process.env.VITE_SITE_URL || "https://aijobs1.vercel.app"}/#jobs`
+              jobUrl: `${process.env.VITE_SITE_URL || "https://aijobs1.in"}/#jobs`
             },
             userId: doc.id,
             createdBy: "job_alert_engine"
