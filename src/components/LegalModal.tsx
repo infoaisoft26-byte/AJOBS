@@ -12,7 +12,7 @@ export default function LegalModal({ docType, onClose }: LegalModalProps) {
   const companyName = "The Flex Force Services";
   const platformName = "AIJOBS";
   const establishedYear = "2024";
-  const website = "https://aijobs1.vercel.app";
+  const website = "https://aijobs1.in";
   const supportEmail = "infoaisoft26@gmail.com";
 
   const renderContent = () => {
@@ -130,7 +130,7 @@ export default function LegalModal({ docType, onClose }: LegalModalProps) {
             <div className="bg-white/5 border border-white/10 p-3 rounded-xl space-y-1 font-mono text-[11px] text-gray-300">
               <p><strong>Platform:</strong> AIJobs</p>
               <p><strong>Operated by:</strong> The Flex Force Services</p>
-              <p><strong>Website:</strong> https://aijobs1.vercel.app</p>
+              <p><strong>Website:</strong> https://aijobs1.in</p>
               <p><strong>Email:</strong> infoaisoft26@gmail.com</p>
             </div>
           </div>
