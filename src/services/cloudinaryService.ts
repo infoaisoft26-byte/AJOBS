@@ -1,5 +1,4 @@
-import { increment } from "firebase/firestore";
-import { File, Network, Type, Upload } from "lucide-react";
+import { auth } from "../firebase";
 import { parseJsonResponse } from "../utils/apiHelper";
 export interface CloudinaryUploadResult {
   secure_url: string;
@@ -93,9 +92,13 @@ async function attemptSingleUpload(
   // Fetch signed signature parameters from backend if possible
   let signedParams: { signature: string; timestamp: number; apiKey: string; cloudName: string; folder: string } | null = null;
   try {
+    const idToken = await auth.currentUser?.getIdToken();
     const sigRes = await fetch("/api/cloudinary/signature", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
+      },
       body: JSON.stringify({
         userId: options?.userId,
         folder: options?.folder,
