@@ -15,7 +15,7 @@ export interface IndexingLogRecord {
   submittedBy: string;
 }
 
-const SITE_URL = process.env.VITE_SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://aijobs1.vercel.app";
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || process.env.VITE_SITE_URL || process.env.APP_URL || "https://aijobs1.in").replace(/\\/+$/, "");
 
 function base64UrlEncode(str: string | Buffer): string {
   const base64 = typeof str === "string" ? Buffer.from(str).toString("base64") : str.toString("base64");
@@ -80,7 +80,7 @@ export async function sendGoogleIndexingNotification(
   const db = getFirestoreDb();
 
   const slug = job.slug || `${(job.title || "job").toLowerCase().replace(/[^a-z0-9]/g, "-")}-${job.id}`;
-  const targetJobUrl = job.canonicalUrl || `${SITE_URL}/jobs/${slug}`;
+  const targetJobUrl = `${SITE_URL}/jobs/${encodeURIComponent(slug)}`;
 
   const clientEmail = process.env.GOOGLE_INDEXING_CLIENT_EMAIL;
   const privateKey = process.env.GOOGLE_INDEXING_PRIVATE_KEY;
