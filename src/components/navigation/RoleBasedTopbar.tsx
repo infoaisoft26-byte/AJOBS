@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Contact, Database, Home, LayoutDashboard, LogOut, Logs, Menu, Moon, PlusCircle, RotateCcw, Settings, Shield, ShieldCheck, Sun, User, Volume2, VolumeX, X } from "lucide-react";
+import { Contact, Database, Home, LayoutDashboard, LogOut, Logs, Menu, Moon, PlusCircle, Settings, Shield, ShieldCheck, Sun, User, Volume2, VolumeX, X } from "lucide-react";
 import { auth } from "../../firebase";
 
 import { UserProfile } from "../../types";
@@ -20,7 +20,6 @@ export interface RoleBasedTopbarProps {
   setActiveView: (view: string) => void;
   theme: "dark" | "light";
   toggleTheme: () => void;
-  onReplayIntro?: () => void;
   threeDMode?: BackgroundMode;
   onThreeDModeChange?: (mode: BackgroundMode) => void;
   onOpenCompanyPage?: (page: string) => void;
@@ -34,7 +33,6 @@ export default function RoleBasedTopbar({
   setActiveView,
   theme,
   toggleTheme,
-  onReplayIntro,
   threeDMode = "neural",
   onThreeDModeChange,
   onOpenCompanyPage
@@ -242,15 +240,6 @@ export default function RoleBasedTopbar({
               {onThreeDModeChange && (
                 <ThreeDModeToggle currentMode={threeDMode} onModeChange={onThreeDModeChange} />
               )}
-              {onReplayIntro && (
-                <button
-                  onClick={() => { soundSynth.playClick(); onReplayIntro(); }}
-                  className="p-1.5 text-gray-400 hover:text-amber-300 rounded-lg hover:bg-white/5 transition-all cursor-pointer hidden sm:block"
-                  title="Refresh / Replay Intro"
-                >
-                  <RotateCcw className="w-4 h-4 text-amber-400" />
-                </button>
-              )}
               <button
                 onClick={handleToggleMute}
                 className="p-1.5 text-gray-400 hover:text-white rounded-lg hover:bg-white/5 transition-all cursor-pointer"
@@ -278,19 +267,6 @@ export default function RoleBasedTopbar({
                 setActiveView(tab);
               }}
             />
-          )}
-
-          {/* 15-SECOND CINEMATIC BRAND FILM REPLAY BUTTON */}
-          {onReplayIntro && (
-            <button
-              onClick={() => { soundSynth.playClick(); onReplayIntro(); }}
-              className="px-2.5 py-1.5 rounded-xl bg-slate-900/60 hover:bg-slate-800 border border-blue-500/30 hover:border-blue-400/50 text-gray-300 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 text-xs font-mono"
-              title="Play 15-Second Ultra-Realistic Cinematic Brand Film"
-            >
-              <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-              <span className="hidden sm:inline text-[11px] font-bold text-blue-300">Brand Film</span>
-              <RotateCcw className="w-3.5 h-3.5 text-blue-400" />
-            </button>
           )}
 
           {/* LANGUAGE SELECTOR */}
