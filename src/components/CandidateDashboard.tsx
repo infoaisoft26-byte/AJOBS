@@ -50,6 +50,11 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
 
   // Navigation State
   const [activeTab, setActiveTab] = useState<CandidateTab>(() => {
+    const requestedTab = sessionStorage.getItem("aijobs_candidate_start_tab") as CandidateTab | null;
+    if (requestedTab) {
+      sessionStorage.removeItem("aijobs_candidate_start_tab");
+      return requestedTab;
+    }
     const path = window.location.pathname;
     if (path === "/candidate/profile") return "profile";
     if (path === "/candidate/jobs") return "explore-jobs";
