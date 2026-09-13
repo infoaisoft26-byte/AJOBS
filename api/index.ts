@@ -5,6 +5,7 @@ import { handleHiringFunnelApi } from "../server/hiringFunnelService.js";
 import { handleHiringIndexingRoute } from "../server/hiringIndexingRoute.js";
 import { handleHiringPublicRoute } from "../server/hiringPublicRoutes.js";
 import { handleHiringAnalyticsRoute } from "../server/hiringAnalyticsRoute.js";
+import { handleHiringLandingRoute } from "../server/hiringLandingRoute.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function clean(value: unknown, max: number): string { return String(value ?? "").trim().slice(0, max); }
@@ -34,6 +35,10 @@ async function handleWebsiteInquiry(req: any, res: any) {
 }
 export default async function handler(req: any, res: any) {
   const path = String(req.url || "").split("?")[0].replace(/\/+$/, "") || "/";
+  if (path === "/hire" || path.startsWith("/hire/")) {
+    const handled = await handleHiringLandingRoute(req, res);
+    if (handled || res.headersSent) return;
+  }
   if (path === "/sitemap.xml" || path === "/job-sitemap.xml" || path.startsWith("/jobs/")) {
     const handled = await handleHiringPublicRoute(req, res);
     if (handled || res.headersSent) return;
