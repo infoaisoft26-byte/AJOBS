@@ -141,11 +141,7 @@ async function bootstrapOfficialAdminProfile(fbUser: any, password: string): Pro
   const response = await fetch("/api/bootstrap-superadmin", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email: OFFICIAL_ADMIN_EMAIL,
-      password,
-      name: "AIJOBS Admin"
-    })
+    body: JSON.stringify({ email: OFFICIAL_ADMIN_EMAIL, password, name: "AIJOBS Admin" })
   });
 
   const payload = await response.json().catch(() => null);
@@ -210,12 +206,7 @@ async function resolveAuthorizedProfile(fbUser: any, role: PortalRole): Promise<
   const userDocAuthorized = isAdminRole(userData?.role);
 
   if (!adminDocAuthorized && !userDocAuthorized) {
-    console.warn("[PortalAuth] Authenticated account does not have an admin role.", {
-      uid: fbUser.uid,
-      email: fbUser.email,
-      adminProfileRole: adminDocRole,
-      userProfileRole: userDocRole,
-    });
+    console.warn("[PortalAuth] Authenticated account does not have an admin role.", { uid: fbUser.uid, email: fbUser.email, adminProfileRole: adminDocRole, userProfileRole: userDocRole });
     throw new Error(ADMIN_ROLE_MISMATCH);
   }
 
@@ -223,12 +214,7 @@ async function resolveAuthorizedProfile(fbUser: any, role: PortalRole): Promise<
   const sourcePath = adminDocAuthorized ? `admins/${fbUser.uid}` : `users/${fbUser.uid}`;
   const resolvedRole = normalizeRole(sourceData.role) === "super_admin" ? "superadmin" : "admin";
 
-  console.info("[PortalAuth] Admin profile authorized.", {
-    uid: fbUser.uid,
-    email: fbUser.email,
-    profilePath: sourcePath,
-    role: resolvedRole,
-  });
+  console.info("[PortalAuth] Admin profile authorized.", { uid: fbUser.uid, email: fbUser.email, profilePath: sourcePath, role: resolvedRole });
 
   return {
     ...sourceData,
@@ -263,21 +249,22 @@ export function PortalLogin({ role, onSuccess, onBack }: { role: PortalRole; onS
       } catch(profileErr:any) {
         if (role === "admin" && isOfficialAdminAccount(credential.user)) {
           try {
-            console.warn("[PortalAuth] Official Admin profile verification failed; attempting one-time server-side repair.", {
-              uid: credential.user.uid,
-              email: credential.user.email,
-              reason: profileErr?.message || "unknown"
-            });
+            console.warn("[PortalAuth] Official Admin profile verification failed; attempting server-side repair.", { uid: credential.user.uid, email: credential.user.email, reason: profileErr?.message || "unknown" });
             profile = await bootstrapOfficialAdminProfile(credential.user, password);
             try {
               profile = await resolveAuthorizedProfile(credential.user, role);
             } catch (postRepairReadError) {
-              console.warn("[PortalAuth] Admin profile was initialized server-side but client Firestore read is still unavailable; continuing with server-confirmed Admin identity.", postRepairReadError);
+              console.warn("[PortalAuth] Admin profile initialized server-side; client Firestore read remains unavailable. Continuing with repaired Admin identity.", postRepairReadError);
             }
-          } catch (repairError) {
+          } catch (repairError:any) {
             console.error("[PortalAuth] Official Admin profile repair failed:", repairError);
             await signOut(auth);
-            fail("Admin account authenticated, but the Admin profile could not be initialized. Please try again after deployment completes.");
+            const detail = String(repairError?.message || "");
+            if (detail.toLowerCase().includes("credential") || detail.toLowerCase().includes("firebase admin")) {
+              fail("Admin authentication succeeded, but the server cannot access Firebase Admin yet. Check Vercel Firebase Admin environment variables and redeploy.");
+            } else {
+              fail("Admin authentication succeeded, but the Admin profile could not be initialized. Please redeploy the latest fix and try again.");
+            }
             return;
           }
         } else {
@@ -297,12 +284,7 @@ export function PortalLogin({ role, onSuccess, onBack }: { role: PortalRole; onS
       setSuccess(profile);
       window.setTimeout(()=>onSuccess(profile,c.dashboardPath),1750);
     } catch(err:any) {
-      console.error("[PortalAuth] Firebase Authentication failed.", {
-        code: err?.code || "unknown",
-        message: err?.message || "Unknown Firebase Auth error",
-        email: email.trim(),
-        portal: role,
-      });
+      console.error("[PortalAuth] Firebase Authentication failed.", { code: err?.code || "unknown", message: err?.message || "Unknown Firebase Auth error", email: email.trim(), portal: role });
       fail(firebaseErrorMessage(err?.code));
     } finally {
       setLoading(false);
