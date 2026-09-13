@@ -7,33 +7,32 @@
     "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN": "auth.aijobs1.in"
   },
   "rewrites": [
-    {
-      "source": "/",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/sitemap.xml",
-      "destination": "/api/index"
-    },
-    {
-      "source": "/job-sitemap.xml",
-      "destination": "/api/index"
-    },
-    {
-      "source": "/robots.txt",
-      "destination": "/api/index"
-    },
-    {
-      "source": "/jobs/:path*",
-      "destination": "/api/index"
-    },
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/index"
-    },
-    {
-      "source": "/((?!api/).*)",
-      "destination": "/index.html"
-    }
-  ]
-}
+  {
+    "source": "/",
+    "destination": "/index.html"
+  },
+  {
+    "source": "/sitemap.xml",
+    "destination": "/api/index"
+  },
+  {
+    "source": "/job-sitemap.xml",
+    "destination": "/api/index"
+  },
+  {
+    "source": "/robots.txt",
+    "destination": "/api/index"
+  },
+  {
+    "source": "/jobs/:path*",
+    "destination": "/api/index"
+  },
+  {
+    "source": "/api/(.*)",
+    "destination": "/api/index"
+  },
+  {
+    "source": "/((?!api/|ads\\.txt$|robots\\.txt$|sitemap\\.xml$|job-sitemap\\.xml$).*)",
+    "destination": "/index.html"
+  }
+]
