@@ -36,6 +36,12 @@
       ]
     },
     {
+      "source": "/hire.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
       "source": "/assets/(.*)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
@@ -44,9 +50,9 @@
   ],
   "rewrites": [
     { "source": "/", "destination": "/index.html" },
-    { "source": "/hire", "destination": "/api/index" },
+    { "source": "/hire", "destination": "/hire.html" },
     { "source": "/hire/workspace", "destination": "/hire-workspace.html" },
-    { "source": "/hire/:role", "destination": "/api/index" },
+    { "source": "/hire/:role", "destination": "/hire.html" },
     { "source": "/admin/jobs/verification", "destination": "/hire-admin.html" },
     { "source": "/admin/marketing/recruiter-acquisition", "destination": "/hire-admin.html" },
     { "source": "/sitemap.xml", "destination": "/api/index" },
