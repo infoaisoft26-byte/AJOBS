@@ -1,0 +1,42 @@
+name: Verify Production Public Routes
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify-production-routes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verify AIJOBS production public routes return HTTP 200
+        shell: bash
+        run: |
+          set -euo pipefail
+          routes=(
+            "/"
+            "/privacy-policy"
+            "/terms"
+            "/contact"
+            "/login"
+            "/register"
+            "/consultancy/login"
+            "/recruiter/login"
+            "/admin/login"
+          )
+
+          for route in "${routes[@]}"; do
+            url="https://aijobs1.in${route}"
+            code=$(curl --location --silent --show-error \
+              --retry 5 --retry-delay 5 --retry-all-errors \
+              --connect-timeout 15 --max-time 30 \
+              --output /tmp/aijobs-response.html \
+              --write-out "%{http_code}" \
+              "$url")
+            echo "$url -> HTTP $code"
+            if [ "$code" != "200" ]; then
+              echo "Expected HTTP 200 for $url, received $code"
+              exit 1
+            fi
+          done
