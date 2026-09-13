@@ -33,9 +33,9 @@ export default function EmployerCompanyProfile({
   const [companyName, setCompanyName] = useState(initialProfile?.companyName || "AIJOBS Tech Partners");
   const [industry, setIndustry] = useState(initialProfile?.industry || "Software / Internet Technology");
   const [companySize, setCompanySize] = useState(initialProfile?.companySize || "50-200 Employees");
-  const [website, setWebsite] = useState(initialProfile?.website || "https://aijobs.in");
+  const [website, setWebsite] = useState(initialProfile?.website || "https://aijobs1.in");
   const [gstNumber, setGstNumber] = useState(initialProfile?.gstNumber || "29AAAAA0000A1Z5");
-  const [email, setEmail] = useState(initialProfile?.email || "hr@enterprise.aijobs.in");
+  const [email, setEmail] = useState(initialProfile?.email || "hr@enterprise.aijobs1.in");
   const [phone, setPhone] = useState(initialProfile?.phone || "+91 80 4567 8900");
   const [officeAddress, setOfficeAddress] = useState(
     initialProfile?.officeAddress || "Tech Park Phase 2, Outer Ring Road, Bengaluru, Karnataka 560103"

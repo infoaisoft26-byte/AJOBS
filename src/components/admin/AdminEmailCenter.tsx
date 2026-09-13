@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { parseJsonResponse } from "../../utils/apiHelper";
+import { SITE_URL } from "../../config/site";
 import {
   Mail,
   Send,
@@ -248,7 +249,7 @@ export default function AdminEmailCenter() {
           jobTitle: autoJobTitle,
           companyName: autoCompanyName,
           interviewDate: "Tomorrow at 11:00 AM IST",
-          interviewLink: "https://aijobs.in/interviews/session"
+          interviewLink: `${SITE_URL}/interviews/session`
         };
       } else if (autoEmailType === "offer") {
         endpoint = "/api/email/offer-letter";

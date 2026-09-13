@@ -51,6 +51,33 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
+// -------------------- CANONICAL DOMAIN & LEGACY HOST REDIRECT --------------------
+app.use((req, res, next) => {
+  const rawHost = req.headers.host || "";
+  const host = rawHost.toLowerCase().split(":")[0];
+  const legacyHosts = [
+    "aijobs1.vercel.app",
+    "aijobs-14.vercel.app",
+    "aijobs.vercel.app",
+    "aijobs.app",
+    "www.aijobs1.in"
+  ];
+
+  // Redirect legacy hosts and www subdomain to canonical https://aijobs1.in
+  if (legacyHosts.includes(host)) {
+    const targetUrl = `https://aijobs1.in${req.originalUrl || req.url}`;
+    return res.redirect(301, targetUrl);
+  }
+
+  // Enforce HTTPS on production domain when behind SSL terminating proxy
+  const proto = req.headers["x-forwarded-proto"];
+  if (host === "aijobs1.in" && proto === "http") {
+    return res.redirect(301, `https://aijobs1.in${req.originalUrl || req.url}`);
+  }
+
+  next();
+});
+
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
@@ -2578,7 +2605,7 @@ app.post("/api/compliance/export-user-data", async (req, res) => {
     exportTimestamp: new Date().toISOString(),
     gdprArticle: "Article 15 - Right of Access",
     userData: {
-      profile: { name: "Alexander Wright", email: "candidate@aijobs.app", role: "candidate" },
+      profile: { name: "Alexander Wright", email: "candidate@aijobs1.in", role: "candidate" },
       applicationsCount: 4,
       interviewSessionsCount: 2,
       resumeUploadsCount: 1,
@@ -3217,7 +3244,7 @@ app.post("/api/kyc/send-link", async (req, res) => {
 
     await batch.commit();
 
-    const appUrl = process.env.APP_URL || "https://aijobs.app";
+    const appUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VITE_SITE_URL || process.env.SITE_URL || process.env.APP_URL || "https://aijobs1.in";
     const kycUrl = `${appUrl}/#kyc-submit?token=${token}&uid=${userId}`;
     
     if (userEmail) {
@@ -3306,7 +3333,7 @@ app.post("/api/kyc/send-reminder", async (req, res) => {
           templateName: reminderType === "agreement" ? "agreement_reminder" : "kyc_reminder",
           data: {
             recipientName: recipientName || userData.displayName || "Valued Partner",
-            appUrl: process.env.APP_URL || "https://aijobs.app"
+            appUrl: process.env.NEXT_PUBLIC_SITE_URL || process.env.VITE_SITE_URL || process.env.SITE_URL || process.env.APP_URL || "https://aijobs1.in"
           }
         });
       } catch (eErr: any) {
@@ -3401,7 +3428,7 @@ app.post("/api/agreements/generate", async (req, res) => {
           templateName: "agreement_ready",
           data: {
             recipientName: recipientName || "Valued Partner",
-            appUrl: process.env.APP_URL || "https://aijobs.app"
+            appUrl: process.env.NEXT_PUBLIC_SITE_URL || process.env.VITE_SITE_URL || process.env.SITE_URL || process.env.APP_URL || "https://aijobs1.in"
           }
         });
       } catch (eErr: any) {
@@ -3516,7 +3543,7 @@ app.post("/api/agreements/accept", async (req, res) => {
             templateName: "agreement_accepted",
             data: {
               recipientName: acceptedName || "Valued Partner",
-              appUrl: process.env.APP_URL || "https://aijobs.app"
+              appUrl: process.env.NEXT_PUBLIC_SITE_URL || process.env.VITE_SITE_URL || process.env.SITE_URL || process.env.APP_URL || "https://aijobs1.in"
             }
           });
         } catch (eErr: any) {
@@ -3612,7 +3639,7 @@ app.post("/api/payment/verify-and-transition", async (req, res) => {
           templateName: "payment_success",
           data: {
             recipientName: userData.displayName || "Valued Partner",
-            appUrl: process.env.APP_URL || "https://aijobs.app"
+            appUrl: process.env.NEXT_PUBLIC_SITE_URL || process.env.VITE_SITE_URL || process.env.SITE_URL || process.env.APP_URL || "https://aijobs1.in"
           }
         });
       } catch (eErr: any) {
@@ -3701,7 +3728,7 @@ app.post("/api/admin/approve-account", async (req, res) => {
           templateName: "account_activated",
           data: {
             recipientName: userData.displayName || "Valued Partner",
-            appUrl: process.env.APP_URL || "https://aijobs.app"
+            appUrl: process.env.NEXT_PUBLIC_SITE_URL || process.env.VITE_SITE_URL || process.env.SITE_URL || process.env.APP_URL || "https://aijobs1.in"
           }
         });
       } catch (eErr: any) {
@@ -5370,12 +5397,21 @@ app.get("/api/indexing/logs", async (req, res) => {
 
 // ==================== SEO: ROBOTS.TXT & SITEMAPS ====================
 
-const getPublicSiteUrl = () => (
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  process.env.VITE_SITE_URL ||
-  process.env.APP_URL ||
-  "https://aijobs1.in"
-).replace(/\/+$/, "");
+const getPublicSiteUrl = () => {
+  const envUrl = (
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.VITE_SITE_URL ||
+    process.env.SITE_URL ||
+    process.env.APP_URL ||
+    ""
+  ).trim().replace(/\/+$/, "");
+
+  if (!envUrl || envUrl.includes("aijobs1.vercel.app") || envUrl.includes("aijobs.vercel.app") || envUrl.includes("aijobs.app")) {
+    return "https://aijobs1.in";
+  }
+
+  return envUrl;
+};
 
 const escapeSitemapXml = (value: string) => value
   .replace(/&/g, "&amp;")
@@ -5510,7 +5546,7 @@ app.get("/job-sitemap.xml", async (req, res) => {
 app.get(["/jobs/:jobSlug", "/jobs/id/:jobId"], async (req, res) => {
   const target = req.params.jobSlug || req.params.jobId;
   const db = getFirestoreDb();
-  const siteUrl = process.env.VITE_SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://aijobs1.vercel.app";
+  const siteUrl = getPublicSiteUrl();
 
   try {
     let jobData: any = null;
@@ -5577,6 +5613,7 @@ app.get(["/jobs/:jobSlug", "/jobs/id/:jobId"], async (req, res) => {
       "@context": "https://schema.org/",
       "@type": "JobPosting",
       "title": title,
+      "url": canonicalUrl,
       "description": descRaw || `Apply for ${title} position at ${company}.`,
       "identifier": {
         "@type": "PropertyValue",

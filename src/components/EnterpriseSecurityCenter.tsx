@@ -8,9 +8,9 @@ export default function EnterpriseSecurityCenter() {
   const [searchLog, setSearchLog] = useState("");
 
   const auditLogs = [
-    { id: "audit-101", timestamp: "2026-07-28 10:14:02", user: "admin@aijobs.app", ip: "192.168.1.1", action: "SETTINGS_TWILIO_SYNC", status: "SUCCESS", severity: "INFO" },
-    { id: "audit-102", timestamp: "2026-07-28 10:20:15", user: "candidate@aijobs.app", ip: "172.16.0.42", action: "RESUME_AUTO_PARSED", status: "SUCCESS", severity: "INFO" },
-    { id: "audit-103", timestamp: "2026-07-28 10:32:44", user: "recruiter@aijobs.app", ip: "10.0.4.12", action: "OFFER_LETTER_GENERATE", status: "SUCCESS", severity: "HIGH" },
+    { id: "audit-101", timestamp: "2026-07-28 10:14:02", user: "admin@aijobs1.in", ip: "192.168.1.1", action: "SETTINGS_TWILIO_SYNC", status: "SUCCESS", severity: "INFO" },
+    { id: "audit-102", timestamp: "2026-07-28 10:20:15", user: "candidate@aijobs1.in", ip: "172.16.0.42", action: "RESUME_AUTO_PARSED", status: "SUCCESS", severity: "INFO" },
+    { id: "audit-103", timestamp: "2026-07-28 10:32:44", user: "recruiter@aijobs1.in", ip: "10.0.4.12", action: "OFFER_LETTER_GENERATE", status: "SUCCESS", severity: "HIGH" },
     { id: "audit-104", timestamp: "2026-07-28 10:45:10", user: "unknown", ip: "185.220.101.5", action: "RATE_LIMIT_BLOCKED", status: "BLOCKED", severity: "WARNING" }
   ];
 

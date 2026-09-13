@@ -1,19 +1,43 @@
 /**
  * Central Site Configuration
- * Production domain: https://aijobs1.vercel.app
+ * Production domain: https://aijobs1.in
  */
 
 export const APP_NAME = "AIJOBS";
 
-export const SITE_URL = 
-  import.meta.env.VITE_SITE_URL || 
-  import.meta.env.NEXT_PUBLIC_SITE_URL || 
-  (typeof window !== "undefined" ? window.location.origin : "https://aijobs1.vercel.app");
+export const PRODUCTION_DOMAIN = "https://aijobs1.in";
 
-export const PRODUCTION_DOMAIN = "https://aijobs1.vercel.app";
-export const HOME_PAGE_URL = "https://aijobs1.vercel.app/";
-export const PRIVACY_POLICY_URL = "https://aijobs1.vercel.app/privacy-policy";
-export const TERMS_OF_SERVICE_URL = "https://aijobs1.vercel.app/terms";
+const getResolvedSiteUrl = (): string => {
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1") {
+      return window.location.origin;
+    }
+  }
+
+  const raw = (
+    (typeof import.meta !== "undefined" && import.meta.env?.NEXT_PUBLIC_SITE_URL) ||
+    (typeof import.meta !== "undefined" && import.meta.env?.VITE_SITE_URL) ||
+    (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_SITE_URL) ||
+    (typeof process !== "undefined" && process.env?.VITE_SITE_URL) ||
+    (typeof process !== "undefined" && process.env?.SITE_URL) ||
+    (typeof process !== "undefined" && process.env?.APP_URL) ||
+    ""
+  ).trim().replace(/\/+$/, "");
+
+  // If unset or pointing to legacy production domains, enforce official production domain
+  if (!raw || raw.includes("aijobs1.vercel.app") || raw.includes("aijobs.vercel.app") || raw.includes("aijobs.app")) {
+    return PRODUCTION_DOMAIN;
+  }
+
+  return raw;
+};
+
+export const SITE_URL = getResolvedSiteUrl();
+
+export const HOME_PAGE_URL = `${PRODUCTION_DOMAIN}/`;
+export const PRIVACY_POLICY_URL = `${PRODUCTION_DOMAIN}/privacy-policy`;
+export const TERMS_OF_SERVICE_URL = `${PRODUCTION_DOMAIN}/terms`;
 
 /**
  * Generates an SEO-friendly job URL slug from job title, location, and job ID.
@@ -46,12 +70,13 @@ export function generateJobSlug(title: string, location?: string, id?: string): 
 
 /**
  * Generates the full canonical public job URL for a job.
- * Example: "https://aijobs1.vercel.app/jobs/customer-support-executive-mumbai-AJ1024"
+ * Example: "https://aijobs1.in/jobs/customer-support-executive-mumbai-AJ1024"
  */
 export function getPublicJobUrl(job: { title: string; location?: string; id: string; slug?: string }): string {
+  const base = SITE_URL;
   if (job.slug) {
-    return `${SITE_URL}/jobs/${job.slug}`;
+    return `${base}/jobs/${job.slug}`;
   }
   const slug = generateJobSlug(job.title, job.location, job.id);
-  return `${SITE_URL}/jobs/${slug}`;
+  return `${base}/jobs/${slug}`;
 }

@@ -13,7 +13,7 @@ export default function ComplianceGdprCenter() {
   const [deletionRequested, setDeletionRequested] = useState(false);
 
   const mockAuditLogs = [
-    { id: "log-101", user: "admin@aijobs.app", action: "UPDATED_FIRESTORE_RULES", ip: "192.168.1.1", timestamp: "2026-07-27 09:42:15", status: "SUCCESS" },
+    { id: "log-101", user: "admin@aijobs1.in", action: "UPDATED_FIRESTORE_RULES", ip: "192.168.1.1", timestamp: "2026-07-27 09:42:15", status: "SUCCESS" },
     { id: "log-102", user: "recruiter@acme.com", action: "EXPORTED_CANDIDATE_RESUME", ip: "10.0.4.12", timestamp: "2026-07-27 09:30:02", status: "SUCCESS" },
     { id: "log-103", user: "candidate-88@gmail.com", action: "GRANTED_RECORDING_CONSENT", ip: "172.16.0.44", timestamp: "2026-07-27 09:12:33", status: "SUCCESS" },
     { id: "log-104", user: "system_cron", action: "ENFORCED_DATA_RETENTION_PURGE", ip: "127.0.0.1", timestamp: "2026-07-27 00:00:00", status: "SUCCESS" },
@@ -153,7 +153,7 @@ export default function ComplianceGdprCenter() {
 
             <div className="p-4 bg-emerald-950/20 border border-emerald-500/30 rounded-xl space-y-2">
               <span className="text-xs font-mono font-bold text-emerald-300 uppercase">Data Protection Officer Contact:</span>
-              <p className="text-xs text-gray-200 font-mono">dpo@aijobs.app | Security Hotline: +1 (800) 555-0199</p>
+              <p className="text-xs text-gray-200 font-mono">dpo@aijobs1.in | Security Hotline: +1 (800) 555-0199</p>
             </div>
           </div>
         </div>

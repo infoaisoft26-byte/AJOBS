@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { getFirestoreDb } from "./firestoreHelper.js";
+import { SITE_URL } from "./siteConfig.js";
 
 export interface IndexingLogRecord {
   id: string;
@@ -14,8 +15,6 @@ export interface IndexingLogRecord {
   submittedAt: string;
   submittedBy: string;
 }
-
-const SITE_URL = process.env.VITE_SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://aijobs1.vercel.app";
 
 function base64UrlEncode(str: string | Buffer): string {
   const base64 = typeof str === "string" ? Buffer.from(str).toString("base64") : str.toString("base64");

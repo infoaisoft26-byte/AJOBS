@@ -2,12 +2,13 @@ import { useState } from "react";
 import { ref } from "firebase/storage";
 import { Check, Code, Copy, Gift, Link, Network, QrCode, Share2, Sparkles, Table, User, Users } from "lucide-react";
 import { auth } from "../firebase";
+import { SITE_URL } from "../config/site";
 
 
 export default function ReferralEcosystem() {
   const [copied, setCopied] = useState(false);
   const referralCode = "AIJOBS-REF-77291";
-  const referralLink = `https://aijobs.app/invite?code=${referralCode}`;
+  const referralLink = `${SITE_URL}/invite?code=${referralCode}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(referralLink);

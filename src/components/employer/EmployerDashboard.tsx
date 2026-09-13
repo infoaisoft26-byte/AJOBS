@@ -539,7 +539,7 @@ export default function EmployerDashboard({
               </p>
               <div className="p-4 rounded-2xl bg-[#0e0a14] border border-purple-500/30 text-xs space-y-1 font-mono text-left">
                 <div className="text-blue-300 font-bold">Priority Support Desk</div>
-                <div className="text-slate-300">Email: enterprise-support@aijobs.in</div>
+                <div className="text-slate-300">Email: enterprise-support@aijobs1.in</div>
                 <div className="text-slate-300">Hotline: +91 80 4567 8900 (Mon - Sat, 9am - 7pm IST)</div>
               </div>
             </div>

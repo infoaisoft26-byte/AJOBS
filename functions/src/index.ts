@@ -148,7 +148,8 @@ async function processJobAlertForJob(db: admin.firestore.Firestore, jobId: strin
     const deliveryId = `del_${jobId}_${uid}`;
     const deliveryRef = db.collection("email_campaign_deliveries").doc(deliveryId);
 
-    const jobUrl = `https://aijobs.in/jobs/${jobData.slug || jobId}`;
+    const siteBaseUrl = process.env.SITE_URL || process.env.APP_URL || "https://aijobs1.in";
+    const jobUrl = `${siteBaseUrl}/jobs/${jobData.slug || jobId}`;
 
     batch.set(mailRef, {
       to: [email],
@@ -248,12 +249,13 @@ async function processWeeklyJobDigest(db: admin.firestore.Firestore) {
     const matchingJobs = liveJobs.filter((job) => candidateMatchesJob(prefs, job, true)).slice(0, 10);
     if (matchingJobs.length === 0) continue;
 
+    const siteBaseUrl = process.env.SITE_URL || process.env.APP_URL || "https://aijobs1.in";
     const formattedJobs = matchingJobs.map((j) => ({
       title: j.title || "Software Opportunity",
       company: j.companyName || j.hiringOrganizationName || "AIJobs Partner",
       location: j.location || "Remote / India",
       salary: j.salary || "Competitive CTC",
-      url: `https://aijobs.in/jobs/${j.slug || j.id}`
+      url: `${siteBaseUrl}/jobs/${j.slug || j.id}`
     }));
 
     const mailRef = db.collection("mail").doc();

@@ -432,7 +432,7 @@ export default function CandidateEmailVerification({
             <div className="pt-2 flex items-center justify-between">
               <span className="text-gray-400 text-[11px]">Contact support or reset password:</span>
               <a 
-                href="mailto:support@aijobs.app?subject=Account%20Unlock%20Request" 
+                href="mailto:support@aijobs1.in?subject=Account%20Unlock%20Request" 
                 className="text-blue-400 hover:text-blue-300 font-bold underline text-xs"
               >
                 Contact Support

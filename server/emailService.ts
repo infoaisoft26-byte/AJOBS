@@ -2,6 +2,7 @@ import nodemailer from "nodemailer";
 import crypto from "crypto";
 import { getFirestoreDb } from "./firestoreHelper.js";
 import { EMAIL_TEMPLATES, EmailTemplateData } from "./emailTemplates.js";
+import { getPublicSiteUrl } from "./siteConfig.js";
 
 const getSenderAddress = () => {
   const fromName = process.env.EMAIL_FROM_NAME || "AIJobs";
@@ -10,7 +11,7 @@ const getSenderAddress = () => {
 };
 
 const REPLY_TO = process.env.EMAIL_FROM_ADDRESS || "aijobs1401@gmail.com";
-const APP_URL = process.env.VITE_SITE_URL || process.env.APP_URL || "https://aijobs1.vercel.app";
+const APP_URL = getPublicSiteUrl();
 
 let transporter: nodemailer.Transporter | null = null;
 const inMemoryEmailLogs: Map<string, any> = new Map();

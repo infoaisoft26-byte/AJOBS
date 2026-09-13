@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { getFirestoreDb, getFirebaseAuth } from "./firestoreHelper.js";
 import { sendGoogleIndexingNotification } from "./googleIndexingService.js";
+import { getPublicSiteUrl } from "./siteConfig.js";
 
 const router = Router();
 
@@ -35,7 +36,7 @@ router.post("/admin/jobs/review", async (req, res) => {
       const missing = ["title", "companyName", "location", "description"].filter((key) => !String(job[key] || "").trim());
       if (missing.length) return res.status(400).json({ success: false, error: `Cannot publish: missing ${missing.join(", ")}.` });
       const slug = job.slug || `${String(job.title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}-${jobId}`;
-      const canonicalUrl = job.canonicalUrl || `${process.env.VITE_SITE_URL || "https://aijobs1.vercel.app"}/jobs/${slug}`;
+      const canonicalUrl = job.canonicalUrl || `${getPublicSiteUrl()}/jobs/${slug}`;
       const update = { status: "live", approved: true, verificationStatus: "verified", candidateFeePolicyConfirmed: true, candidateFeePolicyVerifiedByAdmin: true, verifiedBy: decoded.uid, verifiedByEmail: decoded.email || "", verifiedAt: now, publishedAt: now, updatedAt: now, slug, canonicalUrl, googlePublishingStatus: "SUBMITTING" };
       const batch = db.batch();
       batch.set(jobRef, update, { merge: true });

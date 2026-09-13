@@ -116,7 +116,7 @@ export default function CandidateHelpView({ lang = "en", onNavigateToJobs, onNav
         <p className="text-xs text-gray-500 max-w-md mx-auto">Our candidate support team is here to help you with job applications and profile guidance.</p>
         <div className="flex flex-wrap justify-center gap-3 pt-2">
           <a
-            href="mailto:support@aijobs.app"
+            href="mailto:support@aijobs1.in"
             className="inline-flex items-center space-x-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-all"
           >
             <Mail className="w-4 h-4" />

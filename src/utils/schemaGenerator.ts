@@ -1,6 +1,7 @@
 import React from "react";
 import { View } from "lucide-react";
 import { JobPosting } from "../types";
+import { getPublicJobUrl } from "../config/site";
 
 /**
  * Generates a valid Schema.org JobPosting JSON-LD schema object for Google Jobs search indexing.
@@ -42,7 +43,12 @@ export function generateJobPostingSchema(job: JobPosting): Record<string, any> {
 
   // Actual Hiring Organization (Client / Employer)
   const hiringName = job.hiringOrganizationName || job.companyName || "AIJobs Client";
-  const companyWebsite = job.companyWebsite || `https://${hiringName.toLowerCase().replace(/[^a-z0-9]/g, "")}.com`;
+  let companyWebsite = job.companyWebsite;
+  if (!companyWebsite || companyWebsite.includes("vercel.app")) {
+    companyWebsite = `https://${hiringName.toLowerCase().replace(/[^a-z0-9]/g, "")}.com`;
+  }
+
+  const jobUrl = job.canonicalUrl || getPublicJobUrl(job);
 
   // Address components
   let city = job.city || "Bangalore";
@@ -61,6 +67,7 @@ export function generateJobPostingSchema(job: JobPosting): Record<string, any> {
     "@context": "https://schema.org/",
     "@type": "JobPosting",
     "title": job.title,
+    "url": jobUrl,
     "description": (job.description || `Apply for ${job.title} at ${hiringName}. View eligibility, key requirements, salary structure, and job specifications.`).trim(),
     "identifier": {
       "@type": "PropertyValue",

@@ -1,3 +1,5 @@
+import { getPublicSiteUrl } from "./siteConfig.js";
+
 export interface EmailTemplateData {
   candidateName?: string;
   recipientName?: string;
@@ -28,7 +30,7 @@ export interface EmailTemplateData {
   appUrl?: string;
 }
 
-const DEFAULT_APP_URL = process.env.VITE_SITE_URL || process.env.APP_URL || "https://aijobs1.vercel.app";
+const DEFAULT_APP_URL = getPublicSiteUrl();
 const SUPPORT_EMAIL = "infoaisoft26@gmail.com";
 
 export function escapeHtml(str: string = ""): string {

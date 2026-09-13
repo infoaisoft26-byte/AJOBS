@@ -26,7 +26,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="aijobs.in" android:pathPrefix="/candidate" />
+                <data android:scheme="https" android:host="aijobs1.in" android:pathPrefix="/candidate" />
             </intent-filter>
 
             <intent-filter>

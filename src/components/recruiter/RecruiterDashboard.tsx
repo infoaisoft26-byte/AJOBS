@@ -587,7 +587,7 @@ export default function RecruiterDashboard({
               </p>
               <div className="p-4 rounded-2xl bg-[#0e0a14] border border-purple-500/30 text-xs space-y-1 font-mono text-left">
                 <div className="text-purple-300 font-bold">Partner Desk</div>
-                <div className="text-slate-300">Email: recruiter-desk@aijobs.in</div>
+                <div className="text-slate-300">Email: recruiter-desk@aijobs1.in</div>
                 <div className="text-slate-300">Helpline: +91 80 4567 8901</div>
               </div>
             </div>

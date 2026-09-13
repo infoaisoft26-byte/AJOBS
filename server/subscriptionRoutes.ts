@@ -2,6 +2,7 @@ import { Router } from "express";
 import { getFirestoreDb, getFirebaseAuth } from "./firestoreHelper.js";
 import { processPaymentAccounting } from "./accountingEngine.js";
 import { dispatchEmail } from "./emailService.js";
+import { getPublicSiteUrl } from "./siteConfig.js";
 import crypto from "crypto";
 
 const router = Router();
@@ -621,7 +622,7 @@ router.post(["/accept", "/agreements/accept"], async (req, res) => {
           templateName: "consultancy_welcome",
           data: {
             recipientName: acceptedName || agrData.buyer?.authorizedPerson || "Valued Partner",
-            appUrl: process.env.APP_URL || "https://aijobs.app"
+            appUrl: getPublicSiteUrl()
           }
         }).catch(e => console.warn("Agreement email dispatch notice:", e?.message || e));
       }
