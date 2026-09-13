@@ -14,6 +14,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          browser_ua='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36'
           routes=(
             "/"
             "/privacy-policy"
@@ -29,14 +30,32 @@ jobs:
           for route in "${routes[@]}"; do
             url="https://aijobs1.in${route}"
             code=$(curl --location --silent --show-error \
-              --retry 5 --retry-delay 5 --retry-all-errors \
+              --user-agent "$browser_ua" \
               --connect-timeout 15 --max-time 30 \
               --output /tmp/aijobs-response.html \
               --write-out "%{http_code}" \
               "$url")
-            echo "$url -> HTTP $code"
+            echo "Browser UA: $url -> HTTP $code"
             if [ "$code" != "200" ]; then
               echo "Expected HTTP 200 for $url, received $code"
+              head -c 500 /tmp/aijobs-response.html || true
               exit 1
             fi
           done
+
+      - name: Verify Googlebot can access homepage
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl --location --silent --show-error \
+            --user-agent 'Googlebot/2.1 (+http://www.google.com/bot.html)' \
+            --connect-timeout 15 --max-time 30 \
+            --output /tmp/googlebot-response.html \
+            --write-out "%{http_code}" \
+            'https://aijobs1.in/')
+          echo "Googlebot UA: https://aijobs1.in/ -> HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "Googlebot did not receive HTTP 200"
+            head -c 500 /tmp/googlebot-response.html || true
+            exit 1
+          fi
