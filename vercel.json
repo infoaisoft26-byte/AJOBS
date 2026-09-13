@@ -32,7 +32,7 @@
       "destination": "/api/index"
     },
     {
-      "source": "/((?!api/|ads\\.txt$|robots\\.txt$|sitemap\\.xml$|job-sitemap\\.xml$).*)",
+      "source": "/((?!api/|assets/|ads\\.txt$|robots\\.txt$|sitemap\\.xml$|job-sitemap\\.xml$).*)",
       "destination": "/index.html"
     }
   ]
