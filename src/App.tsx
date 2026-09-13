@@ -87,8 +87,6 @@ const UnsubscribeViewLazy = safeLazy(() => import("@/components/UnsubscribeView"
 const ResumeOnboardingLazy = safeLazy(() => import("@/components/ResumeOnboarding"), "ResumeOnboarding");
 const AuthModalLazy = safeLazy(() => import("@/components/AuthModal"), "AuthModal");
 const CompanySectionLazy = safeLazy(() => import("@/components/CompanySection"), "CompanySection");
-const IndependenceDayIntroLazy = safeLazy(() => import("@/components/IndependenceDayIntro"), "IndependenceDayIntro");
-const AIJobs3DIntroLazy = safeLazy(() => import("@/components/AIJobs3DIntro"), "AIJobs3DIntro");
 const ThreeDBackgroundLazy = safeLazy(() => import("@/components/ThreeDBackground"), "ThreeDBackground");
 const GlobalChatbotLazy = safeLazy(() =>
   import("@/components/GlobalChatbot").then((m) => ({ default: m.GlobalChatbot })),
@@ -178,7 +176,7 @@ function ProtectedRoute({
         <p className="text-xs text-gray-400">Your current role profile ("{user.role}") does not possess authorized clearance to access this department workspace.</p>
         <button 
           onClick={() => setActiveView("home")}
-          className="w-full py-2.5 bg-red-600 hover:bg-red-500 text-xs font-bold text-white rounded-xl transition-all cursor-pointer"
+          className="w-full py-2.5 bg-red-600 hover:bg-red-500 text-xs font-bold text-white rounded-xl transition-all duration-200 cursor-pointer"
         >
           Return to Hub
         </button>
@@ -205,14 +203,6 @@ function MainAppContent() {
   const [portalLoginRole, setPortalLoginRole] = useState<"recruiter" | "consultancy" | "admin" | undefined>(undefined);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [authLoading, setAuthLoading] = useState(true);
-  const [showSplash, setShowSplash] = useState(() => {
-    if (typeof window === "undefined") return false;
-    const viewedInSession = sessionStorage.getItem("aijobs_intro_seen");
-    if (viewedInSession === "true") {
-      return false;
-    }
-    return true;
-  });
   const [threeDMode, setThreeDMode] = useState<BackgroundMode>(() => {
     if (typeof localStorage !== "undefined") {
       return (localStorage.getItem("aijobs_3d_mode") as BackgroundMode) || "neural";
@@ -528,6 +518,8 @@ function MainAppContent() {
         setActiveView("how-it-works");
       } else if (p === "/jobs" || p === "/jobs/") {
         setActiveView("jobs");
+      } else if (p === "/login") {
+        setActiveView("login");
       } else if (p === "/") {
         setActiveView("home");
       }
@@ -818,7 +810,8 @@ function MainAppContent() {
     }
   };
 
-  // Deferred 3D background mounting so DOM paint completes first
+  // Deferred 3D background mounting so DOM paint completes first. This is an
+  // in-homepage enhancement only and does not block or replace page content.
   const [mount3D, setMount3D] = useState(false);
   const [showChatbot, setShowChatbot] = useState(false);
 
@@ -828,6 +821,26 @@ function MainAppContent() {
     }, 200);
     return () => clearTimeout(timer);
   }, []);
+
+  // Public pages render independently of Firebase auth restoration so there is
+  // never a startup/auth loader between the browser and public page content.
+  // Protected workspaces keep their existing auth-loading behavior.
+  const isPublicView = [
+    "home",
+    "how-it-works",
+    "privacy-policy",
+    "terms",
+    "about",
+    "contact",
+    "jobs",
+    "public-jobs",
+    "login",
+    "unified-login",
+    "candidate-login",
+    "candidate-register",
+    "portal-login",
+    "portal-role-login"
+  ].includes(activeView);
 
   return (
     <div className={`min-h-screen flex flex-col font-sans relative overflow-hidden transition-colors duration-300 ${
@@ -860,7 +873,6 @@ function MainAppContent() {
           }}
           theme={theme}
           toggleTheme={toggleTheme}
-          onReplayIntro={() => setShowSplash(true)}
           threeDMode={threeDMode}
           onThreeDModeChange={handleThreeDModeChange}
         />
@@ -877,7 +889,7 @@ function MainAppContent() {
       <main className="flex-1 w-full relative">
         <PageTransitionParticles triggerKey={activeView} />
         <ErrorBoundary>
-          {authLoading ? (
+          {authLoading && !isPublicView ? (
             <div className="flex items-center justify-center h-96">
               <span className="text-sm text-gray-400 font-mono animate-pulse">Establishing Secure Workspace Connect...</span>
             </div>
@@ -1250,22 +1262,6 @@ function MainAppContent() {
           <CompanySectionLazy
             pageType={activeCompanyPage}
             onClose={() => setActiveCompanyPage(null)}
-          />
-        </Suspense>
-      )}
-
-      {/* 15-Second Ultra-Realistic Cinematic Commercial Brand Intro Overlay */}
-      {showSplash && !activeView.startsWith("hrms") && (
-        <Suspense fallback={null}>
-          <AIJobs3DIntroLazy
-            onComplete={() => {
-              setShowSplash(false);
-              try {
-                sessionStorage.setItem("aijobs_intro_seen", "true");
-              } catch (e) {
-                // ignore
-              }
-            }}
           />
         </Suspense>
       )}
