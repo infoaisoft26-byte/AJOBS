@@ -7,6 +7,50 @@ export const APP_NAME = "AIJOBS";
 
 export const PRODUCTION_DOMAIN = "https://aijobs1.in";
 
+/**
+ * Official role-based AIJOBS mailboxes.
+ *
+ * info@aijobs1.in
+ *   General enquiries, candidate support, account help and website contact.
+ *
+ * salesindia@aijobs1.in
+ *   Employer, recruiter and consultancy sales, hiring plans, subscriptions and partnerships.
+ *
+ * compliant@aijobs1.in
+ *   Compliance, privacy, grievance, fraud/safety, legal and data-deletion requests.
+ */
+export const CONTACT_EMAILS = Object.freeze({
+  info: "info@aijobs1.in",
+  support: "info@aijobs1.in",
+  candidate: "info@aijobs1.in",
+  sales: "salesindia@aijobs1.in",
+  employer: "salesindia@aijobs1.in",
+  recruiter: "salesindia@aijobs1.in",
+  consultancy: "salesindia@aijobs1.in",
+  compliance: "compliant@aijobs1.in",
+  legal: "compliant@aijobs1.in",
+  privacy: "compliant@aijobs1.in",
+  grievance: "compliant@aijobs1.in",
+  fraud: "compliant@aijobs1.in",
+  dataDeletion: "compliant@aijobs1.in",
+} as const);
+
+export type ContactEmailRole = keyof typeof CONTACT_EMAILS;
+
+export function getContactEmailForRole(role?: string | null): string {
+  const normalized = String(role || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+
+  if (["employer", "recruiter", "consultancy", "agency", "corporate", "sales", "partner"].includes(normalized)) {
+    return CONTACT_EMAILS.sales;
+  }
+
+  if (["compliance", "legal", "privacy", "grievance", "fraud", "safety", "data_deletion", "deletion"].includes(normalized)) {
+    return CONTACT_EMAILS.compliance;
+  }
+
+  return CONTACT_EMAILS.info;
+}
+
 const getResolvedSiteUrl = (): string => {
   if (typeof window !== "undefined") {
     const host = window.location.hostname;

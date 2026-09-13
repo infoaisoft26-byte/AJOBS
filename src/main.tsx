@@ -1,5 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from 'react-dom/client';
+import OfficialContactDock from './components/OfficialContactDock';
 import './index.css';
 
 const rootElement = document.getElementById('root');
@@ -28,6 +29,7 @@ appModule
     root.render(
       <StrictMode>
         <App />
+        <OfficialContactDock />
       </StrictMode>,
     );
   })

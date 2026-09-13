@@ -4,7 +4,10 @@
     "NEXT_PUBLIC_SITE_URL": "https://aijobs1.in",
     "VITE_SITE_URL": "https://aijobs1.in",
     "APP_URL": "https://aijobs1.in",
-    "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN": "auth.aijobs1.in"
+    "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN": "auth.aijobs1.in",
+    "INFO_EMAIL": "info@aijobs1.in",
+    "SALES_EMAIL": "salesindia@aijobs1.in",
+    "COMPLIANCE_EMAIL": "compliant@aijobs1.in"
   },
   "rewrites": [
     {
