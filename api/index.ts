@@ -1,6 +1,6 @@
 import app from "../appServer.js";
-import { dispatchEmail } from "../server/emailService.js";
 import { getRoleContactEmail } from "../server/siteConfig.js";
+import { sendWorkspaceRoleEmail, WorkspaceSenderRole } from "../server/workspaceRoleEmail.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -8,7 +8,16 @@ function clean(value: unknown, max: number): string {
   return String(value ?? "").trim().slice(0, max);
 }
 
-function resolveInquiryRole(type: string): string {
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function resolveInquiryRole(type: string): WorkspaceSenderRole {
   const normalized = type.trim().toLowerCase().replace(/[\s-]+/g, "_");
   if (["sales", "employer", "recruiter", "consultancy", "partner", "partnership", "billing", "subscription", "hiring"].includes(normalized)) {
     return "sales";
@@ -58,37 +67,44 @@ async function handleWebsiteInquiry(req: any, res: any) {
     message,
   ].filter(Boolean).join("\n");
 
-  try {
-    const result = await dispatchEmail({
-      to: recipient,
-      templateName: "custom-admin-email",
-      data: {
-        recipientName: "AIJOBS Team",
-        customSubject: `[AIJOBS Website • ${routingLabel}] ${subject}`,
-        customMessage,
-        replyToEmail: email,
-      },
-      userId: "public_website_visitor",
-      recipientName: "AIJOBS Team",
-      recipientRole: routingRole,
-      createdBy: "public_website_contact",
-      category: "transactional",
-    });
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:680px;margin:auto;color:#0f172a">
+      <h2 style="margin-bottom:8px">New AIJOBS Website Enquiry</h2>
+      <p><strong>Routing:</strong> ${escapeHtml(routingLabel)}</p>
+      <p><strong>From:</strong> ${escapeHtml(name)}</p>
+      <p><strong>Email:</strong> ${escapeHtml(email)}</p>
+      ${phone ? `<p><strong>Phone:</strong> ${escapeHtml(phone)}</p>` : ""}
+      <p><strong>Category:</strong> ${escapeHtml(type || "general")}</p>
+      ${pageUrl ? `<p><strong>Page:</strong> ${escapeHtml(pageUrl)}</p>` : ""}
+      <hr style="border:0;border-top:1px solid #e2e8f0;margin:20px 0" />
+      <p style="white-space:pre-wrap">${escapeHtml(message)}</p>
+    </div>
+  `;
 
-    if (!result.success) {
-      return res.status(502).json({ success: false, error: result.error || "Email delivery failed." });
-    }
+  try {
+    const result = await sendWorkspaceRoleEmail({
+      role: routingRole,
+      to: recipient,
+      subject: `[AIJOBS Website • ${routingLabel}] ${subject}`,
+      text: customMessage,
+      html,
+      replyTo: email,
+    });
 
     return res.json({
       success: true,
       message: "Your message has been sent to the correct AIJOBS team.",
       routedTo: recipient,
+      sentFrom: result.from,
       route: routingRole,
       messageId: result.messageId,
     });
   } catch (error: any) {
     console.error("[/api/contact/inquiry]", error?.message || error);
-    return res.status(500).json({ success: false, error: "Unable to send your message right now. Please try again." });
+    return res.status(500).json({
+      success: false,
+      error: "Unable to send your message right now. Please check the Google Workspace SMTP configuration.",
+    });
   }
 }
 
