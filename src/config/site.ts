@@ -6,6 +6,10 @@
 export const APP_NAME = "AIJOBS";
 
 export const PRODUCTION_DOMAIN = "https://aijobs1.in";
+// Public identifier only. Admin authorization is always verified from the
+// authenticated Firebase user and its Firestore role, never from this value.
+export const OFFICIAL_ADMIN_EMAIL = "admin@aijobs1.in";
+export const ADMIN_LOGIN_URL = `${PRODUCTION_DOMAIN}/admin/login`;
 
 const getResolvedSiteUrl = (): string => {
   if (typeof window !== "undefined") {

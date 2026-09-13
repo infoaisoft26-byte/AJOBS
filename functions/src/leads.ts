@@ -18,7 +18,11 @@ export async function getLeadsListHandler(requesterUid?: string) {
   try {
     const db = getDb();
 
-    // Verify admin role if UID provided
+    if (!requesterUid) {
+      return { success: false, error: "Authentication required." };
+    }
+
+    // The caller must pass a UID obtained from a verified Firebase ID token.
     if (requesterUid) {
       const userDoc = await db.collection("users").doc(requesterUid).get();
       if (userDoc.exists) {
@@ -28,8 +32,7 @@ export async function getLeadsListHandler(requesterUid?: string) {
           role === "admin" ||
           role === "superadmin" ||
           role === "super_admin" ||
-          userData.isAdmin === true ||
-          userData.email === "infoaisoft26@gmail.com";
+          userData.isAdmin === true;
 
         if (!isAdmin) {
           return {
@@ -37,6 +40,8 @@ export async function getLeadsListHandler(requesterUid?: string) {
             error: "Access denied: Admin or Superadmin privileges required."
           };
         }
+      } else {
+        return { success: false, error: "Admin profile not found." };
       }
     }
 

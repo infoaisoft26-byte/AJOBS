@@ -6,6 +6,7 @@ import { BarChart2, Baseline, Bell, BookOpen, Brain, Briefcase, Building, Check,
 import { auth, db } from "../firebase";
 import { parseJsonResponse } from "../utils/apiHelper";
 import { normalizeRole } from "../utils/roleUtils";
+import { OFFICIAL_ADMIN_EMAIL } from "../config/site";
 
 import { recordActivityLog } from "../services/activityLogService";
 
@@ -67,6 +68,7 @@ import { FileSpreadsheet, Sparkles, GitPullRequest } from "lucide-react";
 export default function AdminDashboard({ userId, userName }: { userId?: string; userName?: string }) {
   const currentUserId = userId || auth.currentUser?.uid || "system_admin_01";
   const currentUserName = userName || "Super Admin Desk";
+  const currentUserEmail = auth.currentUser?.email || OFFICIAL_ADMIN_EMAIL;
 
   // Navigation tabs state
   const [activeTab, setActiveTab] = useState<string>("dashboard");
@@ -441,7 +443,7 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
       await seedSuperAdminDataIfEmpty(
         "system_admin_01",
         "Super Admin Desk",
-        "enterprise-admin@aijobs.global"
+        currentUserEmail
       );
       setSuccessMessage("System configuration verified.");
       setTimeout(() => setSuccessMessage(""), 3000);
@@ -788,7 +790,7 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
               {activeView === "recruitment-ops" && (
                 <RecruitmentOperationsHub
                   initialSubTab="recruitment_dashboard"
-                  adminUser={{ name: currentUserName, email: "admin@aijobs.global" }}
+                  adminUser={{ name: currentUserName, email: currentUserEmail }}
                   onNavigateTab={(tab) => setActiveTab(tab)}
                 />
               )}
@@ -796,7 +798,7 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
               {activeView === "recruitment-candidates" && (
                 <RecruitmentOperationsHub
                   initialSubTab="candidates"
-                  adminUser={{ name: currentUserName, email: "admin@aijobs.global" }}
+                  adminUser={{ name: currentUserName, email: currentUserEmail }}
                   onNavigateTab={(tab) => setActiveTab(tab)}
                 />
               )}
@@ -804,7 +806,7 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
               {activeView === "recruitment-jobs" && (
                 <RecruitmentOperationsHub
                   initialSubTab="jobs"
-                  adminUser={{ name: currentUserName, email: "admin@aijobs.global" }}
+                  adminUser={{ name: currentUserName, email: currentUserEmail }}
                   onNavigateTab={(tab) => setActiveTab(tab)}
                 />
               )}
@@ -812,7 +814,7 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
               {activeView === "excel-import-center" && (
                 <RecruitmentOperationsHub
                   initialSubTab="excel_import"
-                  adminUser={{ name: currentUserName, email: "admin@aijobs.global" }}
+                  adminUser={{ name: currentUserName, email: currentUserEmail }}
                   onNavigateTab={(tab) => setActiveTab(tab)}
                 />
               )}
@@ -820,7 +822,7 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
               {activeView === "candidate-recommendations" && (
                 <RecruitmentOperationsHub
                   initialSubTab="recommendations"
-                  adminUser={{ name: currentUserName, email: "admin@aijobs.global" }}
+                  adminUser={{ name: currentUserName, email: currentUserEmail }}
                   onNavigateTab={(tab) => setActiveTab(tab)}
                 />
               )}
@@ -828,7 +830,7 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
               {activeView === "recruiter-dispatch" && (
                 <RecruitmentOperationsHub
                   initialSubTab="recruiter_assignment"
-                  adminUser={{ name: currentUserName, email: "admin@aijobs.global" }}
+                  adminUser={{ name: currentUserName, email: currentUserEmail }}
                   onNavigateTab={(tab) => setActiveTab(tab)}
                 />
               )}

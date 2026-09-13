@@ -1,5 +1,6 @@
 import { Dispatch, useEffect, useState } from "react";
 import { parseJsonResponse } from "../utils/apiHelper";
+import { OFFICIAL_ADMIN_EMAIL } from "../config/site";
 import { CheckCircle2, Container, FileText, Grid, Inbox, Inspect, Layers, Library, List, Logs, Mail, Navigation, Package, Play, RefreshCw, RotateCw, Send, Sparkles, Type, Users, XCircle } from "lucide-react";
 interface TemplateInfo {
   id: string;
@@ -31,7 +32,7 @@ export default function AdminEmailCenter() {
   const [previewLoading, setPreviewLoading] = useState(false);
 
   // Test Email state
-  const [testEmailAddress, setTestEmailAddress] = useState("infoaisoft26@gmail.com");
+  const [testEmailAddress, setTestEmailAddress] = useState(OFFICIAL_ADMIN_EMAIL);
   const [sendingTest, setSendingTest] = useState(false);
   const [testResultMsg, setTestResultMsg] = useState("");
 

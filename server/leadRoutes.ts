@@ -10,140 +10,31 @@ const router = Router();
 async function checkAdminAuthorization(req: Request): Promise<{ authorized: boolean; reason?: string; statusCode?: number }> {
   try {
     const authHeader = req.headers.authorization || "";
-    let uid: string | null = null;
-    let email: string | null = null;
-    let customClaims: any = {};
-
-    if (authHeader.startsWith("Bearer ")) {
-      const token = authHeader.split("Bearer ")[1]?.trim();
-      if (token) {
-        try {
-          const auth = getFirebaseAuth();
-          const decoded = await auth.verifyIdToken(token);
-          uid = decoded.uid || null;
-          email = decoded.email || null;
-          customClaims = decoded;
-        } catch (tokenErr: any) {
-          console.warn("[Lead API] ID token verification warning:", tokenErr?.message || "Invalid token");
-          // Fallback: decode token payload manually
-          try {
-            const parts = token.split(".");
-            if (parts.length === 3) {
-              const payload = JSON.parse(Buffer.from(parts[1], "base64").toString("utf-8"));
-              uid = uid || payload.uid || payload.sub || payload.user_id || null;
-              email = email || payload.email || null;
-              customClaims = { ...payload, ...customClaims };
-            }
-          } catch (jwtErr) {}
-        }
-      }
-    }
-
-    // Fallback headers/query/body
-    if (!uid && req.headers["x-user-id"]) {
-      uid = String(req.headers["x-user-id"]);
-    } else if (!uid && req.query?.userId) {
-      uid = String(req.query.userId);
-    } else if (!uid && req.body?.userId) {
-      uid = String(req.body.userId);
-    }
-
-    if (!email && req.headers["x-user-email"]) {
-      email = String(req.headers["x-user-email"]);
-    } else if (!email && req.query?.userEmail) {
-      email = String(req.query.userEmail);
-    } else if (!email && req.query?.email) {
-      email = String(req.query.email);
-    } else if (!email && req.body?.email) {
-      email = String(req.body.email);
-    }
-
-    const reqRole = (
-      req.headers["x-user-role"] ||
-      req.query?.role ||
-      req.body?.role ||
-      customClaims.role ||
-      ""
-    ).toString().toLowerCase();
-
-    // If completely unauthenticated
-    if (!uid && !email && !reqRole) {
+    if (!authHeader.startsWith("Bearer ")) {
       return { authorized: false, reason: "Authentication required.", statusCode: 401 };
     }
-
-    // Fast-path authorization for known system admins, super admins, or admin claims
-    const lowerEmail = (email || "").toLowerCase();
-    const isKnownAdminUser =
-      uid === "system_admin_01" ||
-      uid === "admin" ||
-      uid === "superadmin" ||
-      uid === "super_admin" ||
-      (uid && uid.toLowerCase().includes("superadmin")) ||
-      lowerEmail === "aijobs1401@gmail.com" ||
-      lowerEmail === "enterprise-admin@aijobs.global" ||
-      lowerEmail === "admin@aijobs.com" ||
-      lowerEmail === "infoaisoft26@gmail.com" ||
-      lowerEmail.endsWith("@aijobs.global") ||
-      customClaims.admin === true ||
-      customClaims.isSuperAdmin === true ||
-      customClaims.role === "admin" ||
-      customClaims.role === "superadmin" ||
-      customClaims.role === "super_admin" ||
-      reqRole === "admin" ||
-      reqRole === "superadmin" ||
-      reqRole === "super_admin";
-
-    if (isKnownAdminUser) {
-      return { authorized: true };
+    let decoded: any;
+    try {
+      decoded = await getFirebaseAuth().verifyIdToken(authHeader.slice(7).trim());
+    } catch (tokenErr: any) {
+      console.warn("[Lead API] Firebase ID token rejected:", tokenErr?.message || "Invalid token");
+      return { authorized: false, reason: "Invalid or expired authentication token.", statusCode: 401 };
     }
 
-    // Check Firestore collections with timeout protection
     const db = getFirestoreDb();
-    
     const checkFirestore = async (): Promise<boolean> => {
-      if (uid) {
-        try {
-          const adminDoc = await db.collection("admins").doc(uid).get();
-          if (adminDoc.exists) {
-            const adminData = adminDoc.data() || {};
-            if (adminData.status !== "suspended" && adminData.status !== "disabled") {
-              return true;
-            }
-          }
-        } catch (e) {}
-
-        try {
-          const userDoc = await db.collection("users").doc(uid).get();
-          if (userDoc.exists) {
-            const userData = userDoc.data() || {};
-            const role = (userData.role || "").toLowerCase();
-            const isUserAdmin =
-              (role === "admin" || role === "superadmin" || role === "super_admin" || userData.isAdmin === true || userData.isSuperAdmin === true) &&
-              userData.isActive !== false &&
-              userData.accountStatus !== "suspended" &&
-              userData.accountStatus !== "disabled";
-
-            if (isUserAdmin) {
-              return true;
-            }
-          }
-        } catch (e) {}
-      }
-
-      if (lowerEmail) {
-        try {
-          const userSnap = await db.collection("users").where("email", "==", lowerEmail).limit(1).get();
-          if (!userSnap.empty) {
-            const userData = userSnap.docs[0].data() || {};
-            const role = (userData.role || "").toLowerCase();
-            if (role === "admin" || role === "superadmin" || role === "super_admin" || userData.isAdmin === true || userData.isSuperAdmin === true) {
-              return true;
-            }
-          }
-        } catch (e) {}
-      }
-
-      return false;
+      const [userDoc, adminDoc] = await Promise.all([
+        db.collection("users").doc(decoded.uid).get(),
+        db.collection("admins").doc(decoded.uid).get()
+      ]);
+      const userData = userDoc.data() || {};
+      const adminData = adminDoc.data() || {};
+      const role = String(userData.role || adminData.role || decoded.role || "")
+        .trim().toLowerCase().replace(/[\s-]+/g, "_");
+      const status = String(userData.status || userData.accountStatus || adminData.status || "active").toLowerCase();
+      return ["admin", "superadmin", "super_admin"].includes(role) &&
+        !["disabled", "suspended", "inactive"].includes(status) &&
+        userData.isActive !== false;
     };
 
     const timeoutPromise = new Promise<boolean>((resolve) =>
@@ -156,7 +47,7 @@ async function checkAdminAuthorization(req: Request): Promise<{ authorized: bool
       return { authorized: true };
     }
 
-    return { authorized: false, reason: "Admin access required.", statusCode: 403 };
+    return { authorized: false, reason: "Active Admin or Super Admin role required.", statusCode: 403 };
   } catch (err: any) {
     console.error("[Lead API] Admin authorization check exception:", err?.message || err);
     return { authorized: false, reason: "Admin access required.", statusCode: 403 };

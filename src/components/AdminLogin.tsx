@@ -6,6 +6,7 @@ import { auth, db } from "../firebase";
 import type { UserProfile } from "../types";
 import { isAdminRole, normalizeRole } from "../utils/roleUtils";
 import { useToast } from "./GlobalToast";
+import { OFFICIAL_ADMIN_EMAIL } from "../config/site";
 
 interface AdminLoginProps {
   onAdminLoginSuccess: (userProfile: UserProfile) => void;
@@ -178,12 +179,12 @@ export default function AdminLogin({ onAdminLoginSuccess }: AdminLoginProps) {
         <form onSubmit={handleAdminLogin} className="space-y-4">
           <div className="space-y-1 text-left">
             <label className="text-[11px] font-mono uppercase tracking-wider text-gray-400 font-semibold">Admin Email</label>
-            <div className="relative"><Mail className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2" /><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@aijobs1.in" className="w-full bg-black/50 border border-white/10 rounded-2xl py-3 pl-10 pr-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-amber-500" /></div>
+            <div className="relative"><Mail className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2" /><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder={OFFICIAL_ADMIN_EMAIL} autoComplete="username" className="w-full bg-black/50 border border-white/10 rounded-2xl py-3 pl-10 pr-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-amber-500" /></div>
           </div>
 
           <div className="space-y-1 text-left">
             <div className="flex items-center justify-between"><label className="text-[11px] font-mono uppercase tracking-wider text-gray-400 font-semibold">Password</label><button type="button" onClick={() => { setForgotOpen(true); setResetSent(false); setResetEmail(email); }} className="text-xs text-amber-400 hover:underline cursor-pointer">Forgot Password?</button></div>
-            <div className="relative"><Lock className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2" /><input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••••••" className="w-full bg-black/50 border border-white/10 rounded-2xl py-3 pl-10 pr-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-amber-500" /></div>
+            <div className="relative"><Lock className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2" /><input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••••••" autoComplete="current-password" className="w-full bg-black/50 border border-white/10 rounded-2xl py-3 pl-10 pr-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-amber-500" /></div>
           </div>
 
           <button type="submit" disabled={loading} className="w-full py-3.5 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-white font-bold text-sm rounded-2xl shadow-lg shadow-amber-500/25 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 mt-2">
@@ -196,7 +197,7 @@ export default function AdminLogin({ onAdminLoginSuccess }: AdminLoginProps) {
 
       {forgotOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"><div className="w-full max-w-sm bg-gray-950 border border-white/10 rounded-3xl p-6 space-y-4 shadow-2xl relative">
         <div className="flex items-center justify-between border-b border-white/10 pb-3"><div className="flex items-center gap-2"><KeyRound className="w-4 h-4 text-amber-400" /><h3 className="text-sm font-bold text-white">Reset Admin Password</h3></div><button onClick={() => setForgotOpen(false)} className="text-gray-400 hover:text-white text-xs">✕</button></div>
-        {resetSent ? <div className="text-center py-4 space-y-3"><CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" /><p className="text-xs text-gray-300">Password reset link sent to <span className="text-amber-300 font-mono">{resetEmail}</span>.</p><button onClick={() => setForgotOpen(false)} className="px-4 py-2 bg-amber-600 text-xs font-bold text-white rounded-xl">Close</button></div> : <form onSubmit={handleSendReset} className="space-y-3"><input type="email" required value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} placeholder="admin@aijobs1.in" className="w-full bg-black/50 border border-white/10 rounded-xl py-2.5 px-3 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-amber-500" /><button type="submit" disabled={resetLoading} className="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2">{resetLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : "Dispatch Reset Link"}</button></form>}
+        {resetSent ? <div className="text-center py-4 space-y-3"><CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" /><p className="text-xs text-gray-300">Password reset link sent to <span className="text-amber-300 font-mono">{resetEmail}</span>.</p><button onClick={() => setForgotOpen(false)} className="px-4 py-2 bg-amber-600 text-xs font-bold text-white rounded-xl">Close</button></div> : <form onSubmit={handleSendReset} className="space-y-3"><input type="email" required value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} placeholder={OFFICIAL_ADMIN_EMAIL} autoComplete="username" className="w-full bg-black/50 border border-white/10 rounded-xl py-2.5 px-3 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-amber-500" /><button type="submit" disabled={resetLoading} className="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2">{resetLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : "Dispatch Reset Link"}</button></form>}
       </div></div>}
     </div>
   );

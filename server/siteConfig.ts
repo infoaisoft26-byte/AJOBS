@@ -4,6 +4,10 @@
  */
 
 export const PRODUCTION_DOMAIN = "https://aijobs1.in";
+export const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "admin@aijobs1.in").trim().toLowerCase();
+export const ADMIN_NOTIFICATION_EMAIL = (
+  process.env.ADMIN_NOTIFICATION_EMAIL || ADMIN_EMAIL
+).trim().toLowerCase();
 
 export function getPublicSiteUrl(): string {
   const envUrl = (

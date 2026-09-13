@@ -23,11 +23,17 @@ service cloud.firestore {
         : 'guest';
     }
 
+    function getAdminData() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/admins/$(request.auth.uid)).data
+        : {};
+    }
+
     function isAdmin() {
       return isSignedIn() && (
-        getUserRole() == 'admin' || 
-        getUserRole() == 'superadmin' || 
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        getUserRole() in ['admin', 'superadmin', 'super_admin'] ||
+        (getAdminData().role in ['admin', 'superadmin', 'super_admin'] &&
+          !(getAdminData().status in ['disabled', 'suspended', 'inactive']))
       );
     }
 

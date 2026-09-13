@@ -50,6 +50,7 @@
     "pdf-parse": "^2.4.5",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
+    "react-is": "^19.0.0",
     "react-markdown": "^10.1.0",
     "recharts": "^3.9.2",
     "three": "^0.185.1",
