@@ -109,22 +109,14 @@ function AuthLayout({ role, children }: { role: PortalRole; children: ReactNode 
 
 function firebaseErrorMessage(code?: string) {
   switch (code) {
-    case "auth/invalid-credential":
-      return "Email or password is incorrect. Please try again.";
-    case "auth/user-not-found":
-      return "No Firebase Authentication account was found for this email.";
-    case "auth/wrong-password":
-      return "The password is incorrect. Please try again.";
-    case "auth/too-many-requests":
-      return "Too many attempts. Please wait a few minutes and try again.";
-    case "auth/user-disabled":
-      return "This account is currently disabled. Please contact AIJOBS support.";
-    case "auth/network-request-failed":
-      return "Network connection failed. Please check your internet connection.";
-    case "auth/invalid-email":
-      return "Please enter a valid email address.";
-    default:
-      return "Login could not be completed. Please try again.";
+    case "auth/invalid-credential": return "Email or password is incorrect. Please try again.";
+    case "auth/user-not-found": return "No Firebase Authentication account was found for this email.";
+    case "auth/wrong-password": return "The password is incorrect. Please try again.";
+    case "auth/too-many-requests": return "Too many attempts. Please wait a few minutes and try again.";
+    case "auth/user-disabled": return "This account is currently disabled. Please contact AIJOBS support.";
+    case "auth/network-request-failed": return "Network connection failed. Please check your internet connection.";
+    case "auth/invalid-email": return "Please enter a valid email address.";
+    default: return "Login could not be completed. Please try again.";
   }
 }
 
@@ -143,35 +135,15 @@ async function bootstrapOfficialAdminProfile(fbUser: any, password: string): Pro
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email: OFFICIAL_ADMIN_EMAIL, password, name: "AIJOBS Admin" })
   });
-
   const payload = await response.json().catch(() => null);
-  if (!response.ok || !payload?.success) {
-    throw new Error(payload?.error || `Admin profile initialization failed (${response.status}).`);
-  }
-
-  try {
-    await fbUser.getIdToken(true);
-  } catch (tokenError) {
-    console.warn("[PortalAuth] Admin token refresh after profile bootstrap failed:", tokenError);
-  }
-
-  return {
-    uid: fbUser.uid,
-    email: fbUser.email || OFFICIAL_ADMIN_EMAIL,
-    name: fbUser.displayName || "AIJOBS Admin",
-    role: "superadmin",
-    status: "active",
-    accountStatus: "active",
-    isActive: true,
-    createdAt: new Date().toISOString(),
-  } as UserProfile;
+  if (!response.ok || !payload?.success) throw new Error(payload?.error || `Admin profile initialization failed (${response.status}).`);
+  try { await fbUser.getIdToken(true); } catch (tokenError) { console.warn("[PortalAuth] Admin token refresh after profile bootstrap failed:", tokenError); }
+  return { uid: fbUser.uid, email: fbUser.email || OFFICIAL_ADMIN_EMAIL, name: fbUser.displayName || "AIJOBS Admin", role: "superadmin", status: "active", accountStatus: "active", isActive: true, createdAt: new Date().toISOString() } as UserProfile;
 }
 
 function SuccessOverlay({ role, name }: { role: PortalRole; name: string }) {
   const c=PORTAL_CONFIG[role];
-  return <motion.div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#030A18]/95 px-4 backdrop-blur-xl" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} role="status" aria-live="polite">
-    <div className="text-center"><motion.div className="relative mx-auto mb-7 flex h-28 w-28 items-center justify-center rounded-full border-2" style={{borderColor:c.accent,boxShadow:`0 0 55px ${c.glow}`}} initial={{scale:.65}} animate={{scale:1,rotate:[0,4,0]}}><div className="absolute inset-2 animate-ping rounded-full border opacity-25" style={{borderColor:c.accent}}/><span className="text-2xl font-black tracking-tight">AI<span style={{color:c.accent}}>JOBS</span></span><motion.span className="absolute -bottom-2 -right-1 flex h-9 w-9 items-center justify-center rounded-full" style={{background:c.accent}} initial={{scale:0}} animate={{scale:1}} transition={{delay:.45,type:"spring"}}><Check className="h-5 w-5 text-white"/></motion.span></motion.div><motion.h2 className="text-3xl font-black" initial={{y:12,opacity:0}} animate={{y:0,opacity:1}} transition={{delay:.25}}>Access Verified</motion.h2><p className="mt-2 text-slate-300">Welcome back, {name}</p><div className="mx-auto mt-6 h-1 w-52 overflow-hidden rounded-full bg-white/10"><motion.div className="h-full" style={{background:c.accent}} initial={{width:0}} animate={{width:"100%"}} transition={{duration:1.6,ease:"easeInOut"}}/></div></div>
-  </motion.div>;
+  return <motion.div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#030A18]/95 px-4 backdrop-blur-xl" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} role="status" aria-live="polite"><div className="text-center"><motion.div className="relative mx-auto mb-7 flex h-28 w-28 items-center justify-center rounded-full border-2" style={{borderColor:c.accent,boxShadow:`0 0 55px ${c.glow}`}} initial={{scale:.65}} animate={{scale:1,rotate:[0,4,0]}}><div className="absolute inset-2 animate-ping rounded-full border opacity-25" style={{borderColor:c.accent}}/><span className="text-2xl font-black tracking-tight">AI<span style={{color:c.accent}}>JOBS</span></span><motion.span className="absolute -bottom-2 -right-1 flex h-9 w-9 items-center justify-center rounded-full" style={{background:c.accent}} initial={{scale:0}} animate={{scale:1}} transition={{delay:.45,type:"spring"}}><Check className="h-5 w-5 text-white"/></motion.span></motion.div><motion.h2 className="text-3xl font-black" initial={{y:12,opacity:0}} animate={{y:0,opacity:1}} transition={{delay:.25}}>Access Verified</motion.h2><p className="mt-2 text-slate-300">Welcome back, {name}</p><div className="mx-auto mt-6 h-1 w-52 overflow-hidden rounded-full bg-white/10"><motion.div className="h-full" style={{background:c.accent}} initial={{width:0}} animate={{width:"100%"}} transition={{duration:1.6,ease:"easeInOut"}}/></div></div></motion.div>;
 }
 
 async function resolveAuthorizedProfile(fbUser: any, role: PortalRole): Promise<UserProfile> {
@@ -180,10 +152,8 @@ async function resolveAuthorizedProfile(fbUser: any, role: PortalRole): Promise<
     if (normalizeRole(profile.role) !== role) throw new Error(ADMIN_ROLE_MISMATCH);
     return profile;
   }
-
   let adminSnap: any = null;
   let userSnap: any = null;
-
   try {
     adminSnap = await getDoc(doc(db, "admins", fbUser.uid));
     userSnap = await getDoc(doc(db, "users", fbUser.uid));
@@ -191,117 +161,60 @@ async function resolveAuthorizedProfile(fbUser: any, role: PortalRole): Promise<
     console.error("[PortalAuth] Admin Firestore profile lookup failed:", error);
     throw new Error("ADMIN_PROFILE_LOOKUP_FAILED");
   }
-
   const adminData = adminSnap.exists() ? adminSnap.data() : null;
   const userData = userSnap.exists() ? userSnap.data() : null;
-
-  if (!adminData && !userData) {
-    console.warn(`[PortalAuth] Firebase Auth succeeded for ${fbUser.email || fbUser.uid}, but no admins/${fbUser.uid} or users/${fbUser.uid} profile exists.`);
-    throw new Error(ADMIN_PROFILE_MISSING);
-  }
-
-  const adminDocRole = adminData?.role ? normalizeRole(adminData.role) : "unknown";
-  const userDocRole = userData?.role ? normalizeRole(userData.role) : "unknown";
+  if (!adminData && !userData) throw new Error(ADMIN_PROFILE_MISSING);
   const adminDocAuthorized = isAdminRole(adminData?.role);
   const userDocAuthorized = isAdminRole(userData?.role);
-
-  if (!adminDocAuthorized && !userDocAuthorized) {
-    console.warn("[PortalAuth] Authenticated account does not have an admin role.", { uid: fbUser.uid, email: fbUser.email, adminProfileRole: adminDocRole, userProfileRole: userDocRole });
-    throw new Error(ADMIN_ROLE_MISMATCH);
-  }
-
+  if (!adminDocAuthorized && !userDocAuthorized) throw new Error(ADMIN_ROLE_MISMATCH);
   const sourceData = adminDocAuthorized ? adminData : userData;
-  const sourcePath = adminDocAuthorized ? `admins/${fbUser.uid}` : `users/${fbUser.uid}`;
   const resolvedRole = normalizeRole(sourceData.role) === "super_admin" ? "superadmin" : "admin";
-
-  console.info("[PortalAuth] Admin profile authorized.", { uid: fbUser.uid, email: fbUser.email, profilePath: sourcePath, role: resolvedRole });
-
-  return {
-    ...sourceData,
-    uid: fbUser.uid,
-    email: fbUser.email || sourceData.email || "",
-    name: sourceData.name || fbUser.displayName || fbUser.email?.split("@")[0] || "Administrator",
-    role: resolvedRole,
-    createdAt: sourceData.createdAt || new Date().toISOString(),
-  } as UserProfile;
+  return { ...sourceData, uid: fbUser.uid, email: fbUser.email || sourceData.email || "", name: sourceData.name || fbUser.displayName || fbUser.email?.split("@")[0] || "Administrator", role: resolvedRole, createdAt: sourceData.createdAt || new Date().toISOString() } as UserProfile;
 }
 
 export function PortalLogin({ role, onSuccess, onBack }: { role: PortalRole; onSuccess:(profile:UserProfile,path:string)=>void; onBack:()=>void }) {
   const c=PORTAL_CONFIG[role]; const Icon=c.icon;
   const [email,setEmail]=useState(""); const [password,setPassword]=useState(""); const [showPassword,setShowPassword]=useState(false); const [remember,setRemember]=useState(true); const [loading,setLoading]=useState(false); const [error,setError]=useState(""); const [shake,setShake]=useState(0); const [success,setSuccess]=useState<UserProfile|null>(null); const [resetStatus,setResetStatus]=useState("");
   const fail=(message:string)=>{setError(message);setShake(v=>v+1)};
-
   const submit=async(e:FormEvent)=>{
-    e.preventDefault();
-    setError("");
-    setResetStatus("");
+    e.preventDefault(); setError(""); setResetStatus("");
     if(!email.trim()||!password){fail("Email and password are required.");return;}
     setLoading(true);
-
     try {
       await setPersistence(auth,remember?browserLocalPersistence:browserSessionPersistence);
       const credential=await signInWithEmailAndPassword(auth,email.trim(),password);
-      console.info("[PortalAuth] Firebase Authentication succeeded.", { uid: credential.user.uid, email: credential.user.email, portal: role });
-
       let profile:UserProfile;
-      try {
-        profile=await resolveAuthorizedProfile(credential.user,role);
-      } catch(profileErr:any) {
+      try { profile=await resolveAuthorizedProfile(credential.user,role); }
+      catch(profileErr:any) {
         if (role === "admin" && isOfficialAdminAccount(credential.user)) {
           try {
-            console.warn("[PortalAuth] Official Admin profile verification failed; attempting server-side repair.", { uid: credential.user.uid, email: credential.user.email, reason: profileErr?.message || "unknown" });
             profile = await bootstrapOfficialAdminProfile(credential.user, password);
-            try {
-              profile = await resolveAuthorizedProfile(credential.user, role);
-            } catch (postRepairReadError) {
-              console.warn("[PortalAuth] Admin profile initialized server-side; client Firestore read remains unavailable. Continuing with repaired Admin identity.", postRepairReadError);
-            }
+            try { profile = await resolveAuthorizedProfile(credential.user, role); }
+            catch (postRepairReadError) { console.warn("[PortalAuth] Admin profile initialized server-side; continuing with repaired identity.", postRepairReadError); }
           } catch (repairError:any) {
             console.error("[PortalAuth] Official Admin profile repair failed:", repairError);
             await signOut(auth);
-            const detail = String(repairError?.message || "");
-            if (detail.toLowerCase().includes("credential") || detail.toLowerCase().includes("firebase admin")) {
-              fail("Admin authentication succeeded, but the server cannot access Firebase Admin yet. Check Vercel Firebase Admin environment variables and redeploy.");
-            } else {
-              fail("Admin authentication succeeded, but the Admin profile could not be initialized. Please redeploy the latest fix and try again.");
-            }
+            const detail = String(repairError?.message || "").toLowerCase();
+            fail(detail.includes("credential") || detail.includes("firebase admin") ? "Admin authentication succeeded, but the server cannot access Firebase Admin yet. Check Vercel Firebase Admin environment variables and redeploy." : "Admin authentication succeeded, but the Admin profile could not be initialized. Please redeploy the latest fix and try again.");
             return;
           }
         } else {
           await signOut(auth);
-          if (role === "admin" && profileErr?.message === ADMIN_PROFILE_MISSING) {
-            fail("Admin account authenticated, but admin profile is missing.");
-          } else if (profileErr?.message === ADMIN_ROLE_MISMATCH) {
-            fail(role === "admin" ? "This account does not have Admin access." : "This account does not have access to this portal.");
-          } else {
-            console.error("[PortalAuth] Firestore profile verification error:", profileErr);
-            fail("Admin account authenticated, but the admin profile could not be verified. Please try again.");
-          }
+          if (role === "admin" && profileErr?.message === ADMIN_PROFILE_MISSING) fail("Admin account authenticated, but admin profile is missing.");
+          else if (profileErr?.message === ADMIN_ROLE_MISMATCH) fail(role === "admin" ? "This account does not have Admin access." : "This account does not have access to this portal.");
+          else fail("Admin account authenticated, but the admin profile could not be verified. Please try again.");
           return;
         }
       }
-
       setSuccess(profile);
       window.setTimeout(()=>onSuccess(profile,c.dashboardPath),1750);
     } catch(err:any) {
-      console.error("[PortalAuth] Firebase Authentication failed.", { code: err?.code || "unknown", message: err?.message || "Unknown Firebase Auth error", email: email.trim(), portal: role });
+      console.error("[PortalAuth] Firebase Authentication failed.", { code: err?.code || "unknown", message: err?.message || "Unknown Firebase Auth error", portal: role });
       fail(firebaseErrorMessage(err?.code));
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
-
-  const reset=async()=>{setError("");if(!email.trim()){fail("Enter your registered email first.");return;}try{await sendPasswordResetEmail(auth,email.trim());setResetStatus("Password reset link has been sent to your registered email.");}catch(err:any){console.error("[PortalAuth] Password reset failed.",{code:err?.code,message:err?.message,email:email.trim(),portal:role});fail(firebaseErrorMessage(err?.code));}};
-  return <AuthLayout role={role}><AnimatePresence>{success&&<SuccessOverlay role={role} name={success.name||success.email?.split("@")[0]||"User"}/>}</AnimatePresence><motion.div key={shake} animate={error?{x:[0,-7,7,-5,5,0]}:{x:0}} transition={{duration:.38}} className="relative overflow-hidden rounded-[2rem] border border-white/15 bg-[#081426]/85 p-6 shadow-2xl backdrop-blur-2xl sm:p-8" style={{boxShadow:`0 28px 90px ${c.glow}`}}>
-    <div className="absolute inset-x-8 top-0 h-px" style={{background:`linear-gradient(90deg,transparent,${c.accent},transparent)`}}/><button type="button" onClick={onBack} className="mb-6 inline-flex items-center gap-2 text-xs text-slate-400 transition hover:text-white" aria-label="Back to portal selection"><ArrowLeft className="h-4 w-4"/>Portal selection</button>
-    <div className="mb-7"><div className="mb-5 flex items-center justify-between"><div className="text-xl font-black tracking-tight">AI<span style={{color:c.accent}}>JOBS</span></div><span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-widest" style={{borderColor:`${c.accent}66`,background:c.accentSoft,color:c.accent}}><Icon className="h-3.5 w-3.5"/>{c.badge}</span></div><h2 className="text-2xl font-black tracking-tight">{c.heading}</h2><p className="mt-2 text-sm leading-6 text-slate-400">Sign in with your registered AIJOBS email and password.</p></div>
-    {error&&<div className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200" role="alert">{error}</div>}{resetStatus&&<div className="mb-4 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200" role="status">{resetStatus}</div>}
-    <form onSubmit={submit} noValidate className="space-y-4"><div><label htmlFor={`${role}-email`} className="mb-1.5 block text-xs font-semibold text-slate-300">Email address</label><div className="relative"><Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"/><input id={`${role}-email`} type="email" autoComplete="email" required value={email} onChange={e=>setEmail(e.target.value)} className={`w-full rounded-xl border bg-black/25 py-3 pl-10 pr-4 text-sm outline-none transition ${error?'border-red-400/60':'border-white/10 focus:border-white/30'}`} placeholder="name@company.com"/></div></div>
-    <div><div className="mb-1.5 flex items-center justify-between"><label htmlFor={`${role}-password`} className="text-xs font-semibold text-slate-300">Password</label><button type="button" onClick={reset} className="text-xs font-medium hover:underline" style={{color:c.accent}}>Forgot password?</button></div><div className="relative"><LockKeyhole className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"/><input id={`${role}-password`} type={showPassword?"text":"password"} autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)} className={`w-full rounded-xl border bg-black/25 py-3 pl-10 pr-11 text-sm outline-none transition ${error?'border-red-400/60':'border-white/10 focus:border-white/30'}`} placeholder="Enter your password"/><button type="button" onClick={()=>setShowPassword(v=>!v)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:text-white" aria-label={showPassword?"Hide password":"Show password"}>{showPassword?<EyeOff className="h-4 w-4"/>:<Eye className="h-4 w-4"/>}</button></div></div>
-    <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-400"><input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)} className="h-4 w-4 rounded" style={{accentColor:c.accent}}/>Remember me on this device</label>
-    <button type="submit" disabled={loading||!!success} className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold text-white shadow-lg transition hover:brightness-110 focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60" style={{background:`linear-gradient(110deg,${c.accent},#8B5CF6)`,boxShadow:`0 12px 32px ${c.glow}`}}>{loading?<><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white"/>Verifying secure access...</>:<>Access {c.label}<ArrowRight className="h-4 w-4"/></>}</button></form>
-    <a href="/" className="mt-6 flex items-center justify-center gap-2 text-xs text-slate-400 transition hover:text-white"><ArrowLeft className="h-3.5 w-3.5"/>Back to main website</a>
-  </motion.div></AuthLayout>;
+  const reset=async()=>{setError("");if(!email.trim()){fail("Enter your registered email first.");return;}try{await sendPasswordResetEmail(auth,email.trim());setResetStatus("Password reset link has been sent to your registered email.");}catch(err:any){console.error("[PortalAuth] Password reset failed.",{code:err?.code,message:err?.message,portal:role});fail(firebaseErrorMessage(err?.code));}};
+  return <AuthLayout role={role}><AnimatePresence>{success&&<SuccessOverlay role={role} name={success.name||success.email?.split("@")[0]||"User"}/>}</AnimatePresence><motion.div key={shake} animate={error?{x:[0,-7,7,-5,5,0]}:{x:0}} transition={{duration:.38}} className="relative overflow-hidden rounded-[2rem] border border-white/15 bg-[#081426]/85 p-6 shadow-2xl backdrop-blur-2xl sm:p-8" style={{boxShadow:`0 28px 90px ${c.glow}`}}><div className="absolute inset-x-8 top-0 h-px" style={{background:`linear-gradient(90deg,transparent,${c.accent},transparent)`}}/><button type="button" onClick={onBack} className="mb-6 inline-flex items-center gap-2 text-xs text-slate-400 transition hover:text-white" aria-label="Back to portal selection"><ArrowLeft className="h-4 w-4"/>Portal selection</button><div className="mb-7"><div className="mb-5 flex items-center justify-between"><div className="text-xl font-black tracking-tight">AI<span style={{color:c.accent}}>JOBS</span></div><span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-widest" style={{borderColor:`${c.accent}66`,background:c.accentSoft,color:c.accent}}><Icon className="h-3.5 w-3.5"/>{c.badge}</span></div><h2 className="text-2xl font-black tracking-tight">{c.heading}</h2><p className="mt-2 text-sm leading-6 text-slate-400">Sign in with your registered AIJOBS email and password.</p></div>{error&&<div className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200" role="alert">{error}</div>}{resetStatus&&<div className="mb-4 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200" role="status">{resetStatus}</div>}<form onSubmit={submit} noValidate className="space-y-4"><div><label htmlFor={`${role}-email`} className="mb-1.5 block text-xs font-semibold text-slate-300">Email address</label><div className="relative"><Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"/><input id={`${role}-email`} type="email" autoComplete="email" required value={email} onChange={e=>setEmail(e.target.value)} className={`w-full rounded-xl border bg-black/25 py-3 pl-10 pr-4 text-sm outline-none transition ${error?'border-red-400/60':'border-white/10 focus:border-white/30'}`} placeholder="name@company.com"/></div></div><div><div className="mb-1.5 flex items-center justify-between"><label htmlFor={`${role}-password`} className="text-xs font-semibold text-slate-300">Password</label><button type="button" onClick={reset} className="text-xs font-medium hover:underline" style={{color:c.accent}}>Forgot password?</button></div><div className="relative"><LockKeyhole className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"/><input id={`${role}-password`} type={showPassword?"text":"password"} autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)} className={`w-full rounded-xl border bg-black/25 py-3 pl-10 pr-11 text-sm outline-none transition ${error?'border-red-400/60':'border-white/10 focus:border-white/30'}`} placeholder="Enter your password"/><button type="button" onClick={()=>setShowPassword(v=>!v)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:text-white" aria-label={showPassword?"Hide password":"Show password"}>{showPassword?<EyeOff className="h-4 w-4"/>:<Eye className="h-4 w-4"/>}</button></div></div><label className="flex cursor-pointer items-center gap-2 text-xs text-slate-400"><input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)} className="h-4 w-4 rounded" style={{accentColor:c.accent}}/>Remember me on this device</label><button type="submit" disabled={loading||!!success} className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold text-white shadow-lg transition hover:brightness-110 focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60" style={{background:`linear-gradient(110deg,${c.accent},#8B5CF6)`,boxShadow:`0 12px 32px ${c.glow}`}}>{loading?<><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white"/>Verifying secure access...</>:<>Access {c.label}<ArrowRight className="h-4 w-4"/></>}</button></form><a href="/" className="mt-6 flex items-center justify-center gap-2 text-xs text-slate-400 transition hover:text-white"><ArrowLeft className="h-3.5 w-3.5"/>Back to main website</a></motion.div></AuthLayout>;
 }
 
 export function PortalSelection({ onSelect, onBack }: { onSelect:(role:PortalRole)=>void; onBack:()=>void }) {
