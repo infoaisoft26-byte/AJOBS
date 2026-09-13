@@ -1,20 +1,67 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { collection, doc, getDocs, updateDoc } from "firebase/firestore";
-import { CheckCircle2, FileText, Filter, Info, Link, RefreshCw, Search, ShieldCheck, Sparkles, User, Users, View, XCircle } from "lucide-react";
-import { auth, db } from "../firebase";
-
+import {
+  BriefcaseBusiness,
+  Building2,
+  CheckCircle2,
+  FileText,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  UserRound,
+  UsersRound,
+  XCircle,
+} from "lucide-react";
+import { db } from "../firebase";
 import { useToast } from "./GlobalToast";
 
 export interface UserAccessRecord {
   uid: string;
   name: string;
   email: string;
-  role: string;
+  phone?: string;
+  role: "candidate" | "recruiter" | "consultancy" | "employer" | "other";
   internalAccess?: boolean;
   isBetaTester?: boolean;
   accountStatus?: string;
   createdAt?: string;
   resumeURL?: string;
+  companyName?: string;
+  consultancyName?: string;
+  source?: string;
+}
+
+type DirectoryTab = "candidate" | "recruiter" | "consultancy" | "employer" | "all";
+
+function normalizeRole(value: unknown): UserAccessRecord["role"] {
+  const role = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (["candidate", "job_seeker", "jobseeker", "user"].includes(role)) return "candidate";
+  if (["recruiter", "hr", "recruitment"].includes(role)) return "recruiter";
+  if (["consultancy", "consultant", "agency"].includes(role)) return "consultancy";
+  if (["employer", "corporate", "company"].includes(role)) return "employer";
+  return "other";
+}
+
+function pickName(data: any, fallback = "User") {
+  return data?.fullName || data?.name || data?.displayName || data?.candidateName || data?.recruiterName || data?.companyName || data?.consultancyName || fallback;
+}
+
+function toRecord(uid: string, data: any, forcedRole?: UserAccessRecord["role"], source = "users"): UserAccessRecord {
+  return {
+    uid,
+    name: pickName(data),
+    email: data?.email || data?.accountEmail || data?.contactEmail || "",
+    phone: data?.phone || data?.mobile || data?.phoneNumber || data?.contactPhone || "",
+    role: forcedRole || normalizeRole(data?.role),
+    internalAccess: data?.internalAccess ?? false,
+    isBetaTester: data?.isBetaTester ?? false,
+    accountStatus: data?.accountStatus || data?.status || (data?.isActive === false ? "inactive" : "active"),
+    createdAt: data?.createdAt || data?.registeredAt || data?.registrationDate || data?.updatedAt || "",
+    resumeURL: data?.resumeURL || data?.resumeUrl || "",
+    companyName: data?.companyName || data?.organizationName || "",
+    consultancyName: data?.consultancyName || data?.agencyName || "",
+    source,
+  };
 }
 
 export default function AdminInternalAccessManager() {
@@ -22,39 +69,60 @@ export default function AdminInternalAccessManager() {
   const [users, setUsers] = useState<UserAccessRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterType, setFilterType] = useState<"all" | "internal" | "beta" | "candidate">("all");
+  const [activeTab, setActiveTab] = useState<DirectoryTab>("candidate");
   const [updatingUid, setUpdatingUid] = useState<string | null>(null);
 
-  const fetchAllUsers = async () => {
+  const fetchRegistrationDatabases = async () => {
     setLoading(true);
     try {
-      const snap = await getDocs(collection(db, "users"));
-      const records: UserAccessRecord[] = [];
-      snap.forEach((docSnap) => {
-        const data = docSnap.data();
-        records.push({
-          uid: docSnap.id,
-          name: data.name || "User",
-          email: data.email || "",
-          role: data.role || "candidate",
-          internalAccess: data.internalAccess ?? false,
-          isBetaTester: data.isBetaTester ?? false,
-          accountStatus: data.accountStatus || "active",
-          createdAt: data.createdAt || new Date().toISOString(),
-          resumeURL: data.resumeURL || data.resumeUrl || ""
+      const merged = new Map<string, UserAccessRecord>();
+
+      const merge = (record: UserAccessRecord) => {
+        const existing = merged.get(record.uid);
+        merged.set(record.uid, existing ? { ...existing, ...record, role: record.role !== "other" ? record.role : existing.role } : record);
+      };
+
+      // Master account directory. Every portal registration should create a users/{uid} record.
+      const usersSnap = await getDocs(collection(db, "users"));
+      usersSnap.forEach((docSnap) => merge(toRecord(docSnap.id, docSnap.data(), undefined, "users")));
+
+      // Role-specific collections are merged as the source of truth for their role.
+      const roleCollections: Array<[string, UserAccessRecord["role"]]> = [
+        ["candidates", "candidate"],
+        ["recruiters", "recruiter"],
+        ["consultancies", "consultancy"],
+        ["employers", "employer"],
+      ];
+
+      for (const [collectionName, role] of roleCollections) {
+        try {
+          const snap = await getDocs(collection(db, collectionName));
+          snap.forEach((docSnap) => merge(toRecord(docSnap.id, docSnap.data(), role, collectionName)));
+        } catch (roleErr) {
+          // A missing/locked optional role collection must not blank the whole admin database.
+          console.warn(`[AdminRegistrationDatabase] Could not read ${collectionName}:`, roleErr);
+        }
+      }
+
+      const rows = Array.from(merged.values())
+        .filter((u) => !["admin", "superadmin", "super_admin"].includes(String((u as any).role)))
+        .sort((a, b) => {
+          const at = a.createdAt ? Date.parse(a.createdAt) || 0 : 0;
+          const bt = b.createdAt ? Date.parse(b.createdAt) || 0 : 0;
+          return bt - at;
         });
-      });
-      setUsers(records);
+
+      setUsers(rows);
     } catch (err) {
-      console.error("[Fetch Users Error]:", err);
-      showToast("Failed to fetch user access directory.", "error");
+      console.error("[AdminRegistrationDatabase] Fetch error:", err);
+      showToast("Failed to load portal registration databases.", "error");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAllUsers();
+    fetchRegistrationDatabases();
   }, []);
 
   const handleToggleAccess = async (uid: string, field: "internalAccess" | "isBetaTester", currentValue: boolean) => {
@@ -63,279 +131,162 @@ export default function AdminInternalAccessManager() {
       const newValue = !currentValue;
       await updateDoc(doc(db, "users", uid), {
         [field]: newValue,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       });
-
-      setUsers((prev) =>
-        prev.map((u) => (u.uid === uid ? { ...u, [field]: newValue } : u))
-      );
-
-      showToast(`Updated ${field} permissions for user`, "success");
+      setUsers((prev) => prev.map((u) => (u.uid === uid ? { ...u, [field]: newValue } : u)));
+      showToast("Candidate access updated.", "success");
     } catch (err) {
-      console.error("[Toggle Access Error]:", err);
-      showToast("Failed to update access permission.", "error");
+      console.error("[AdminRegistrationDatabase] Update error:", err);
+      showToast("Failed to update candidate access.", "error");
     } finally {
       setUpdatingUid(null);
     }
   };
 
-  const filteredUsers = users.filter((u) => {
-    const q = (searchQuery || "").toLowerCase();
-    const matchesSearch =
-      (u.name || "").toLowerCase().includes(q) ||
-      (u.email || "").toLowerCase().includes(q) ||
-      (u.role || "").toLowerCase().includes(q);
+  const counts = useMemo(() => ({
+    candidate: users.filter((u) => u.role === "candidate").length,
+    recruiter: users.filter((u) => u.role === "recruiter").length,
+    consultancy: users.filter((u) => u.role === "consultancy").length,
+    employer: users.filter((u) => u.role === "employer").length,
+    all: users.length,
+  }), [users]);
 
-    if (!matchesSearch) return false;
+  const filteredUsers = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return users.filter((u) => {
+      if (activeTab !== "all" && u.role !== activeTab) return false;
+      if (!q) return true;
+      return [u.name, u.email, u.phone, u.role, u.companyName, u.consultancyName, u.uid]
+        .some((value) => String(value || "").toLowerCase().includes(q));
+    });
+  }, [users, activeTab, searchQuery]);
 
-    if (filterType === "internal") return u.internalAccess === true;
-    if (filterType === "beta") return u.isBetaTester === true;
-    if (filterType === "candidate") return u.role === "candidate";
-    return true;
-  });
-
-  const totalCandidates = users.filter((u) => u.role === "candidate").length;
-  const totalInternal = users.filter((u) => u.internalAccess === true || u.role === "admin").length;
-  const totalBeta = users.filter((u) => u.isBetaTester === true).length;
+  const tabs: Array<{ id: DirectoryTab; label: string; count: number; icon: any }> = [
+    { id: "candidate", label: "Candidates", count: counts.candidate, icon: UserRound },
+    { id: "recruiter", label: "Recruiters", count: counts.recruiter, icon: BriefcaseBusiness },
+    { id: "consultancy", label: "Consultancies", count: counts.consultancy, icon: UsersRound },
+    { id: "employer", label: "Employers", count: counts.employer, icon: Building2 },
+    { id: "all", label: "All Registrations", count: counts.all, icon: ShieldCheck },
+  ];
 
   return (
-    <div className="space-y-6 text-left">
-      
-      {/* HEADER & STATS */}
-      <div className="bg-gray-950 border border-white/10 rounded-3xl p-6 space-y-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="space-y-5 text-left" id="admin-registration-databases">
+      <div className="rounded-3xl border border-blue-500/20 bg-gray-950 p-5 sm:p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-mono font-bold uppercase tracking-wider mb-2">
-              <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-              <span>Internal Access Governance</span>
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-300">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Portal Registration Database
             </div>
-            <h2 className="text-xl font-black text-white">
-              User Access & Pre-Launch Candidate Directory
-            </h2>
-            <p className="text-xs text-gray-400">
-              Grant or revoke internal testing access (`internalAccess` / `isBetaTester`) for registered candidate accounts.
+            <h2 className="text-xl font-black text-white">Role-wise User Database</h2>
+            <p className="mt-1 max-w-3xl text-xs leading-5 text-gray-400">
+              Candidate, Recruiter, Consultancy and Employer registrations are shown in separate ledgers. Data is merged from the master users collection and each role-specific Firestore collection so registrations do not get mixed together.
             </p>
           </div>
-
           <button
-            onClick={fetchAllUsers}
+            type="button"
+            onClick={fetchRegistrationDatabases}
             disabled={loading}
-            className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold text-gray-300 flex items-center gap-2 transition-all cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-gray-200 transition hover:bg-white/10 disabled:opacity-50"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-amber-400" : ""}`} />
-            <span>Refresh Directory</span>
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh Live Data
           </button>
         </div>
 
-        {/* STATS BADGES */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-mono">
-          <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-1">
-            <span className="text-gray-400 text-[10px] uppercase">Pre-Registered Candidates</span>
-            <p className="text-2xl font-black text-blue-400">{totalCandidates}</p>
-          </div>
-          <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-1">
-            <span className="text-gray-400 text-[10px] uppercase">Internal Access Enabled</span>
-            <p className="text-2xl font-black text-emerald-400">{totalInternal}</p>
-          </div>
-          <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-1">
-            <span className="text-gray-400 text-[10px] uppercase">Active Beta Testers</span>
-            <p className="text-2xl font-black text-purple-400">{totalBeta}</p>
-          </div>
+        <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4"><p className="text-[10px] uppercase text-gray-500">Candidates</p><p className="mt-1 text-2xl font-black text-blue-300">{counts.candidate}</p></div>
+          <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-4"><p className="text-[10px] uppercase text-gray-500">Recruiters</p><p className="mt-1 text-2xl font-black text-cyan-300">{counts.recruiter}</p></div>
+          <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-4"><p className="text-[10px] uppercase text-gray-500">Consultancies</p><p className="mt-1 text-2xl font-black text-purple-300">{counts.consultancy}</p></div>
+          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4"><p className="text-[10px] uppercase text-gray-500">Employers</p><p className="mt-1 text-2xl font-black text-emerald-300">{counts.employer}</p></div>
         </div>
       </div>
 
-      {/* FILTER & SEARCH */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        
-        {/* Search */}
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by name, email, role..."
-            className="w-full bg-gray-950/80 border border-white/10 rounded-2xl py-2.5 pl-10 pr-4 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-amber-500"
-          />
-        </div>
-
-        {/* Filter Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto">
-          <button
-            onClick={() => setFilterType("all")}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              filterType === "all"
-                ? "bg-amber-500 text-black shadow-md"
-                : "bg-white/5 text-gray-400 hover:text-white"
-            }`}
-          >
-            All Users ({users.length})
-          </button>
-          <button
-            onClick={() => setFilterType("candidate")}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              filterType === "candidate"
-                ? "bg-blue-600 text-white shadow-md"
-                : "bg-white/5 text-gray-400 hover:text-white"
-            }`}
-          >
-            Candidates ({totalCandidates})
-          </button>
-          <button
-            onClick={() => setFilterType("internal")}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              filterType === "internal"
-                ? "bg-emerald-600 text-white shadow-md"
-                : "bg-white/5 text-gray-400 hover:text-white"
-            }`}
-          >
-            Internal Access ({totalInternal})
-          </button>
-          <button
-            onClick={() => setFilterType("beta")}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              filterType === "beta"
-                ? "bg-purple-600 text-white shadow-md"
-                : "bg-white/5 text-gray-400 hover:text-white"
-            }`}
-          >
-            Beta Testers ({totalBeta})
-          </button>
-        </div>
-
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const selected = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex shrink-0 items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-bold transition ${selected ? "border-blue-400/40 bg-blue-500/15 text-blue-200" : "border-white/10 bg-white/[0.03] text-gray-400 hover:text-white"}`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {tab.label}
+              <span className="rounded-full bg-black/30 px-1.5 py-0.5 font-mono text-[9px]">{tab.count}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* USER TABLE */}
-      <div className="bg-gray-950 border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
+      <div className="relative max-w-md">
+        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+        <input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder={`Search ${activeTab === "all" ? "all registrations" : `${activeTab}s`} by name, email, phone or UID...`}
+          className="w-full rounded-2xl border border-white/10 bg-gray-950 py-2.5 pl-10 pr-4 text-xs text-white outline-none focus:border-blue-500"
+        />
+      </div>
+
+      <div className="overflow-hidden rounded-3xl border border-white/10 bg-gray-950 shadow-2xl">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-white/5 border-b border-white/10 text-gray-400 font-mono uppercase text-[10px]">
+          <table className="w-full min-w-[900px] text-left text-xs">
+            <thead className="border-b border-white/10 bg-white/5 text-[10px] uppercase text-gray-400">
               <tr>
-                <th className="py-3.5 px-4">User Info</th>
-                <th className="py-3.5 px-4">Role</th>
-                <th className="py-3.5 px-4">Internal Access</th>
-                <th className="py-3.5 px-4">Beta Tester</th>
-                <th className="py-3.5 px-4">Resume</th>
-                <th className="py-3.5 px-4 text-right">Registered</th>
+                <th className="px-4 py-3.5">Registered User</th>
+                <th className="px-4 py-3.5">Role</th>
+                <th className="px-4 py-3.5">Phone</th>
+                <th className="px-4 py-3.5">Organisation</th>
+                <th className="px-4 py-3.5">Status</th>
+                <th className="px-4 py-3.5">Resume</th>
+                {activeTab === "candidate" && <th className="px-4 py-3.5">Candidate Access</th>}
+                <th className="px-4 py-3.5 text-right">Registered</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-gray-200">
               {loading ? (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-gray-500 font-mono">
-                    Loading user access directory...
-                  </td>
-                </tr>
+                <tr><td colSpan={8} className="px-4 py-10 text-center font-mono text-gray-500">Loading portal registration databases...</td></tr>
               ) : filteredUsers.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-gray-500 font-mono">
-                    No users matched the search criteria.
+                <tr><td colSpan={8} className="px-4 py-10 text-center font-mono text-gray-500">No {activeTab === "all" ? "registrations" : activeTab + " registrations"} found.</td></tr>
+              ) : filteredUsers.map((u) => (
+                <tr key={`${u.role}-${u.uid}`} className="hover:bg-white/[0.025]">
+                  <td className="px-4 py-3.5">
+                    <div className="font-bold text-white">{u.name || "Unnamed User"}</div>
+                    <div className="mt-0.5 font-mono text-[10px] text-gray-400">{u.email || "No email"}</div>
+                    <div className="mt-0.5 max-w-[220px] truncate font-mono text-[9px] text-gray-600" title={u.uid}>UID: {u.uid}</div>
                   </td>
-                </tr>
-              ) : (
-                filteredUsers.map((u) => (
-                  <tr key={u.uid} className="hover:bg-white/[0.02] transition-colors">
-                    
-                    {/* User Info */}
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-xs font-bold text-blue-300">
-                          {u.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="font-bold text-white">{u.name}</p>
-                          <p className="text-[10px] text-gray-400 font-mono">{u.email}</p>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Role */}
-                    <td className="py-3.5 px-4">
-                      <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold capitalize bg-white/5 border border-white/10 text-gray-300">
-                        {u.role}
-                      </span>
-                    </td>
-
-                    {/* Internal Access Toggle */}
-                    <td className="py-3.5 px-4">
+                  <td className="px-4 py-3.5"><span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-bold capitalize">{u.role}</span></td>
+                  <td className="px-4 py-3.5 font-mono text-[11px] text-gray-300">{u.phone || "-"}</td>
+                  <td className="px-4 py-3.5 text-[11px] text-gray-300">{u.consultancyName || u.companyName || "-"}</td>
+                  <td className="px-4 py-3.5"><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${String(u.accountStatus).toLowerCase() === "active" ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-500/10 text-amber-300"}`}>{u.accountStatus || "active"}</span></td>
+                  <td className="px-4 py-3.5">
+                    {u.role === "candidate" && u.resumeURL ? (
+                      <a href={u.resumeURL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-blue-300 hover:underline"><FileText className="h-3.5 w-3.5" /> View Resume</a>
+                    ) : u.role === "candidate" ? <span className="text-[10px] text-gray-600">Not uploaded</span> : <span className="text-gray-700">—</span>}
+                  </td>
+                  {activeTab === "candidate" && (
+                    <td className="px-4 py-3.5">
                       <button
+                        type="button"
+                        disabled={updatingUid === u.uid}
                         onClick={() => handleToggleAccess(u.uid, "internalAccess", !!u.internalAccess)}
-                        disabled={updatingUid === u.uid}
-                        className={`px-3 py-1 rounded-xl text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                          u.internalAccess
-                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30"
-                            : "bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10"
-                        }`}
+                        className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-[10px] font-bold ${u.internalAccess ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-white/10 bg-white/5 text-gray-400"}`}
                       >
-                        {u.internalAccess ? (
-                          <>
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                            <span>Access Granted</span>
-                          </>
-                        ) : (
-                          <>
-                            <XCircle className="w-3.5 h-3.5 text-gray-500" />
-                            <span>Pre-Launch Only</span>
-                          </>
-                        )}
+                        {u.internalAccess ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
+                        {u.internalAccess ? "Portal Enabled" : "Standard"}
                       </button>
                     </td>
-
-                    {/* Beta Tester Toggle */}
-                    <td className="py-3.5 px-4">
-                      <button
-                        onClick={() => handleToggleAccess(u.uid, "isBetaTester", !!u.isBetaTester)}
-                        disabled={updatingUid === u.uid}
-                        className={`px-3 py-1 rounded-xl text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                          u.isBetaTester
-                            ? "bg-purple-500/20 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30"
-                            : "bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10"
-                        }`}
-                      >
-                        {u.isBetaTester ? (
-                          <>
-                            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-                            <span>Beta Tester</span>
-                          </>
-                        ) : (
-                          <>
-                            <XCircle className="w-3.5 h-3.5 text-gray-500" />
-                            <span>Standard</span>
-                          </>
-                        )}
-                      </button>
-                    </td>
-
-                    {/* Resume Link */}
-                    <td className="py-3.5 px-4">
-                      {u.resumeURL ? (
-                        <a
-                          href={u.resumeURL}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-400 hover:underline inline-flex items-center gap-1 font-mono text-[11px]"
-                        >
-                          <FileText className="w-3 h-3" />
-                          <span>View Resume</span>
-                        </a>
-                      ) : (
-                        <span className="text-gray-500 italic text-[10px]">No Resume</span>
-                      )}
-                    </td>
-
-                    {/* Registered Date */}
-                    <td className="py-3.5 px-4 text-right font-mono text-[10px] text-gray-400">
-                      {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "-"}
-                    </td>
-
-                  </tr>
-                ))
-              )}
+                  )}
+                  <td className="px-4 py-3.5 text-right font-mono text-[10px] text-gray-400">{u.createdAt ? new Date(u.createdAt).toLocaleString("en-IN") : "-"}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       </div>
-
     </div>
   );
 }
