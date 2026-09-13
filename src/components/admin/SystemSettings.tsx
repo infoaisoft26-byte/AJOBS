@@ -155,7 +155,7 @@ export default function SystemSettings({
 
   // Google & Android & Referral parameters
   const [gaMeasurementId, setGaMeasurementId] = useState("G-ZRE28JK4W8");
-  const [adsenseClient, setAdsenseClient] = useState("ca-pub-4518002691129999");
+  const [adsenseClient, setAdsenseClient] = useState("ca-pub-6338624456339474");
   const [referralReward, setReferralReward] = useState(2500);
   const [freePostings, setFreePostings] = useState(1);
   const [deepLinkHost, setDeepLinkHost] = useState("aijobs1.in");
