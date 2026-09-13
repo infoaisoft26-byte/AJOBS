@@ -1,17 +1,19 @@
 /* AIJobs Service Worker - Offline Cache & Dashboard Action Replay Sync */
 
-const CACHE_NAME = 'aijobs-v1-cache';
+// Bump cache version whenever production bundles/routes change. Old caches are
+// deleted on activate so stale Vite chunks can never shadow a fresh deploy.
+const CACHE_NAME = 'aijobs-v2-cache';
 const DB_NAME = 'aijobs_offline_sync_db';
 const STORE_NAME = 'pending_dashboard_actions';
 
+// Only cache stable shell assets. Hashed /assets/*.js and /assets/*.css files are
+// intentionally NOT cached here because serving an old dynamic-import chunk after
+// a deployment causes errors such as "Failed to Load AuthModal".
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
   '/manifest.json',
   '/favicon.ico'
 ];
 
-// Open or create IndexedDB in Service Worker scope
 function openOfflineDb() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, 1);
@@ -26,7 +28,6 @@ function openOfflineDb() {
   });
 }
 
-// Add pending action to IndexedDB
 async function savePendingAction(actionData) {
   try {
     const db = await openOfflineDb();
@@ -50,7 +51,6 @@ async function savePendingAction(actionData) {
   }
 }
 
-// Get all pending actions
 async function getPendingActions() {
   try {
     const db = await openOfflineDb();
@@ -67,7 +67,6 @@ async function getPendingActions() {
   }
 }
 
-// Delete action by ID
 async function deletePendingAction(id) {
   try {
     const db = await openOfflineDb();
@@ -83,7 +82,6 @@ async function deletePendingAction(id) {
   }
 }
 
-// Replay queued actions to backend server
 async function replayPendingActions() {
   const actions = await getPendingActions();
   if (!actions.length) return { replayed: 0 };
@@ -112,11 +110,10 @@ async function replayPendingActions() {
       }
     } catch (err) {
       console.error(`[SW] Network error replaying action ${action.id}:`, err);
-      break; // stop replaying if offline or network drops again
+      break;
     }
   }
 
-  // Notify all window clients
   const clientsList = await self.clients.matchAll();
   for (const client of clientsList) {
     client.postMessage({
@@ -129,15 +126,14 @@ async function replayPendingActions() {
   return { replayed: replayedCount };
 }
 
-// Service Worker Lifecycle
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS).catch((err) => {
+    caches.open(CACHE_NAME).then((cache) =>
+      cache.addAll(STATIC_ASSETS).catch((err) => {
         console.warn('[SW] Cache addAll warning:', err);
-      });
-    })
+      })
+    )
   );
 });
 
@@ -145,57 +141,66 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     Promise.all([
       self.clients.claim(),
-      caches.keys().then((keys) => {
-        return Promise.all(
-          keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
-        );
-      })
+      caches.keys().then((keys) =>
+        Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
+      )
     ])
   );
 });
 
-// Fetch event with Network-first, fallback to Cache Strategy
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+
+  const isBuildAsset = url.pathname.startsWith('/assets/');
+  const isNavigation = event.request.mode === 'navigate';
+
+  // Never answer navigation requests or hashed build assets from an old cache.
+  // This guarantees that HTML and dynamic-import chunks always belong to the
+  // same production deployment.
+  if (isBuildAsset || isNavigation) {
+    event.respondWith(
+      fetch(event.request, { cache: 'no-store' }).catch(() => {
+        if (isNavigation) {
+          return new Response(
+            '<!doctype html><html><body style="font-family:sans-serif;background:#07152F;color:white;padding:40px"><h2>AIJOBS is temporarily offline</h2><p>Please reconnect and reload this page.</p></body></html>',
+            { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+          );
+        }
+        return new Response('', { status: 503 });
+      })
+    );
+    return;
+  }
+
+  // Stable same-origin assets use network-first with cache fallback.
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
           const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
         }
         return networkResponse;
       })
-      .catch(() => {
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          if (event.request.mode === 'navigate') {
-            return caches.match('/index.html');
-          }
-        });
-      })
+      .catch(() => caches.match(event.request))
   );
 });
 
-// Handle Sync Event if browser supports BackgroundSync API
 self.addEventListener('sync', (event) => {
   if (event.tag === 'replay-dashboard-actions' || event.tag === 'sync-offline-actions') {
     event.waitUntil(replayPendingActions());
   }
 });
 
-// Handle Messages from main client window
 self.addEventListener('message', (event) => {
   if (!event.data) return;
 
   if (event.data.type === 'QUEUE_OFFLINE_ACTION') {
     event.waitUntil(
-      savePendingAction(event.data.action).then(async (savedItem) => {
+      savePendingAction(event.data.action).then(async () => {
         const actions = await getPendingActions();
         event.ports[0]?.postMessage({ success: true, pendingCount: actions.length });
       })
@@ -211,6 +216,10 @@ self.addEventListener('message', (event) => {
       getPendingActions().then((actions) => {
         event.ports[0]?.postMessage({ count: actions.length, actions });
       })
+    );
+  } else if (event.data.type === 'CLEAR_RUNTIME_CACHES') {
+    event.waitUntil(
+      caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
     );
   }
 });
