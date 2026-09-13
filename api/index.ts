@@ -46,7 +46,7 @@ async function handleWebsiteInquiry(req: any, res: any) {
   const routingLabel = routingRole === "sales" ? "Sales / Hiring" : routingRole === "compliance" ? "Compliance / Grievance" : "General / Support";
 
   const customMessage = [
-    `New AIJOBS website enquiry`,
+    "New AIJOBS website enquiry",
     `Routing: ${routingLabel}`,
     `From: ${name}`,
     `Email: ${email}`,
@@ -93,7 +93,7 @@ async function handleWebsiteInquiry(req: any, res: any) {
 }
 
 export default async function handler(req: any, res: any) {
-  const path = String(req.url || "").split("?")[0];
+  const path = String(req.url || "").split("?")[0].replace(/\/+$/, "") || "/";
   if (path === "/api/contact/inquiry" || path === "/contact/inquiry") {
     return handleWebsiteInquiry(req, res);
   }
