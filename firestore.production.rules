@@ -1,0 +1,142 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+    function userExists() { return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)); }
+    function userData() { return userExists() ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data : {}; }
+    function role() { return userData().role; }
+    function isAdmin() {
+      return isSignedIn() && (
+        role() == 'admin' || role() == 'superadmin' || role() == 'super_admin' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+    function isRecruiterRole() { return isSignedIn() && (role() == 'recruiter' || role() == 'employer' || role() == 'corporate'); }
+    function isConsultancyRole() { return isSignedIn() && (role() == 'consultancy' || role() == 'agency'); }
+    function isHiringRole() { return isRecruiterRole() || isConsultancyRole(); }
+    function isCandidate() { return isSignedIn() && role() == 'candidate'; }
+    function ownsJob(data) {
+      return isSignedIn() && (
+        data.ownerUid == request.auth.uid || data.createdBy == request.auth.uid || data.postedBy == request.auth.uid ||
+        data.recruiterId == request.auth.uid || data.employerId == request.auth.uid || data.consultancyId == request.auth.uid
+      );
+    }
+    function ownsApplication(data) {
+      return isSignedIn() && (
+        data.candidateId == request.auth.uid || data.userId == request.auth.uid ||
+        data.ownerUid == request.auth.uid || data.recruiterId == request.auth.uid ||
+        data.employerId == request.auth.uid || data.consultancyId == request.auth.uid ||
+        data.jobOwnerUid == request.auth.uid || data.assignedRecruiterId == request.auth.uid
+      );
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid) && request.resource.data.uid == request.auth.uid &&
+        (!('role' in request.resource.data) || request.resource.data.role in ['candidate','employer','recruiter','consultancy']) &&
+        (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == false) &&
+        (!('isSuperAdmin' in request.resource.data) || request.resource.data.isSuperAdmin == false);
+      allow update: if isAdmin() || (isOwner(uid) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'role','isAdmin','isSuperAdmin','adminLevel','approvedBy','approvedAt'
+        ]));
+      allow delete: if isAdmin();
+      match /email_preferences/{id} { allow read, write: if isOwner(uid) || isAdmin(); }
+    }
+
+    match /admins/{uid} { allow read: if isSignedIn(); allow write: if isAdmin(); }
+
+    match /companies/{companyId} {
+      allow read: if true;
+      allow create: if isSignedIn() && (companyId == request.auth.uid || request.resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow update, delete: if isAdmin() || (isSignedIn() && (companyId == request.auth.uid || resource.data.ownerUid == request.auth.uid));
+    }
+    match /employers/{uid} { allow read: if isOwner(uid) || isAdmin(); allow write: if isOwner(uid) || isAdmin(); }
+    match /recruiters/{uid} { allow read: if isOwner(uid) || isAdmin(); allow write: if isOwner(uid) || isAdmin(); }
+    match /consultancies/{uid} { allow read: if isOwner(uid) || isAdmin(); allow write: if isOwner(uid) || isAdmin(); }
+    match /recruiter_profiles/{uid} { allow read, write: if isOwner(uid) || isAdmin(); }
+
+    match /jobCredits/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isAdmin();
+    }
+    match /marketingEvents/{eventId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /jobs/{jobId} {
+      allow read: if resource.data.status == 'approved' || isAdmin() || ownsJob(resource.data);
+      allow create: if isSignedIn() && isHiringRole() &&
+        request.resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.status in ['draft','pending_review','changes_requested'];
+      allow update: if isAdmin() || (ownsJob(resource.data) &&
+        resource.data.status != 'approved' &&
+        request.resource.data.status in ['draft','pending_review','changes_requested','closed'] &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'approved','approvedAt','reviewedBy','reviewedAt','approvalStatus','googleIndexing','canonicalUrl','publicUrl'
+        ]));
+      allow delete: if isAdmin() || (ownsJob(resource.data) && resource.data.status != 'approved');
+    }
+    match /company_jobs/{jobId} {
+      allow read: if isAdmin() || (isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.companyId == request.auth.uid)) || resource.data.status == 'approved';
+      allow create: if isRecruiterRole() && (request.resource.data.userId == request.auth.uid || request.resource.data.companyId == request.auth.uid);
+      allow update, delete: if isAdmin() || (isRecruiterRole() && (resource.data.userId == request.auth.uid || resource.data.companyId == request.auth.uid));
+    }
+    match /consultancy_jobs/{jobId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.consultancyId == request.auth.uid) || resource.data.status == 'approved';
+      allow create: if isConsultancyRole() && request.resource.data.consultancyId == request.auth.uid;
+      allow update, delete: if isAdmin() || (isConsultancyRole() && resource.data.consultancyId == request.auth.uid);
+    }
+
+    match /applications/{applicationId} {
+      allow read: if isAdmin() || ownsApplication(resource.data);
+      allow create: if isCandidate() && (request.resource.data.candidateId == request.auth.uid || request.resource.data.userId == request.auth.uid);
+      allow update: if isAdmin() || (
+        ownsApplication(resource.data) &&
+        ((resource.data.candidateId == request.auth.uid || resource.data.userId == request.auth.uid)
+          ? !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status','assignedRecruiterId','assignedRecruiterName','assignedAt','assignedBy','interviewDate','interviewTime','interviewMode','interviewLocation','meetingLink','interviewerName'])
+          : true)
+      );
+      allow delete: if isAdmin();
+    }
+    match /company_applications/{applicationId} { allow read, update: if isAdmin() || ownsApplication(resource.data); allow create: if isCandidate(); allow delete: if isAdmin(); }
+
+    match /candidates/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isOwner(uid) || isAdmin();
+      match /bookmarks/{jobId} { allow read, write: if isOwner(uid) || isAdmin(); }
+    }
+    match /candidateProfiles/{uid} { allow read, write: if isOwner(uid) || isAdmin(); }
+    match /candidate_profiles/{uid} { allow read, write: if isOwner(uid) || isAdmin(); }
+    match /resumes/{uid} { allow read, write: if isOwner(uid) || isAdmin(); }
+    match /candidate_documents/{id} { allow read, write: if isSignedIn(); }
+
+    match /notifications/{id} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn();
+      allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+    match /mail/{id} { allow read, write: if isAdmin(); }
+
+    match /plans/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /email_templates/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
+    match /cms/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /resume_templates/{id} { allow read: if true; allow write: if isAdmin(); }
+
+    // Preserve existing signed-in application behavior for non-sensitive collections.
+    // Sensitive identity, company, job, credit, marketing and application collections are excluded above.
+    match /{collection}/{document=**} {
+      allow read, write: if isSignedIn() && !(
+        collection in [
+          'users','admins','companies','employers','recruiters','consultancies','recruiter_profiles',
+          'jobCredits','marketingEvents','jobs','company_jobs','consultancy_jobs','applications','company_applications',
+          'candidates','candidateProfiles','candidate_profiles','resumes','notifications','mail','plans','email_templates','cms','resume_templates'
+        ]
+      );
+    }
+  }
+}
