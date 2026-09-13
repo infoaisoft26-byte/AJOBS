@@ -2,7 +2,7 @@ import React, { FormEvent, ReactNode, useEffect, useMemo, useState } from "react
 import { browserLocalPersistence, browserSessionPersistence, sendPasswordResetEmail, setPersistence, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { AnimatePresence, motion, useMotionValue, useSpring } from "motion/react";
-import { ArrowLeft, ArrowRight, BarChart3, Building2, Check, Eye, EyeOff, FileSearch, KeyRound, LockKeyhole, Mail, Network, ScanSearch, ShieldCheck, Sparkles, UserRoundSearch } from "lucide-react";
+import { ArrowLeft, ArrowRight, BarChart3, Building2, Check, Eye, EyeOff, FileSearch, LockKeyhole, Mail, Network, ScanSearch, ShieldCheck, Sparkles, UserRoundSearch } from "lucide-react";
 import { auth, db } from "../../firebase";
 import { getOrCreateUserProfile } from "../../services/dbInitService";
 import { isAdminRole, normalizeRole } from "../../utils/roleUtils";
@@ -108,13 +108,28 @@ function AuthLayout({ role, children }: { role: PortalRole; children: ReactNode 
 }
 
 function firebaseErrorMessage(code?: string) {
-  if (["auth/invalid-credential","auth/wrong-password","auth/user-not-found"].includes(code || "")) return "Email or password is incorrect. Please try again.";
-  if (code === "auth/invalid-email") return "Please enter a valid email address.";
-  if (code === "auth/too-many-requests") return "Too many attempts. Please wait a few minutes and try again.";
-  if (code === "auth/network-request-failed") return "Network connection failed. Please check your internet connection.";
-  if (code === "auth/user-disabled") return "This account is currently disabled. Please contact AIJOBS support.";
-  return "Login could not be completed. Please try again.";
+  switch (code) {
+    case "auth/invalid-credential":
+      return "Email or password is incorrect. Please try again.";
+    case "auth/user-not-found":
+      return "No Firebase Authentication account was found for this email.";
+    case "auth/wrong-password":
+      return "The password is incorrect. Please try again.";
+    case "auth/too-many-requests":
+      return "Too many attempts. Please wait a few minutes and try again.";
+    case "auth/user-disabled":
+      return "This account is currently disabled. Please contact AIJOBS support.";
+    case "auth/network-request-failed":
+      return "Network connection failed. Please check your internet connection.";
+    case "auth/invalid-email":
+      return "Please enter a valid email address.";
+    default:
+      return "Login could not be completed. Please try again.";
+  }
 }
+
+const ADMIN_PROFILE_MISSING = "ADMIN_PROFILE_MISSING";
+const ADMIN_ROLE_MISMATCH = "ADMIN_ROLE_MISMATCH";
 
 function SuccessOverlay({ role, name }: { role: PortalRole; name: string }) {
   const c=PORTAL_CONFIG[role];
@@ -124,28 +139,116 @@ function SuccessOverlay({ role, name }: { role: PortalRole; name: string }) {
 }
 
 async function resolveAuthorizedProfile(fbUser: any, role: PortalRole): Promise<UserProfile> {
-  let profile = await getOrCreateUserProfile(fbUser, undefined, "internal");
-  let resolvedRole = normalizeRole(profile.role);
-  if (role === "admin") {
-    let adminData: any = null;
-    try { const snap=await getDoc(doc(db,"admins",fbUser.uid)); if(snap.exists()) adminData=snap.data(); } catch (e) { console.warn("[PortalAuth] Admin record check failed",e); }
-    let claimRole=""; let hasAdminClaim=false;
-    try { const token=await fbUser.getIdTokenResult(); claimRole=String(token.claims?.role||""); hasAdminClaim=Boolean(token.claims?.admin)||isAdminRole(claimRole); } catch {}
-    const activeAdminDoc=Boolean(adminData && adminData.status!=="suspended" && adminData.status!=="disabled" && adminData.isActive!==false);
-    if (!isAdminRole(profile.role) && !activeAdminDoc && !hasAdminClaim) throw new Error("ROLE_MISMATCH");
-    if (!isAdminRole(profile.role)) profile={...profile,...adminData,role:isAdminRole(claimRole)?claimRole:(adminData?.role||"admin")};
-    resolvedRole=normalizeRole(profile.role);
-    if (!isAdminRole(resolvedRole)) throw new Error("ROLE_MISMATCH");
-  } else if (resolvedRole !== role) throw new Error("ROLE_MISMATCH");
-  return profile;
+  if (role !== "admin") {
+    const profile = await getOrCreateUserProfile(fbUser, undefined, "internal");
+    if (normalizeRole(profile.role) !== role) throw new Error(ADMIN_ROLE_MISMATCH);
+    return profile;
+  }
+
+  let adminSnap: any = null;
+  let userSnap: any = null;
+
+  try {
+    adminSnap = await getDoc(doc(db, "admins", fbUser.uid));
+    userSnap = await getDoc(doc(db, "users", fbUser.uid));
+  } catch (error) {
+    console.error("[PortalAuth] Admin Firestore profile lookup failed:", error);
+    throw new Error("ADMIN_PROFILE_LOOKUP_FAILED");
+  }
+
+  const adminData = adminSnap.exists() ? adminSnap.data() : null;
+  const userData = userSnap.exists() ? userSnap.data() : null;
+
+  if (!adminData && !userData) {
+    console.warn(`[PortalAuth] Firebase Auth succeeded for ${fbUser.email || fbUser.uid}, but no admins/${fbUser.uid} or users/${fbUser.uid} profile exists.`);
+    throw new Error(ADMIN_PROFILE_MISSING);
+  }
+
+  const adminDocRole = adminData?.role ? normalizeRole(adminData.role) : "unknown";
+  const userDocRole = userData?.role ? normalizeRole(userData.role) : "unknown";
+  const adminDocAuthorized = isAdminRole(adminData?.role);
+  const userDocAuthorized = isAdminRole(userData?.role);
+
+  if (!adminDocAuthorized && !userDocAuthorized) {
+    console.warn("[PortalAuth] Authenticated account does not have an admin role.", {
+      uid: fbUser.uid,
+      email: fbUser.email,
+      adminProfileRole: adminDocRole,
+      userProfileRole: userDocRole,
+    });
+    throw new Error(ADMIN_ROLE_MISMATCH);
+  }
+
+  const sourceData = adminDocAuthorized ? adminData : userData;
+  const sourcePath = adminDocAuthorized ? `admins/${fbUser.uid}` : `users/${fbUser.uid}`;
+  const resolvedRole = normalizeRole(sourceData.role) === "super_admin" ? "superadmin" : "admin";
+
+  console.info("[PortalAuth] Admin profile authorized.", {
+    uid: fbUser.uid,
+    email: fbUser.email,
+    profilePath: sourcePath,
+    role: resolvedRole,
+  });
+
+  return {
+    ...sourceData,
+    uid: fbUser.uid,
+    email: fbUser.email || sourceData.email || "",
+    name: sourceData.name || fbUser.displayName || fbUser.email?.split("@")[0] || "Administrator",
+    role: resolvedRole,
+    createdAt: sourceData.createdAt || new Date().toISOString(),
+  } as UserProfile;
 }
 
 export function PortalLogin({ role, onSuccess, onBack }: { role: PortalRole; onSuccess:(profile:UserProfile,path:string)=>void; onBack:()=>void }) {
   const c=PORTAL_CONFIG[role]; const Icon=c.icon;
   const [email,setEmail]=useState(""); const [password,setPassword]=useState(""); const [showPassword,setShowPassword]=useState(false); const [remember,setRemember]=useState(true); const [loading,setLoading]=useState(false); const [error,setError]=useState(""); const [shake,setShake]=useState(0); const [success,setSuccess]=useState<UserProfile|null>(null); const [resetStatus,setResetStatus]=useState("");
   const fail=(message:string)=>{setError(message);setShake(v=>v+1)};
-  const submit=async(e:FormEvent)=>{e.preventDefault();setError("");setResetStatus("");if(!email.trim()||!password){fail("Email and password are required.");return;}setLoading(true);try{await setPersistence(auth,remember?browserLocalPersistence:browserSessionPersistence);const credential=await signInWithEmailAndPassword(auth,email.trim(),password);let profile:UserProfile;try{profile=await resolveAuthorizedProfile(credential.user,role);}catch(authErr:any){await signOut(auth);if(authErr?.message==="ROLE_MISMATCH")fail("This account does not have access to this portal.");else fail("Your account profile could not be verified. Please contact AIJOBS support.");return;}setSuccess(profile);window.setTimeout(()=>onSuccess(profile,c.dashboardPath),1750);}catch(err:any){fail(firebaseErrorMessage(err?.code));}finally{setLoading(false)}};
-  const reset=async()=>{setError("");if(!email.trim()){fail("Enter your registered email first.");return;}try{await sendPasswordResetEmail(auth,email.trim());setResetStatus("Password reset link has been sent to your registered email.");}catch(err:any){fail(firebaseErrorMessage(err?.code));}};
+
+  const submit=async(e:FormEvent)=>{
+    e.preventDefault();
+    setError("");
+    setResetStatus("");
+    if(!email.trim()||!password){fail("Email and password are required.");return;}
+    setLoading(true);
+
+    try {
+      await setPersistence(auth,remember?browserLocalPersistence:browserSessionPersistence);
+      const credential=await signInWithEmailAndPassword(auth,email.trim(),password);
+      console.info("[PortalAuth] Firebase Authentication succeeded.", { uid: credential.user.uid, email: credential.user.email, portal: role });
+
+      let profile:UserProfile;
+      try {
+        profile=await resolveAuthorizedProfile(credential.user,role);
+      } catch(profileErr:any) {
+        await signOut(auth);
+        if (role === "admin" && profileErr?.message === ADMIN_PROFILE_MISSING) {
+          fail("Admin account authenticated, but admin profile is missing.");
+        } else if (profileErr?.message === ADMIN_ROLE_MISMATCH) {
+          fail(role === "admin" ? "This account does not have Admin access." : "This account does not have access to this portal.");
+        } else {
+          console.error("[PortalAuth] Firestore profile verification error:", profileErr);
+          fail("Admin account authenticated, but the admin profile could not be verified. Please try again.");
+        }
+        return;
+      }
+
+      setSuccess(profile);
+      window.setTimeout(()=>onSuccess(profile,c.dashboardPath),1750);
+    } catch(err:any) {
+      console.error("[PortalAuth] Firebase Authentication failed.", {
+        code: err?.code || "unknown",
+        message: err?.message || "Unknown Firebase Auth error",
+        email: email.trim(),
+        portal: role,
+      });
+      fail(firebaseErrorMessage(err?.code));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const reset=async()=>{setError("");if(!email.trim()){fail("Enter your registered email first.");return;}try{await sendPasswordResetEmail(auth,email.trim());setResetStatus("Password reset link has been sent to your registered email.");}catch(err:any){console.error("[PortalAuth] Password reset failed.",{code:err?.code,message:err?.message,email:email.trim(),portal:role});fail(firebaseErrorMessage(err?.code));}};
   return <AuthLayout role={role}><AnimatePresence>{success&&<SuccessOverlay role={role} name={success.name||success.email?.split("@")[0]||"User"}/>}</AnimatePresence><motion.div key={shake} animate={error?{x:[0,-7,7,-5,5,0]}:{x:0}} transition={{duration:.38}} className="relative overflow-hidden rounded-[2rem] border border-white/15 bg-[#081426]/85 p-6 shadow-2xl backdrop-blur-2xl sm:p-8" style={{boxShadow:`0 28px 90px ${c.glow}`}}>
     <div className="absolute inset-x-8 top-0 h-px" style={{background:`linear-gradient(90deg,transparent,${c.accent},transparent)`}}/><button type="button" onClick={onBack} className="mb-6 inline-flex items-center gap-2 text-xs text-slate-400 transition hover:text-white" aria-label="Back to portal selection"><ArrowLeft className="h-4 w-4"/>Portal selection</button>
     <div className="mb-7"><div className="mb-5 flex items-center justify-between"><div className="text-xl font-black tracking-tight">AI<span style={{color:c.accent}}>JOBS</span></div><span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-widest" style={{borderColor:`${c.accent}66`,background:c.accentSoft,color:c.accent}}><Icon className="h-3.5 w-3.5"/>{c.badge}</span></div><h2 className="text-2xl font-black tracking-tight">{c.heading}</h2><p className="mt-2 text-sm leading-6 text-slate-400">Sign in with your registered AIJOBS email and password.</p></div>
