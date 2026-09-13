@@ -1,8 +1,17 @@
-import { useMemo, useState } from "react";
-import { BriefcaseBusiness, ChevronDown, Mail, Scale, Users } from "lucide-react";
+import { FormEvent, useMemo, useState } from "react";
+import { BriefcaseBusiness, ChevronDown, Mail, Scale, Send, Users } from "lucide-react";
 import { CONTACT_EMAILS } from "../config/site";
 
 type ContactKey = keyof typeof CONTACT_EMAILS;
+
+type FormState = {
+  name: string;
+  email: string;
+  phone: string;
+  subject: string;
+  message: string;
+  type: string;
+};
 
 const CONTACT_META: Record<ContactKey, { label: string; description: string; icon: typeof Mail }> = {
   info: {
@@ -29,40 +38,151 @@ function getPreferredContact(pathname: string): ContactKey {
   return "info";
 }
 
+function keyToType(key: ContactKey): string {
+  if (key === "sales") return "sales";
+  if (key === "compliance") return "compliance";
+  return "general";
+}
+
 export default function OfficialContactDock() {
   const [open, setOpen] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState("");
   const pathname = typeof window !== "undefined" ? window.location.pathname : "/";
   const preferred = useMemo(() => getPreferredContact(pathname), [pathname]);
   const preferredMeta = CONTACT_META[preferred];
   const PreferredIcon = preferredMeta.icon;
+  const [form, setForm] = useState<FormState>({
+    name: "",
+    email: "",
+    phone: "",
+    subject: "",
+    message: "",
+    type: keyToType(preferred),
+  });
+
+  const submitInquiry = async (event: FormEvent) => {
+    event.preventDefault();
+    setStatus("");
+    setBusy(true);
+    try {
+      const response = await fetch("/api/contact/inquiry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          pageUrl: typeof window !== "undefined" ? window.location.href : "",
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Unable to send message.");
+      }
+      setStatus(`Sent successfully to ${payload.routedTo}.`);
+      setForm((current) => ({ ...current, subject: "", message: "" }));
+    } catch (error: any) {
+      setStatus(error?.message || "Unable to send message. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <aside className="fixed bottom-4 left-4 z-[9997] max-w-[calc(100vw-2rem)] text-white print:hidden" aria-label="AIJOBS official contact emails">
       {open && (
-        <div className="mb-2 w-[340px] max-w-full overflow-hidden rounded-2xl border border-white/15 bg-[#07152F]/95 p-3 shadow-2xl backdrop-blur-xl">
+        <div className="mb-2 w-[360px] max-w-full overflow-hidden rounded-2xl border border-white/15 bg-[#07152F]/95 p-3 shadow-2xl backdrop-blur-xl">
           <div className="mb-2 px-2 py-1">
             <p className="text-xs font-black tracking-wide">Official AIJOBS Contacts</p>
-            <p className="mt-1 text-[10px] leading-4 text-slate-400">Choose the correct mailbox so your request reaches the right team.</p>
+            <p className="mt-1 text-[10px] leading-4 text-slate-400">Choose the correct team or send your request directly from the website.</p>
           </div>
+
           {(Object.keys(CONTACT_EMAILS) as ContactKey[]).map((key) => {
             const meta = CONTACT_META[key];
             const Icon = meta.icon;
             const highlighted = key === preferred;
             return (
-              <a
+              <button
+                type="button"
                 key={key}
-                href={`mailto:${CONTACT_EMAILS[key]}`}
-                className={`mb-1 flex items-start gap-3 rounded-xl border px-3 py-2.5 transition hover:bg-white/10 ${highlighted ? "border-blue-400/50 bg-blue-500/10" : "border-white/10 bg-white/[0.03]"}`}
+                onClick={() => {
+                  setForm((current) => ({ ...current, type: keyToType(key) }));
+                  setShowForm(true);
+                  setStatus("");
+                }}
+                className={`mb-1 flex w-full items-start gap-3 rounded-xl border px-3 py-2.5 text-left transition hover:bg-white/10 ${highlighted ? "border-blue-400/50 bg-blue-500/10" : "border-white/10 bg-white/[0.03]"}`}
               >
                 <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${highlighted ? "text-blue-300" : "text-slate-400"}`} />
-                <span className="min-w-0">
+                <span className="min-w-0 flex-1">
                   <span className="block text-[11px] font-bold text-white">{meta.label}</span>
                   <span className="block truncate text-[11px] text-blue-300">{CONTACT_EMAILS[key]}</span>
                   <span className="mt-0.5 block text-[9px] leading-3 text-slate-500">{meta.description}</span>
                 </span>
-              </a>
+                <Send className="mt-1 h-3.5 w-3.5 text-slate-500" />
+              </button>
             );
           })}
+
+          {showForm && (
+            <form onSubmit={submitInquiry} className="mt-3 space-y-2 rounded-xl border border-white/10 bg-black/20 p-3">
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  required
+                  value={form.name}
+                  onChange={(e) => setForm((v) => ({ ...v, name: e.target.value }))}
+                  placeholder="Your name"
+                  className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-[11px] outline-none focus:border-blue-400/60"
+                />
+                <input
+                  required
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm((v) => ({ ...v, email: e.target.value }))}
+                  placeholder="Email"
+                  className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-[11px] outline-none focus:border-blue-400/60"
+                />
+              </div>
+              <input
+                value={form.phone}
+                onChange={(e) => setForm((v) => ({ ...v, phone: e.target.value }))}
+                placeholder="Phone (optional)"
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-[11px] outline-none focus:border-blue-400/60"
+              />
+              <input
+                value={form.subject}
+                onChange={(e) => setForm((v) => ({ ...v, subject: e.target.value }))}
+                placeholder="Subject"
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-[11px] outline-none focus:border-blue-400/60"
+              />
+              <textarea
+                required
+                rows={4}
+                value={form.message}
+                onChange={(e) => setForm((v) => ({ ...v, message: e.target.value }))}
+                placeholder="Write your message"
+                className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-[11px] outline-none focus:border-blue-400/60"
+              />
+              <div className="flex items-center justify-between gap-2">
+                <span className={`text-[9px] leading-3 ${status.toLowerCase().includes("success") || status.toLowerCase().includes("sent") ? "text-emerald-300" : "text-slate-400"}`}>{status}</span>
+                <button
+                  type="submit"
+                  disabled={busy}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-[10px] font-bold hover:bg-blue-500 disabled:opacity-60"
+                >
+                  <Send className="h-3 w-3" />
+                  {busy ? "Sending..." : "Send"}
+                </button>
+              </div>
+            </form>
+          )}
+
+          <div className="mt-2 flex flex-wrap gap-2 px-1">
+            {(Object.keys(CONTACT_EMAILS) as ContactKey[]).map((key) => (
+              <a key={key} href={`mailto:${CONTACT_EMAILS[key]}`} className="text-[9px] text-slate-500 hover:text-blue-300">
+                Email {key}
+              </a>
+            ))}
+          </div>
         </div>
       )}
 
