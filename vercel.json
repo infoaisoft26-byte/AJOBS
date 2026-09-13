@@ -22,33 +22,16 @@
     "EMAIL_COMPLIANCE_FROM_NAME": "AIJOBS Compliance"
   },
   "rewrites": [
-    {
-      "source": "/",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/sitemap.xml",
-      "destination": "/api/index"
-    },
-    {
-      "source": "/job-sitemap.xml",
-      "destination": "/api/index"
-    },
-    {
-      "source": "/robots.txt",
-      "destination": "/api/index"
-    },
-    {
-      "source": "/jobs/:path*",
-      "destination": "/api/index"
-    },
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/index"
-    },
-    {
-      "source": "/((?!api/|ads\\.txt$|robots\\.txt$|sitemap\\.xml$|job-sitemap\\.xml$).*)",
-      "destination": "/index.html"
-    }
+    { "source": "/", "destination": "/index.html" },
+    { "source": "/hire", "destination": "/hire.html" },
+    { "source": "/hire/:role", "destination": "/hire.html" },
+    { "source": "/admin/jobs/verification", "destination": "/hire-admin.html" },
+    { "source": "/admin/marketing/recruiter-acquisition", "destination": "/hire-admin.html" },
+    { "source": "/sitemap.xml", "destination": "/api/index" },
+    { "source": "/job-sitemap.xml", "destination": "/api/index" },
+    { "source": "/robots.txt", "destination": "/api/index" },
+    { "source": "/jobs/:path*", "destination": "/api/index" },
+    { "source": "/api/(.*)", "destination": "/api/index" },
+    { "source": "/((?!api/|assets/|hire\\.html$|hire-admin\\.html$|ads\\.txt$|robots\\.txt$|sitemap\\.xml$|job-sitemap\\.xml$).*)", "destination": "/index.html" }
   ]
 }
