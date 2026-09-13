@@ -45,8 +45,8 @@ function keyToType(key: ContactKey): string {
 }
 
 function typeToKey(type: string): ContactKey {
-  if (type === "sales") return "sales";
-  if (type === "compliance") return "compliance";
+  if (["sales", "employer", "recruiter", "consultancy", "partnership", "billing", "subscription"].includes(type)) return "sales";
+  if (["compliance", "privacy", "grievance", "fraud", "legal", "data_deletion"].includes(type)) return "compliance";
   return "info";
 }
 
@@ -132,53 +132,39 @@ export default function OfficialContactDock() {
 
           {showForm && (
             <form onSubmit={submitInquiry} className="mt-3 space-y-2 rounded-xl border border-white/10 bg-black/20 p-3">
+              <select
+                value={form.type}
+                onChange={(e) => setForm((v) => ({ ...v, type: e.target.value }))}
+                className="w-full rounded-lg border border-white/10 bg-[#0b1730] px-2.5 py-2 text-[10px] text-slate-200 outline-none focus:border-blue-400/60"
+              >
+                <option value="general">General enquiry</option>
+                <option value="support">Candidate / account support</option>
+                <option value="sales">Hiring / sales</option>
+                <option value="employer">Employer enquiry</option>
+                <option value="recruiter">Recruiter enquiry</option>
+                <option value="consultancy">Consultancy enquiry</option>
+                <option value="partnership">Partnership</option>
+                <option value="billing">Billing / subscription</option>
+                <option value="compliance">Compliance</option>
+                <option value="privacy">Privacy request</option>
+                <option value="grievance">Grievance</option>
+                <option value="fraud">Fraud / safety report</option>
+                <option value="legal">Legal</option>
+                <option value="data_deletion">Data deletion</option>
+              </select>
               <div className="rounded-lg border border-blue-400/20 bg-blue-500/5 px-2.5 py-2 text-[9px] text-slate-400">
                 Routing to <span className="font-bold text-blue-300">{CONTACT_META[selectedKey].label}</span> · {CONTACT_EMAILS[selectedKey]}
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <input
-                  required
-                  value={form.name}
-                  onChange={(e) => setForm((v) => ({ ...v, name: e.target.value }))}
-                  placeholder="Your name"
-                  className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-[11px] outline-none focus:border-blue-400/60"
-                />
-                <input
-                  required
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm((v) => ({ ...v, email: e.target.value }))}
-                  placeholder="Email"
-                  className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-[11px] outline-none focus:border-blue-400/60"
-                />
+                <input required value={form.name} onChange={(e) => setForm((v) => ({ ...v, name: e.target.value }))} placeholder="Your name" className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-[11px] outline-none focus:border-blue-400/60" />
+                <input required type="email" value={form.email} onChange={(e) => setForm((v) => ({ ...v, email: e.target.value }))} placeholder="Email" className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-[11px] outline-none focus:border-blue-400/60" />
               </div>
-              <input
-                value={form.phone}
-                onChange={(e) => setForm((v) => ({ ...v, phone: e.target.value }))}
-                placeholder="Phone (optional)"
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-[11px] outline-none focus:border-blue-400/60"
-              />
-              <input
-                value={form.subject}
-                onChange={(e) => setForm((v) => ({ ...v, subject: e.target.value }))}
-                placeholder="Subject"
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-[11px] outline-none focus:border-blue-400/60"
-              />
-              <textarea
-                required
-                rows={4}
-                value={form.message}
-                onChange={(e) => setForm((v) => ({ ...v, message: e.target.value }))}
-                placeholder="Write your message"
-                className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-[11px] outline-none focus:border-blue-400/60"
-              />
+              <input value={form.phone} onChange={(e) => setForm((v) => ({ ...v, phone: e.target.value }))} placeholder="Phone (optional)" className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-[11px] outline-none focus:border-blue-400/60" />
+              <input value={form.subject} onChange={(e) => setForm((v) => ({ ...v, subject: e.target.value }))} placeholder="Subject" className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-[11px] outline-none focus:border-blue-400/60" />
+              <textarea required rows={4} value={form.message} onChange={(e) => setForm((v) => ({ ...v, message: e.target.value }))} placeholder="Write your message" className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-[11px] outline-none focus:border-blue-400/60" />
               <div className="flex items-center justify-between gap-2">
                 <span className={`text-[9px] leading-3 ${status.toLowerCase().includes("success") || status.toLowerCase().includes("sent") ? "text-emerald-300" : "text-slate-400"}`}>{status}</span>
-                <button
-                  type="submit"
-                  disabled={busy}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-[10px] font-bold hover:bg-blue-500 disabled:opacity-60"
-                >
+                <button type="submit" disabled={busy} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-[10px] font-bold hover:bg-blue-500 disabled:opacity-60">
                   <Send className="h-3 w-3" />
                   {busy ? "Sending..." : "Send"}
                 </button>
@@ -188,20 +174,13 @@ export default function OfficialContactDock() {
 
           <div className="mt-2 flex flex-wrap gap-2 px-1">
             {(Object.keys(CONTACT_EMAILS) as ContactKey[]).map((key) => (
-              <a key={key} href={`mailto:${CONTACT_EMAILS[key]}`} className="text-[9px] text-slate-500 hover:text-blue-300">
-                Email {key}
-              </a>
+              <a key={key} href={`mailto:${CONTACT_EMAILS[key]}`} className="text-[9px] text-slate-500 hover:text-blue-300">Email {key}</a>
             ))}
           </div>
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="flex max-w-[320px] items-center gap-2 rounded-full border border-blue-400/30 bg-[#07152F]/95 px-4 py-2.5 shadow-xl backdrop-blur-xl transition hover:border-blue-300/60 hover:bg-[#0b1d3d]"
-        aria-expanded={open}
-      >
+      <button type="button" onClick={() => setOpen((value) => !value)} className="flex max-w-[320px] items-center gap-2 rounded-full border border-blue-400/30 bg-[#07152F]/95 px-4 py-2.5 shadow-xl backdrop-blur-xl transition hover:border-blue-300/60 hover:bg-[#0b1d3d]" aria-expanded={open}>
         <PreferredIcon className="h-4 w-4 text-blue-300" />
         <span className="min-w-0 text-left">
           <span className="block text-[9px] font-semibold uppercase tracking-wider text-slate-500">Official contact</span>
