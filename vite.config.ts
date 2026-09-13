@@ -4,8 +4,13 @@ import path from 'path';
 import { defineConfig } from 'vite';
 
 export default defineConfig(() => {
+  const firebaseAuthDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'auth.aijobs1.in';
+
   return {
     plugins: [react(), tailwindcss()],
+    define: {
+      'process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN': JSON.stringify(firebaseAuthDomain),
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
