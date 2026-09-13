@@ -44,6 +44,12 @@ function keyToType(key: ContactKey): string {
   return "general";
 }
 
+function typeToKey(type: string): ContactKey {
+  if (type === "sales") return "sales";
+  if (type === "compliance") return "compliance";
+  return "info";
+}
+
 export default function OfficialContactDock() {
   const [open, setOpen] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -61,6 +67,7 @@ export default function OfficialContactDock() {
     message: "",
     type: keyToType(preferred),
   });
+  const selectedKey = typeToKey(form.type);
 
   const submitInquiry = async (event: FormEvent) => {
     event.preventDefault();
@@ -125,6 +132,9 @@ export default function OfficialContactDock() {
 
           {showForm && (
             <form onSubmit={submitInquiry} className="mt-3 space-y-2 rounded-xl border border-white/10 bg-black/20 p-3">
+              <div className="rounded-lg border border-blue-400/20 bg-blue-500/5 px-2.5 py-2 text-[9px] text-slate-400">
+                Routing to <span className="font-bold text-blue-300">{CONTACT_META[selectedKey].label}</span> · {CONTACT_EMAILS[selectedKey]}
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <input
                   required
