@@ -102,7 +102,7 @@ import { CookieConsent } from "@/components/CookieConsent";
 import { CustomCursor } from "@/components/CustomCursor";
 import { ToastProvider, useToast } from "@/components/GlobalToast";
 import Header from "@/components/Header";
-import LandingPage from "@/components/LandingPage";
+import LandingPage from "@/components/PremiumCandidateHomepage";
 import LegalModal from "@/components/LegalModal";
 import { type BackgroundMode } from "@/components/ThreeDBackground";
 import { LanguageProvider } from "@/context/LanguageContext";
