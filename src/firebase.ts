@@ -110,7 +110,7 @@ export const isFirebaseConfigured = !!(
   !config.projectId.includes("YOUR_") &&
   config.appId &&
   config.appId.trim() !== "" &&
-  !config.appId.includes("YOUR_\")
+  !config.appId.includes("YOUR_")
 );
 
 export let firebaseConfigError = "";
