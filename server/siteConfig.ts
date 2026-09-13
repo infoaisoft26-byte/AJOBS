@@ -28,7 +28,7 @@ export const ROLE_EMAILS = Object.freeze({
 export function getRoleContactEmail(role?: string | null): string {
   const normalized = String(role || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
 
-  if (["employer", "recruiter", "consultancy", "agency", "corporate", "sales", "partner"].includes(normalized)) {
+  if (["employer", "recruiter", "consultancy", "agency", "corporate", "sales", "partner", "partnership", "billing", "subscription", "hiring"].includes(normalized)) {
     return SALES_EMAIL;
   }
 
