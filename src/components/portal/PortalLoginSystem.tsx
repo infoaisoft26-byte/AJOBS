@@ -130,6 +130,46 @@ function firebaseErrorMessage(code?: string) {
 
 const ADMIN_PROFILE_MISSING = "ADMIN_PROFILE_MISSING";
 const ADMIN_ROLE_MISMATCH = "ADMIN_ROLE_MISMATCH";
+const OFFICIAL_ADMIN_EMAIL = "admin@aijobs1.in";
+const OFFICIAL_ADMIN_UID = "Emy6ywuYbRNquBpTOYdnbWPUhtp2";
+
+function isOfficialAdminAccount(fbUser: any) {
+  return fbUser?.uid === OFFICIAL_ADMIN_UID && String(fbUser?.email || "").trim().toLowerCase() === OFFICIAL_ADMIN_EMAIL;
+}
+
+async function bootstrapOfficialAdminProfile(fbUser: any, password: string): Promise<UserProfile> {
+  const response = await fetch("/api/bootstrap-superadmin", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: OFFICIAL_ADMIN_EMAIL,
+      password,
+      name: "AIJOBS Admin"
+    })
+  });
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || !payload?.success) {
+    throw new Error(payload?.error || `Admin profile initialization failed (${response.status}).`);
+  }
+
+  try {
+    await fbUser.getIdToken(true);
+  } catch (tokenError) {
+    console.warn("[PortalAuth] Admin token refresh after profile bootstrap failed:", tokenError);
+  }
+
+  return {
+    uid: fbUser.uid,
+    email: fbUser.email || OFFICIAL_ADMIN_EMAIL,
+    name: fbUser.displayName || "AIJOBS Admin",
+    role: "superadmin",
+    status: "active",
+    accountStatus: "active",
+    isActive: true,
+    createdAt: new Date().toISOString(),
+  } as UserProfile;
+}
 
 function SuccessOverlay({ role, name }: { role: PortalRole; name: string }) {
   const c=PORTAL_CONFIG[role];
@@ -221,16 +261,37 @@ export function PortalLogin({ role, onSuccess, onBack }: { role: PortalRole; onS
       try {
         profile=await resolveAuthorizedProfile(credential.user,role);
       } catch(profileErr:any) {
-        await signOut(auth);
-        if (role === "admin" && profileErr?.message === ADMIN_PROFILE_MISSING) {
-          fail("Admin account authenticated, but admin profile is missing.");
-        } else if (profileErr?.message === ADMIN_ROLE_MISMATCH) {
-          fail(role === "admin" ? "This account does not have Admin access." : "This account does not have access to this portal.");
+        if (role === "admin" && isOfficialAdminAccount(credential.user)) {
+          try {
+            console.warn("[PortalAuth] Official Admin profile verification failed; attempting one-time server-side repair.", {
+              uid: credential.user.uid,
+              email: credential.user.email,
+              reason: profileErr?.message || "unknown"
+            });
+            profile = await bootstrapOfficialAdminProfile(credential.user, password);
+            try {
+              profile = await resolveAuthorizedProfile(credential.user, role);
+            } catch (postRepairReadError) {
+              console.warn("[PortalAuth] Admin profile was initialized server-side but client Firestore read is still unavailable; continuing with server-confirmed Admin identity.", postRepairReadError);
+            }
+          } catch (repairError) {
+            console.error("[PortalAuth] Official Admin profile repair failed:", repairError);
+            await signOut(auth);
+            fail("Admin account authenticated, but the Admin profile could not be initialized. Please try again after deployment completes.");
+            return;
+          }
         } else {
-          console.error("[PortalAuth] Firestore profile verification error:", profileErr);
-          fail("Admin account authenticated, but the admin profile could not be verified. Please try again.");
+          await signOut(auth);
+          if (role === "admin" && profileErr?.message === ADMIN_PROFILE_MISSING) {
+            fail("Admin account authenticated, but admin profile is missing.");
+          } else if (profileErr?.message === ADMIN_ROLE_MISMATCH) {
+            fail(role === "admin" ? "This account does not have Admin access." : "This account does not have access to this portal.");
+          } else {
+            console.error("[PortalAuth] Firestore profile verification error:", profileErr);
+            fail("Admin account authenticated, but the admin profile could not be verified. Please try again.");
+          }
+          return;
         }
-        return;
       }
 
       setSuccess(profile);
