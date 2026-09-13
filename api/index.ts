@@ -6,6 +6,7 @@ import { handleHiringIndexingRoute } from "../server/hiringIndexingRoute.js";
 import { handleHiringPublicRoute } from "../server/hiringPublicRoutes.js";
 import { handleHiringAnalyticsRoute } from "../server/hiringAnalyticsRoute.js";
 import { handleHiringLandingRoute } from "../server/hiringLandingRoute.js";
+import { handleHiringWorkspaceRoute } from "../server/hiringWorkspaceRoute.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function clean(value: unknown, max: number): string { return String(value ?? "").trim().slice(0, max); }
@@ -49,6 +50,10 @@ export default async function handler(req: any, res: any) {
   }
   if (path === "/api/hire/admin/index-job") {
     const handled = await handleHiringIndexingRoute(req, res);
+    if (handled || res.headersSent) return;
+  }
+  if (path.startsWith("/api/hire/workspace")) {
+    const handled = await handleHiringWorkspaceRoute(req, res);
     if (handled || res.headersSent) return;
   }
   if (path.startsWith("/api/hire")) {
