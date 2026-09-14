@@ -44,7 +44,6 @@ export async function handleAdminProfileRepairRoute(req: any, res: any): Promise
     const db = getFirestoreDb();
 
     await adminAuth.setCustomUserClaims(authUser.uid, {
-      ...(decoded as any),
       role: "admin",
       admin: true,
     });
