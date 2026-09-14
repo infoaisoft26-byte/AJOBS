@@ -1,6 +1,6 @@
 import { collection, doc, getDoc, setDoc } from "firebase/firestore";
-import { User } from "lucide-react";
 import { db } from "../firebase";
+import type { UserProfile } from "../types";
 import { normalizeRole } from "../utils/roleUtils";
 import { getNextSequentialId } from "./sequentialIdService";
 
@@ -30,24 +30,6 @@ export async function safeSetDocIfNotExists(colName: string, docId: string, data
   } catch (err) {
     console.warn(`[dbInitService] Skipped seeding ${colName}/${docId}:`, err);
   }
-}
-
-export interface UserProfile {
-  uid: string;
-  name: string;
-  email: string;
-  phone?: string;
-  role: "candidate" | "consultancy" | "employer" | "recruiter" | "admin" | "superadmin";
-  profileImage?: string;
-  photoURL?: string;
-  createdAt: string;
-  lastLogin?: string;
-  status?: string;
-  subscription?: string;
-  resumeURL?: string;
-  profileCompleted?: boolean;
-  companyId?: string;
-  subscriptionPlan?: string;
 }
 
 /**
@@ -82,7 +64,7 @@ export async function initializeUserCollectionsAndDocs(
     verificationStatus: role === "candidate" ? (fbUser.emailVerified ? "verified" : "pending") : "verified",
     emailVerified: fbUser.emailVerified === true,
     status: initialStatus,
-    accountStatus: initialStatus,
+    accountStatus: initialStatus as UserProfile["accountStatus"],
     isActive: !isPendingKycRole && !isCandidateEmailUnverified,
     isApproved: !isPendingKycRole && !isCandidateEmailUnverified,
     subscription: role === "consultancy" ? "Pro Agency" : "Enterprise Access",
@@ -353,7 +335,7 @@ export async function getOrCreateUserProfile(
     if (data && data.uid && data.role) {
       const normRole = normalizeRole(data.role);
       if (normRole === "admin" || normRole === "super_admin") {
-        const resolvedRole: "admin" | "superadmin" = (normRole === "super_admin" || data.role === "superadmin" || data.role === "super_admin" || (data as any).level === "Super Admin") ? "superadmin" : "admin";
+        const resolvedRole: "admin" | "superadmin" = (normRole === "super_admin" || data.role === "superadmin" || (data as any).role === "super_admin" || (data as any).level === "Super Admin") ? "superadmin" : "admin";
         const adminName = data.name || fbUser.displayName || fbUser.email?.split("@")[0] || "AIJobs Super Admin";
 
         const userPayload: UserProfile = {
@@ -394,8 +376,6 @@ export async function getOrCreateUserProfile(
       }
 
       console.log(`[Trace dbInitService] User doc non-admin found for UID: ${userId}, Role: ${data.role}`);
-      // Preserve the authoritative database role and record every successful
-      // login so Admin reporting reflects real platform usage.
       const loginAt = new Date().toISOString();
       const loginLogId = `login_${userId}_${Date.now()}`;
       const refreshedProfile = { ...data, lastLogin: loginAt, updatedAt: loginAt } as UserProfile;
