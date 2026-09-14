@@ -51,20 +51,17 @@ function extractLogText(arg: any): string {
   return info;
 }
 
-// Set native firestore log level to silent to prevent library internals from flooding console
 try {
   setLogLevel("silent");
 } catch (err) {
   console.warn("Could not set Firestore log level:", err);
 }
 
-// Safe console wrapper to handle and suppress Firestore idle stream warnings/errors from cluttering logs
 if (typeof window !== "undefined") {
   const originalConsoleError = console.error;
   console.error = function (...args: any[]) {
     try {
       const errorStr = args.map(extractLogText).join(" ");
-
       if (
         errorStr.includes("Disconnecting idle stream") ||
         errorStr.includes("Timed out waiting for new targets") ||
@@ -84,7 +81,6 @@ if (typeof window !== "undefined") {
   console.warn = function (...args: any[]) {
     try {
       const warnStr = args.map(extractLogText).join(" ");
-
       if (
         warnStr.includes("Disconnecting idle stream") ||
         warnStr.includes("Timed out waiting for new targets") ||
@@ -99,7 +95,6 @@ if (typeof window !== "undefined") {
   };
 }
 
-// Check if Firebase configuration is complete and valid
 export const isFirebaseConfigured = !!(
   config &&
   config.apiKey &&
@@ -118,47 +113,24 @@ if (!isFirebaseConfigured) {
   firebaseConfigError = "Firebase configuration is missing, incomplete, or contains placeholders in firebase-applet-config.json.";
 }
 
-/**
- * Clear stale Firebase App Check tokens without touching Firebase Auth session
- * persistence or other application state.
- */
 export function clearCachedFirebaseAndAppCheckTokens() {
   if (typeof window === "undefined") return;
-
   try {
     const keysToClear: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (
-        key &&
-        (key.includes("appcheck") ||
-          key.includes("app-check") ||
-          key.includes("app_check") ||
-          key.includes("firebase:app-check"))
-      ) {
-        keysToClear.push(key);
-      }
+      if (key && (key.includes("appcheck") || key.includes("app-check") || key.includes("app_check") || key.includes("firebase:app-check"))) keysToClear.push(key);
     }
     keysToClear.forEach((key) => localStorage.removeItem(key));
 
     const sessionKeysToClear: string[] = [];
     for (let i = 0; i < sessionStorage.length; i++) {
       const key = sessionStorage.key(i);
-      if (
-        key &&
-        (key.includes("appcheck") ||
-          key.includes("app-check") ||
-          key.includes("app_check") ||
-          key.includes("firebase:app-check"))
-      ) {
-        sessionKeysToClear.push(key);
-      }
+      if (key && (key.includes("appcheck") || key.includes("app-check") || key.includes("app_check") || key.includes("firebase:app-check"))) sessionKeysToClear.push(key);
     }
     sessionKeysToClear.forEach((key) => sessionStorage.removeItem(key));
 
-    if (typeof indexedDB !== "undefined" && indexedDB.deleteDatabase) {
-      indexedDB.deleteDatabase("firebase-app-check-database");
-    }
+    if (typeof indexedDB !== "undefined" && indexedDB.deleteDatabase) indexedDB.deleteDatabase("firebase-app-check-database");
   } catch (error) {
     console.error("[Firebase] Error while clearing cached App Check tokens:", error);
   }
@@ -180,6 +152,27 @@ function installProtectedApiTokenInjector(authClient: any) {
   const protectedPaths = new Set([
     "/api/admin-platform-insights",
     "/api/consultancy-natural-search",
+    "/api/admin/create-admin",
+    "/api/admin/repair-wrong-users",
+    "/api/cleanup-demo-data",
+    "/api/admin/create-workspace-user",
+    "/api/admin/approve-account",
+    "/api/admin/onboarding-list",
+    "/api/admin/fraud-action",
+    "/api/admin/approve-consultancy",
+    "/api/admin/suspend-user",
+    "/api/admin/role-audit-logs",
+    "/api/admin/save-twilio-settings",
+    "/api/admin/get-twilio-settings",
+    "/api/admin/sms-logs",
+    "/api/verification/review",
+    "/api/kyc/send-link",
+    "/api/kyc/send-reminder",
+    "/api/indexing/publish",
+    "/api/indexing/retry",
+    "/api/indexing/logs",
+    "/api/resumes/grant-access",
+    "/api/resumes/grant-status",
   ]);
   const originalFetch = window.fetch.bind(window);
 
@@ -204,14 +197,11 @@ function installProtectedApiTokenInjector(authClient: any) {
 }
 
 try {
-  if (!isFirebaseConfigured) {
-    throw new Error(firebaseConfigError || "Firebase not configured");
-  }
+  if (!isFirebaseConfigured) throw new Error(firebaseConfigError || "Firebase not configured");
 
   const firebaseConfig = {
     apiKey: config.apiKey,
-    authDomain:
-      process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "auth.aijobs1.in",
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "auth.aijobs1.in",
     projectId: config.projectId,
     storageBucket: config.storageBucket,
     messagingSenderId: config.messagingSenderId,
@@ -234,17 +224,11 @@ try {
 
   if (typeof window !== "undefined") {
     enableMultiTabIndexedDbPersistence(dbInstance)
-      .then(() => {
-        console.log("[Firestore] Multi-Tab Offline Persistence Activated successfully.");
-      })
+      .then(() => console.log("[Firestore] Multi-Tab Offline Persistence Activated successfully."))
       .catch((err) => {
-        if (err.code === "failed-precondition") {
-          console.warn("[Firestore] Offline persistence failed precondition: Multiple tabs active.");
-        } else if (err.code === "unimplemented") {
-          console.warn("[Firestore] Offline persistence is unimplemented/unsupported in this client browser.");
-        } else {
-          console.error("[Firestore] Error enabling offline persistence:", err);
-        }
+        if (err.code === "failed-precondition") console.warn("[Firestore] Offline persistence failed precondition: Multiple tabs active.");
+        else if (err.code === "unimplemented") console.warn("[Firestore] Offline persistence is unimplemented/unsupported in this client browser.");
+        else console.error("[Firestore] Error enabling offline persistence:", err);
       });
   }
 } catch (error: any) {
