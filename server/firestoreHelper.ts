@@ -101,6 +101,30 @@ export const adminDb: Firestore = targetDatabaseId
   ? getFirestore(adminApp, targetDatabaseId)
   : getFirestore(adminApp);
 
+const rawAdminAuth = getAuth(adminApp);
+
+// Super Admin provisioning must never be exposed through ordinary runtime routes.
+// Existing Super Admin accounts keep their current claims; this only blocks code
+// from creating or upgrading a user to Super Admin at runtime. Official Admin
+// self-repair continues to use the normal `admin` claim.
+const protectedAdminAuth = new Proxy(rawAdminAuth as any, {
+  get(target, property) {
+    if (property === "setCustomUserClaims") {
+      return async (uid: string, claims: Record<string, any> | null) => {
+        const requestedRole = String(claims?.role || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+        if (requestedRole === "super_admin" || requestedRole === "superadmin") {
+          console.error(`[Firebase Admin] Blocked runtime Super Admin claim provisioning for UID ${uid}.`);
+          throw new Error("RUNTIME_SUPERADMIN_PROVISIONING_DISABLED");
+        }
+        return rawAdminAuth.setCustomUserClaims(uid, claims);
+      };
+    }
+
+    const value = Reflect.get(target, property, target);
+    return typeof value === "function" ? value.bind(target) : value;
+  }
+}) as Auth;
+
 export function getAdminApp() {
   return adminApp;
 }
@@ -110,5 +134,5 @@ export function getFirestoreDb(): Firestore {
 }
 
 export function getFirebaseAuth(): Auth {
-  return getAuth(adminApp);
+  return protectedAdminAuth;
 }
