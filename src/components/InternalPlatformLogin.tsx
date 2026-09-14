@@ -1,10 +1,7 @@
-import React, { FormEvent, useState } from "react";
+import React, { useState } from "react";
 import { GoogleAuthProvider, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { AlertCircle, CheckCircle2, KeyRound, Link, Lock, LockKeyhole, LogIn, Mail, RefreshCw, Send, User } from "lucide-react";
-import { auth, db } from "../firebase";
-
-
+import { AlertCircle, CheckCircle2, KeyRound, Lock, LockKeyhole, LogIn, Mail, RefreshCw } from "lucide-react";
+import { auth } from "../firebase";
 import { UserProfile } from "../types";
 import { useToast } from "./GlobalToast";
 import { isAdminRole, normalizeRole } from "../utils/roleUtils";
@@ -29,8 +26,6 @@ export default function InternalPlatformLogin({
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-
-  // Forgot Password Modal State
   const [forgotOpen, setForgotOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
@@ -42,27 +37,27 @@ export default function InternalPlatformLogin({
       profile = await getOrCreateUserProfile(fbUser, undefined, "internal");
     } catch (err) {
       console.error("[Internal Login] Profile resolution failed:", err);
-      showToast("Internal user profile authorization failed.", "error");
+      showToast("We could not load your account profile. Please sign in again.", "error");
       return;
     }
 
     const normRole = normalizeRole(profile.role);
+
     if (expectedRole && normRole !== expectedRole && !(expectedRole === "employer" && normRole === "recruiter")) {
       await auth.signOut();
       setErrorMsg(`This login page is only for ${expectedRole} accounts.`);
-      showToast(`Use the correct ${normRole} login portal.`, "error");
+      showToast(`This account is registered as ${normRole}. Please use the correct AIJOBS login portal.`, "error");
       return;
     }
+
     const hasInternalAccess = profile.internalAccess === true || profile.isBetaTester === true || isAdminRole(profile.role);
 
     if (!hasInternalAccess && normRole === "candidate") {
-      // Un-authorized candidate attempting internal portal login
-      showToast("Your full AIJobs dashboard will be available after the official launch. Redirecting to your Pre-Launch Candidate Profile.", "info", 5000);
+      showToast("Candidate accounts use the Candidate Login. Redirecting you now.", "info", 4000);
       onCandidateRedirect();
       return;
     }
 
-    // Determine target internal route based on role
     let targetRoute = "/internal/candidate";
     if (isAdminRole(profile.role)) {
       targetRoute = "/admin/dashboard";
@@ -72,11 +67,9 @@ export default function InternalPlatformLogin({
       targetRoute = "/internal/employer";
     } else if (normRole === "consultancy") {
       targetRoute = "/internal/consultancy";
-    } else if (normRole === "candidate") {
-      targetRoute = "/internal/candidate";
     }
 
-    showToast(`Internal Session Authenticated: ${profile.name} (${normRole})`, "success");
+    showToast(`Welcome back, ${profile.name || "AIJOBS user"}.`, "success");
     console.log(`[Trace Login] Internal login success - UID: ${profile.uid}, Role: ${profile.role}, Normalized: ${normRole}, TargetRoute: ${targetRoute}`);
     onAuthorizedSuccess(profile, targetRoute);
   };
@@ -84,6 +77,7 @@ export default function InternalPlatformLogin({
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
+
     if (!email.trim() || !password.trim()) {
       setErrorMsg("Please enter email and password.");
       return;
@@ -94,15 +88,18 @@ export default function InternalPlatformLogin({
       const res = await signInWithEmailAndPassword(auth, email.trim(), password);
       await verifyAndRouteInternalUser(res.user);
     } catch (err: any) {
-      if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password" || err.code === "auth/invalid-credential" || err.code === "auth/invalid-email") {
+      if (["auth/user-not-found", "auth/wrong-password", "auth/invalid-credential", "auth/invalid-email"].includes(err.code)) {
         console.warn("[Internal Login]: Invalid credentials provided.", err.code);
       } else {
         console.error("[Internal Login Error]:", err);
       }
-      let msg = "Invalid internal login credentials.";
-      if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password" || err.code === "auth/invalid-credential") {
-        msg = "Incorrect internal account credentials.";
-      }
+
+      const msg = ["auth/user-not-found", "auth/wrong-password", "auth/invalid-credential"].includes(err.code)
+        ? "Incorrect email or password."
+        : err.code === "auth/invalid-email"
+          ? "Please enter a valid email address."
+          : "Unable to sign in right now. Please try again.";
+
       setErrorMsg(msg);
       showToast(msg, "error");
     } finally {
@@ -118,8 +115,9 @@ export default function InternalPlatformLogin({
       await verifyAndRouteInternalUser(res.user);
     } catch (err: any) {
       console.error("[Internal Google Auth Error]:", err);
-      setErrorMsg("Google authentication failed.");
-      showToast("Internal Google sign-in failed", "warning");
+      const msg = "Google sign-in failed. Please try again or use email and password.";
+      setErrorMsg(msg);
+      showToast(msg, "warning");
     } finally {
       setLoading(false);
     }
@@ -128,18 +126,21 @@ export default function InternalPlatformLogin({
   const handleSendReset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resetEmail.trim()) return;
+
     setResetLoading(true);
     try {
       await sendPasswordResetEmail(auth, resetEmail.trim());
       setResetSent(true);
-      showToast("Reset password email sent.", "success");
-    } catch (err: any) {
+      showToast("Password reset email sent.", "success");
+    } catch (err) {
       console.error("[Reset Password Error]:", err);
-      showToast("Failed to send reset email.", "error");
+      showToast("We could not send the reset email. Please check the address and try again.", "error");
     } finally {
       setResetLoading(false);
     }
   };
+
+  const roleLabel = expectedRole ? expectedRole.charAt(0).toUpperCase() + expectedRole.slice(1) : "Internal";
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12 relative z-10 bg-[#02040a] overflow-hidden">
@@ -148,26 +149,23 @@ export default function InternalPlatformLogin({
         <div className="absolute bottom-[10%] right-[12%] w-64 h-64 rounded-full bg-fuchsia-600/15 blur-3xl animate-pulse" />
         <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.25)_1px,transparent_1px)] bg-[length:28px_28px]" />
       </div>
+
       <div className="w-full max-w-md bg-gray-950/85 backdrop-blur-2xl border border-indigo-500/30 rounded-3xl p-8 shadow-[0_0_60px_rgba(99,102,241,0.2)] relative overflow-hidden">
-        
-        {/* Ambient Top Glow */}
         <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Header */}
         <div className="text-center space-y-3 mb-8 relative">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-mono font-semibold uppercase tracking-wider">
             <LockKeyhole className="w-3.5 h-3.5 text-indigo-400" />
-            <span>{expectedRole ? `${expectedRole} secure workspace` : "Authorized Internal Workspace"}</span>
+            <span>{expectedRole ? `${roleLabel} secure workspace` : "Authorized AIJOBS Workspace"}</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-            {expectedRole ? `${expectedRole.charAt(0).toUpperCase() + expectedRole.slice(1)} Login` : "Internal Platform Access"}
+            {expectedRole ? `${roleLabel} Login` : "AIJOBS Platform Access"}
           </h2>
           <p className="text-xs text-gray-400 max-w-xs mx-auto">
-            Sign in with your registered email and password. Your account role is verified before dashboard access.
+            Sign in with your registered AIJOBS account. Your role is verified before dashboard access.
           </p>
         </div>
 
-        {/* Error Alert */}
         {errorMsg && (
           <div className="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300 text-xs flex items-start gap-2">
             <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
@@ -175,12 +173,9 @@ export default function InternalPlatformLogin({
           </div>
         )}
 
-        {/* Form */}
         <form onSubmit={handleEmailLogin} className="space-y-4">
           <div className="space-y-1 text-left">
-            <label className="text-[11px] font-mono uppercase tracking-wider text-gray-400 font-semibold">
-              Authorized Email
-            </label>
+            <label className="text-[11px] font-mono uppercase tracking-wider text-gray-400 font-semibold">Registered Email</label>
             <div className="relative">
               <Mail className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
@@ -188,7 +183,8 @@ export default function InternalPlatformLogin({
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="team@aijobs.com"
+                placeholder="name@company.com"
+                autoComplete="email"
                 className="w-full bg-black/50 border border-white/10 rounded-2xl py-3 pl-10 pr-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500"
               />
             </div>
@@ -196,9 +192,7 @@ export default function InternalPlatformLogin({
 
           <div className="space-y-1 text-left">
             <div className="flex items-center justify-between">
-              <label className="text-[11px] font-mono uppercase tracking-wider text-gray-400 font-semibold">
-                Password
-              </label>
+              <label className="text-[11px] font-mono uppercase tracking-wider text-gray-400 font-semibold">Password</label>
               <button
                 type="button"
                 onClick={() => {
@@ -219,6 +213,7 @@ export default function InternalPlatformLogin({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
+                autoComplete="current-password"
                 className="w-full bg-black/50 border border-white/10 rounded-2xl py-3 pl-10 pr-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500"
               />
             </div>
@@ -232,25 +227,23 @@ export default function InternalPlatformLogin({
             {loading ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                <span>Verifying Access Claims...</span>
+                <span>Verifying Account...</span>
               </>
             ) : (
               <>
                 <LogIn className="w-4 h-4 text-indigo-200" />
-                <span>Enter Internal Platform</span>
+                <span>Sign In to AIJOBS</span>
               </>
             )}
           </button>
         </form>
 
-        {/* Divider */}
         <div className="my-6 flex items-center gap-3">
           <div className="flex-1 h-px bg-white/10" />
-          <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">or authentication</span>
+          <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">or continue with</span>
           <div className="flex-1 h-px bg-white/10" />
         </div>
 
-        {/* Google Auth */}
         <button
           type="button"
           onClick={handleGoogleLogin}
@@ -258,43 +251,24 @@ export default function InternalPlatformLogin({
           className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-xs font-semibold text-gray-200 transition-all flex items-center justify-center gap-3 cursor-pointer active:scale-[0.98]"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24">
-            <path
-              fill="#4285F4"
-              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-            />
-            <path
-              fill="#34A853"
-              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-            />
-            <path
-              fill="#FBBC05"
-              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-            />
-            <path
-              fill="#EA4335"
-              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-            />
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
           </svg>
-          <span>Google Internal Sign-In</span>
+          <span>Continue with Google</span>
         </button>
-
       </div>
 
-      {/* Forgot Password Modal */}
       {forgotOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
           <div className="w-full max-w-sm bg-gray-950 border border-white/10 rounded-3xl p-6 space-y-4 shadow-2xl relative">
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div className="flex items-center gap-2">
                 <KeyRound className="w-4 h-4 text-indigo-400" />
-                <h3 className="text-sm font-bold text-white">Reset Internal Password</h3>
+                <h3 className="text-sm font-bold text-white">Reset Password</h3>
               </div>
-              <button
-                onClick={() => setForgotOpen(false)}
-                className="text-gray-400 hover:text-white text-xs"
-              >
-                ✕
-              </button>
+              <button onClick={() => setForgotOpen(false)} className="text-gray-400 hover:text-white text-xs">✕</button>
             </div>
 
             {resetSent ? (
@@ -303,12 +277,7 @@ export default function InternalPlatformLogin({
                 <p className="text-xs text-gray-300">
                   Password reset email sent to <span className="text-indigo-300 font-mono">{resetEmail}</span>.
                 </p>
-                <button
-                  onClick={() => setForgotOpen(false)}
-                  className="px-4 py-2 bg-indigo-600 text-xs font-bold text-white rounded-xl"
-                >
-                  Close
-                </button>
+                <button onClick={() => setForgotOpen(false)} className="px-4 py-2 bg-indigo-600 text-xs font-bold text-white rounded-xl">Close</button>
               </div>
             ) : (
               <form onSubmit={handleSendReset} className="space-y-3">
@@ -317,7 +286,8 @@ export default function InternalPlatformLogin({
                   required
                   value={resetEmail}
                   onChange={(e) => setResetEmail(e.target.value)}
-                  placeholder="team@aijobs.com"
+                  placeholder="name@company.com"
+                  autoComplete="email"
                   className="w-full bg-black/50 border border-white/10 rounded-xl py-2.5 px-3 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500"
                 />
                 <button
