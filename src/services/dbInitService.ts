@@ -32,7 +32,6 @@ export async function safeSetDocIfNotExists(colName: string, docId: string, data
   }
 }
 
-
 export interface UserProfile {
   uid: string;
   name: string;
@@ -353,8 +352,8 @@ export async function getOrCreateUserProfile(
     const data = userSnap.data() as UserProfile;
     if (data && data.uid && data.role) {
       const normRole = normalizeRole(data.role);
-      if (normRole === "admin" || normRole === "superadmin") {
-        const resolvedRole: "admin" | "superadmin" = (normRole === "superadmin" || data.role === "superadmin" || data.role === "super_admin" || (data as any).level === "Super Admin") ? "superadmin" : "admin";
+      if (normRole === "admin" || normRole === "super_admin") {
+        const resolvedRole: "admin" | "superadmin" = (normRole === "super_admin" || data.role === "superadmin" || data.role === "super_admin" || (data as any).level === "Super Admin") ? "superadmin" : "admin";
         const adminName = data.name || fbUser.displayName || fbUser.email?.split("@")[0] || "AIJobs Super Admin";
 
         const userPayload: UserProfile = {
@@ -465,25 +464,18 @@ export async function getOrCreateUserProfile(
     console.warn("[getOrCreateUserProfile] Claims check skipped or failed:", claimErr);
   }
 
-  // 4. Safe fallback for new public user profile creation
-  // IMPORTANT: Public registration flows can NEVER create admin or superadmin roles automatically.
+  // 4. Safe fallback for new public user profile creation.
+  // Public registration flows can NEVER create admin/superadmin automatically.
+  // New non-admin roles must come from an explicit registration role or trusted login source;
+  // never infer access from words contained in the user's email address.
   let targetRole: "candidate" | "consultancy" | "employer" | "recruiter" = "candidate";
 
   if (preferredRole && preferredRole !== "admin" && preferredRole !== "superadmin") {
-    targetRole = preferredRole as "candidate" | "consultancy" | "employer" | "recruiter";
+    targetRole = preferredRole;
+  } else if (loginSource === "recruiter" || loginSource === "consultancy" || loginSource === "employer") {
+    targetRole = loginSource;
   } else {
-    const emailLower = (fbUser.email || "").toLowerCase();
-    if (loginSource === "candidate") {
-      targetRole = "candidate";
-    } else if (emailLower.includes("recruiter")) {
-      targetRole = "recruiter";
-    } else if (emailLower.includes("employer") || emailLower.includes("company") || emailLower.includes("corporate")) {
-      targetRole = "employer";
-    } else if (emailLower.includes("consultancy") || emailLower.includes("agency")) {
-      targetRole = "consultancy";
-    } else {
-      targetRole = "candidate";
-    }
+    targetRole = "candidate";
   }
 
   // Automatically create default profile in Firestore users/{uid} and seed collections
