@@ -192,7 +192,7 @@ async function getGoogleIndexingAccessToken(clientEmail: string, privateKey: str
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      grant_type: "urn:ietf:params:oauth-grant-type:jwt-bearer",
       assertion: jwt
     })
   });
@@ -296,7 +296,7 @@ export async function sendGoogleIndexingNotification(
       responseCode: apiResp.status,
       responseData: { ...respJson, credentialSource: credentials.source },
       status: isSuccess ? "SUCCESS" : "FAILED",
-      error: errorMessage,
+      ...(errorMessage ? { error: errorMessage } : {}),
       submittedAt: timestamp,
       submittedBy
     };
