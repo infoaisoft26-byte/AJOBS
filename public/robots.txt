@@ -1,11 +1,21 @@
 User-agent: *
 Allow: /
 
+# Private/admin workspaces must never be indexed
 Disallow: /admin
+Disallow: /admin/
 Disallow: /super-admin
-Disallow: /recruiter/dashboard
-Disallow: /consultancy/dashboard
+Disallow: /super-admin/
+Disallow: /internal/
 Disallow: /candidate/dashboard
+Disallow: /candidate/dashboard/
+Disallow: /recruiter/dashboard
+Disallow: /recruiter/dashboard/
+Disallow: /consultancy/dashboard
+Disallow: /consultancy/dashboard/
+Disallow: /employer/dashboard
+Disallow: /employer/dashboard/
+Disallow: /hire/workspace
 Disallow: /api/
 
 Sitemap: https://aijobs1.in/sitemap.xml
