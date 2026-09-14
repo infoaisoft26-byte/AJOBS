@@ -48,17 +48,98 @@ function getCanonicalJobUrl(job: { id: string; title: string; slug?: string; can
   return `${SITE_URL}/jobs/${encodeURIComponent(slug)}`;
 }
 
-function getIndexingCredentials(): { clientEmail?: string; privateKey?: string; source: string } {
-  const googleClientEmail = String(process.env.GOOGLE_INDEXING_CLIENT_EMAIL || "").trim();
-  const googlePrivateKey = String(process.env.GOOGLE_INDEXING_PRIVATE_KEY || "").trim();
-  if (googleClientEmail && googlePrivateKey) {
-    return { clientEmail: googleClientEmail, privateKey: googlePrivateKey, source: "GOOGLE_INDEXING" };
+function normalizeCredentialValue(value: string): string {
+  let raw = String(value || "").trim();
+
+  // Vercel values are sometimes pasted with surrounding JSON quotes.
+  if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
+    if (raw.startsWith('"')) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (typeof parsed === "string") raw = parsed.trim();
+      } catch {
+        raw = raw.slice(1, -1).trim();
+      }
+    } else {
+      raw = raw.slice(1, -1).trim();
+    }
   }
 
-  const firebaseClientEmail = String(process.env.FIREBASE_ADMIN_CLIENT_EMAIL || "").trim();
-  const firebasePrivateKey = String(process.env.FIREBASE_ADMIN_PRIVATE_KEY || "").trim();
-  if (firebaseClientEmail && firebasePrivateKey) {
-    return { clientEmail: firebaseClientEmail, privateKey: firebasePrivateKey, source: "FIREBASE_ADMIN_FALLBACK" };
+  return raw;
+}
+
+function extractServiceAccountValue(value: string): { clientEmail?: string; privateKey?: string } {
+  let raw = normalizeCredentialValue(value);
+
+  // Accept a full service-account JSON object if it was pasted into the key field.
+  for (let i = 0; i < 2; i += 1) {
+    if (!raw.startsWith("{")) break;
+    try {
+      const parsed: any = JSON.parse(raw);
+      const clientEmail = String(parsed?.client_email || "").trim() || undefined;
+      const privateKey = String(parsed?.private_key || "").trim() || undefined;
+      if (clientEmail || privateKey) return { clientEmail, privateKey };
+      break;
+    } catch {
+      break;
+    }
+  }
+
+  return { privateKey: raw || undefined };
+}
+
+function normalizePrivateKey(value: string): string {
+  const extracted = extractServiceAccountValue(value);
+  let key = String(extracted.privateKey || "").trim();
+
+  // Handle the common Vercel one-line form where newlines are stored literally as \n.
+  key = key
+    .replace(/\\r\\n/g, "\n")
+    .replace(/\\n/g, "\n")
+    .replace(/\r\n/g, "\n")
+    .trim();
+
+  // If a key was stored as base64, decode it only when the decoded content is clearly PEM.
+  if (!key.includes("-----BEGIN ")) {
+    const compact = key.replace(/\s+/g, "");
+    if (compact.length > 100 && /^[A-Za-z0-9+/=]+$/.test(compact)) {
+      try {
+        const decoded = Buffer.from(compact, "base64").toString("utf8").trim();
+        if (decoded.includes("-----BEGIN ") && decoded.includes("PRIVATE KEY-----")) {
+          key = decoded.replace(/\r\n/g, "\n");
+        }
+      } catch {
+        // Validation below will return a clear configuration error.
+      }
+    }
+  }
+
+  return key;
+}
+
+function getIndexingCredentials(): { clientEmail?: string; privateKey?: string; source: string } {
+  const serviceAccountJson = String(process.env.GOOGLE_INDEXING_SERVICE_ACCOUNT_JSON || "").trim();
+  if (serviceAccountJson) {
+    const parsed = extractServiceAccountValue(serviceAccountJson);
+    if (parsed.clientEmail && parsed.privateKey) {
+      return { clientEmail: parsed.clientEmail, privateKey: parsed.privateKey, source: "GOOGLE_INDEXING_SERVICE_ACCOUNT_JSON" };
+    }
+  }
+
+  const googleEmailRaw = String(process.env.GOOGLE_INDEXING_CLIENT_EMAIL || "").trim();
+  const googleKeyRaw = String(process.env.GOOGLE_INDEXING_PRIVATE_KEY || "").trim();
+  const googleKeyParts = extractServiceAccountValue(googleKeyRaw);
+  const googleClientEmail = normalizeCredentialValue(googleEmailRaw) || googleKeyParts.clientEmail;
+  if (googleClientEmail && googleKeyParts.privateKey) {
+    return { clientEmail: googleClientEmail, privateKey: googleKeyParts.privateKey, source: "GOOGLE_INDEXING" };
+  }
+
+  const firebaseEmailRaw = String(process.env.FIREBASE_ADMIN_CLIENT_EMAIL || "").trim();
+  const firebaseKeyRaw = String(process.env.FIREBASE_ADMIN_PRIVATE_KEY || "").trim();
+  const firebaseKeyParts = extractServiceAccountValue(firebaseKeyRaw);
+  const firebaseClientEmail = normalizeCredentialValue(firebaseEmailRaw) || firebaseKeyParts.clientEmail;
+  if (firebaseClientEmail && firebaseKeyParts.privateKey) {
+    return { clientEmail: firebaseClientEmail, privateKey: firebaseKeyParts.privateKey, source: "FIREBASE_ADMIN_FALLBACK" };
   }
 
   return { source: "MISSING" };
@@ -87,11 +168,24 @@ async function getGoogleIndexingAccessToken(clientEmail: string, privateKey: str
   const encodedHeader = base64UrlEncode(JSON.stringify(header));
   const encodedClaimSet = base64UrlEncode(JSON.stringify(claimSet));
   const signatureInput = `${encodedHeader}.${encodedClaimSet}`;
-  const formattedPrivateKey = privateKey.includes("\\n") ? privateKey.replace(/\\n/g, "\n") : privateKey;
+  const formattedPrivateKey = normalizePrivateKey(privateKey);
+
+  let keyObject: crypto.KeyObject;
+  try {
+    if (!formattedPrivateKey.includes("PRIVATE KEY-----")) {
+      throw new Error("PEM header missing");
+    }
+    keyObject = crypto.createPrivateKey({ key: formattedPrivateKey, format: "pem" });
+  } catch {
+    throw new Error(
+      'Google Indexing private key format is invalid. In Vercel, set GOOGLE_INDEXING_PRIVATE_KEY to the service-account JSON "private_key" value, including BEGIN/END PRIVATE KEY. Quoted PEM, literal \\n, full service-account JSON, and base64 PEM are supported.'
+    );
+  }
 
   const signer = crypto.createSign("RSA-SHA256");
   signer.update(signatureInput);
-  const signature = signer.sign(formattedPrivateKey);
+  signer.end();
+  const signature = signer.sign(keyObject);
   const jwt = `${signatureInput}.${base64UrlEncode(signature)}`;
 
   const tokenResp = await fetch("https://oauth2.googleapis.com/token", {
