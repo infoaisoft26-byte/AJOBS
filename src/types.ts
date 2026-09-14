@@ -15,7 +15,7 @@ export interface UserProfile {
   companyId?: string;
   consultancyId?: string;
   subscriptionPlan?: string;
-  accountStatus?: "pending_kyc" | "pending_admin_approval" | "active" | "rejected" | "suspended";
+  accountStatus?: "pending_kyc" | "pending_admin_approval" | "pending_verification" | "active" | "rejected" | "suspended" | "suspended_for_review" | "resubmission_required";
   kycStatus?: "not_started" | "pending" | "pending_admin_approval" | "verified" | "rejected" | "resubmit_required";
   isApproved?: boolean;
   isActive?: boolean;

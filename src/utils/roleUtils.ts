@@ -1,5 +1,5 @@
 
-export type NormalizedRole = "candidate" | "recruiter" | "consultancy" | "employer" | "admin" | "super_admin" | "unknown";
+export type NormalizedRole = "candidate" | "recruiter" | "consultancy" | "employer" | "employee" | "admin" | "superadmin" | "super_admin" | "unknown";
 
 export function normalizeRole(rawRole?: string): NormalizedRole {
   if (!rawRole) return "unknown";
@@ -27,7 +27,7 @@ export function normalizeRole(rawRole?: string): NormalizedRole {
     return "employer";
   }
   if (cleaned === "employee") {
-    return "candidate"; // or internal employee
+    return "candidate"; // legacy employee aliases continue to use the existing candidate mapping
   }
   return "unknown";
 }
@@ -144,4 +144,3 @@ export function routeUserByRole(
 
   return { path: targetPath, view: targetView };
 }
-
