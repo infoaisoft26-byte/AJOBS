@@ -1,6 +1,7 @@
-import { doc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import { auth, db, storage } from "../firebase";
+import { normalizeRole } from "../utils/roleUtils";
 import { uploadToCloudinary, CloudinaryUploadResult } from "./cloudinaryService";
 import { parseResumeData } from "./aiParser";
 
@@ -31,6 +32,27 @@ export interface ResumeUploadResult {
 function normalizeProgress(value: number) {
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+async function assertCandidateAccount(uid: string) {
+  const currentUser = auth.currentUser;
+  if (!currentUser || currentUser.uid !== uid) {
+    throw new Error("Your login session could not be verified. Please sign in again before uploading the resume.");
+  }
+
+  const userRef = doc(db, "users", uid);
+  const userSnap = await getDoc(userRef);
+
+  if (!userSnap.exists()) {
+    throw new Error("Candidate profile not found. Please complete candidate registration before uploading a resume.");
+  }
+
+  const storedRole = normalizeRole(userSnap.data()?.role);
+  if (storedRole !== "candidate") {
+    throw new Error("Resume upload is available only from a Candidate account. Please use the correct AIJOBS portal.");
+  }
+
+  return userSnap.data();
 }
 
 async function uploadResumeToFirebase(
@@ -136,9 +158,11 @@ export async function uploadResumeService(
     additionalMetadata = opts.additionalMetadata || {};
   }
 
-  if (!uid || !auth.currentUser || auth.currentUser.uid !== uid) {
+  if (!uid) {
     throw new Error("Your login session could not be verified. Please sign in again before uploading the resume.");
   }
+
+  const candidateProfile = await assertCandidateAccount(uid);
 
   if (!file) throw new Error("File is required for resume upload.");
 
@@ -160,9 +184,6 @@ export async function uploadResumeService(
 
   onProgress?.(0);
 
-  // Signed-in candidates upload to Firebase Storage first. This avoids the old
-  // Cloudinary request path that could sit at the UI's ~45% stage while waiting
-  // for a signed upload response. Cloudinary remains a fallback provider.
   let uploaded: CloudinaryUploadResult;
   let provider = "firebase_storage";
 
@@ -198,8 +219,8 @@ export async function uploadResumeService(
   const publicId = uploaded.public_id;
   const assetId = uploaded.asset_id || "";
   const currentUser = auth.currentUser;
-  const verifiedEmail = currentUser?.email || additionalMetadata.accountEmail || "";
-  const isEmailVerified = currentUser?.emailVerified ?? false;
+  const verifiedEmail = currentUser?.email || candidateProfile?.email || additionalMetadata.accountEmail || "";
+  const isEmailVerified = currentUser?.emailVerified ?? candidateProfile?.emailVerified ?? false;
 
   if (!downloadUrl) throw new Error("Resume was uploaded but a secure download URL was not returned.");
 
@@ -259,7 +280,6 @@ export async function uploadResumeService(
       }, { merge: true }),
       setDoc(doc(db, "users", uid), {
         uid,
-        role: "candidate",
         resumeUrl: downloadUrl,
         resumeURL: downloadUrl,
         resumePublicId: publicId,
@@ -272,14 +292,9 @@ export async function uploadResumeService(
       }, { merge: true })
     ]);
   } catch (dbErr: any) {
-    // The file is already safely uploaded. Do not make the candidate re-upload
-    // because a secondary metadata write failed; surface the uploaded URL and let
-    // the UI continue while logging the database problem for admin diagnosis.
     console.warn("[ResumeUploadService] Resume uploaded but metadata sync had a warning:", dbErr?.message || dbErr);
   }
 
-  // Parsing is deliberately background-only. A slow/failed AI parser must never
-  // keep the upload progress spinner open.
   setTimeout(async () => {
     try {
       await parseResumeData(downloadUrl, uid, file.name, file.type);
