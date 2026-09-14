@@ -12,6 +12,7 @@ import {
   Plus
 } from "lucide-react";
 import { RecruitmentCandidate, RecruitmentJob, RecruiterUser, RecruiterAssignment } from "../../../types/recruitment";
+import { OFFICIAL_ADMIN_EMAIL } from "../../../config/site";
 import { 
   fetchRecruitmentCandidates, 
   fetchRecruitmentJobs, 
@@ -40,7 +41,7 @@ interface RecruitmentOperationsHubProps {
 
 export default function RecruitmentOperationsHub({
   initialSubTab = "recruitment_dashboard",
-  adminUser = { name: "Super Admin Desk", email: "admin@aijobs.global" },
+  adminUser = { name: "Super Admin Desk", email: OFFICIAL_ADMIN_EMAIL },
   onNavigateTab
 }: RecruitmentOperationsHubProps) {
   const [activeTab, setActiveTab] = useState<string>(initialSubTab);
