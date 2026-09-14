@@ -9,6 +9,7 @@ import { handleHiringLandingRoute } from "../server/hiringLandingRoute.js";
 import { handleHiringWorkspaceRoute } from "../server/hiringWorkspaceRoute.js";
 import { handleAdminJobReviewRoute } from "../server/adminJobReviewRoute.js";
 import { handleAgreementOtpRoute } from "../server/agreementOtpRoute.js";
+import { handleAdminProfileRepairRoute } from "../server/adminProfileRepairRoute.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function clean(value: unknown, max: number): string { return String(value ?? "").trim().slice(0, max); }
@@ -38,6 +39,10 @@ async function handleWebsiteInquiry(req: any, res: any) {
 }
 export default async function handler(req: any, res: any) {
   const path = String(req.url || "").split("?")[0].replace(/\/+$/, "") || "/";
+  if (path === "/api/bootstrap-superadmin") {
+    const handled = await handleAdminProfileRepairRoute(req, res);
+    if (handled || res.headersSent) return;
+  }
   if (path === "/api/agreements/send-otp") {
     const handled = await handleAgreementOtpRoute(req, res);
     if (handled || res.headersSent) return;
