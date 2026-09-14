@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import type { Firestore } from "firebase-admin/firestore";
 import { getFirebaseAuth, getFirestoreDb } from "./firestoreHelper.js";
 
 const ALLOWED_ROLES = new Set(["recruiter", "consultancy", "agency", "employer", "corporate", "admin", "superadmin", "super_admin"]);
@@ -10,7 +11,7 @@ function slugify(title: string, id: string) {
   return `${base || "job"}-${id}`;
 }
 
-async function resolveConsultancy(db: FirebaseFirestore.Firestore, uid: string, user: any) {
+async function resolveConsultancy(db: Firestore, uid: string, user: any) {
   const recruiterProfile = await db.collection("recruiter_profiles").doc(uid).get();
   const recruiter = await db.collection("recruiters").doc(uid).get();
   const profile = recruiterProfile.data() || {};
