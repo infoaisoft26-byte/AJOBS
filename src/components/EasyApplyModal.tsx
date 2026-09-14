@@ -58,11 +58,12 @@ export default function EasyApplyModal({
     setStep("confirm_dialog");
   };
 
-  const resumeFileName = profile?.resumeFileName || (profile?.resumeUrl ? "Uploaded_Resume.pdf" : "Candidate_Resume.pdf");
-  const candidateEmail = profile?.email || profile?.profileDetails?.email || "candidate@example.com";
+  const resumeFileName = profile?.resumeFileName || (profile?.resumeUrl ? "Uploaded resume" : "");
+  const candidateEmail = profile?.email || profile?.profileDetails?.email || "Not provided";
   const candidateMobile = profile?.profileDetails?.mobileNumber || profile?.mobile || "Not provided";
   const candidateName = profile?.name || profile?.fullName || userName || "Candidate";
-  const resumeScore = profile?.resumeScore || 85;
+  const parsedResumeScore = Number(profile?.resumeScore);
+  const resumeScore = Number.isFinite(parsedResumeScore) ? parsedResumeScore : null;
 
   const handleExecuteApplication = async () => {
     try {
@@ -83,7 +84,7 @@ export default function EasyApplyModal({
           companyName: job.companyName,
           status: "Applied",
           appliedAt: new Date().toISOString(),
-          resumeScore: resumeScore
+          resumeScore: resumeScore ?? 0
         };
         onAppliedSuccess(newApp);
         setStep("success");
@@ -172,10 +173,10 @@ export default function EasyApplyModal({
                   <div className="w-7 h-7 rounded-lg bg-cyan-500/20 border border-cyan-400/30 text-cyan-300 flex items-center justify-center font-bold text-[10px] shrink-0 font-mono">
                     PDF
                   </div>
-                  <span className="font-semibold text-white truncate max-w-[200px]">{resumeFileName}</span>
+                  <span className="font-semibold text-white truncate max-w-[200px]">{resumeFileName || "Resume uploaded"}</span>
                 </div>
                 <span className="px-2 py-0.5 rounded-md bg-emerald-950/80 text-emerald-300 font-bold text-[10px] border border-emerald-500/40 font-mono shadow-[0_0_8px_rgba(16,185,129,0.2)]">
-                  Ready ({resumeScore}% ATS Fit)
+                  {resumeScore !== null ? `Ready (${resumeScore}% ATS Fit)` : "Ready"}
                 </span>
               </div>
             </div>
@@ -265,7 +266,7 @@ export default function EasyApplyModal({
             <div className="p-4 bg-slate-950/70 rounded-2xl border border-blue-500/25 space-y-2 text-xs">
               <div className="flex justify-between items-center text-slate-400">
                 <span>Resume:</span>
-                <span className="font-bold text-white truncate max-w-[200px]">{resumeFileName}</span>
+                <span className="font-bold text-white truncate max-w-[200px]">{resumeFileName || "Resume uploaded"}</span>
               </div>
               <div className="flex justify-between items-center text-slate-400">
                 <span>Applicant:</span>
