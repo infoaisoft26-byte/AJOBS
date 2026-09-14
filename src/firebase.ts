@@ -171,6 +171,38 @@ let authInstance: any;
 let dbInstance: any;
 let storageInstance: any;
 
+function installProtectedApiTokenInjector(authClient: any) {
+  if (typeof window === "undefined" || typeof window.fetch !== "function") return;
+  const marker = "__aijobsProtectedApiFetchInstalled";
+  if ((window as any)[marker]) return;
+  (window as any)[marker] = true;
+
+  const protectedPaths = new Set([
+    "/api/admin-platform-insights",
+    "/api/consultancy-natural-search",
+  ]);
+  const originalFetch = window.fetch.bind(window);
+
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    try {
+      const rawUrl = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      const parsed = new URL(rawUrl, window.location.origin);
+      if (parsed.origin === window.location.origin && protectedPaths.has(parsed.pathname)) {
+        const currentUser = authClient.currentUser;
+        if (currentUser) {
+          const token = await currentUser.getIdToken();
+          const existingHeaders = new Headers(input instanceof Request ? input.headers : init?.headers);
+          existingHeaders.set("Authorization", `Bearer ${token}`);
+          init = { ...(init || {}), headers: existingHeaders };
+        }
+      }
+    } catch (error) {
+      console.warn("[Firebase] Could not attach API auth token:", error);
+    }
+    return originalFetch(input, init);
+  };
+}
+
 try {
   if (!isFirebaseConfigured) {
     throw new Error(firebaseConfigError || "Firebase not configured");
@@ -193,6 +225,7 @@ try {
 
   if (typeof window !== "undefined") {
     console.info(`[Firebase] Client initialized with Auth domain: ${firebaseAuthDomain}`);
+    installProtectedApiTokenInjector(authInstance);
   }
 
   setPersistence(authInstance, browserLocalPersistence).catch((error) => {
