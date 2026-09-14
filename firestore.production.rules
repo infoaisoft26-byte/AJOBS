@@ -45,7 +45,10 @@ service cloud.firestore {
       match /email_preferences/{id} { allow read, write: if isOwner(uid) || isAdmin(); }
     }
 
-    match /admins/{uid} { allow read: if isSignedIn(); allow write: if isAdmin(); }
+    match /admins/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isAdmin();
+    }
 
     match /companies/{companyId} {
       allow read: if true;
@@ -112,7 +115,16 @@ service cloud.firestore {
     match /candidateProfiles/{uid} { allow read, write: if isOwner(uid) || isAdmin(); }
     match /candidate_profiles/{uid} { allow read, write: if isOwner(uid) || isAdmin(); }
     match /resumes/{uid} { allow read, write: if isOwner(uid) || isAdmin(); }
-    match /candidate_documents/{id} { allow read, write: if isSignedIn(); }
+    match /candidate_documents/{id} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isCandidate() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin() || (
+        isCandidate() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == request.auth.uid
+      );
+      allow delete: if isAdmin() || (isCandidate() && resource.data.userId == request.auth.uid);
+    }
 
     match /notifications/{id} {
       allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
@@ -134,7 +146,7 @@ service cloud.firestore {
         collection in [
           'users','admins','companies','employers','recruiters','consultancies','recruiter_profiles',
           'jobCredits','marketingEvents','jobs','company_jobs','consultancy_jobs','applications','company_applications',
-          'candidates','candidateProfiles','candidate_profiles','resumes','notifications','mail','plans','email_templates','cms','resume_templates'
+          'candidates','candidateProfiles','candidate_profiles','resumes','candidate_documents','notifications','mail','plans','email_templates','cms','resume_templates'
         ]
       );
     }
