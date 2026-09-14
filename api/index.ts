@@ -8,6 +8,7 @@ import { handleHiringAnalyticsRoute } from "../server/hiringAnalyticsRoute.js";
 import { handleHiringLandingRoute } from "../server/hiringLandingRoute.js";
 import { handleHiringWorkspaceRoute } from "../server/hiringWorkspaceRoute.js";
 import { handleAdminJobReviewRoute } from "../server/adminJobReviewRoute.js";
+import { handleJobSubmissionRoute } from "../server/jobSubmissionRoute.js";
 import { handleAgreementOtpRoute } from "../server/agreementOtpRoute.js";
 import { handleAdminProfileRepairRoute } from "../server/adminProfileRepairRoute.js";
 import { verifyAndInjectAbacIdentity } from "../server/authenticatedAbacGateway.js";
@@ -55,6 +56,10 @@ export default async function handler(req: any, res: any) {
   }
   if (path === "/api/agreements/send-otp") {
     const handled = await handleAgreementOtpRoute(req, res);
+    if (handled || res.headersSent) return;
+  }
+  if (path === "/api/jobs/submit") {
+    const handled = await handleJobSubmissionRoute(req, res);
     if (handled || res.headersSent) return;
   }
   if (path === "/api/applications/admin/jobs/review") {
