@@ -48,6 +48,28 @@ function getCanonicalJobUrl(job: { id: string; title: string; slug?: string; can
   return `${SITE_URL}/jobs/${encodeURIComponent(slug)}`;
 }
 
+function getIndexingCredentials(): { clientEmail?: string; privateKey?: string; source: string } {
+  const googleClientEmail = String(process.env.GOOGLE_INDEXING_CLIENT_EMAIL || "").trim();
+  const googlePrivateKey = String(process.env.GOOGLE_INDEXING_PRIVATE_KEY || "").trim();
+  if (googleClientEmail && googlePrivateKey) {
+    return { clientEmail: googleClientEmail, privateKey: googlePrivateKey, source: "GOOGLE_INDEXING" };
+  }
+
+  const firebaseClientEmail = String(process.env.FIREBASE_ADMIN_CLIENT_EMAIL || "").trim();
+  const firebasePrivateKey = String(process.env.FIREBASE_ADMIN_PRIVATE_KEY || "").trim();
+  if (firebaseClientEmail && firebasePrivateKey) {
+    return { clientEmail: firebaseClientEmail, privateKey: firebasePrivateKey, source: "FIREBASE_ADMIN_FALLBACK" };
+  }
+
+  return { source: "MISSING" };
+}
+
+function extractGoogleError(respJson: any, respText: string, status: number): string {
+  const message = respJson?.error?.message || respJson?.message || "";
+  const code = respJson?.error?.status || respJson?.error?.code || status;
+  return message ? `Google Indexing API ${code}: ${message}` : `Google Indexing API HTTP ${status}: ${respText || "Unknown error"}`;
+}
+
 /**
  * Obtains an OAuth 2.0 access token for Google Indexing API using Service Account credentials.
  */
@@ -86,7 +108,8 @@ async function getGoogleIndexingAccessToken(clientEmail: string, privateKey: str
     throw new Error(`Google OAuth Token Exchange Failed (${tokenResp.status}): ${errText}`);
   }
 
-  const tokenData = await tokenResp.json();
+  const tokenData: any = await tokenResp.json();
+  if (!tokenData?.access_token) throw new Error("Google OAuth token exchange returned no access_token.");
   return tokenData.access_token;
 }
 
@@ -114,8 +137,9 @@ export async function sendGoogleIndexingNotification(
     };
   }
 
-  const clientEmail = process.env.GOOGLE_INDEXING_CLIENT_EMAIL;
-  const privateKey = process.env.GOOGLE_INDEXING_PRIVATE_KEY;
+  const credentials = getIndexingCredentials();
+  const clientEmail = credentials.clientEmail;
+  const privateKey = credentials.privateKey;
 
   if (!clientEmail || !privateKey) {
     const skippedLog: IndexingLogRecord = {
@@ -125,9 +149,9 @@ export async function sendGoogleIndexingNotification(
       jobUrl: targetJobUrl,
       requestType,
       responseCode: 200,
-      responseData: { note: "Service account credentials not configured in environment. Indexing request queued." },
+      responseData: { note: "Google Indexing service-account credentials are not configured in the server environment." },
       status: "SKIPPED_MISSING_CREDENTIALS",
-      error: "GOOGLE_INDEXING_CLIENT_EMAIL or GOOGLE_INDEXING_PRIVATE_KEY missing in server environment variables.",
+      error: "Missing GOOGLE_INDEXING_CLIENT_EMAIL/GOOGLE_INDEXING_PRIVATE_KEY and no Firebase Admin credential fallback is available.",
       submittedAt: timestamp,
       submittedBy
     };
@@ -142,11 +166,12 @@ export async function sendGoogleIndexingNotification(
       success: false,
       logId,
       responseCode: 200,
-      message: "Credentials missing. Logged as SKIPPED_MISSING_CREDENTIALS."
+      message: "Indexing credentials missing in Vercel environment variables."
     };
   }
 
   try {
+    console.info(`[GoogleIndexing] Using ${credentials.source} credentials for ${targetJobUrl}`);
     const accessToken = await getGoogleIndexingAccessToken(clientEmail, privateKey);
 
     const apiResp = await fetch("https://indexing.googleapis.com/v3/urlNotifications:publish", {
@@ -167,6 +192,7 @@ export async function sendGoogleIndexingNotification(
     }
 
     const isSuccess = apiResp.ok;
+    const errorMessage = isSuccess ? undefined : extractGoogleError(respJson, respText, apiResp.status);
     const logRecord: IndexingLogRecord = {
       id: logId,
       jobId: job.id,
@@ -174,9 +200,9 @@ export async function sendGoogleIndexingNotification(
       jobUrl: targetJobUrl,
       requestType,
       responseCode: apiResp.status,
-      responseData: respJson,
+      responseData: { ...respJson, credentialSource: credentials.source },
       status: isSuccess ? "SUCCESS" : "FAILED",
-      error: isSuccess ? undefined : `API Error ${apiResp.status}: ${respText}`,
+      error: errorMessage,
       submittedAt: timestamp,
       submittedBy
     };
@@ -193,7 +219,7 @@ export async function sendGoogleIndexingNotification(
       success: isSuccess,
       logId,
       responseCode: apiResp.status,
-      message: isSuccess ? "Google Indexing API notified successfully" : `API Error ${apiResp.status}`
+      message: isSuccess ? "Google Indexing API notified successfully" : (errorMessage || `API Error ${apiResp.status}`)
     };
   } catch (err: any) {
     const errMsg = err?.message || String(err);
@@ -206,6 +232,7 @@ export async function sendGoogleIndexingNotification(
       jobUrl: targetJobUrl,
       requestType,
       responseCode: 500,
+      responseData: { credentialSource: credentials.source },
       status: "FAILED",
       error: errMsg,
       submittedAt: timestamp,

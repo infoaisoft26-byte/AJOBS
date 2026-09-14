@@ -141,7 +141,7 @@ export async function handleAdminJobReviewRoute(req: Request, res: Response): Pr
       candidateFeePolicyConfirmed: true,
       candidateFeePolicyVerifiedByAdmin: true,
       reviewedBy: decoded.uid,
-        reviewedByRole: reviewerRole,
+      reviewedByRole: reviewerRole,
       reviewedAt: now,
       approvedAt: now,
       verifiedBy: decoded.uid,
@@ -195,7 +195,10 @@ export async function handleAdminJobReviewRoute(req: Request, res: Response): Pr
       }, { merge: true }).catch(() => undefined);
     }
 
-    res.json({ success: true, status: "approved", canonicalUrl, indexing });
+    const indexingForUi = indexing.success
+      ? indexing
+      : { ...indexing, status: `FAILED: ${indexing.message || "Unknown Google Indexing API error"}` };
+    res.json({ success: true, status: "approved", canonicalUrl, indexing: indexingForUi });
     return true;
   } catch (error: any) {
     const status = Number(error?.status) || 500;
