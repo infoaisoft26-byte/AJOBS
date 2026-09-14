@@ -19,3 +19,4 @@ Disallow: /hire/workspace
 Disallow: /api/
 
 Sitemap: https://aijobs1.in/sitemap.xml
+Sitemap: https://aijobs1.in/job-sitemap.xml
