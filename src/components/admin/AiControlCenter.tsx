@@ -2,6 +2,7 @@ import React, { FormEvent, useEffect, useState } from "react";
 import { doc, setDoc } from "firebase/firestore";
 import { Baseline, Brain, Chrome, Cloud, Code, Group, Key, List, Save, Server, ShieldAlert, Sliders, View } from "lucide-react";
 import { db } from "../../firebase";
+import { OFFICIAL_ADMIN_EMAIL } from "../../config/site";
 
 import AiInsightsPanel from "../AiInsightsPanel";
 
@@ -65,7 +66,7 @@ export default function AiControlCenter({
         id: logId,
         userId: "system_admin",
         userName: "Super Admin",
-        userEmail: "admin@aijobs.global",
+        userEmail: OFFICIAL_ADMIN_EMAIL,
         role: "Super Admin",
         action: "SETTINGS_CHANGE",
         category: "AI",
@@ -97,7 +98,7 @@ export default function AiControlCenter({
         id: logId,
         userId: "system_admin",
         userName: "Super Admin",
-        userEmail: "admin@aijobs.global",
+        userEmail: OFFICIAL_ADMIN_EMAIL,
         role: "Super Admin",
         action: "SETTINGS_CHANGE",
         category: "AI",

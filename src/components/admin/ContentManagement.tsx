@@ -2,6 +2,7 @@ import React, { FormEvent, useEffect, useState } from "react";
 import { collection, deleteDoc, doc, getDocs, setDoc } from "firebase/firestore";
 import { Blocks, Chrome, Contact, Delete, Edit, Facebook, Filter, Globe, Group, Info, Instagram, Link, Mail, Phone, Plus, Save, Section, Tags, Twitter, Type, View, X } from "lucide-react";
 import { db } from "../../firebase";
+import { OFFICIAL_ADMIN_EMAIL } from "../../config/site";
 
 
 interface ContentManagementProps {
@@ -129,7 +130,7 @@ export default function ContentManagement({
         id: logId,
         userId: "system_admin",
         userName: "Super Admin",
-        userEmail: "admin@aijobs.global",
+        userEmail: OFFICIAL_ADMIN_EMAIL,
         role: "Super Admin",
         action: "UPDATE",
         category: "System",
@@ -209,7 +210,7 @@ export default function ContentManagement({
         id: logId,
         userId: "system_admin",
         userName: "Super Admin",
-        userEmail: "admin@aijobs.global",
+        userEmail: OFFICIAL_ADMIN_EMAIL,
         role: "Super Admin",
         action: "UPDATE",
         category: "Content",
