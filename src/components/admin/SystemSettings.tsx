@@ -3,6 +3,7 @@ import { Timestamp, collection, doc, setDoc, where } from "firebase/firestore";
 import { Activity, Asterisk, Ban, Check, Chrome, Cloud, Contact, Database, Eye, EyeOff, Globe, Icon, Lock, Logs, Mail, Package, Phone, RefreshCw, Save, Search, Send, Server, Settings, Sliders, Type, View } from "lucide-react";
 import { db } from "../../firebase";
 import { parseJsonResponse } from "../../utils/apiHelper";
+import { OFFICIAL_ADMIN_EMAIL } from "../../config/site";
 
 
 interface SystemSettingsProps {
@@ -155,7 +156,7 @@ export default function SystemSettings({
 
   // Google & Android & Referral parameters
   const [gaMeasurementId, setGaMeasurementId] = useState("G-ZRE28JK4W8");
-  const [adsenseClient, setAdsenseClient] = useState("ca-pub-6338624456339474");
+  const [adsenseClient, setAdsenseClient] = useState("ca-pub-4518002691129999");
   const [referralReward, setReferralReward] = useState(2500);
   const [freePostings, setFreePostings] = useState(1);
   const [deepLinkHost, setDeepLinkHost] = useState("aijobs1.in");
@@ -223,7 +224,7 @@ export default function SystemSettings({
         id: logId,
         userId: "system_admin",
         userName: userName,
-        userEmail: "admin@aijobs.global",
+        userEmail: OFFICIAL_ADMIN_EMAIL,
         role: "Super Admin",
         action: "SETTINGS_CHANGE",
         category: "System",
@@ -262,7 +263,7 @@ export default function SystemSettings({
         id: logId,
         userId: "system_admin",
         userName: userName,
-        userEmail: "admin@aijobs.global",
+        userEmail: OFFICIAL_ADMIN_EMAIL,
         role: "Super Admin",
         action: "SETTINGS_CHANGE",
         category: "System",
