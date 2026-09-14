@@ -1,7 +1,6 @@
-import React, { HTMLDivElement, MouseEvent, ReactNode, useRef, useState } from "react";
-import { ref } from "firebase/storage";
-import { motion } from "motion/react";
-import { Framer } from "lucide-react";
+import React, { useRef, useState } from "react";
+import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
+
 interface HolographicCardProps {
   children: React.ReactNode;
   className?: string;
