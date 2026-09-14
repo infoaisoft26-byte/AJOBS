@@ -21,6 +21,33 @@ function base64UrlEncode(str: string | Buffer): string {
   return base64.replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "job";
+}
+
+function getCanonicalJobUrl(job: { id: string; title: string; slug?: string; canonicalUrl?: string }): string {
+  const canonical = String(job.canonicalUrl || "").trim();
+  if (canonical.startsWith(`${SITE_URL}/jobs/`)) {
+    try {
+      const parsed = new URL(canonical);
+      if (parsed.origin === new URL(SITE_URL).origin && parsed.pathname.startsWith("/jobs/")) {
+        parsed.search = "";
+        parsed.hash = "";
+        return parsed.toString();
+      }
+    } catch {
+      // Rebuild from the trusted production domain below.
+    }
+  }
+
+  const slug = String(job.slug || `${slugify(job.title || "job")}-${job.id}`).trim();
+  return `${SITE_URL}/jobs/${encodeURIComponent(slug)}`;
+}
+
 /**
  * Obtains an OAuth 2.0 access token for Google Indexing API using Service Account credentials.
  */
@@ -38,8 +65,6 @@ async function getGoogleIndexingAccessToken(clientEmail: string, privateKey: str
   const encodedHeader = base64UrlEncode(JSON.stringify(header));
   const encodedClaimSet = base64UrlEncode(JSON.stringify(claimSet));
   const signatureInput = `${encodedHeader}.${encodedClaimSet}`;
-
-  // Formatted private key with newlines
   const formattedPrivateKey = privateKey.includes("\\n") ? privateKey.replace(/\\n/g, "\n") : privateKey;
 
   const signer = crypto.createSign("RSA-SHA256");
@@ -66,8 +91,9 @@ async function getGoogleIndexingAccessToken(clientEmail: string, privateKey: str
 }
 
 /**
- * Sends a URL_UPDATED or URL_DELETED request to Google Indexing API
- * and logs the response in Firestore `indexingLogs`.
+ * Sends a URL_UPDATED or URL_DELETED request to Google Indexing API.
+ * Only canonical AIJOBS /jobs/ URLs are eligible, preventing accidental
+ * indexing requests for admin, API, preview, or non-production URLs.
  */
 export async function sendGoogleIndexingNotification(
   job: { id: string; title: string; slug?: string; canonicalUrl?: string },
@@ -77,9 +103,16 @@ export async function sendGoogleIndexingNotification(
   const logId = `idx_log_${Math.random().toString(36).substr(2, 9)}`;
   const timestamp = new Date().toISOString();
   const db = getFirestoreDb();
+  const targetJobUrl = getCanonicalJobUrl(job);
 
-  const slug = job.slug || `${(job.title || "job").toLowerCase().replace(/[^a-z0-9]/g, "-")}-${job.id}`;
-  const targetJobUrl = job.canonicalUrl || `${SITE_URL}/jobs/${slug}`;
+  if (!targetJobUrl.startsWith(`${SITE_URL}/jobs/`)) {
+    return {
+      success: false,
+      logId,
+      responseCode: 400,
+      message: "Only canonical production AIJOBS job URLs may be sent to Google Indexing API."
+    };
+  }
 
   const clientEmail = process.env.GOOGLE_INDEXING_CLIENT_EMAIL;
   const privateKey = process.env.GOOGLE_INDEXING_PRIVATE_KEY;
@@ -101,7 +134,7 @@ export async function sendGoogleIndexingNotification(
 
     try {
       await db.collection("indexingLogs").doc(logId).set(skippedLog);
-    } catch (e) {
+    } catch {
       console.warn("[GoogleIndexing] Deferred writing skipped indexing log to Firestore");
     }
 
@@ -122,10 +155,7 @@ export async function sendGoogleIndexingNotification(
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`
       },
-      body: JSON.stringify({
-        url: targetJobUrl,
-        type: requestType
-      })
+      body: JSON.stringify({ url: targetJobUrl, type: requestType })
     });
 
     const respText = await apiResp.text();
@@ -153,7 +183,6 @@ export async function sendGoogleIndexingNotification(
 
     await db.collection("indexingLogs").doc(logId).set(logRecord);
 
-    // Update indexing status on job document
     await db.collection("jobs").doc(job.id).set({
       indexingStatus: isSuccess ? "SUCCESS" : "FAILED",
       lastIndexedAt: timestamp,
@@ -166,7 +195,6 @@ export async function sendGoogleIndexingNotification(
       responseCode: apiResp.status,
       message: isSuccess ? "Google Indexing API notified successfully" : `API Error ${apiResp.status}`
     };
-
   } catch (err: any) {
     const errMsg = err?.message || String(err);
     console.error("[GoogleIndexing] Exception occurred:", errMsg);
@@ -186,7 +214,9 @@ export async function sendGoogleIndexingNotification(
 
     try {
       await db.collection("indexingLogs").doc(logId).set(failedLog);
-    } catch (e) {}
+    } catch {
+      // Keep indexing notification failures non-fatal for job publishing.
+    }
 
     return {
       success: false,
