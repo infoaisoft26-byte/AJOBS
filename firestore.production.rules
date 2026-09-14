@@ -12,6 +12,19 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
+    function isJobReviewer() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/employees/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.status != 'inactive' &&
+        get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.status != 'suspended' &&
+        (
+          get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.canApproveJobs == true ||
+          (
+            get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissions is list &&
+            get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.permissions.hasAny(['approve_jobs','job_approver','jobs_approve','job_review'])
+          )
+        );
+    }
     function isRecruiterRole() { return isSignedIn() && (role() == 'recruiter' || role() == 'employer' || role() == 'corporate'); }
     function isConsultancyRole() { return isSignedIn() && (role() == 'consultancy' || role() == 'agency'); }
     function isHiringRole() { return isRecruiterRole() || isConsultancyRole(); }
@@ -70,7 +83,7 @@ service cloud.firestore {
     }
 
     match /jobs/{jobId} {
-      allow read: if resource.data.status == 'approved' || isAdmin() || ownsJob(resource.data);
+      allow read: if resource.data.status == 'approved' || isAdmin() || isJobReviewer() || ownsJob(resource.data);
       allow create: if isSignedIn() && isHiringRole() &&
         request.resource.data.ownerUid == request.auth.uid &&
         request.resource.data.createdBy == request.auth.uid &&
@@ -84,12 +97,12 @@ service cloud.firestore {
       allow delete: if isAdmin() || (ownsJob(resource.data) && resource.data.status != 'approved');
     }
     match /company_jobs/{jobId} {
-      allow read: if isAdmin() || (isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.companyId == request.auth.uid)) || resource.data.status == 'approved';
+      allow read: if isAdmin() || isJobReviewer() || (isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.companyId == request.auth.uid)) || resource.data.status == 'approved';
       allow create: if isRecruiterRole() && (request.resource.data.userId == request.auth.uid || request.resource.data.companyId == request.auth.uid);
       allow update, delete: if isAdmin() || (isRecruiterRole() && (resource.data.userId == request.auth.uid || resource.data.companyId == request.auth.uid));
     }
     match /consultancy_jobs/{jobId} {
-      allow read: if isAdmin() || (isSignedIn() && resource.data.consultancyId == request.auth.uid) || resource.data.status == 'approved';
+      allow read: if isAdmin() || isJobReviewer() || (isSignedIn() && resource.data.consultancyId == request.auth.uid) || resource.data.status == 'approved';
       allow create: if isConsultancyRole() && request.resource.data.consultancyId == request.auth.uid;
       allow update, delete: if isAdmin() || (isConsultancyRole() && resource.data.consultancyId == request.auth.uid);
     }
