@@ -296,7 +296,7 @@ export async function sendGoogleIndexingNotification(
       responseCode: apiResp.status,
       responseData: { ...respJson, credentialSource: credentials.source },
       status: isSuccess ? "SUCCESS" : "FAILED",
-      error: errorMessage,
+      ...(errorMessage ? { error: errorMessage } : {}),
       submittedAt: timestamp,
       submittedBy
     };
