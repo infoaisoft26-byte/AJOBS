@@ -84,19 +84,19 @@ function isOfficialAdminAccount(fbUser: any) {
   return fbUser?.uid === OFFICIAL_ADMIN_UID && String(fbUser?.email || "").trim().toLowerCase() === OFFICIAL_ADMIN_EMAIL;
 }
 
-async function repairOfficialAdminProfile(fbUser: any, password: string): Promise<void> {
+async function repairOfficialAdminProfile(fbUser: any): Promise<void> {
   if (!isOfficialAdminAccount(fbUser)) {
     throw new Error("OFFICIAL_ADMIN_IDENTITY_MISMATCH");
   }
 
+  const idToken = await fbUser.getIdToken();
   const response = await fetch("/api/bootstrap-superadmin", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email: OFFICIAL_ADMIN_EMAIL,
-      password,
-      name: "AIJOBS Admin",
-    }),
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({ name: "AIJOBS Admin" }),
   });
 
   const payload = await response.json().catch(() => ({}));
@@ -154,7 +154,7 @@ export default function AdminLogin({ onAdminLoginSuccess }: AdminLoginProps) {
         if (canRepairOfficialAdmin) {
           try {
             console.info("[AdminLogin] Repairing official Admin Firestore profile.");
-            await repairOfficialAdminProfile(credential.user, password);
+            await repairOfficialAdminProfile(credential.user);
             profile = await loadAdminProfile(credential.user);
           } catch (repairError) {
             console.error("[AdminLogin] Official Admin profile repair failed:", repairError);
