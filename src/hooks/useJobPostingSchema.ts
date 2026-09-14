@@ -1,12 +1,11 @@
-import React, { useEffect } from "react";
-import { Search, Store } from "lucide-react";
+import { useEffect } from "react";
 import { JobPosting } from "../types";
 import { generateJobPostingSchema } from "../utils/schemaGenerator";
 import { getPublicJobUrl } from "../config/site";
 
 /**
  * A custom React hook to dynamically manage the SEO lifecycle for a Job Page.
- * It injects Google Jobs ready JSON-LD (JobPosting Schema), sets canonical URLs, 
+ * It injects Google Jobs ready JSON-LD (JobPosting Schema), sets canonical URLs,
  * configures essential SEO Meta tags, and injects Open Graph elements.
  * Fully compliant with Google Search console requirements.
  */
@@ -14,21 +13,17 @@ export function useJobPostingSchema(job: JobPosting | null | undefined): void {
   useEffect(() => {
     if (!job) return;
 
-    // 1. Store original head element values for clean restoration on unmount
     const originalTitle = document.title;
-    
     const metaDescElement = document.querySelector('meta[name="description"]');
     const originalMetaDesc = metaDescElement ? metaDescElement.getAttribute("content") : "";
 
     let canonicalLink = document.querySelector('link[rel="canonical"]');
     const originalCanonical = canonicalLink ? canonicalLink.getAttribute("href") : "";
 
-    // 2. Set dynamic title & description based on the specific job posting
     const cleanCompanyName = job.companyName || "AIJobs Partner";
     const newTitle = `${job.title} at ${cleanCompanyName} | AIJobs Recruitment Platform`;
     document.title = newTitle;
 
-    // Standardize 155-character dynamic meta description for Google search snippets
     const cleanDescriptionText = (job.description || "")
       .replace(/[\r\n]+/g, " ")
       .trim();
@@ -45,7 +40,6 @@ export function useJobPostingSchema(job: JobPosting | null | undefined): void {
       document.head.appendChild(newMeta);
     }
 
-    // 3. Update or create the canonical URL for Google Jobs search indexing engines
     const jobUrl = getPublicJobUrl(job);
     if (canonicalLink) {
       canonicalLink.setAttribute("href", jobUrl);
@@ -56,7 +50,27 @@ export function useJobPostingSchema(job: JobPosting | null | undefined): void {
       document.head.appendChild(canonicalLink);
     }
 
-    // 4. Inject or update Open Graph (OG) metadata tags to optimize social link unfurling
+    // Legacy Google Jobs/app links used /?jobId=... . Once the real job is
+    // loaded, normalize the browser address to the canonical /jobs/<slug>
+    // route without reloading the SPA. Preserve apply/UTM attribution params,
+    // but remove the duplicate jobId query parameter.
+    try {
+      const current = new URL(window.location.href);
+      if (current.pathname === "/" && current.searchParams.get("jobId")) {
+        const canonical = new URL(jobUrl);
+        current.searchParams.forEach((value, key) => {
+          if (key !== "jobId") canonical.searchParams.append(key, value);
+        });
+        window.history.replaceState(
+          window.history.state,
+          "",
+          `${canonical.pathname}${canonical.search}${canonical.hash}`
+        );
+      }
+    } catch (error) {
+      console.warn("Failed to normalize legacy job URL to canonical route:", error);
+    }
+
     const ogTags = [
       { property: "og:title", content: newTitle },
       { property: "og:description", content: newMetaDesc },
@@ -79,7 +93,6 @@ export function useJobPostingSchema(job: JobPosting | null | undefined): void {
       }
     });
 
-    // 5. Inject/Update Structured JSON-LD Data for Google Jobs
     const schemaId = `job-schema-${job.id}`;
     let schemaScript = document.getElementById(schemaId) as HTMLScriptElement;
     if (!schemaScript) {
@@ -96,12 +109,9 @@ export function useJobPostingSchema(job: JobPosting | null | undefined): void {
       console.error("Failed to generate dynamic JSON-LD schema:", err);
     }
 
-    // 6. Cleanup function to restore parent page state and remove dynamic DOM element tags
     return () => {
-      // Restore dynamic SEO titles
       document.title = originalTitle;
 
-      // Restore dynamic SEO descriptions
       const currentMetaDesc = document.querySelector('meta[name="description"]');
       if (currentMetaDesc) {
         if (originalMetaDesc) {
@@ -111,7 +121,6 @@ export function useJobPostingSchema(job: JobPosting | null | undefined): void {
         }
       }
 
-      // Restore canonical link structures
       const currentCanonical = document.querySelector('link[rel="canonical"]');
       if (currentCanonical) {
         if (originalCanonical) {
@@ -121,7 +130,6 @@ export function useJobPostingSchema(job: JobPosting | null | undefined): void {
         }
       }
 
-      // Restore original Open Graph (OG) properties
       Object.entries(originalOgVals).forEach(([property, val]) => {
         const element = document.querySelector(`meta[property="${property}"]`);
         if (element) {
@@ -133,7 +141,6 @@ export function useJobPostingSchema(job: JobPosting | null | undefined): void {
         }
       });
 
-      // Remove the job-specific schema script tag
       const scriptToRemove = document.getElementById(schemaId);
       if (scriptToRemove) {
         scriptToRemove.remove();
