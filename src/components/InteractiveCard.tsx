@@ -1,6 +1,5 @@
-import React, { HTMLDivElement, MouseEvent, ReactNode, useRef, useState } from "react";
-import { ref } from "firebase/storage";
-import { motion } from "motion/react";
+import React, { useRef, useState } from "react";
+import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 
 interface InteractiveCardProps {
   children: React.ReactNode;
@@ -42,8 +41,8 @@ export default function InteractiveCard({
   const glareY = useSpring(useTransform(y, [-0.5, 0.5], [0, 100]), springConfig);
 
   // Depth shadows mapping based on tilt position
-  const shadowX = useSpring(useTransform(x, [-0.5, 0.5], [15, -15]), springConfig);
-  const shadowY = useSpring(useTransform(y, [-0.5, 0.5], [15, -15]), springConfig);
+  useSpring(useTransform(x, [-0.5, 0.5], [15, -15]), springConfig);
+  useSpring(useTransform(y, [-0.5, 0.5], [15, -15]), springConfig);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current) return;
