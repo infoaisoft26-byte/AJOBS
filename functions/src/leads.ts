@@ -12,32 +12,37 @@ function getDb() {
 }
 
 /**
- * Lead list handler logic using Firebase Admin SDK
+ * Lead list handler logic using Firebase Admin SDK.
+ * Fails closed unless the caller provides a UID that belongs to an Admin/Super Admin user.
  */
 export async function getLeadsListHandler(requesterUid?: string) {
   try {
     const db = getDb();
 
-    // Verify admin role if UID provided
-    if (requesterUid) {
-      const userDoc = await db.collection("users").doc(requesterUid).get();
-      if (userDoc.exists) {
-        const userData = userDoc.data() || {};
-        const role = (userData.role || "").toLowerCase();
-        const isAdmin =
-          role === "admin" ||
-          role === "superadmin" ||
-          role === "super_admin" ||
-          userData.isAdmin === true ||
-          userData.email === "infoaisoft26@gmail.com";
+    if (!requesterUid) {
+      return {
+        success: false,
+        error: "Access denied: authenticated Admin identity is required."
+      };
+    }
 
-        if (!isAdmin) {
-          return {
-            success: false,
-            error: "Access denied: Admin or Superadmin privileges required."
-          };
-        }
-      }
+    const userDoc = await db.collection("users").doc(requesterUid).get();
+    if (!userDoc.exists) {
+      return {
+        success: false,
+        error: "Access denied: Admin profile not found."
+      };
+    }
+
+    const userData = userDoc.data() || {};
+    const role = String(userData.role || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+    const isAdmin = role === "admin" || role === "superadmin" || role === "super_admin";
+
+    if (!isAdmin) {
+      return {
+        success: false,
+        error: "Access denied: Admin or Super Admin privileges required."
+      };
     }
 
     // 5-second timeout wrapper
