@@ -4,6 +4,7 @@
  */
 
 export const APP_NAME = "AIJOBS";
+export const OFFICIAL_ADMIN_EMAIL = "admin@aijobs1.in";
 
 export const PRODUCTION_DOMAIN = "https://aijobs1.in";
 
@@ -69,7 +70,6 @@ const getResolvedSiteUrl = (): string => {
     ""
   ).trim().replace(/\/+$/, "");
 
-  // If unset or pointing to legacy production domains, enforce official production domain
   if (!raw || raw.includes("aijobs1.vercel.app") || raw.includes("aijobs.vercel.app") || raw.includes("aijobs.app")) {
     return PRODUCTION_DOMAIN;
   }
@@ -83,10 +83,6 @@ export const HOME_PAGE_URL = `${PRODUCTION_DOMAIN}/`;
 export const PRIVACY_POLICY_URL = `${PRODUCTION_DOMAIN}/privacy-policy`;
 export const TERMS_OF_SERVICE_URL = `${PRODUCTION_DOMAIN}/terms`;
 
-/**
- * Generates an SEO-friendly job URL slug from job title, location, and job ID.
- * Example output: "customer-support-executive-mumbai-AJ1024"
- */
 export function generateJobSlug(title: string, location?: string, id?: string): string {
   const cleanTitle = (title || "job")
     .toLowerCase()
@@ -112,10 +108,6 @@ export function generateJobSlug(title: string, location?: string, id?: string): 
   return parts.join("-");
 }
 
-/**
- * Generates the full canonical public job URL for a job.
- * Example: "https://aijobs1.in/jobs/customer-support-executive-mumbai-AJ1024"
- */
 export function getPublicJobUrl(job: { title: string; location?: string; id: string; slug?: string }): string {
   const base = SITE_URL;
   if (job.slug) {
