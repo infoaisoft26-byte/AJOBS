@@ -156,6 +156,7 @@ export default function JobDetails({
         
         if (onAppliedSuccess) {
           const appId = result.applicationId || `app_${Math.random().toString(36).substring(2, 11)}`;
+          const parsedResumeScore = Number(profile?.resumeScore);
           const newApp: JobApplication = {
             id: appId,
             jobId: job.id,
@@ -165,7 +166,7 @@ export default function JobDetails({
             companyName: job.companyName,
             status: "Applied",
             appliedAt: new Date().toISOString(),
-            resumeScore: profile?.resumeScore || 70
+            resumeScore: Number.isFinite(parsedResumeScore) ? parsedResumeScore : 0
           };
           onAppliedSuccess(newApp);
         }
@@ -184,7 +185,7 @@ export default function JobDetails({
     const shareUrl = `${window.location.origin}/?jobId=${jobId}`;
     const shareData = {
       title: job?.title || "Job Opening",
-      text: `Check out this job opening: ${job?.title} at ${job?.companyName || "AIJobs Partner"}`,
+      text: `Check out this job opening: ${job?.title} at ${job?.companyName || "the employer"}`,
       url: shareUrl,
     };
 
@@ -282,7 +283,7 @@ export default function JobDetails({
               <h1 className="font-extrabold text-xl sm:text-2xl text-white mt-1.5 tracking-tight">{job.title}</h1>
               <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
                 <MapPin className="w-3.5 h-3.5 text-cyan-400" />
-                <span>{job.location || "Remote / Bengaluru"}</span>
+                <span>{job.location || "Location not specified"}</span>
               </p>
             </div>
           </div>
@@ -311,28 +312,28 @@ export default function JobDetails({
           <div className="space-y-1">
             <p className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">Salary Package</p>
             <p className="text-sm font-bold text-emerald-400 font-mono flex items-center gap-1">
-              <span className="text-emerald-500">₹</span> {job.salary || "Competitive Salary"}
+              <span className="text-emerald-500">₹</span> {job.salary || "Not disclosed"}
             </p>
           </div>
           <div className="space-y-1">
             <p className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">Experience Level</p>
             <p className="text-sm font-bold text-white flex items-center gap-1.5">
               <Briefcase className="w-4 h-4 text-purple-400 shrink-0" />
-              <span>{job.experience || "Any level"}</span>
+              <span>{job.experience || "Not specified"}</span>
             </p>
           </div>
           <div className="space-y-1">
             <p className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">Required Openings</p>
             <p className="text-sm font-bold text-white flex items-center gap-1.5">
               <Users className="w-4 h-4 text-amber-400 shrink-0" />
-              <span>{job.openings || 1} Positions</span>
+              <span>{job.openings ? `${job.openings} Positions` : "Not specified"}</span>
             </p>
           </div>
           <div className="space-y-1">
             <p className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">Expiration / Deadline</p>
             <p className="text-sm font-bold text-white flex items-center gap-1.5">
               <Clock className="w-4 h-4 text-cyan-400 shrink-0" />
-              <span>{job.expiryDate ? new Date(job.expiryDate).toLocaleDateString() : "No Expiry"}</span>
+              <span>{job.expiryDate ? new Date(job.expiryDate).toLocaleDateString() : "Not specified"}</span>
             </p>
           </div>
         </div>
@@ -347,7 +348,7 @@ export default function JobDetails({
               <span>Role Specifications</span>
             </h3>
             <p className="text-slate-300 whitespace-pre-line leading-relaxed text-xs">
-              {job.description || "The direct hiring team is seeking a motivated professional to lead new project cycles, coordinate operational pipelines, and secure reliable deliverables. Join a progressive corporate structure focused on team scaling and personal career progression."}
+              {job.description || "Job description not provided by the hiring organization."}
             </p>
           </div>
 
@@ -374,7 +375,7 @@ export default function JobDetails({
             </h3>
             <p className="text-slate-300 whitespace-pre-line text-xs">
               {job.education ? `Academic Level: ${job.education}\n\n` : ""}
-              {job.requirements || "Demonstrated performance record, strong communication skills, deep technical adaptability, and capability to synchronize with cross-functional task units effectively."}
+              {job.requirements || "Requirements not specified by the hiring organization."}
             </p>
           </div>
 
@@ -405,7 +406,7 @@ export default function JobDetails({
               <span>Benefits, Compensations & Perks</span>
             </h3>
             <p className="text-slate-300 text-xs">
-              {job.benefits || "Includes premium dental/medical coverages, dynamic remote/hybrid workplace scheduling, high-capacity hardware workspace budgets, performance milestone bonuses, and paid educational allowances."}
+              {job.benefits || "Benefits not specified by the hiring organization."}
             </p>
           </div>
 
@@ -434,9 +435,9 @@ export default function JobDetails({
         <div className="p-6 bg-slate-950/70 border-t border-blue-500/20 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] text-slate-400 font-mono">
           <span className="flex items-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Fully vetted and secure employer credential certification.</span>
+            <span>Verified job information is shown from the stored job record.</span>
           </span>
-          <span>Posted: {job.createdAt ? new Date(job.createdAt).toLocaleDateString() : "Recently"}</span>
+          <span>Posted: {job.createdAt ? new Date(job.createdAt).toLocaleDateString() : "Date not provided"}</span>
         </div>
 
       </div>
@@ -475,12 +476,12 @@ export default function JobDetails({
                   <h4 className="font-bold text-sm text-white mt-1 line-clamp-1">{simJob.title}</h4>
                   <p className="text-[11px] text-gray-400 mt-0.5 flex items-center gap-1">
                     <MapPin className="w-3 h-3 text-purple-400" />
-                    <span>{simJob.location || "Bengaluru"}</span>
+                    <span>{simJob.location || "Location not specified"}</span>
                   </p>
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[11px]">
-                  <span className="text-emerald-400 font-bold">₹ {simJob.salary || "Competitive"}</span>
+                  <span className="text-emerald-400 font-bold">₹ {simJob.salary || "Not disclosed"}</span>
                   <span className="text-indigo-300 font-extrabold flex items-center gap-1 hover:underline">
                     <span>View</span>
                     <ArrowRight className="w-3 h-3" />
@@ -550,11 +551,11 @@ export default function JobDetails({
                 <div className="flex items-center gap-2 truncate">
                   <FileText className="w-4 h-4 text-cyan-400 shrink-0" />
                   <span className="font-semibold text-white truncate max-w-[200px]">
-                    {profile?.resumeFileName || (profile?.resumeUrl ? "Uploaded_Resume.pdf" : "Candidate_Resume.pdf")}
+                    {profile?.resumeFileName || (profile?.resumeUrl ? "Resume uploaded" : "Resume not available")}
                   </span>
                 </div>
                 <span className="px-2 py-0.5 rounded-md bg-emerald-950/80 text-emerald-300 font-bold text-[10px] border border-emerald-500/40 font-mono shadow-[0_0_8px_rgba(16,185,129,0.2)]">
-                  Ready ({profile?.resumeScore || 80}% ATS)
+                  {Number.isFinite(Number(profile?.resumeScore)) ? `Ready (${Number(profile.resumeScore)}% ATS)` : "Ready"}
                 </span>
               </div>
             </div>
@@ -569,11 +570,11 @@ export default function JobDetails({
                 </div>
                 <div className="bg-slate-900/90 p-2 rounded-xl border border-blue-500/20">
                   <span className="text-[10px] text-slate-400 block font-mono">Mobile</span>
-                  <span className="font-bold text-white">{profile?.profileDetails?.mobileNumber || profile?.mobile || "Provided in Profile"}</span>
+                  <span className="font-bold text-white">{profile?.profileDetails?.mobileNumber || profile?.mobile || "Not provided"}</span>
                 </div>
                 <div className="col-span-2 bg-slate-900/90 p-2 rounded-xl border border-blue-500/20">
                   <span className="text-[10px] text-slate-400 block font-mono">Email Address</span>
-                  <span className="font-bold text-white">{profile?.email || profile?.profileDetails?.email || "candidate@example.com"}</span>
+                  <span className="font-bold text-white">{profile?.email || profile?.profileDetails?.email || "Not provided"}</span>
                 </div>
               </div>
             </div>
