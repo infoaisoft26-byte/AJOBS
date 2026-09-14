@@ -11,6 +11,9 @@ interface AdminLoginProps {
   onAdminLoginSuccess: (userProfile: UserProfile) => void;
 }
 
+const OFFICIAL_ADMIN_EMAIL = "admin@aijobs1.in";
+const OFFICIAL_ADMIN_UID = "Emy6ywuYbRNquBpTOYdnbWPUhtp2";
+
 function authErrorMessage(code?: string) {
   switch (code) {
     case "auth/invalid-credential":
@@ -77,6 +80,37 @@ async function loadAdminProfile(fbUser: any): Promise<UserProfile> {
   } as UserProfile;
 }
 
+function isOfficialAdminAccount(fbUser: any) {
+  return fbUser?.uid === OFFICIAL_ADMIN_UID && String(fbUser?.email || "").trim().toLowerCase() === OFFICIAL_ADMIN_EMAIL;
+}
+
+async function repairOfficialAdminProfile(fbUser: any, password: string): Promise<void> {
+  if (!isOfficialAdminAccount(fbUser)) {
+    throw new Error("OFFICIAL_ADMIN_IDENTITY_MISMATCH");
+  }
+
+  const response = await fetch("/api/bootstrap-superadmin", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: OFFICIAL_ADMIN_EMAIL,
+      password,
+      name: "AIJOBS Admin",
+    }),
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success !== true) {
+    throw new Error(payload?.error || "OFFICIAL_ADMIN_PROFILE_REPAIR_FAILED");
+  }
+
+  if (payload?.uid && payload.uid !== OFFICIAL_ADMIN_UID) {
+    throw new Error("OFFICIAL_ADMIN_UID_MISMATCH");
+  }
+
+  await fbUser.getIdToken(true);
+}
+
 export default function AdminLogin({ onAdminLoginSuccess }: AdminLoginProps) {
   const { showToast } = useToast();
   const [email, setEmail] = useState("");
@@ -113,16 +147,33 @@ export default function AdminLogin({ onAdminLoginSuccess }: AdminLoginProps) {
       try {
         profile = await loadAdminProfile(credential.user);
       } catch (profileError: any) {
-        await signOut(auth);
-        if (profileError?.message === "ADMIN_PROFILE_MISSING") {
-          fail("Admin account authenticated, but admin profile is missing.");
-        } else if (profileError?.message === "ADMIN_ROLE_MISMATCH") {
-          fail("This account does not have Admin access.");
+        const canRepairOfficialAdmin =
+          isOfficialAdminAccount(credential.user) &&
+          (profileError?.message === "ADMIN_PROFILE_MISSING" || profileError?.message === "ADMIN_ROLE_MISMATCH");
+
+        if (canRepairOfficialAdmin) {
+          try {
+            console.info("[AdminLogin] Repairing official Admin Firestore profile.");
+            await repairOfficialAdminProfile(credential.user, password);
+            profile = await loadAdminProfile(credential.user);
+          } catch (repairError) {
+            console.error("[AdminLogin] Official Admin profile repair failed:", repairError);
+            await signOut(auth);
+            fail("Admin authentication succeeded, but the official Admin profile could not be initialized. Please contact the system owner.");
+            return;
+          }
         } else {
-          console.error("[AdminLogin] Admin profile verification failed:", profileError);
-          fail("Admin account authenticated, but the admin profile could not be verified. Please try again.");
+          await signOut(auth);
+          if (profileError?.message === "ADMIN_PROFILE_MISSING") {
+            fail("Admin account authenticated, but admin profile is missing.");
+          } else if (profileError?.message === "ADMIN_ROLE_MISMATCH") {
+            fail("This account does not have Admin access.");
+          } else {
+            console.error("[AdminLogin] Admin profile verification failed:", profileError);
+            fail("Admin account authenticated, but the admin profile could not be verified. Please try again.");
+          }
+          return;
         }
-        return;
       }
 
       showToast(`Administrator authenticated successfully: ${profile.name}`, "success");
@@ -178,15 +229,15 @@ export default function AdminLogin({ onAdminLoginSuccess }: AdminLoginProps) {
         <form onSubmit={handleAdminLogin} className="space-y-4">
           <div className="space-y-1 text-left">
             <label className="text-[11px] font-mono uppercase tracking-wider text-gray-400 font-semibold">Admin Email</label>
-            <div className="relative"><Mail className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2" /><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@aijobs1.in" className="w-full bg-black/50 border border-white/10 rounded-2xl py-3 pl-10 pr-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-amber-500" /></div>
+            <div className="relative"><Mail className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2" /><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder={OFFICIAL_ADMIN_EMAIL} autoComplete="username" className="w-full bg-black/50 border border-white/10 rounded-2xl py-3 pl-10 pr-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-amber-500" /></div>
           </div>
 
           <div className="space-y-1 text-left">
             <div className="flex items-center justify-between"><label className="text-[11px] font-mono uppercase tracking-wider text-gray-400 font-semibold">Password</label><button type="button" onClick={() => { setForgotOpen(true); setResetSent(false); setResetEmail(email); }} className="text-xs text-amber-400 hover:underline cursor-pointer">Forgot Password?</button></div>
-            <div className="relative"><Lock className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2" /><input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••••••" className="w-full bg-black/50 border border-white/10 rounded-2xl py-3 pl-10 pr-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-amber-500" /></div>
+            <div className="relative"><Lock className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2" /><input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••••••" autoComplete="current-password" className="w-full bg-black/50 border border-white/10 rounded-2xl py-3 pl-10 pr-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-amber-500" /></div>
           </div>
 
-          <button type="submit" disabled={loading} className="w-full py-3.5 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-white font-bold text-sm rounded-2xl shadow-lg shadow-amber-500/25 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 mt-2">
+          <button type="submit" disabled={loading} className="w-full py-3.5 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-white font-bold text-sm rounded-2xl shadow-lg shadow-blue-500/25 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 mt-2">
             {loading ? <><RefreshCw className="w-4 h-4 animate-spin text-white" /><span>Authenticating Administrator...</span></> : <><LogIn className="w-4 h-4 text-amber-100" /><span>Log In to Admin Desk</span></>}
           </button>
         </form>
@@ -196,7 +247,7 @@ export default function AdminLogin({ onAdminLoginSuccess }: AdminLoginProps) {
 
       {forgotOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"><div className="w-full max-w-sm bg-gray-950 border border-white/10 rounded-3xl p-6 space-y-4 shadow-2xl relative">
         <div className="flex items-center justify-between border-b border-white/10 pb-3"><div className="flex items-center gap-2"><KeyRound className="w-4 h-4 text-amber-400" /><h3 className="text-sm font-bold text-white">Reset Admin Password</h3></div><button onClick={() => setForgotOpen(false)} className="text-gray-400 hover:text-white text-xs">✕</button></div>
-        {resetSent ? <div className="text-center py-4 space-y-3"><CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" /><p className="text-xs text-gray-300">Password reset link sent to <span className="text-amber-300 font-mono">{resetEmail}</span>.</p><button onClick={() => setForgotOpen(false)} className="px-4 py-2 bg-amber-600 text-xs font-bold text-white rounded-xl">Close</button></div> : <form onSubmit={handleSendReset} className="space-y-3"><input type="email" required value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} placeholder="admin@aijobs1.in" className="w-full bg-black/50 border border-white/10 rounded-xl py-2.5 px-3 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-amber-500" /><button type="submit" disabled={resetLoading} className="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2">{resetLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : "Dispatch Reset Link"}</button></form>}
+        {resetSent ? <div className="text-center py-4 space-y-3"><CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" /><p className="text-xs text-gray-300">Password reset link sent to <span className="text-amber-300 font-mono">{resetEmail}</span>.</p><button onClick={() => setForgotOpen(false)} className="px-4 py-2 bg-amber-600 text-xs font-bold text-white rounded-xl">Close</button></div> : <form onSubmit={handleSendReset} className="space-y-3"><input type="email" required value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} placeholder={OFFICIAL_ADMIN_EMAIL} autoComplete="username" className="w-full bg-black/50 border border-white/10 rounded-xl py-2.5 px-3 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-amber-500" /><button type="submit" disabled={resetLoading} className="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2">{resetLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : "Dispatch Reset Link"}</button></form>}
       </div></div>}
     </div>
   );
