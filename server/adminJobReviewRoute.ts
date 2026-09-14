@@ -12,17 +12,30 @@ async function requireAdmin(req: Request) {
   if (!header.startsWith("Bearer ")) throw Object.assign(new Error("Admin authentication required."), { status: 401 });
   const decoded = await getFirebaseAuth().verifyIdToken(header.slice(7).trim(), true);
   const db = getFirestoreDb();
-  const [userDoc, adminDoc] = await Promise.all([
+  const [userDoc, adminDoc, employeeDoc] = await Promise.all([
     db.collection("users").doc(decoded.uid).get(),
-    db.collection("admins").doc(decoded.uid).get()
+    db.collection("admins").doc(decoded.uid).get(),
+    db.collection("employees").doc(decoded.uid).get()
   ]);
-  const role = normRole((decoded as any).role || userDoc.data()?.role || adminDoc.data()?.role);
-  const adminStatus = normRole(adminDoc.data()?.status || "active");
+  const user = userDoc.data() || {};
+  const admin = adminDoc.data() || {};
+  const employee = employeeDoc.data() || {};
+  const role = normRole((decoded as any).role || user.role || admin.role || employee.role);
+  const adminStatus = normRole(admin.status || "active");
+  const employeeStatus = normRole(employee.status || user.status || "active");
   const activeAdmin = adminDoc.exists && !["disabled", "suspended", "inactive"].includes(adminStatus);
-  if (!["admin", "superadmin", "super_admin"].includes(role) && !activeAdmin) {
-    throw Object.assign(new Error("Only Admin or Super Admin can verify jobs."), { status: 403 });
+  const permissions = [
+    ...(Array.isArray(user.permissions) ? user.permissions : []),
+    ...(Array.isArray(employee.permissions) ? employee.permissions : [])
+  ].map(normRole);
+  const canReviewJobs = employee.canApproveJobs === true || user.canApproveJobs === true ||
+    permissions.some((permission: string) => ["approve_jobs", "job_approver", "jobs_approve", "job_review"].includes(permission));
+  const activeEmployeeApprover = employeeDoc.exists && canReviewJobs &&
+    !["disabled", "suspended", "inactive", "terminated"].includes(employeeStatus);
+  if (!["admin", "superadmin", "super_admin"].includes(role) && !activeAdmin && !activeEmployeeApprover) {
+    throw Object.assign(new Error("Only Admin, Super Admin, or an authorized AIJOBS job-review employee can verify jobs."), { status: 403 });
   }
-  return { decoded, db };
+  return { decoded, db, reviewerRole: activeEmployeeApprover ? "employee" : role };
 }
 
 function firstText(...values: unknown[]) {
@@ -48,7 +61,7 @@ export async function handleAdminJobReviewRoute(req: Request, res: Response): Pr
   }
 
   try {
-    const { decoded, db } = await requireAdmin(req);
+    const { decoded, db, reviewerRole } = await requireAdmin(req);
     const jobId = firstText(req.body?.jobId);
     const decision = normRole(req.body?.decision);
     const rejectionReason = firstText(req.body?.rejectionReason, "Job verification requirements were not met.");
@@ -79,6 +92,7 @@ export async function handleAdminJobReviewRoute(req: Request, res: Response): Pr
         verificationStatus: "rejected",
         rejectionReason,
         reviewedBy: decoded.uid,
+        reviewedByRole: reviewerRole,
         reviewedAt: now,
         updatedAt: now,
         googlePublishingStatus: "NOT_SUBMITTED"
@@ -89,7 +103,7 @@ export async function handleAdminJobReviewRoute(req: Request, res: Response): Pr
       batch.set(db.collection("consultancy_jobs").doc(jobId), update, { merge: true });
       batch.set(db.collection("audit_logs").doc(`job_reject_${Date.now()}`), {
         action: "JOB_REJECTED", category: "Job", jobId, jobTitle: title || jobId, reason: rejectionReason,
-        performedBy: decoded.uid, performedByEmail: decoded.email || "", createdAt: now
+        performedBy: decoded.uid, performedByEmail: decoded.email || "", performedByRole: reviewerRole, createdAt: now
       });
       const ownerUid = firstText(job.ownerUid, job.recruiterId, job.consultancyId, job.employerId, job.createdBy, job.postedBy);
       if (ownerUid) batch.set(db.collection("notifications").doc(`job_rejected_${Date.now()}`), {
@@ -127,6 +141,7 @@ export async function handleAdminJobReviewRoute(req: Request, res: Response): Pr
       candidateFeePolicyConfirmed: true,
       candidateFeePolicyVerifiedByAdmin: true,
       reviewedBy: decoded.uid,
+        reviewedByRole: reviewerRole,
       reviewedAt: now,
       approvedAt: now,
       verifiedBy: decoded.uid,
@@ -146,7 +161,7 @@ export async function handleAdminJobReviewRoute(req: Request, res: Response): Pr
     batch.set(db.collection("consultancy_jobs").doc(jobId), update, { merge: true });
     batch.set(db.collection("audit_logs").doc(`job_review_${Date.now()}`), {
       action: "JOB_VERIFIED_AND_PUBLISHED", category: "Job", jobId, jobTitle: title,
-      performedBy: decoded.uid, performedByEmail: decoded.email || "", createdAt: now
+      performedBy: decoded.uid, performedByEmail: decoded.email || "", performedByRole: reviewerRole, createdAt: now
     });
     const ownerUid = firstText(job.ownerUid, job.recruiterId, job.consultancyId, job.employerId, job.createdBy, job.postedBy);
     if (ownerUid) batch.set(db.collection("notifications").doc(`job_approved_${Date.now()}`), {
