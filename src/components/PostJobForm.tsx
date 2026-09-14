@@ -1,7 +1,6 @@
 import React, { FormEvent, useState } from "react";
-import { doc, setDoc } from "firebase/firestore";
 import { AlertCircle, Briefcase, Building2, Calendar, CheckCircle, Computer, DollarSign, Key, Languages, ListTodo, MapPin, Save, Section, ShieldAlert, Target, Type, Workflow, X } from "lucide-react";
-import { db } from "../firebase";
+import { auth } from "../firebase";
 
 
 import { NotificationService } from "../services/notificationService";
@@ -117,53 +116,24 @@ export default function PostJobForm({ userId, userRole, userName, onJobPosted, o
         createdAt: new Date().toISOString(),
       };
 
-      await setDoc(doc(db, "jobs", jobId), newJob);
-
-      // Sync to company_jobs or consultancy_jobs based on active userRole
-      try {
-        if (userRole === "employer" || userRole === "recruiter" || userRole === "corporate") {
-          await setDoc(doc(db, "company_jobs", jobId), {
-            id: jobId,
-            userId: userId,
-            companyId: userId,
-            title: title.trim(),
-            companyName: companyName.trim(),
-            location: location.trim(),
-            skillsRequired: skillsArray,
-            salary: salary,
-            experience: experience,
-            status: "pending_admin_verification",
-            approved: false,
-            verificationStatus: "pending",
-            adminApprovalRequired: true,
-            googlePublishingStatus: "NOT_SUBMITTED",
-            publishedAt: null,
-            createdAt: new Date().toISOString()
-          });
-        } else if (userRole === "consultancy" || userRole === "agency") {
-          await setDoc(doc(db, "consultancy_jobs", jobId), {
-            id: jobId,
-            title: title.trim(),
-            companyName: companyName.trim(),
-            skillsRequired: skillsArray,
-            salaryMin: parseInt(salary.replace(/[^0-9]/g, "")) || 10,
-            salaryMax: parseInt(salary.replace(/[^0-9]/g, "")) || 20,
-            location: location.trim(),
-            status: "pending_admin_verification",
-            approved: false,
-            verificationStatus: "pending",
-            adminApprovalRequired: true,
-            candidateFeePolicyConfirmed: true,
-            googlePublishingStatus: "NOT_SUBMITTED",
-            consultancyId: userId,
-            consultancyName: finalConsultancy.trim(),
-            createdBy: userId,
-            createdAt: new Date().toISOString()
-          });
-        }
-      } catch (syncErr) {
-        console.warn("Non-blocking role sync error on job save:", syncErr);
+      const currentUser = auth.currentUser;
+      if (!currentUser || currentUser.uid !== userId) {
+        throw new Error("Your login session has expired. Please sign in again.");
       }
+      const idToken = await currentUser.getIdToken();
+      const response = await fetch("/api/jobs/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`
+        },
+        body: JSON.stringify({ job: newJob })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || "Could not submit this job for verification.");
+      }
+      const submittedJobId = String(result.jobId || jobId);
 
       // Trigger a notification to current user workspace
       try {
@@ -173,17 +143,19 @@ export default function PostJobForm({ userId, userRole, userName, onJobPosted, o
           title: "💼 Job Vacancy Submitted for Approval",
           message: `Your job posting "${title}" for ${companyName} has been submitted and is pending admin approval.`,
           type: "success",
-          link: `jobId=${jobId}`
+          link: `jobId=${submittedJobId}`
         });
       } catch (notifErr) {
         console.warn("Notification trigger failed on job save:", notifErr);
       }
 
-      setSuccessMsg("🎉 Job vacancy successfully created! Your posting is now pending admin approval before going live.");
+      setSuccessMsg(result?.consultancy?.name
+        ? `🎉 Job submitted under ${result.consultancy.name}. It is pending AIJOBS approval before going live.`
+        : "🎉 Job vacancy submitted! It is pending AIJOBS approval before going live.");
       
       setTimeout(() => {
         if (onJobPosted) {
-          onJobPosted(jobId);
+          onJobPosted(submittedJobId);
         }
       }, 1500);
 
