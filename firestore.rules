@@ -31,6 +31,12 @@ service cloud.firestore {
       );
     }
 
+    function isJobReviewer() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/employees/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.canApproveJobs == true;
+    }
+
     function isCandidate() {
       return isSignedIn() && getUserRole() == 'candidate';
     }
@@ -121,21 +127,36 @@ service cloud.firestore {
     
     // Jobs postings - visible to public/guests, writeable by recruiters/consultancies/admins
     match /jobs/{jobId} {
-      allow read: if true;
-      allow create: if isSignedIn() && (isRecruiter() || isConsultancy() || isAdmin());
-      allow update: if isSignedIn() && (
-        isOwner(resource.data.userId) || 
-        isOwner(resource.data.recruiterId) || 
-        isOwner(resource.data.employerId) || 
-        isAdmin() ||
+      allow read: if resource.data.status in ['approved', 'Approved', 'Live', 'Published'] ||
+        isAdmin() || isJobReviewer() ||
+        isOwner(resource.data.ownerUid) || isOwner(resource.data.createdBy) ||
+        isOwner(resource.data.recruiterId) || isOwner(resource.data.employerId) ||
+        isOwner(resource.data.consultancyId);
+      allow create: if isSignedIn() && (isRecruiter() || isConsultancy() || isAdmin()) &&
+        (isAdmin() || (
+          request.resource.data.createdBy == request.auth.uid &&
+          request.resource.data.approved == false &&
+          request.resource.data.status in ['draft', 'Draft', 'pending_review', 'Pending Approval', 'pending_admin_verification']
+        ));
+      allow update: if isAdmin() || (
+        isSignedIn() &&
+        (isOwner(resource.data.ownerUid) || isOwner(resource.data.createdBy) ||
+         isOwner(resource.data.recruiterId) || isOwner(resource.data.employerId) ||
+         isOwner(resource.data.consultancyId)) &&
+        resource.data.status != 'approved' && resource.data.status != 'Approved' &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'approved', 'approvedAt', 'approvalStatus', 'verificationStatus',
+          'reviewedBy', 'reviewedAt', 'verifiedBy', 'verifiedAt', 'publishedAt',
+          'canonicalUrl', 'publicUrl', 'googlePublishingStatus', 'googleIndexing'
+        ])
+      ) || (isSignedIn() &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['applicationCount', 'applicantsCount', 'viewsCount', 'impressionsCount', 'updatedAt'])
       );
-      allow delete: if isSignedIn() && (
-        isOwner(resource.data.userId) || 
-        isOwner(resource.data.recruiterId) || 
-        isOwner(resource.data.employerId) || 
-        isAdmin()
-      );
+      allow delete: if isAdmin() || (isSignedIn() &&
+        resource.data.status != 'approved' && resource.data.status != 'Approved' &&
+        (isOwner(resource.data.ownerUid) || isOwner(resource.data.createdBy) ||
+         isOwner(resource.data.recruiterId) || isOwner(resource.data.employerId) ||
+         isOwner(resource.data.consultancyId)));
     }
     match /company_jobs/{jobId} {
       allow read: if true;
@@ -347,7 +368,17 @@ service cloud.firestore {
     
     // Consultancy Jobs & Candidates
     match /consultancy_jobs/{jobId} {
-      allow read, write: if isSignedIn();
+      allow read: if isAdmin() || isJobReviewer() || resource.data.status in ['approved', 'Approved', 'Live', 'Published'] ||
+        (isSignedIn() && resource.data.consultancyId == request.auth.uid);
+      allow create: if isAdmin() || (isConsultancy() && request.resource.data.consultancyId == request.auth.uid);
+      allow update, delete: if isAdmin() || (isConsultancy() &&
+        resource.data.consultancyId == request.auth.uid &&
+        resource.data.status != 'approved' && resource.data.status != 'Approved' &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'approved', 'approvedAt', 'approvalStatus', 'verificationStatus',
+          'reviewedBy', 'reviewedAt', 'publishedAt', 'canonicalUrl', 'publicUrl',
+          'googlePublishingStatus', 'googleIndexing'
+        ]));
     }
     match /consultancy_candidates/{candidateId} {
       allow read, write: if isSignedIn();
