@@ -92,8 +92,8 @@ export function routeUserByRole(
   }
 
   const normRole = normalizeRole(userData.role);
-  let targetPath = "/candidate/dashboard";
-  let targetView = "dashboard";
+  let targetPath = "/access-error";
+  let targetView = "access-error";
 
   switch (normRole) {
     case "super_admin":
@@ -118,8 +118,6 @@ export function routeUserByRole(
       break;
 
     case "candidate":
-    default:
-      // If internal beta access or pre-launch profile
       if (userData.internalAccess || userData.isBetaTester) {
         targetPath = "/candidate/dashboard";
         targetView = "internal-candidate";
@@ -127,6 +125,10 @@ export function routeUserByRole(
         targetPath = "/candidate/dashboard";
         targetView = "dashboard";
       }
+      break;
+
+    default:
+      console.warn(`[RoleRouting] Refusing dashboard route for unknown role: ${String(userData.role || "missing")}`);
       break;
   }
 
