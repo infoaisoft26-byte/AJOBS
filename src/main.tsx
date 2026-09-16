@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from 'react-dom/client';
 import OfficialContactDock from './components/OfficialContactDock';
+import CandidateConversionDock from './components/CandidateConversionDock';
 import './index.css';
 
 const CANONICAL_ORIGIN = 'https://aijobs1.in';
@@ -15,6 +16,11 @@ if (typeof window !== 'undefined' && LEGACY_HOSTS.has(window.location.hostname))
   const target = `${CANONICAL_ORIGIN}${window.location.pathname}${window.location.search}${window.location.hash}`;
   window.location.replace(target);
   throw new Error('Redirecting to canonical AIJOBS domain.');
+}
+
+// Production candidate homepage should render immediately without the legacy cinematic intro.
+if (typeof window !== 'undefined' && (window.location.pathname === '/' || window.location.pathname === '')) {
+  sessionStorage.setItem('aijobs_intro_seen', 'true');
 }
 
 const rootElement = document.getElementById('root');
@@ -43,6 +49,7 @@ appModule
     root.render(
       <StrictMode>
         <App />
+        <CandidateConversionDock />
         <OfficialContactDock />
       </StrictMode>,
     );
