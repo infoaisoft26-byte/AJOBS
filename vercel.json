@@ -84,6 +84,7 @@
     { "source": "/sitemap.xml", "destination": "/api/index" },
     { "source": "/job-sitemap.xml", "destination": "/api/index" },
     { "source": "/robots.txt", "destination": "/api/index" },
+    { "source": "/jobs", "destination": "/index.html" },
     { "source": "/jobs/:path*", "destination": "/api/index" },
     { "source": "/api/(.*)", "destination": "/api/index" },
     { "source": "/((?!api/|assets/|hire\\.html$|hire-admin\\.html$|hire-workspace\\.html$|firebase-applet-config\\.json$|ads\\.txt$|robots\\.txt$|sitemap\\.xml$|job-sitemap\\.xml$).*)", "destination": "/index.html" }
