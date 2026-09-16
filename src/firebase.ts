@@ -173,6 +173,7 @@ function installProtectedApiTokenInjector(authClient: any) {
     "/api/indexing/logs",
     "/api/resumes/grant-access",
     "/api/resumes/grant-status",
+    "/api/payment/verify-and-transition",
   ]);
   const originalFetch = window.fetch.bind(window);
 
@@ -240,4 +241,3 @@ export const auth = authInstance;
 export const db = dbInstance;
 export const storage = storageInstance;
 export const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: "select_account" });
