@@ -170,6 +170,41 @@ app.use("/api/finance", accountingRoutes);
 app.use("/api/hiring-agent", aiHiringRoutes);
 app.use("/api", subscriptionRoutes);
 
+// Public live jobs API endpoint (used by client app with server-side Admin SDK)
+app.get("/api/jobs/live", async (req, res) => {
+  try {
+    const db = getFirestoreDb();
+    if (!db) {
+      return res.json({ success: true, jobs: [] });
+    }
+    const snap = await db.collection("jobs").get();
+    const jobsList: any[] = [];
+    const currentDate = new Date();
+
+    snap.forEach((docSnapshot) => {
+      const data = docSnapshot.data();
+      const status = (data.status || "").toLowerCase();
+      const expiry = data.validThrough || data.expiryDate || data.applyDeadline;
+      const isExpired = expiry ? new Date(expiry) < currentDate : false;
+
+      if (["live", "open", "published", "approved"].includes(status) && !isExpired) {
+        jobsList.push({ id: docSnapshot.id, ...data });
+      }
+    });
+
+    jobsList.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    return res.json({ success: true, jobs: jobsList });
+  } catch (err: any) {
+    console.warn("[/api/jobs/live] Notice fetching jobs via Admin SDK:", err?.message || err);
+    return res.json({ success: false, jobs: [] });
+  }
+});
+
 // Track unique active users and errors
 app.use((req, res, next) => {
   const userId = req.headers["x-user-id"] || req.query.userId || req.body.userId || "anonymous";

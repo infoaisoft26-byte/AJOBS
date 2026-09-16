@@ -1,7 +1,110 @@
 import React from "react";
-import { BriefcaseBusiness, FileUp, SearchCheck, UserRoundPlus } from "lucide-react";
-import { motion, useReducedMotion } from "motion/react";
+import { ArrowRight, Award, CheckSquare, Search, Sparkles, UserPlus } from "lucide-react";
 
-const steps = [["01", "Create Free Profile", "Set up your candidate account using the existing secure registration flow.", UserRoundPlus], ["02", "Upload Resume", "Add your latest resume so applications contain accurate career information.", FileUp], ["03", "Discover Matching Jobs", "Search approved public roles using your skills, location and preferences.", SearchCheck], ["04", "Apply & Track Progress", "Apply through AIJOBS and follow application activity from your dashboard.", BriefcaseBusiness]] as const;
+export default function CandidateHowItWorks() {
+  const steps = [
+    {
+      number: "1",
+      icon: UserPlus,
+      title: "Create Your Profile",
+      desc: "Sign up and build your professional profile in minutes.",
+      highlight: "Quick 2-min setup",
+    },
+    {
+      number: "2",
+      icon: Search,
+      title: "Search Jobs",
+      desc: "Find relevant jobs from verified employers.",
+      highlight: "AI-matched roles",
+    },
+    {
+      number: "3",
+      icon: CheckSquare,
+      title: "Apply Easily",
+      desc: "Apply to jobs with just a few clicks.",
+      highlight: "Direct to recruiter",
+    },
+    {
+      number: "4",
+      icon: Award,
+      title: "Get Hired",
+      desc: "Track your applications and land your dream job.",
+      highlight: "Zero fees forever",
+    },
+  ];
 
-export default function CandidateHowItWorks() { const reduceMotion = useReducedMotion(); return <section className="bg-[#07152F] py-16 text-white sm:py-20" aria-labelledby="candidate-steps-heading"><div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"><div className="mx-auto max-w-2xl text-center"><p className="text-xs font-black uppercase tracking-[.2em] text-cyan-300">Simple candidate journey</p><h2 id="candidate-steps-heading" className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Four steps to your next opportunity</h2></div><div className="relative mt-11 grid gap-5 md:grid-cols-4"><div className="absolute left-[12.5%] right-[12.5%] top-8 hidden h-px bg-gradient-to-r from-blue-500 via-cyan-300 to-violet-500 md:block" />{steps.map(([number, title, description, Icon], index) => <motion.article key={number} initial={reduceMotion ? false : { opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: reduceMotion ? 0 : 0.4, delay: reduceMotion ? 0 : index * 0.08 }} className="relative rounded-3xl border border-white/10 bg-white/[0.07] p-6 backdrop-blur-xl"><div className="relative z-10 grid h-16 w-16 place-items-center rounded-2xl border border-cyan-300/20 bg-[#0b2147] text-cyan-300 shadow-[0_0_35px_rgba(6,182,212,.15)]"><Icon className="h-6 w-6" /></div><span className="mt-6 block text-xs font-black tracking-[.2em] text-blue-300">STEP {number}</span><h3 className="mt-2 text-lg font-black">{title}</h3><p className="mt-2 text-sm leading-6 text-slate-400">{description}</p></motion.article>)}</div></div></section>; }
+  return (
+    <section className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+      {/* Header */}
+      <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-14">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-400/30 text-cyan-300 text-xs font-bold mb-3">
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Simple Process</span>
+        </div>
+        <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+          How It{" "}
+          <span className="bg-gradient-to-r from-blue-400 via-cyan-300 to-indigo-400 bg-clip-text text-transparent">
+            Works
+          </span>
+        </h2>
+        <p className="mt-2.5 text-sm sm:text-base text-slate-400">
+          Get hired in 4 simple steps
+        </p>
+      </div>
+
+      {/* 4 Connected Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 relative">
+        {steps.map((step, idx) => {
+          const Icon = step.icon;
+          const isLast = idx === steps.length - 1;
+
+          return (
+            <div key={idx} className="relative group">
+              {/* Card Container */}
+              <div className="h-full rounded-2xl sm:rounded-3xl bg-[#0a1532]/70 backdrop-blur-md border border-blue-500/20 p-6 sm:p-7 shadow-[0_12px_35px_rgba(0,12,35,0.5)] group-hover:border-blue-400/50 group-hover:bg-[#0d1a3e]/80 transition-all flex flex-col justify-between">
+                <div>
+                  {/* Step Number & Icon Header */}
+                  <div className="flex items-center justify-between mb-5">
+                    {/* Glowing Numbered Badge */}
+                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-extrabold text-base flex items-center justify-center shadow-[0_0_15px_rgba(37,99,235,0.4)]">
+                      {step.number}
+                    </div>
+
+                    {/* Step Icon */}
+                    <div className="h-10 w-10 rounded-xl bg-white/5 border border-white/10 text-cyan-300 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Icon className="w-5 h-5" />
+                    </div>
+                  </div>
+
+                  {/* Title */}
+                  <h3 className="text-lg font-bold text-white tracking-tight">
+                    {step.title}
+                  </h3>
+
+                  {/* Description */}
+                  <p className="mt-2 text-xs sm:text-sm text-slate-300 leading-relaxed">
+                    {step.desc}
+                  </p>
+                </div>
+
+                {/* Sub-badge */}
+                <div className="mt-5 pt-3 border-t border-white/5">
+                  <span className="text-[11px] font-semibold text-cyan-400/90 uppercase tracking-wider font-mono">
+                    {step.highlight}
+                  </span>
+                </div>
+              </div>
+
+              {/* Directional Connecting Arrow (visible on large screens between cards) */}
+              {!isLast && (
+                <div className="hidden lg:flex absolute top-1/2 -right-3 -translate-y-1/2 z-20 w-6 h-6 rounded-full bg-[#050b1d] border border-blue-400/40 text-cyan-300 items-center justify-center shadow-md">
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}

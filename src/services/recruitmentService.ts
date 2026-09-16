@@ -29,7 +29,7 @@ import {
   formatCandidateId, 
   formatJobId 
 } from "./sequentialIdService";
-import { generateJobSlug, getPublicJobUrl, OFFICIAL_ADMIN_EMAIL } from "../config/site";
+import { generateJobSlug, getPublicJobUrl } from "../config/site";
 
 // Alias for consistent naming
 export const fetchRecruitmentCandidates = fetchAllCandidates;
@@ -340,7 +340,7 @@ export async function createCandidate(
     details: `Manual candidate profile created with ID ${sequentialId} (${fullCandidate.email})`,
     performedBy: adminUser?.name || "Admin Desk",
     performedByRole: "Admin",
-    performedByEmail: adminUser?.email || OFFICIAL_ADMIN_EMAIL
+    performedByEmail: adminUser?.email || "admin@aijobs1.in"
   });
 
   return fullCandidate;
@@ -382,7 +382,7 @@ export async function updateCandidate(
       details: `Candidate record updated: ${JSON.stringify(Object.keys(updates))}`,
       performedBy: adminUser?.name || "Admin Desk",
       performedByRole: "Admin",
-      performedByEmail: adminUser?.email || OFFICIAL_ADMIN_EMAIL
+      performedByEmail: adminUser?.email || "admin@aijobs1.in"
     });
   }
 }
@@ -543,7 +543,7 @@ export async function createRecruitmentJob(
     details: `Created job posting '${fullJob.title}' at '${fullJob.companyName}' with ID ${sequentialId}`,
     performedBy: adminUser?.name || "Admin Desk",
     performedByRole: "Admin",
-    performedByEmail: adminUser?.email || OFFICIAL_ADMIN_EMAIL
+    performedByEmail: adminUser?.email || "admin@aijobs1.in"
   });
 
   return fullJob;
@@ -573,7 +573,7 @@ export async function updateRecruitmentJob(
     details: `Updated job attributes: ${Object.keys(updates).join(", ")}`,
     performedBy: adminUser?.name || "Admin Desk",
     performedByRole: "Admin",
-    performedByEmail: adminUser?.email || OFFICIAL_ADMIN_EMAIL
+    performedByEmail: adminUser?.email || "admin@aijobs1.in"
   });
 }
 
@@ -599,7 +599,7 @@ export async function setJobStatus(
     details: `Changed job '${jobTitle}' status to ${status.toUpperCase()}`,
     performedBy: adminUser?.name || "Admin Desk",
     performedByRole: "Admin",
-    performedByEmail: adminUser?.email || OFFICIAL_ADMIN_EMAIL
+    performedByEmail: adminUser?.email || "admin@aijobs1.in"
   });
 }
 
@@ -720,7 +720,7 @@ export async function assignCandidatesToRecruiter(params: {
       adminNotes: adminNotes || "",
       status: "Assigned",
       assignedBy: adminUser?.name || "Super Admin",
-      assignedByEmail: adminUser?.email || OFFICIAL_ADMIN_EMAIL,
+      assignedByEmail: adminUser?.email || "admin@aijobs1.in",
       assignedAt: nowIso,
       updatedAt: nowIso,
       timeline: [
@@ -785,7 +785,7 @@ export async function assignCandidatesToRecruiter(params: {
     details: `Assigned ${successCount} candidate(s) to recruiter '${recruiter.name}' (${recruiter.email}) for job: ${job?.title || "Open Pipeline"}`,
     performedBy: adminUser?.name || "Super Admin",
     performedByRole: "Admin",
-    performedByEmail: adminUser?.email || OFFICIAL_ADMIN_EMAIL
+    performedByEmail: adminUser?.email || "admin@aijobs1.in"
   });
 
   return { successCount, assignedIds };
@@ -1398,7 +1398,7 @@ export async function executeCandidateBatchImport(params: {
     failureCount,
     duplicateCount: 0,
     importedBy: adminUser?.name || "Super Admin",
-    importedByEmail: adminUser?.email || OFFICIAL_ADMIN_EMAIL,
+    importedByEmail: adminUser?.email || "admin@aijobs1.in",
     status: failureCount === 0 ? "Completed" : (successCount > 0 ? "Partial" : "Failed"),
     errors: errors.length > 0 ? errors : undefined,
     createdAt: nowIso
@@ -1414,7 +1414,7 @@ export async function executeCandidateBatchImport(params: {
     details: `Imported ${successCount} candidate profiles from '${fileName}' (Batch ID: ${batchSequentialId})`,
     performedBy: adminUser?.name || "Super Admin",
     performedByRole: "Admin",
-    performedByEmail: adminUser?.email || OFFICIAL_ADMIN_EMAIL
+    performedByEmail: adminUser?.email || "admin@aijobs1.in"
   });
 
   return batchRecord;
@@ -1639,7 +1639,7 @@ export async function executeJobBatchImport(params: {
     failureCount,
     duplicateCount: 0,
     importedBy: adminUser?.name || "Super Admin",
-    importedByEmail: adminUser?.email || OFFICIAL_ADMIN_EMAIL,
+    importedByEmail: adminUser?.email || "admin@aijobs1.in",
     status: failureCount === 0 ? "Completed" : (successCount > 0 ? "Partial" : "Failed"),
     errors: errors.length > 0 ? errors : undefined,
     createdAt: nowIso
@@ -1655,7 +1655,7 @@ export async function executeJobBatchImport(params: {
     details: `Imported ${successCount} job vacancies from '${fileName}' (Batch ID: ${batchSequentialId})`,
     performedBy: adminUser?.name || "Super Admin",
     performedByRole: "Admin",
-    performedByEmail: adminUser?.email || OFFICIAL_ADMIN_EMAIL
+    performedByEmail: adminUser?.email || "admin@aijobs1.in"
   });
 
   return batchRecord;

@@ -522,9 +522,6 @@ service cloud.firestore {
     match /email_logs/{logId} {
       allow read, write: if isSignedIn();
     }
-    match /leads/{leadId} {
-      allow read, write: if isSignedIn();
-    }
 
     // Employee Attendance & Payroll System Collections
     match /employees/{employeeId} {
@@ -604,10 +601,6 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
-    match /candidate_documents/{docId} {
-      allow read, write: if isSignedIn();
-    }
-
     // Atomic Sequential Counters
     match /counters/{counterName} {
       allow read, write: if isSignedIn();
@@ -652,12 +645,6 @@ service cloud.firestore {
 
     match /employee_audit_logs/{logId} {
       allow read, create, update, write: if isSignedIn();
-    }
-
-    // Agreements collection for Recruiter/Employer legal database access compliance
-    match /agreements/{agreementId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
     }
 
     // Invoices collection

@@ -4,6 +4,7 @@ export interface AIJobsLogoProps {
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
   showTagline?: boolean;
+  taglineText?: string;
   animated?: boolean;
   onClick?: () => void;
 }
@@ -13,6 +14,7 @@ export default function AIJobsLogo({
   size = "md",
   className = "",
   showTagline,
+  taglineText = "AI Powered Recruitment",
   animated = true,
   onClick
 }: AIJobsLogoProps) {
@@ -151,7 +153,7 @@ export default function AIJobsLogo({
 
           {displayTagline && (
             <span className={`font-mono font-extrabold uppercase tracking-[0.18em] text-cyan-300/80 mt-1 ${dimensions.taglineClass}`}>
-              AI Powered Hiring Platform
+              {taglineText}
             </span>
           )}
         </div>

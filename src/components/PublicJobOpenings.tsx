@@ -154,8 +154,7 @@ export default function PublicJobOpenings({
       setLastDoc(res.lastDoc);
       setHasMore(res.jobs.length >= 10);
     } catch (err) {
-      console.error("Error loading homepage live jobs:", err);
-      showToast("Could not load live job listings. Please check internet connection.", "error");
+      console.warn("[PublicJobOpenings] Notice loading jobs:", err);
     } finally {
       setLoading(false);
     }

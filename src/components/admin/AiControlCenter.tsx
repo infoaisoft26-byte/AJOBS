@@ -1,8 +1,7 @@
 import React, { FormEvent, useEffect, useState } from "react";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import { Baseline, Brain, Chrome, Cloud, Code, Group, Key, List, Save, Server, ShieldAlert, Sliders, View } from "lucide-react";
 import { db } from "../../firebase";
-import { OFFICIAL_ADMIN_EMAIL } from "../../config/site";
 
 import AiInsightsPanel from "../AiInsightsPanel";
 
@@ -15,28 +14,6 @@ export default function AiControlCenter({
 }: AiControlCenterProps) {
   const [activeTab, setActiveTab] = useState<"engine" | "prompts" | "questions">("engine");
   const [isSaving, setIsSaving] = useState(false);
-  const [assistantConfig, setAssistantConfig] = useState({
-    assistantEnabled: true,
-    publicAssistantEnabled: true,
-    candidateAssistantEnabled: true,
-    recruiterAssistantEnabled: true,
-    consultancyAssistantEnabled: true,
-    employeeAssistantEnabled: false,
-    adminAssistantEnabled: true,
-    maintenanceMode: false,
-    maintenanceMessage: "AI Assistant is temporarily under maintenance. Jobs and applications remain available."
-  });
-
-  useEffect(() => {
-    let mounted = true;
-    getDoc(doc(db, "system_settings", "global_config"))
-      .then((snap) => {
-        const saved = snap.data()?.aiConfig;
-        if (mounted && saved) setAssistantConfig((current) => ({ ...current, ...saved }));
-      })
-      .catch((error) => console.warn("AI Assistant settings could not be loaded:", error));
-    return () => { mounted = false; };
-  }, []);
 
   // Model parameters state
   const [modelConfig, setModelConfig] = useState({
@@ -78,9 +55,7 @@ export default function AiControlCenter({
           analyzerModel: modelConfig.analyzerModel,
           interviewModel: modelConfig.interviewModel,
           analyzerTemperature: modelConfig.analyzerTemp,
-          matchingThreshold: modelConfig.matchThreshold,
-          ...assistantConfig,
-          updatedAt: new Date().toISOString()
+          matchingThreshold: modelConfig.matchThreshold
         }
       }, { merge: true });
 
@@ -90,7 +65,7 @@ export default function AiControlCenter({
         id: logId,
         userId: "system_admin",
         userName: "Super Admin",
-        userEmail: OFFICIAL_ADMIN_EMAIL,
+        userEmail: "admin@aijobs1.in",
         role: "Super Admin",
         action: "SETTINGS_CHANGE",
         category: "AI",
@@ -122,7 +97,7 @@ export default function AiControlCenter({
         id: logId,
         userId: "system_admin",
         userName: "Super Admin",
-        userEmail: OFFICIAL_ADMIN_EMAIL,
+        userEmail: "admin@aijobs1.in",
         role: "Super Admin",
         action: "SETTINGS_CHANGE",
         category: "AI",
@@ -205,51 +180,6 @@ export default function AiControlCenter({
               <Sliders className="w-4 h-4 text-indigo-400" />
               <span>Baseline System Parameters</span>
             </h4>
-
-            <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-4 space-y-4">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="font-bold text-white">AI Assistant Activation</p>
-                  <p className="text-[10px] text-gray-400 mt-1">This switch only controls the assistant. Candidate job search and Apply remain independent.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setAssistantConfig((v) => ({ ...v, assistantEnabled: !v.assistantEnabled }))}
-                  className={`px-4 py-2 rounded-full font-bold border transition-all ${assistantConfig.assistantEnabled ? "bg-emerald-500/20 border-emerald-400/40 text-emerald-300" : "bg-rose-500/20 border-rose-400/40 text-rose-300"}`}
-                >
-                  {assistantConfig.assistantEnabled ? "ACTIVE" : "OFF"}
-                </button>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {[
-                  ["publicAssistantEnabled", "Public visitors"],
-                  ["candidateAssistantEnabled", "Candidates"],
-                  ["recruiterAssistantEnabled", "Recruiters"],
-                  ["consultancyAssistantEnabled", "Consultancies"],
-                  ["employeeAssistantEnabled", "Employees"],
-                  ["adminAssistantEnabled", "Admins"]
-                ].map(([key, label]) => (
-                  <label key={key} className="flex items-center gap-2 rounded-lg border border-white/5 bg-black/20 px-3 py-2 text-gray-300">
-                    <input
-                      type="checkbox"
-                      checked={Boolean((assistantConfig as any)[key])}
-                      onChange={(e) => setAssistantConfig((v) => ({ ...v, [key]: e.target.checked }))}
-                      className="accent-indigo-500"
-                    />
-                    <span>{label}</span>
-                  </label>
-                ))}
-              </div>
-              <label className="flex items-center gap-2 text-amber-300">
-                <input
-                  type="checkbox"
-                  checked={assistantConfig.maintenanceMode}
-                  onChange={(e) => setAssistantConfig((v) => ({ ...v, maintenanceMode: e.target.checked }))}
-                  className="accent-amber-500"
-                />
-                Maintenance mode
-              </label>
-            </div>
 
             <form onSubmit={handleSaveEngine} className="space-y-4 text-xs">
               

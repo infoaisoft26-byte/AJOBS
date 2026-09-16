@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { RecruitmentCandidate, RecruitmentJob } from "../../../types/recruitment";
 import { logRecruitmentAudit } from "../../../services/recruitmentService";
-import { OFFICIAL_ADMIN_EMAIL } from "../../../config/site";
 
 interface ApplicationsPipelineTabProps {
   candidates?: RecruitmentCandidate[];
@@ -74,7 +73,7 @@ export default function ApplicationsPipelineTab({
         details: `Application status updated to ${newStatus.toUpperCase()}`,
         performedBy: adminUser?.name || "Super Admin",
         performedByRole: "Admin",
-        performedByEmail: adminUser?.email || OFFICIAL_ADMIN_EMAIL
+        performedByEmail: adminUser?.email || "admin@aijobs1.in"
       });
 
       setNotice(`Application status updated to ${newStatus.toUpperCase()}`);

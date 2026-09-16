@@ -76,7 +76,7 @@ export default function RoleBasedTopbar({
 
   return (
     <>
-      <header className="sticky top-0 z-40 w-full bg-black/80 backdrop-blur-xl border-b border-white/10 px-3 sm:px-4 py-3 md:px-8 transition-all duration-300">
+      <header className="sticky top-0 z-40 w-full bg-[#030712]/90 backdrop-blur-xl border-b border-blue-500/20 shadow-[0_4px_25px_rgba(0,10,35,0.8)] px-3 sm:px-4 py-2.5 md:px-8 transition-all duration-300">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           
           {/* Brand Logo & Mobile Menu Toggle */}
@@ -89,8 +89,10 @@ export default function RoleBasedTopbar({
               <Menu className="w-5 h-5" />
             </button>
             <AIJobsLogo
-              variant="compact"
+              variant="full"
               size="sm"
+              showTagline={true}
+              taglineText="AI Powered Recruitment"
               onClick={() => {
                 soundSynth.playClick();
                 setActiveView("home");
@@ -99,16 +101,14 @@ export default function RoleBasedTopbar({
           </div>
 
         {/* ROLE-BASED CENTER NAVIGATION */}
-        <nav className="hidden lg:flex items-center space-x-5 text-xs font-bold text-gray-300 uppercase tracking-wider font-mono">
+        <nav className="hidden lg:flex items-center space-x-6 text-sm font-semibold text-slate-300">
           {/* GUEST NAVBAR */}
           {!user && (
             <>
-              <button onClick={() => { soundSynth.playClick(); setActiveView("public-jobs"); }} className="hover:text-blue-400 transition-colors cursor-pointer">Jobs</button>
-              <button onClick={() => { soundSynth.playClick(); onOpenCompanyPage?.("career-tools"); }} className="hover:text-blue-400 transition-colors cursor-pointer">Career Tools</button>
-              <button onClick={() => { soundSynth.playClick(); setActiveView("resume-onboarding"); }} className="hover:text-blue-400 transition-colors cursor-pointer">Resume</button>
-              <button onClick={() => { soundSynth.playClick(); onOpenCompanyPage?.("companies"); }} className="hover:text-blue-400 transition-colors cursor-pointer">Companies</button>
-              <button onClick={() => { soundSynth.playClick(); onOpenCompanyPage?.("consultancies"); }} className="hover:text-blue-400 transition-colors cursor-pointer">Consultancies</button>
-              <button onClick={() => { soundSynth.playClick(); onOpenCompanyPage?.("career-guidance"); }} className="hover:text-blue-400 transition-colors cursor-pointer">Career Guidance</button>
+              <button onClick={() => { soundSynth.playClick(); setActiveView("public-jobs"); }} className="hover:text-cyan-400 transition-colors cursor-pointer">Jobs</button>
+              <button onClick={() => { soundSynth.playClick(); onOpenCompanyPage?.("companies"); }} className="hover:text-cyan-400 transition-colors cursor-pointer">Companies</button>
+              <button onClick={() => { soundSynth.playClick(); onOpenCompanyPage?.("career-guidance"); }} className="hover:text-cyan-400 transition-colors cursor-pointer">Career Advice</button>
+              <button onClick={() => { soundSynth.playClick(); onOpenCompanyPage?.("employers"); }} className="hover:text-cyan-400 transition-colors cursor-pointer">For Employers</button>
             </>
           )}
 
@@ -300,22 +300,16 @@ export default function RoleBasedTopbar({
               </button>
             </div>
           ) : (
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => { soundSynth.playClick(); onOpenCompanyPage?.("employers"); }}
-                className="hidden sm:inline-block px-3 py-1.5 text-xs font-bold text-gray-300 hover:text-white transition-all cursor-pointer"
-              >
-                For Employers
-              </button>
+            <div className="flex items-center space-x-3">
               <button
                 onClick={() => { soundSynth.playClick(); onShowAuth("signin"); }}
-                className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-all cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-sm font-bold text-white transition-all cursor-pointer"
               >
-                Login
+                Log In
               </button>
               <button
                 onClick={() => { soundSynth.playClick(); onShowAuth("signup"); }}
-                className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white shadow-lg shadow-blue-600/30 transition-all cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-[#0066FF] hover:bg-[#0052cc] text-sm font-bold text-white shadow-lg shadow-blue-600/30 transition-all cursor-pointer"
               >
                 Register
               </button>

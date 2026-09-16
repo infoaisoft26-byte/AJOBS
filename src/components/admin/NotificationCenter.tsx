@@ -4,7 +4,6 @@ import { Bell, Chrome, History, Info, Radio, Send, Target, Trash2, Users, View }
 import { db } from "../../firebase";
 
 import { NotificationService } from "../../services/notificationService";
-import { OFFICIAL_ADMIN_EMAIL } from "../../config/site";
 
 interface NotificationCenterProps {
   notifications: SystemNotification[];
@@ -46,7 +45,7 @@ export default function NotificationCenter({
         id: logId,
         userId: "system_admin",
         userName: userName,
-        userEmail: OFFICIAL_ADMIN_EMAIL,
+        userEmail: "admin@aijobs1.in",
         role: "Super Admin",
         action: "SETTINGS_CHANGE",
         category: "System",
