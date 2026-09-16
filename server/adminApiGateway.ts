@@ -28,6 +28,7 @@ const ADMIN_PROTECTED = new Set([
   "/api/indexing/logs",
   "/api/resumes/grant-access",
   "/api/resumes/grant-status",
+  "/api/payment/verify-and-transition",
 ]);
 
 function normalizeRole(value: unknown): string {
