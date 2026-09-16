@@ -145,7 +145,7 @@ export async function buildAssistantContext(db: any, uid: string | null, role: s
     // Unauthenticated Guest Context: Fetch public active jobs for reference
     const sampleJobs: any[] = [];
     try {
-      const jobsSnap = await db.collection("jobs").where("status", "==", "active").limit(5).get();
+      const jobsSnap = await db.collection("jobs").where("status", "in", ["approved", "Approved", "Live", "Published"]).limit(5).get();
       jobsSnap.forEach((doc: any) => {
         const j = doc.data();
         sampleJobs.push({
@@ -265,7 +265,7 @@ export async function buildAssistantContext(db: any, uid: string | null, role: s
 
     // Live Matching Active Jobs
     try {
-      const jobsSnap = await db.collection("jobs").where("status", "==", "active").limit(8).get();
+      const jobsSnap = await db.collection("jobs").where("status", "in", ["approved", "Approved", "Live", "Published"]).limit(8).get();
       jobsSnap.forEach((doc: any) => {
         const j = doc.data();
         availableJobs.push({
@@ -426,10 +426,12 @@ export async function persistConversationTurn(
  */
 export async function handleAiAssistantHealth(req: Request, res: Response): Promise<void> {
   const isConfigured = Boolean(process.env.GEMINI_API_KEY);
+  const envEnabled = String(process.env.AI_ASSISTANT_ENABLED || "true").toLowerCase() !== "false";
   res.json({
     success: true,
     service: "AIJOBS AI Assistant",
-    status: isConfigured ? "ready" : "unconfigured",
+    status: isConfigured && envEnabled ? "ready" : envEnabled ? "unconfigured" : "disabled",
+    enabled: envEnabled,
     geminiConfigured: isConfigured,
     timestamp: new Date().toISOString()
   });
@@ -461,7 +463,16 @@ export async function handleAiAssistantChat(req: Request, res: Response): Promis
     });
   }
 
-  // 2. Provider Configuration Check
+  // 2. Kill switch: assistant failures must never affect job browsing or applications.
+  if (String(process.env.AI_ASSISTANT_ENABLED || "true").toLowerCase() === "false") {
+    return void res.status(503).json({
+      success: false,
+      code: "AI_ASSISTANT_DISABLED",
+      message: "AI Assistant is temporarily turned off. Jobs and applications remain available."
+    });
+  }
+
+  // Provider Configuration Check
   if (!process.env.GEMINI_API_KEY) {
     console.error("[AI Assistant] provider failed: AI_NOT_CONFIGURED");
     return void res.status(500).json({
@@ -498,6 +509,23 @@ export async function handleAiAssistantChat(req: Request, res: Response): Promis
 
   const db = getFirestoreDb();
 
+  // Admin-controlled feature flags. Missing settings default to enabled so existing
+  // production behaviour remains backwards compatible.
+  let runtimeConfig: any = {};
+  try {
+    const settingsDoc = await db.collection("system_settings").doc("global_config").get();
+    runtimeConfig = settingsDoc.data()?.aiConfig || {};
+  } catch (settingsError: any) {
+    console.warn("[AIAssistant] Settings lookup notice:", settingsError?.message || settingsError);
+  }
+  if (runtimeConfig.assistantEnabled === false || runtimeConfig.maintenanceMode === true) {
+    return void res.status(503).json({
+      success: false,
+      code: runtimeConfig.maintenanceMode ? "AI_MAINTENANCE" : "AI_ASSISTANT_DISABLED",
+      message: runtimeConfig.maintenanceMessage || "AI Assistant is temporarily unavailable. Jobs and applications remain available."
+    });
+  }
+
   // 5. Role Determination from Trusted Database
   let userRole = "candidate";
   if (uid) {
@@ -515,6 +543,22 @@ export async function handleAiAssistantChat(req: Request, res: Response): Promis
   }
 
   console.log(`[AI Assistant] role resolved: ${userRole}`);
+
+  const roleSwitches: Record<string, boolean | undefined> = {
+    guest: runtimeConfig.publicAssistantEnabled,
+    candidate: runtimeConfig.candidateAssistantEnabled,
+    recruiter: runtimeConfig.recruiterAssistantEnabled,
+    consultancy: runtimeConfig.consultancyAssistantEnabled,
+    employee: runtimeConfig.employeeAssistantEnabled,
+    admin: runtimeConfig.adminAssistantEnabled
+  };
+  if (roleSwitches[userRole] === false) {
+    return void res.status(403).json({
+      success: false,
+      code: "AI_ROLE_DISABLED",
+      message: "AI Assistant is not enabled for this account type. Jobs and applications remain available."
+    });
+  }
 
   // 6. Intent Resolution
   const intent = resolveUserIntent(message);
