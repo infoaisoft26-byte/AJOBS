@@ -830,7 +830,8 @@ function MainAppContent() {
           consultancy: "consultancyAssistantEnabled",
           employee: "employeeAssistantEnabled",
           admin: "adminAssistantEnabled",
-          superadmin: "adminAssistantEnabled"
+          superadmin: "adminAssistantEnabled",
+          super_admin: "adminAssistantEnabled"
         };
         const enabled = config.assistantEnabled !== false &&
           config.maintenanceMode !== true &&
