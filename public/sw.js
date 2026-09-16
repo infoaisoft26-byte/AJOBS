@@ -2,9 +2,17 @@
 
 // Bump cache version whenever production bundles/routes change. Old caches are
 // deleted on activate so stale Vite chunks can never shadow a fresh deploy.
-const CACHE_NAME = 'aijobs-v2-cache';
+const CACHE_NAME = 'aijobs-v3-cache';
 const DB_NAME = 'aijobs_offline_sync_db';
 const STORE_NAME = 'pending_dashboard_actions';
+const CANONICAL_ORIGIN = 'https://aijobs1.in';
+const LEGACY_HOSTS = new Set([
+  'www.aijobs1.in',
+  'aijobs1.vercel.app',
+  'aijobs-14.vercel.app',
+  'aijobs.vercel.app'
+]);
+const IS_LEGACY_HOST = LEGACY_HOSTS.has(self.location.hostname);
 
 // Only cache stable shell assets. Hashed /assets/*.js and /assets/*.css files are
 // intentionally NOT cached here because serving an old dynamic-import chunk after
@@ -128,6 +136,7 @@ async function replayPendingActions() {
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
+  if (IS_LEGACY_HOST) return;
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) =>
       cache.addAll(STATIC_ASSETS).catch((err) => {
@@ -138,6 +147,16 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
+  if (IS_LEGACY_HOST) {
+    event.waitUntil(
+      Promise.all([
+        self.registration.unregister(),
+        caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+      ])
+    );
+    return;
+  }
+
   event.waitUntil(
     Promise.all([
       self.clients.claim(),
@@ -149,13 +168,24 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
-
   const url = new URL(event.request.url);
+  const isNavigation = event.request.mode === 'navigate';
+
+  // A service worker cannot safely proxy an authenticated API request across origins.
+  // If an old Vercel/www host is still controlled by this worker, send navigations to
+  // the canonical production host and otherwise stay out of the request entirely.
+  if (IS_LEGACY_HOST) {
+    if (isNavigation) {
+      const target = `${CANONICAL_ORIGIN}${url.pathname}${url.search}${url.hash}`;
+      event.respondWith(Response.redirect(target, 302));
+    }
+    return;
+  }
+
+  if (event.request.method !== 'GET') return;
   if (url.origin !== self.location.origin) return;
 
   const isBuildAsset = url.pathname.startsWith('/assets/');
-  const isNavigation = event.request.mode === 'navigate';
 
   // Never answer navigation requests or hashed build assets from an old cache.
   // This guarantees that HTML and dynamic-import chunks always belong to the
