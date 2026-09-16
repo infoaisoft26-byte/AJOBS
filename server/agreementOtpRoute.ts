@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import type { Request, Response } from "express";
 import { getFirebaseAuth, getFirestoreDb } from "./firestoreHelper.js";
-import { dispatchEmail } from "./emailService.js";
+import { sendWorkspaceRoleEmail } from "./workspaceRoleEmail.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const hashOtp = (otp: string, userId: string, agreementId: string) =>
@@ -77,6 +77,31 @@ export async function handleAgreementOtpRoute(req: Request, res: Response): Prom
     }
 
     const rawOtp = crypto.randomInt(100000, 1000000).toString();
+    const name = user.name || user.displayName || agreement.buyer?.authorizedPerson || "AIJOBS Partner";
+    const subject = "AIJOBS agreement eSign verification code";
+    const text = `Hello ${name},\n\nYour AIJOBS agreement verification code is ${rawOtp}. It expires in 10 minutes.\n\nDo not share this code with anyone.`;
+    const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto"><h2>AIJOBS Agreement Verification</h2><p>Hello <strong>${String(name).replace(/[<>&]/g, "")}</strong>,</p><p>Your 6-digit eSign verification code is:</p><div style="font-size:32px;font-weight:700;letter-spacing:8px;padding:16px;background:#f1f5f9;border-radius:10px;text-align:center">${rawOtp}</div><p>This code expires in 10 minutes. Do not share it with anyone.</p></div>`;
+
+    try {
+      await timeout(sendWorkspaceRoleEmail({
+        role: "info",
+        to: email,
+        subject,
+        text,
+        html,
+        replyTo: "info@aijobs1.in"
+      }), 12000);
+    } catch (mailError: any) {
+      console.error("[AgreementOTP] Google Workspace SMTP delivery failed:", mailError?.message || mailError);
+      await otpRef.delete().catch(() => {});
+      res.status(503).json({
+        success: false,
+        error: "EMAIL_DELIVERY_FAILED",
+        message: "OTP email could not be sent from info@aijobs1.in. Check Google Workspace SMTP app password in Vercel and retry."
+      });
+      return true;
+    }
+
     const record = {
       userId: decoded.uid,
       agreementId,
@@ -90,38 +115,10 @@ export async function handleAgreementOtpRoute(req: Request, res: Response): Prom
     };
     await otpRef.set(record, { merge: true });
 
-    const name = user.name || user.displayName || agreement.buyer?.authorizedPerson || "AIJOBS Partner";
-    const subject = "AIJOBS agreement eSign verification code";
-    const text = `Hello ${name},\n\nYour AIJOBS agreement verification code is ${rawOtp}. It expires in 10 minutes.\n\nDo not share this code with anyone.`;
-    const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto"><h2>AIJOBS Agreement Verification</h2><p>Hello <strong>${String(name).replace(/[<>&]/g, "")}</strong>,</p><p>Your 6-digit eSign verification code is:</p><div style="font-size:32px;font-weight:700;letter-spacing:8px;padding:16px;background:#f1f5f9;border-radius:10px;text-align:center">${rawOtp}</div><p>This code expires in 10 minutes. Do not share it with anyone.</p></div>`;
-
-    let provider = "smtp";
-    try {
-      const delivery: any = await timeout(dispatchEmail({
-        to: email,
-        subject,
-        template: "custom-admin-email",
-        data: { subject, customMessage: text, html, recipientName: name },
-        category: "transactional",
-        createdBy: "agreement_esign"
-      } as any), 8000);
-      if (!delivery?.success && !delivery?.queued) throw new Error(delivery?.error || "SMTP_DELIVERY_FAILED");
-      provider = delivery?.queued ? "email_queue" : "smtp";
-    } catch (mailError: any) {
-      console.warn("[AgreementOTP] SMTP unavailable, queueing via Firestore mail collection:", mailError?.message || mailError);
-      await db.collection("mail").add({
-        to: [email],
-        message: { subject, text, html },
-        metadata: { type: "agreement_esign_otp", userId: decoded.uid, agreementId },
-        createdAt: new Date().toISOString()
-      });
-      provider = "firestore_mail_queue";
-    }
-
     res.json({
       success: true,
       message: `6-digit agreement verification code sent to ${email.replace(/^(.{2}).*(@.*)$/, "$1***$2")}.`,
-      provider,
+      provider: "google_workspace_smtp",
       expiresInSeconds: 600
     });
     return true;
