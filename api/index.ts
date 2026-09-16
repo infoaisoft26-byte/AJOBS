@@ -11,6 +11,7 @@ import { handleAdminJobReviewRoute } from "../server/adminJobReviewRoute.js";
 import { handleJobSubmissionRoute } from "../server/jobSubmissionRoute.js";
 import { handleAgreementOtpRoute } from "../server/agreementOtpRoute.js";
 import { handlePaymentCheckoutRoute } from "../server/paymentCheckoutRoute.js";
+import { handleRecruiterLiveLeadsRoute } from "../server/recruiterLiveLeadsRoute.js";
 import { handleAdminProfileRepairRoute } from "../server/adminProfileRepairRoute.js";
 import { handlePublicJobApplyRoute } from "../server/publicJobApplyRoute.js";
 import { verifyAndInjectAbacIdentity } from "../server/authenticatedAbacGateway.js";
@@ -66,6 +67,10 @@ export default async function handler(req: any, res: any) {
   }
   if (path === "/api/payments/create-order") {
     const handled = await handlePaymentCheckoutRoute(req, res);
+    if (handled || res.headersSent) return;
+  }
+  if (path === "/api/recruiter/live-leads") {
+    const handled = await handleRecruiterLiveLeadsRoute(req, res);
     if (handled || res.headersSent) return;
   }
   if (path === "/api/jobs/submit") {
