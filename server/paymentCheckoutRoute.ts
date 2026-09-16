@@ -17,21 +17,20 @@ export async function handlePaymentCheckoutRoute(req: Request, res: Response): P
   }
 
   try {
+    const body: any = req.body || {};
     const authHeader = String(req.headers.authorization || "");
-    if (!authHeader.startsWith("Bearer ")) {
-      res.status(401).json({ success: false, error: "UNAUTHORIZED", message: "Please sign in again before starting payment." });
-      return true;
+    let decoded: any = null;
+    if (authHeader.startsWith("Bearer ")) {
+      decoded = await getFirebaseAuth().verifyIdToken(authHeader.slice(7).trim());
     }
 
-    const decoded = await getFirebaseAuth().verifyIdToken(authHeader.slice(7).trim());
-    const body: any = req.body || {};
-    const userId = String(body.userId || decoded.uid).trim();
+    const userId = String(body.userId || decoded?.uid || "").trim();
     const agreementId = String(body.agreementId || "").trim();
-    if (!agreementId) {
-      res.status(400).json({ success: false, error: "AGREEMENT_REQUIRED", message: "Signed agreement is required before payment." });
+    if (!userId || !agreementId) {
+      res.status(400).json({ success: false, error: "PAYMENT_CONTEXT_REQUIRED", message: "Signed agreement and account are required before payment." });
       return true;
     }
-    if (userId !== decoded.uid) {
+    if (decoded?.uid && userId !== decoded.uid) {
       res.status(403).json({ success: false, error: "FORBIDDEN", message: "Payment account mismatch." });
       return true;
     }
@@ -66,7 +65,7 @@ export async function handlePaymentCheckoutRoute(req: Request, res: Response): P
     const orderId = `order_aijobs_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
     const createdAt = new Date().toISOString();
     const user: any = userSnap.exists ? userSnap.data() || {} : {};
-    const email = String(decoded.email || user.email || agreement.buyer?.email || "").trim();
+    const email = String(decoded?.email || user.email || agreement.userEmail || agreement.buyer?.email || "").trim();
     const phone = String(user.phone || user.mobile || agreement.buyer?.phone || "").replace(/[^0-9+]/g, "").trim();
     const customerName = String(user.name || user.displayName || agreement.buyer?.authorizedPerson || agreement.buyer?.legalName || "AIJOBS Partner").trim();
 
@@ -75,7 +74,7 @@ export async function handlePaymentCheckoutRoute(req: Request, res: Response): P
     if (!keyId || !keySecret) {
       const orderDoc = {
         orderId, userId, agreementId, planName, baseAmount, gstPercentage, gstAmount, totalAmount,
-        currency: "INR", gateway: "razorpay", status: "gateway_not_configured", createdAt
+        amount: totalAmount, currency: "INR", gateway: "razorpay", status: "gateway_not_configured", createdAt
       };
       await db.collection("payment_orders").doc(orderId).set(orderDoc, { merge: true });
       res.status(503).json({
