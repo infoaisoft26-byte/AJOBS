@@ -83,11 +83,19 @@ service cloud.firestore {
     }
 
     match /jobs/{jobId} {
-      allow read: if resource.data.status == 'approved' || isAdmin() || isJobReviewer() || ownsJob(resource.data);
-      allow create: if isSignedIn() && isHiringRole() &&
+      // Public pages may read only statuses that are intentionally public.
+      allow read: if resource.data.status in ['approved','Approved','Published','Live','open','Open'] ||
+        isAdmin() || isJobReviewer() || ownsJob(resource.data);
+
+      // Admin/Super Admin may create directly. Recruiter/Employer/Consultancy
+      // creation remains restricted to owned, non-public workflow states.
+      allow create: if isAdmin() || (
+        isSignedIn() && isHiringRole() &&
         request.resource.data.ownerUid == request.auth.uid &&
         request.resource.data.createdBy == request.auth.uid &&
-        request.resource.data.status in ['draft','pending_review','changes_requested'];
+        request.resource.data.status in ['draft','pending_review','changes_requested']
+      );
+
       allow update: if isAdmin() || (ownsJob(resource.data) &&
         resource.data.status != 'approved' &&
         request.resource.data.status in ['draft','pending_review','changes_requested','closed'] &&
@@ -151,7 +159,7 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
-        match /plans/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /plans/{id} { allow read: if true; allow write: if isAdmin(); }
     match /email_templates/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
     match /cms/{id} { allow read: if true; allow write: if isAdmin(); }
     match /resume_templates/{id} { allow read: if true; allow write: if isAdmin(); }
