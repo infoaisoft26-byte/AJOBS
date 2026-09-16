@@ -70,7 +70,7 @@ const getResolvedSiteUrl = (): string => {
     ""
   ).trim().replace(/\/+$/, "");
 
-  if (!raw || raw.includes("aijobs1.vercel.app") || raw.includes("aijobs.vercel.app") || raw.includes("aijobs.app")) {
+  if (!raw || raw.includes("vercel.app") || raw.includes("aijobs.app")) {
     return PRODUCTION_DOMAIN;
   }
 
@@ -78,6 +78,23 @@ const getResolvedSiteUrl = (): string => {
 };
 
 export const SITE_URL = getResolvedSiteUrl();
+
+/**
+ * Returns an official AIJOBS public URL. Local development stays on localhost,
+ * while Vercel preview/deployment hosts are forced onto https://aijobs1.in.
+ */
+export function getOfficialPublicUrl(path = "/"): string {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1") {
+      return `${window.location.origin}${normalizedPath}`;
+    }
+  }
+
+  return `${PRODUCTION_DOMAIN}${normalizedPath}`;
+}
 
 export const HOME_PAGE_URL = `${PRODUCTION_DOMAIN}/`;
 export const PRIVACY_POLICY_URL = `${PRODUCTION_DOMAIN}/privacy-policy`;
