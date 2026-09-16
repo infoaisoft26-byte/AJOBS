@@ -3,6 +3,20 @@ import { createRoot } from 'react-dom/client';
 import OfficialContactDock from './components/OfficialContactDock';
 import './index.css';
 
+const CANONICAL_ORIGIN = 'https://aijobs1.in';
+const LEGACY_HOSTS = new Set([
+  'www.aijobs1.in',
+  'aijobs1.vercel.app',
+  'aijobs-14.vercel.app',
+  'aijobs.vercel.app'
+]);
+
+if (typeof window !== 'undefined' && LEGACY_HOSTS.has(window.location.hostname)) {
+  const target = `${CANONICAL_ORIGIN}${window.location.pathname}${window.location.search}${window.location.hash}`;
+  window.location.replace(target);
+  throw new Error('Redirecting to canonical AIJOBS domain.');
+}
+
 const rootElement = document.getElementById('root');
 
 if (!rootElement) {
