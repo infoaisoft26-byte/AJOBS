@@ -60,6 +60,11 @@ export async function handleJobSubmissionRoute(req: Request, res: Response): Pro
     const companyName = clean(input.companyName || input.hiringOrganizationName, 180);
     const location = clean(input.location || input.jobLocation, 180);
     const description = clean(input.description || input.jobDescription, 12000);
+    const jdFileUrl = clean(input.jdFileUrl, 2000);
+    const jdFileName = clean(input.jdFileName, 180);
+    const jdContentType = clean(input.jdContentType, 120);
+    const jdStoragePath = clean(input.jdStoragePath, 500);
+    const jdFileSize = Math.max(0, Math.min(Number(input.jdFileSize || 0), 10 * 1024 * 1024));
     const skills = Array.isArray(input.skillsRequired)
       ? input.skillsRequired.map((v: unknown) => clean(v, 80)).filter(Boolean).slice(0, 30)
       : clean(input.skillsRequired, 1500).split(",").map(v => clean(v, 80)).filter(Boolean).slice(0, 30);
@@ -101,6 +106,11 @@ export async function handleJobSubmissionRoute(req: Request, res: Response): Pro
       jobLocation: location,
       description,
       jobDescription: description,
+      jdFileUrl: jdFileUrl || null,
+      jdFileName: jdFileName || null,
+      jdContentType: jdContentType || null,
+      jdFileSize: jdFileSize || null,
+      jdStoragePath: jdStoragePath || null,
       skillsRequired: skills,
       workMode: clean(input.workMode, 30) || "On-site",
       type: clean(input.type || input.employmentType, 40) || "Full-time",
@@ -121,6 +131,8 @@ export async function handleJobSubmissionRoute(req: Request, res: Response): Pro
       candidateFeePolicyConfirmed: true,
       ownerUid,
       createdBy: ownerUid,
+      userId: ownerUid,
+      companyId: employerId || ownerUid,
       recruiterId: role === "recruiter" ? ownerUid : null,
       employerId: employerId || ownerUid,
       consultancyId: consultancyId || null,
@@ -128,8 +140,8 @@ export async function handleJobSubmissionRoute(req: Request, res: Response): Pro
       consultancy: consultancyName || null,
       sourcePortal: "AIJOBS",
       submittedByRole: role,
-      status: "pending_admin_verification",
-      approvalStatus: "pending",
+      status: "pending_review",
+      approvalStatus: "pending_review",
       approved: false,
       verificationStatus: "pending",
       adminApprovalRequired: true,
@@ -160,7 +172,7 @@ export async function handleJobSubmissionRoute(req: Request, res: Response): Pro
     await batch.commit();
 
     res.status(201).json({
-      success: true, jobId, status: "pending_admin_verification",
+      success: true, jobId, status: "pending_review",
       consultancy: consultancyName ? { id: consultancyId, name: consultancyName } : null,
       message: "Job submitted. It will become public only after AIJOBS approval."
     });

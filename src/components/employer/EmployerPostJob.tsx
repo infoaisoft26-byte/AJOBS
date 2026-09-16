@@ -20,9 +20,9 @@ import {
   Clock, 
   Send 
 } from "lucide-react";
-import { doc, setDoc } from "firebase/firestore";
-import { db } from "../../firebase";
+import { auth } from "../../firebase";
 import { CompanyJob } from "./EmployerTypes";
+import { uploadJobDescription, validateJobDescriptionFile } from "../../services/jobDescriptionUploadService";
 
 interface EmployerPostJobProps {
   userId: string;
@@ -67,6 +67,7 @@ export default function EmployerPostJob({
   const [benefits, setBenefits] = useState(
     "• Comprehensive Health & Family Insurance\n• Flexible Working Hours & Hybrid Policy\n• Annual Learning & Certification Budget\n• Performance Bonus & ESOPs"
   );
+  const [jdFile, setJdFile] = useState<File | null>(null);
 
   // Step 4: Screening Questions
   const [questions, setQuestions] = useState<string[]>([
@@ -203,11 +204,13 @@ export default function EmployerPostJob({
     setToastMessage(null);
 
     try {
-      const jobId = "job_" + Math.random().toString(36).substr(2, 9);
       const salaryFormatted = `₹${salaryMin} - ₹${salaryMax} LPA`;
+      const currentUser = auth.currentUser;
+      if (!currentUser || currentUser.uid !== userId) throw new Error("Your login session has expired. Please sign in again.");
+      const uploadedJd = jdFile ? await uploadJobDescription(userId, jdFile) : null;
+      const idToken = await currentUser.getIdToken();
 
-      const newJobPayload: CompanyJob = {
-        id: jobId,
+      const submission = {
         userId: userId,
         companyId: userId,
         employerId: userId,
@@ -226,55 +229,43 @@ export default function EmployerPostJob({
         responsibilities: responsibilities.trim(),
         benefits: benefits.trim(),
         screeningQuestions: questions,
-        status: jobStatus,
-        approved: true,
-        publishedAt: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        applicationsCount: 0
+        candidateFeePolicyConfirmed: true,
+        jdFileUrl: uploadedJd?.url || null,
+        jdFileName: uploadedJd?.fileName || null,
+        jdContentType: uploadedJd?.contentType || null,
+        jdFileSize: uploadedJd?.size || null,
+        jdStoragePath: uploadedJd?.storagePath || null,
       };
-
-      // 1. Write to jobs collection
-      await setDoc(doc(db, "jobs", jobId), newJobPayload);
-
-      // 2. Write to company_jobs collection
-      await setDoc(doc(db, "company_jobs", jobId), newJobPayload);
+      const response = await fetch("/api/jobs/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ job: submission }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result?.success) throw new Error(result?.error || "Could not submit this job for verification.");
+      const newJobPayload: CompanyJob = {
+        ...submission,
+        id: String(result.jobId),
+        status: "pending_review",
+        approved: false,
+        publishedAt: null,
+        createdAt: new Date().toISOString(),
+        applicationsCount: 0,
+      };
 
       // Clear draft
       try {
         localStorage.removeItem(`aijobs_employer_job_draft_${userId}`);
       } catch (e) {}
 
-      setToastMessage({ type: "success", text: "Job posted successfully to AIJOBS!" });
+      setToastMessage({ type: "success", text: "Job submitted and visible in My Jobs as Pending Review." });
       setTimeout(() => {
         onJobPublished(newJobPayload);
       }, 1200);
 
     } catch (err: any) {
-      console.error("Failed to post job to Firestore:", err);
-      // Fallback local creation for resilient offline sandbox
-      const localJob: CompanyJob = {
-        id: "job_loc_" + Date.now(),
-        userId,
-        companyId: userId,
-        employerId: userId,
-        title: title.trim(),
-        companyName: companyName || "AIJOBS Partner",
-        location: location.trim(),
-        workMode,
-        type: employmentType,
-        salary: `₹${salaryMin} - ₹${salaryMax}`,
-        experience: experienceLevel,
-        skillsRequired: skills,
-        description: description.trim(),
-        responsibilities: responsibilities.trim(),
-        status: jobStatus,
-        createdAt: new Date().toISOString(),
-        applicationsCount: 0
-      };
-      setToastMessage({ type: "success", text: "Job saved to your workspace!" });
-      setTimeout(() => {
-        onJobPublished(localJob);
-      }, 1000);
+      console.error("Failed to submit job:", err);
+      setToastMessage({ type: "error", text: err?.message || "Could not submit this job. Please try again." });
     } finally {
       setIsSubmitting(false);
     }
@@ -602,6 +593,35 @@ export default function EmployerPostJob({
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-300">Role Overview / Summary <span className="text-red-400">*</span></label>
+                <label className="mb-3 flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-dashed border-purple-500/40 bg-purple-500/5 p-4 hover:bg-purple-500/10">
+                  <span className="flex items-center gap-2 text-xs font-bold text-purple-200">
+                    <FileText className="h-4 w-4" />
+                    {jdFile ? jdFile.name : "Upload full JD (PDF, DOC, DOCX or TXT — max 10 MB)"}
+                  </span>
+                  {jdFile && <X className="h-4 w-4 text-rose-300" />}
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                    className="hidden"
+                    onChange={async (event) => {
+                      const file = event.target.files?.[0] || null;
+                      if (!file) return;
+                      try {
+                        validateJobDescriptionFile(file);
+                        setJdFile(file);
+                        setToastMessage(null);
+                        if (file.type === "text/plain") {
+                          const text = (await file.text()).trim().slice(0, 12000);
+                          if (text) setDescription(text);
+                        }
+                      } catch (error: any) {
+                        setJdFile(null);
+                        event.target.value = "";
+                        setToastMessage({ type: "error", text: error?.message || "Could not use this JD file." });
+                      }
+                    }}
+                  />
+                </label>
                 <textarea
                   rows={4}
                   value={description}
@@ -754,45 +774,11 @@ export default function EmployerPostJob({
                 <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line font-mono">{responsibilities}</p>
               </div>
 
-              {/* Initial Status Selector */}
+              {/* Approval status */}
               <div className="pt-4 border-t border-purple-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-300">Set Initial Job Status</label>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setJobStatus("active")}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                        jobStatus === "active" 
-                          ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300"
-                          : "bg-white/5 border-white/10 text-slate-400"
-                      }`}
-                    >
-                      Active (Publish Now)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setJobStatus("draft")}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                        jobStatus === "draft" 
-                          ? "bg-purple-500/20 border-purple-500/40 text-purple-300"
-                          : "bg-white/5 border-white/10 text-slate-400"
-                      }`}
-                    >
-                      Draft (Private)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setJobStatus("paused")}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                        jobStatus === "paused" 
-                          ? "bg-yellow-500/20 border-yellow-500/40 text-yellow-300"
-                          : "bg-white/5 border-white/10 text-slate-400"
-                      }`}
-                    >
-                      Paused
-                    </button>
-                  </div>
+                  <label className="text-xs font-bold text-amber-300">Admin verification required</label>
+                  <p className="text-xs text-slate-400">After submission this job will appear immediately in My Jobs as Pending Review. It becomes public after AIJOBS approval.</p>
                 </div>
               </div>
             </div>

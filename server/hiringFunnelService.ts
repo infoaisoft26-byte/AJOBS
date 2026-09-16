@@ -149,6 +149,11 @@ function publicJobPayload(jobId: string, source: any, owner: any, role: string) 
     requiredSkills: skills,
     description,
     jobDescription: description,
+    jdFileUrl: text(source.jdFileUrl, 2000) || null,
+    jdFileName: text(source.jdFileName, 180) || null,
+    jdContentType: text(source.jdContentType, 120) || null,
+    jdFileSize: Math.max(0, Math.min(number(source.jdFileSize), 10 * 1024 * 1024)) || null,
+    jdStoragePath: text(source.jdStoragePath, 500) || null,
     responsibilities: text(source.responsibilities, 7000),
     benefits: text(source.benefits, 4000),
     shift: text(source.shift, 100),
@@ -338,7 +343,7 @@ export async function handleHiringFunnelApi(req: Request, res: Response): Promis
     if (req.method === "GET" && path === "/api/hire/admin/queue") {
       const { db } = await requireAdmin(req);
       const snap = await db.collection("jobs").get();
-      const jobs = snap.docs.map((d: any) => ({ id: d.id, ...d.data() })).filter((j: any) => ["pending_review", "changes_requested"].includes(String(j.status))).sort((a: any,b: any)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
+      const jobs = snap.docs.map((d: any) => ({ id: d.id, ...d.data() })).filter((j: any) => ["pending_review", "pending_admin_verification", "changes_requested"].includes(String(j.status))).sort((a: any,b: any)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
       return void res.json({ success: true, jobs }) as any;
     }
 

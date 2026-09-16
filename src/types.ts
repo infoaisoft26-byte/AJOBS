@@ -205,6 +205,11 @@ export interface JobPosting {
   companyLogo?: string;
   title: string;
   description: string;
+  jdFileUrl?: string;
+  jdFileName?: string;
+  jdContentType?: string;
+  jdFileSize?: number;
+  jdStoragePath?: string;
   location: string;
   type: string;
   employmentType?: string;

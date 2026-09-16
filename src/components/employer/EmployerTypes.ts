@@ -24,6 +24,11 @@ export interface CompanyJob {
   responsibilities?: string;
   requirements?: string;
   description?: string;
+  jdFileUrl?: string;
+  jdFileName?: string;
+  jdContentType?: string;
+  jdFileSize?: number;
+  jdStoragePath?: string;
   screeningQuestions?: string[];
   status: "active" | "open" | "paused" | "closed" | "draft" | "pending_approval" | string;
   approved?: boolean;
