@@ -6,6 +6,7 @@ import { JobPosting } from "../types";
 import { generateJobSlug, getPublicJobUrl } from "../config/site";
 
 const JOBS_COLLECTION = "jobs";
+const PUBLIC_JOB_STATUSES = ["approved", "Approved", "Published", "Live", "open", "Open"];
 
 /**
  * Checks if a job listing appears to be a duplicate based on title, company, and location.
@@ -50,11 +51,20 @@ export async function getAllJobs(): Promise<JobPosting[]> {
 }
 
 /**
- * Fetches only 'LIVE' / 'Published' status jobs.
+ * Fetches only publicly readable live/published/approved jobs.
+ *
+ * IMPORTANT: Firestore evaluates queries against security rules before returning
+ * documents. Querying the entire jobs collection from a public page fails when
+ * private draft/pending jobs also exist. The status filter keeps this query
+ * aligned with the public Firestore read rule.
  */
 export async function getLiveJobs(): Promise<JobPosting[]> {
   try {
-    const querySnapshot = await getDocs(collection(db, JOBS_COLLECTION));
+    const publicJobsQuery = query(
+      collection(db, JOBS_COLLECTION),
+      where("status", "in", PUBLIC_JOB_STATUSES)
+    );
+    const querySnapshot = await getDocs(publicJobsQuery);
     const jobsList: JobPosting[] = [];
     const currentDate = new Date();
 
@@ -251,7 +261,11 @@ export async function fetchPaginatedLiveJobs(
   lastVisibleDoc: any = null
 ): Promise<{ jobs: JobPosting[]; lastDoc: any }> {
   try {
-    const querySnapshot = await getDocs(collection(db, JOBS_COLLECTION));
+    const publicJobsQuery = query(
+      collection(db, JOBS_COLLECTION),
+      where("status", "in", PUBLIC_JOB_STATUSES)
+    );
+    const querySnapshot = await getDocs(publicJobsQuery);
     const jobsList: JobPosting[] = [];
     const currentDate = new Date();
 
@@ -275,7 +289,7 @@ export async function fetchPaginatedLiveJobs(
     });
 
     return {
-      jobs: sorted,
+      jobs: sorted.slice(0, Math.max(1, pageSize)),
       lastDoc: null
     };
   } catch (error) {
