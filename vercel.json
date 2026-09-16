@@ -21,6 +21,16 @@
     "EMAIL_SALES_FROM_NAME": "AIJOBS Sales India",
     "EMAIL_COMPLIANCE_FROM_NAME": "AIJOBS Compliance"
   },
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        { "type": "host", "value": "www.aijobs1.in" }
+      ],
+      "destination": "https://aijobs1.in/:path*",
+      "permanent": true
+    }
+  ],
   "headers": [
     {
       "source": "/sw.js",
