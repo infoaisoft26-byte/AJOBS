@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { AlertTriangle, Bot, Cookie, Route, Type, User, UserCheck } from "lucide-react";
 import { auth, isFirebaseConfigured } from "./firebase";
 import { db } from "./firebase";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import CandidateEmailVerification from "./components/CandidateEmailVerification";
 
 // Helper function to dynamically import components with automatic retry logic on chunk/network errors
@@ -814,6 +814,37 @@ function MainAppContent() {
   // in-homepage enhancement only and does not block or replace page content.
   const [mount3D, setMount3D] = useState(false);
   const [showChatbot, setShowChatbot] = useState(false);
+  const [assistantEnabled, setAssistantEnabled] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      doc(db, "system_settings", "global_config"),
+      (snapshot) => {
+        const config = snapshot.data()?.aiConfig || {};
+        const role = normalizeRole(user?.role) || "guest";
+        const roleKey: Record<string, string> = {
+          guest: "publicAssistantEnabled",
+          candidate: "candidateAssistantEnabled",
+          recruiter: "recruiterAssistantEnabled",
+          employer: "recruiterAssistantEnabled",
+          consultancy: "consultancyAssistantEnabled",
+          employee: "employeeAssistantEnabled",
+          admin: "adminAssistantEnabled",
+          superadmin: "adminAssistantEnabled"
+        };
+        const enabled = config.assistantEnabled !== false &&
+          config.maintenanceMode !== true &&
+          config[roleKey[role] || "publicAssistantEnabled"] !== false;
+        setAssistantEnabled(enabled);
+        if (!enabled) setShowChatbot(false);
+      },
+      (error) => {
+        console.warn("AI Assistant settings listener notice:", error);
+        setAssistantEnabled(true);
+      }
+    );
+    return unsubscribe;
+  }, [user?.role]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -1266,8 +1297,8 @@ function MainAppContent() {
         </Suspense>
       )}
 
-      {/* Globally Floating AI Career Assistant - Deferred load on user click */}
-      {showChatbot ? (
+      {/* AI Assistant is isolated from job browsing/apply; disabling it cannot block candidate actions. */}
+      {assistantEnabled && (showChatbot ? (
         <Suspense fallback={null}>
           <GlobalChatbotLazy user={user} />
         </Suspense>
@@ -1280,7 +1311,7 @@ function MainAppContent() {
           <Bot className="w-5 h-5 text-indigo-200 animate-pulse" />
           <span className="hidden sm:inline">AI Assistant</span>
         </button>
-      )}
+      ))}
     </div>
   );
 }
