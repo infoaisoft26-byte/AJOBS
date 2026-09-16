@@ -311,7 +311,7 @@ service cloud.firestore {
     }
     match /system_settings/{docId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if isAdmin();
     }
     
     // Admin list
