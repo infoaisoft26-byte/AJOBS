@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Briefcase, CheckCircle2, Sparkles, UserPlus, X } from "lucide-react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../firebase";
+import { getOfficialPublicUrl } from "../config/site";
 
 export default function CandidateConversionDock() {
   const [visible, setVisible] = useState(false);
@@ -67,14 +68,14 @@ export default function CandidateConversionDock() {
           <div className="flex flex-col gap-2 sm:flex-row lg:shrink-0">
             <button
               type="button"
-              onClick={() => window.location.assign("/candidate/register")}
+              onClick={() => window.location.assign(getOfficialPublicUrl("/candidate/register"))}
               className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 px-5 py-3 text-sm font-extrabold text-white shadow-lg shadow-blue-700/30 transition hover:-translate-y-0.5 hover:shadow-blue-600/40"
             >
               <UserPlus className="h-4 w-4" /> Create Free Profile
             </button>
             <button
               type="button"
-              onClick={() => window.location.assign("/jobs")}
+              onClick={() => window.location.assign(getOfficialPublicUrl("/jobs"))}
               className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10"
             >
               <Briefcase className="h-4 w-4" /> Browse Live Jobs
