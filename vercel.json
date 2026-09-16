@@ -24,9 +24,25 @@
   "redirects": [
     {
       "source": "/:path*",
-      "has": [
-        { "type": "host", "value": "www.aijobs1.in" }
-      ],
+      "has": [{ "type": "host", "value": "www.aijobs1.in" }],
+      "destination": "https://aijobs1.in/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "aijobs1.vercel.app" }],
+      "destination": "https://aijobs1.in/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "aijobs-14.vercel.app" }],
+      "destination": "https://aijobs1.in/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "aijobs.vercel.app" }],
       "destination": "https://aijobs1.in/:path*",
       "permanent": true
     }
