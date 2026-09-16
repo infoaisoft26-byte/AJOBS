@@ -1,9 +1,10 @@
 import React, { FormEvent, useState } from "react";
-import { AlertCircle, Briefcase, Building2, Calendar, CheckCircle, Computer, DollarSign, Key, Languages, ListTodo, MapPin, Save, Section, ShieldAlert, Target, Type, Workflow, X } from "lucide-react";
+import { AlertCircle, Briefcase, Building2, Calendar, CheckCircle, Computer, DollarSign, Key, Languages, ListTodo, MapPin, Save, Section, ShieldAlert, Target, Type, Upload, Workflow, X } from "lucide-react";
 import { auth } from "../firebase";
 
 
 import { NotificationService } from "../services/notificationService";
+import { uploadJobDescription, validateJobDescriptionFile } from "../services/jobDescriptionUploadService";
 
 interface PostJobFormProps {
   userId: string;
@@ -35,6 +36,7 @@ export default function PostJobForm({ userId, userRole, userName, onJobPosted, o
   const [responsibilities, setResponsibilities] = useState("");
   const [requirements, setRequirements] = useState("");
   const [description, setDescription] = useState("");
+  const [jdFile, setJdFile] = useState<File | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -78,6 +80,9 @@ export default function PostJobForm({ userId, userRole, userName, onJobPosted, o
         finalEmployerId = userId;
       }
 
+      let uploadedJd = null;
+      if (jdFile) uploadedJd = await uploadJobDescription(userId, jdFile);
+
       const newJob = {
         id: jobId,
         title: title.trim(),
@@ -103,7 +108,12 @@ export default function PostJobForm({ userId, userRole, userName, onJobPosted, o
         responsibilities: responsibilities.trim(),
         requirements: requirements.trim(),
         description: description.trim(),
-        status: "pending_admin_verification",
+        jdFileUrl: uploadedJd?.url || null,
+        jdFileName: uploadedJd?.fileName || null,
+        jdContentType: uploadedJd?.contentType || null,
+        jdFileSize: uploadedJd?.size || null,
+        jdStoragePath: uploadedJd?.storagePath || null,
+        status: "pending_review",
         approved: false,
         verificationStatus: "pending",
         adminApprovalRequired: true,
@@ -465,6 +475,39 @@ export default function PostJobForm({ userId, userRole, userName, onJobPosted, o
 
           <div className="space-y-1">
             <label className="block text-gray-400 font-bold">Detailed Job Description & Tech Stack *</label>
+            <label className="mb-3 flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-dashed border-indigo-500/40 bg-indigo-500/5 p-3 hover:bg-indigo-500/10">
+              <span className="flex items-center gap-2 text-indigo-200">
+                <Upload className="h-4 w-4" />
+                <span>{jdFile ? jdFile.name : "Upload full JD (PDF, DOC, DOCX or TXT — max 10 MB)"}</span>
+              </span>
+              {jdFile && (
+                <button type="button" onClick={(event) => { event.preventDefault(); setJdFile(null); }} className="text-rose-300 hover:text-rose-200">
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                className="hidden"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0] || null;
+                  if (!file) return;
+                  try {
+                    validateJobDescriptionFile(file);
+                    setJdFile(file);
+                    setErrorMsg("");
+                    if (file.type === "text/plain") {
+                      const text = (await file.text()).trim().slice(0, 12000);
+                      if (text) setDescription(text);
+                    }
+                  } catch (error: any) {
+                    setJdFile(null);
+                    event.target.value = "";
+                    setErrorMsg(error?.message || "Could not use this JD file.");
+                  }
+                }}
+              />
+            </label>
             <textarea
               required
               value={description}

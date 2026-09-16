@@ -86,7 +86,7 @@ export default function EmployerMyJobs({
       {/* Filter Row */}
       <div className="p-4 rounded-3xl bg-[#17111F]/80 border border-purple-500/20 backdrop-blur-md shadow-lg flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto">
-          {["all", "active", "draft", "paused", "closed"].map((st) => (
+          {["all", "pending_review", "approved", "draft", "paused", "closed"].map((st) => (
             <button
               key={st}
               onClick={() => setFilterStatus(st)}
@@ -96,7 +96,7 @@ export default function EmployerMyJobs({
                   : "bg-white/5 text-slate-400 hover:text-white"
               }`}
             >
-              {st === "all" ? "All Statuses" : st}
+              {st === "all" ? "All Statuses" : st === "pending_review" ? "Pending Review" : st}
             </button>
           ))}
         </div>
@@ -141,15 +141,17 @@ export default function EmployerMyJobs({
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider ${
-                      job.status === "active" || job.status === "open"
+                      job.status === "active" || job.status === "open" || job.status === "approved"
                         ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                        : job.status === "pending_review" || job.status === "pending_admin_verification"
+                        ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                         : job.status === "draft"
                         ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
                         : job.status === "paused"
                         ? "bg-yellow-500/20 text-yellow-300 border border-yellow-500/30"
                         : "bg-slate-700 text-slate-300"
                     }`}>
-                      {job.status || "Active"}
+                      {job.status === "pending_review" || job.status === "pending_admin_verification" ? "Pending Review" : (job.status || "Active")}
                     </span>
                     <span className="text-[11px] text-slate-400">{job.department || "Engineering"}</span>
                   </div>
@@ -207,7 +209,7 @@ export default function EmployerMyJobs({
                 </button>
 
                 <div className="flex items-center gap-1">
-                  {job.status === "active" ? (
+                  {job.status === "active" || job.status === "approved" ? (
                     <button
                       onClick={() => onUpdateJobStatus(job.id, "paused")}
                       className="px-2.5 py-1 rounded-xl bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
