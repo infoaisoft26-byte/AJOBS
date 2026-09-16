@@ -11,6 +11,7 @@ import { handleAdminJobReviewRoute } from "../server/adminJobReviewRoute.js";
 import { handleJobSubmissionRoute } from "../server/jobSubmissionRoute.js";
 import { handleAgreementOtpRoute } from "../server/agreementOtpRoute.js";
 import { handleAdminProfileRepairRoute } from "../server/adminProfileRepairRoute.js";
+import { handlePublicJobApplyRoute } from "../server/publicJobApplyRoute.js";
 import { verifyAndInjectAbacIdentity } from "../server/authenticatedAbacGateway.js";
 import { verifyAndInjectAdminIdentity } from "../server/adminApiGateway.js";
 
@@ -42,6 +43,10 @@ async function handleWebsiteInquiry(req: any, res: any) {
 }
 export default async function handler(req: any, res: any) {
   const path = String(req.url || "").split("?")[0].replace(/\/+$/, "") || "/";
+  if (path === "/api/public/job-apply") {
+    const handled = await handlePublicJobApplyRoute(req, res);
+    if (handled || res.headersSent) return;
+  }
   if (path === "/api/bootstrap-superadmin") {
     const handled = await handleAdminProfileRepairRoute(req, res);
     if (handled || res.headersSent) return;
