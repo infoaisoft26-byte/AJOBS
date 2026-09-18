@@ -275,10 +275,16 @@ export default function AgreementAndCheckoutModal({
 
       setAgreement(data.agreement);
 
-      // Create Payment Order
+      // Create or reuse an authenticated payment order.
+      const paymentToken = await auth.currentUser?.getIdToken(true);
+      if (!paymentToken) throw new Error("Your login session expired. Please sign in again.");
+
       const orderRes = await fetch("/api/payments/create-order", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${paymentToken}`
+        },
         body: JSON.stringify({
           userId: user?.uid,
           agreementId: data.agreement?.agreementId || agreement?.agreementId
@@ -287,6 +293,12 @@ export default function AgreementAndCheckoutModal({
 
       const orderData = await safeParseJson(orderRes, "Failed to create payment order");
       if (!orderData.success) throw new Error(orderData.error || orderData.message || "Failed to create payment order.");
+
+      if (orderData.alreadyPaid) {
+        onSuccess(orderData.subscription?.subscriptionId);
+        onClose();
+        return;
+      }
 
       setPaymentOrder(orderData.order);
       setStep("payment");
