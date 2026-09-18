@@ -64,8 +64,9 @@ export async function uploadToCloudinary(
       lastError = err;
       console.warn(`[CloudinaryUpload] Attempt ${attempt}/${maxRetries} failed:`, err.message || err);
 
-      // Don't retry if configuration or file format error
-      if (err.message && (err.message.includes("configuration missing") || err.message.includes("Invalid upload preset"))) {
+      // Never retry permanent auth/config/signature/permission failures.
+      const permanent = /configuration missing|invalid upload preset|secure document upload|permission|forbidden|signature|unauthorized|401|403/i.test(String(err?.message || ""));
+      if (permanent) {
         throw err;
       }
 
@@ -112,9 +113,23 @@ async function attemptSingleUpload(
       if (data.signature) {
         signedParams = data;
       }
+    } else if (options?.assetType === "documents") {
+      let detail = "Secure document upload is temporarily unavailable. Please try again.";
+      try {
+        const errorData = await parseJsonResponse(sigRes);
+        detail = errorData?.message || detail;
+      } catch {}
+      throw new Error(detail);
     }
-  } catch (sigErr) {
+  } catch (sigErr: any) {
     console.warn("[CloudinaryService] Signed signature endpoint notice:", sigErr);
+    if (options?.assetType === "documents") {
+      throw new Error(sigErr?.message || "Secure document upload is temporarily unavailable. Please try again.");
+    }
+  }
+
+  if (options?.assetType === "documents" && !signedParams) {
+    throw new Error("Secure document upload is temporarily unavailable. Please try again.");
   }
 
   return new Promise((resolve, reject) => {
@@ -204,9 +219,10 @@ async function attemptSingleUpload(
       } else {
         try {
           const errRes = JSON.parse(xhr.responseText);
-          reject(new Error(errRes.error?.message || `Cloudinary returned API status error ${xhr.status}.`));
+          const message = errRes.error?.message || `Cloudinary returned API status error ${xhr.status}.`;
+          reject(new Error((xhr.status === 401 || xhr.status === 403) ? `Secure upload permission denied: ${message}` : message));
         } catch (_) {
-          reject(new Error(`Cloudinary returned HTTP status error ${xhr.status}.`));
+          reject(new Error((xhr.status === 401 || xhr.status === 403) ? "Secure upload permission denied by Cloudinary." : `Cloudinary returned HTTP status error ${xhr.status}.`));
         }
       }
     };

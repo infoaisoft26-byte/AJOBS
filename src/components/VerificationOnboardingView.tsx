@@ -5,6 +5,8 @@ import { parseJsonResponse } from "../utils/apiHelper";
 import LiveSelfieCaptureModal from "./LiveSelfieCaptureModal";
 import AadhaarOfflineModal from "./AadhaarOfflineModal";
 import AgreementAndCheckoutModal from "./AgreementAndCheckoutModal";
+import RecruiterDashboard from "./recruiter/RecruiterDashboard";
+import { auth } from "../firebase";
 
 interface VerificationOnboardingViewProps {
   user: any;
@@ -57,6 +59,59 @@ export default function VerificationOnboardingView({ user, onLogout, onStatusUpd
   const [submitError, setSubmitError] = useState("");
   const [existingRequest, setExistingRequest] = useState<any>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
+
+  // Verify Razorpay return server-side before granting paid recruiter workspace access.
+  useEffect(() => {
+    if (!user?.uid || typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("payment") !== "return") return;
+
+    let cancelled = false;
+    async function verifyPaymentReturn() {
+      setLoadingStatus(true);
+      setSubmitError("");
+      try {
+        const token = await auth.currentUser?.getIdToken(true);
+        if (!token) throw new Error("Your login session expired. Please sign in again.");
+
+        const response = await fetch("/api/payments/verify-return", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            orderId: params.get("orderId") || "",
+            razorpay_payment_id: params.get("razorpay_payment_id") || "",
+            razorpay_payment_link_id: params.get("razorpay_payment_link_id") || "",
+            razorpay_payment_link_reference_id: params.get("razorpay_payment_link_reference_id") || "",
+            razorpay_payment_link_status: params.get("razorpay_payment_link_status") || "",
+            razorpay_signature: params.get("razorpay_signature") || ""
+          })
+        });
+
+        const data = await parseJsonResponse(response);
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || data.error || "Payment verification failed.");
+        }
+        if (cancelled) return;
+
+        setPaymentDone(true);
+        setSubmitError("");
+        window.history.replaceState({}, document.title, "/recruiter/dashboard");
+        if (onStatusUpdate) onStatusUpdate();
+      } catch (err: any) {
+        if (!cancelled) {
+          setSubmitError(err?.message || "Payment was completed, but AIJOBS could not verify it yet. Please retry in a moment.");
+        }
+      } finally {
+        if (!cancelled) setLoadingStatus(false);
+      }
+    }
+
+    verifyPaymentReturn();
+    return () => { cancelled = true; };
+  }, [user?.uid]);
 
   // Load active verification request on mount
   useEffect(() => {
@@ -231,6 +286,26 @@ export default function VerificationOnboardingView({ user, onLogout, onStatusUpd
         <Clock className="w-6 h-6 text-indigo-400 animate-spin mr-3" />
         <span>Syncing corporate verification credentials...</span>
       </div>
+    );
+  }
+
+  const normalizedRole = String(user?.role || "").toLowerCase();
+  const hasPaidRecruiterAccess =
+    paymentDone ||
+    String(user?.paymentStatus || "").toLowerCase() === "paid" ||
+    String(user?.subscriptionStatus || "").toLowerCase() === "active";
+
+  // After a server-verified payment, open the real recruiter dashboard.
+  // KYC/verification remains a separate backend state and sensitive actions
+  // continue to be governed by their existing permissions.
+  if (hasPaidRecruiterAccess && ["recruiter", "independent_recruiter"].includes(normalizedRole)) {
+    return (
+      <RecruiterDashboard
+        userId={user.uid}
+        userName={user.name || user.displayName || "Recruiter"}
+        userRole={user.role}
+        onLogout={onLogout}
+      />
     );
   }
 
