@@ -168,6 +168,7 @@ app.use("/api/invoices", subscriptionRoutes);
 app.use("/api/invoice", subscriptionRoutes);
 app.use("/api/finance", accountingRoutes);
 app.use("/api/hiring-agent", aiHiringRoutes);
+app.use("/api/recruiter", aiHiringRoutes);
 app.use("/api", subscriptionRoutes);
 
 // Public live jobs API endpoint (used by client app with server-side Admin SDK)

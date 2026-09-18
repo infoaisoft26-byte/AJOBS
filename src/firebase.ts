@@ -147,54 +147,73 @@ function installProtectedApiTokenInjector(authClient: any) {
   if (typeof window === "undefined" || typeof window.fetch !== "function") return;
   const marker = "__aijobsProtectedApiFetchInstalled";
   if ((window as any)[marker]) return;
-  (window as any)[marker] = true;
 
-  const protectedPaths = new Set([
-    "/api/admin-platform-insights",
-    "/api/consultancy-natural-search",
-    "/api/admin/create-admin",
-    "/api/admin/repair-wrong-users",
-    "/api/cleanup-demo-data",
-    "/api/admin/create-workspace-user",
-    "/api/admin/approve-account",
-    "/api/admin/onboarding-list",
-    "/api/admin/fraud-action",
-    "/api/admin/approve-consultancy",
-    "/api/admin/suspend-user",
-    "/api/admin/role-audit-logs",
-    "/api/admin/save-twilio-settings",
-    "/api/admin/get-twilio-settings",
-    "/api/admin/sms-logs",
-    "/api/verification/review",
-    "/api/kyc/send-link",
-    "/api/kyc/send-reminder",
-    "/api/indexing/publish",
-    "/api/indexing/retry",
-    "/api/indexing/logs",
-    "/api/resumes/grant-access",
-    "/api/resumes/grant-status",
-    "/api/payment/verify-and-transition",
-  ]);
-  const originalFetch = window.fetch.bind(window);
+  try {
+    const protectedPaths = new Set([
+      "/api/admin-platform-insights",
+      "/api/consultancy-natural-search",
+      "/api/admin/create-admin",
+      "/api/admin/repair-wrong-users",
+      "/api/cleanup-demo-data",
+      "/api/admin/create-workspace-user",
+      "/api/admin/approve-account",
+      "/api/admin/onboarding-list",
+      "/api/admin/fraud-action",
+      "/api/admin/approve-consultancy",
+      "/api/admin/suspend-user",
+      "/api/admin/role-audit-logs",
+      "/api/admin/save-twilio-settings",
+      "/api/admin/get-twilio-settings",
+      "/api/admin/sms-logs",
+      "/api/verification/review",
+      "/api/kyc/send-link",
+      "/api/kyc/send-reminder",
+      "/api/indexing/publish",
+      "/api/indexing/retry",
+      "/api/indexing/logs",
+      "/api/resumes/grant-access",
+      "/api/resumes/grant-status",
+      "/api/payment/verify-and-transition",
+    ]);
+    const originalFetch = window.fetch.bind(window);
 
-  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-    try {
-      const rawUrl = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
-      const parsed = new URL(rawUrl, window.location.origin);
-      if (parsed.origin === window.location.origin && protectedPaths.has(parsed.pathname)) {
-        const currentUser = authClient.currentUser;
-        if (currentUser) {
-          const token = await currentUser.getIdToken();
-          const existingHeaders = new Headers(input instanceof Request ? input.headers : init?.headers);
-          existingHeaders.set("Authorization", `Bearer ${token}`);
-          init = { ...(init || {}), headers: existingHeaders };
+    const customFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      try {
+        const rawUrl = typeof input === "string" ? input : input instanceof URL ? input.toString() : (input as any)?.url || "";
+        const parsed = new URL(rawUrl, window.location.origin);
+        if (parsed.origin === window.location.origin && protectedPaths.has(parsed.pathname)) {
+          const currentUser = authClient?.currentUser;
+          if (currentUser) {
+            const token = await currentUser.getIdToken();
+            const existingHeaders = new Headers(input instanceof Request ? input.headers : init?.headers);
+            existingHeaders.set("Authorization", `Bearer ${token}`);
+            init = { ...(init || {}), headers: existingHeaders };
+          }
         }
+      } catch (error) {
+        console.warn("[Firebase] Could not attach API auth token:", error);
       }
-    } catch (error) {
-      console.warn("[Firebase] Could not attach API auth token:", error);
+      return originalFetch(input, init);
+    };
+
+    try {
+      Object.defineProperty(window, "fetch", {
+        value: customFetch,
+        writable: true,
+        configurable: true,
+      });
+      (window as any)[marker] = true;
+    } catch {
+      try {
+        (window as any).fetch = customFetch;
+        (window as any)[marker] = true;
+      } catch (assignError) {
+        console.warn("[Firebase] Could not override window.fetch (environment has read-only fetch getter):", assignError);
+      }
     }
-    return originalFetch(input, init);
-  };
+  } catch (err) {
+    console.warn("[Firebase] installProtectedApiTokenInjector setup skipped:", err);
+  }
 }
 
 try {
@@ -216,7 +235,11 @@ try {
 
   if (typeof window !== "undefined") {
     console.info(`[Firebase] Client initialized with Auth domain: ${firebaseAuthDomain}`);
-    installProtectedApiTokenInjector(authInstance);
+    try {
+      installProtectedApiTokenInjector(authInstance);
+    } catch (injectorErr) {
+      console.warn("[Firebase] Token injector skipped:", injectorErr);
+    }
   }
 
   setPersistence(authInstance, browserLocalPersistence).catch((error) => {

@@ -6,6 +6,7 @@ import { UserProfile } from "../types";
 import { useToast } from "./GlobalToast";
 import { isAdminRole, normalizeRole } from "../utils/roleUtils";
 import { getOrCreateUserProfile } from "../services/dbInitService";
+import AIJobsLogo from "./AIJobsLogo";
 
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
@@ -154,6 +155,9 @@ export default function InternalPlatformLogin({
         <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
 
         <div className="text-center space-y-3 mb-8 relative">
+          <div className="flex justify-center mb-2">
+            <AIJobsLogo size="md" variant="compact" />
+          </div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-mono font-semibold uppercase tracking-wider">
             <LockKeyhole className="w-3.5 h-3.5 text-indigo-400" />
             <span>{expectedRole ? `${roleLabel} secure workspace` : "Authorized AIJOBS Workspace"}</span>

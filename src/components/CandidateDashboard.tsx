@@ -335,6 +335,7 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
               onApplyJob={handleOpenApplyModal}
               searchQuery={searchQuery}
               lang={lang}
+              onNavigateToProfile={() => setActiveTab("profile")}
             />
           )}
 

@@ -12,9 +12,15 @@ export default defineConfig(() => {
       'process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN': JSON.stringify(firebaseAuthDomain),
     },
     resolve: {
+      dedupe: ['react', 'react-dom', 'react-is'],
       alias: {
         '@': path.resolve(__dirname, './src'),
+        'react': path.resolve(__dirname, 'node_modules/react'),
+        'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
       },
+    },
+    optimizeDeps: {
+      include: ['react', 'react-dom', 'react/jsx-runtime'],
     },
     build: {
       outDir: 'dist',
@@ -33,6 +39,15 @@ export default defineConfig(() => {
               return 'vendor-runtime';
             }
             if (id.includes('node_modules')) {
+              // React core MUST be grouped together first so sub-dependencies do not duplicate or isolate it
+              if (
+                id.includes('/node_modules/react/') ||
+                id.includes('/node_modules/react-dom/') ||
+                id.includes('/node_modules/react-is/') ||
+                id.includes('/node_modules/scheduler/')
+              ) {
+                return 'vendor-react';
+              }
               if (id.includes('three') || id.includes('@react-three')) {
                 return 'vendor-3d-engine';
               }
@@ -53,9 +68,6 @@ export default defineConfig(() => {
               }
               if (id.includes('lucide-react')) {
                 return 'vendor-icons';
-              }
-              if (id.includes('react') || id.includes('react-dom')) {
-                return 'vendor-react';
               }
             }
             if (id.includes('/src/components/admin/') || id.includes('AdminDashboard') || id.includes('AdminLogin')) {

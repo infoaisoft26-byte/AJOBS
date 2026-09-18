@@ -6,6 +6,7 @@ import { auth, db } from "../firebase";
 import type { UserProfile } from "../types";
 import { isAdminRole, normalizeRole } from "../utils/roleUtils";
 import { useToast } from "./GlobalToast";
+import AIJobsLogo from "./AIJobsLogo";
 
 interface AdminLoginProps {
   onAdminLoginSuccess: (userProfile: UserProfile) => void;
@@ -214,10 +215,11 @@ export default function AdminLogin({ onAdminLoginSuccess }: AdminLoginProps) {
     <div className="min-h-[85vh] flex items-center justify-center px-4 py-12 relative z-10">
       <div className="w-full max-w-md bg-gray-950 border border-amber-500/30 rounded-3xl p-8 shadow-[0_0_60px_rgba(245,158,11,0.15)] relative overflow-hidden">
         <div className="text-center space-y-3 mb-8 relative">
-          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400 shadow-inner">
-            <ShieldCheck className="w-8 h-8" />
+          <div className="flex justify-center mb-2">
+            <AIJobsLogo size="md" variant="compact" />
           </div>
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-mono font-semibold uppercase tracking-wider">
+            <ShieldCheck className="w-3.5 h-3.5" />
             <span>System Administrator Console</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Admin Portal Login</h2>

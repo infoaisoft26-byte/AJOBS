@@ -140,6 +140,25 @@ export function trackAIAssistantOpened(context: string = "assistant") {
   sendGAEvent("ai_assistant_opened", { context });
 }
 
+export function trackCandidateRegistrationComplete(params: {
+  method?: string;
+  gclid?: string;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  intendedJobId?: string;
+}) {
+  sendGAEvent("candidate_registration_complete", {
+    method: params.method || "email",
+    gclid: params.gclid || undefined,
+    utm_source: params.utm_source || undefined,
+    utm_medium: params.utm_medium || undefined,
+    utm_campaign: params.utm_campaign || undefined,
+    intended_job_id: params.intendedJobId || undefined,
+    user_role: "candidate"
+  });
+}
+
 // Legacy helper compatibility
 export function trackInteraction(action: string, category: string, label?: string, value?: number) {
   sendGAEvent(action, { event_category: category, event_label: label, value });

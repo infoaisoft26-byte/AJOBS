@@ -83,6 +83,7 @@ const HrmsLandingLazy = safeLazy(() => import("@/components/hrms/HrmsPortalSyste
 const HrmsLoginLazy = safeLazy(() => import("@/components/hrms/HrmsPortalSystem").then(m => ({ default: m.HrmsLogin })), "HrmsLogin");
 const HrmsRegisterLazy = safeLazy(() => import("@/components/hrms/HrmsPortalSystem").then(m => ({ default: m.HrmsRegister })), "HrmsRegister");
 const HrmsCompanyDashboardLazy = safeLazy(() => import("@/components/hrms/HrmsPortalSystem").then(m => ({ default: m.HrmsCompanyDashboard })), "HrmsCompanyDashboard");
+const EmployerHiringLandingLazy = safeLazy(() => import("@/components/hiring/EmployerHiringLanding"), "EmployerHiringLanding");
 const UnsubscribeViewLazy = safeLazy(() => import("@/components/UnsubscribeView"), "UnsubscribeView");
 const ResumeOnboardingLazy = safeLazy(() => import("@/components/ResumeOnboarding"), "ResumeOnboarding");
 const AuthModalLazy = safeLazy(() => import("@/components/AuthModal"), "AuthModal");
@@ -102,6 +103,8 @@ import { ToastProvider, useToast } from "@/components/GlobalToast";
 import Header from "@/components/Header";
 import LandingPage from "@/components/PremiumCandidateHomepage";
 import LegalModal from "@/components/LegalModal";
+import CandidateConversionDock from "@/components/CandidateConversionDock";
+import OfficialContactDock from "@/components/OfficialContactDock";
 import { type BackgroundMode } from "@/components/ThreeDBackground";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { GlobalMarketplaceProvider } from "@/context/GlobalMarketplaceContext";
@@ -313,6 +316,10 @@ function MainAppContent() {
       "hrms-dashboard": {
         title: "Company HRMS Dashboard | AIJOBS",
         desc: "Manage employees, attendance, leave, payroll and company HR operations securely."
+      },
+      "employer-landing": {
+        title: "Hire Verified Candidates Faster | AIJOBS Employer Solutions",
+        desc: "Post jobs, access 100,000+ verified engineering candidates, and deploy autonomous AI screening agents on AIJOBS."
       }
     };
 
@@ -473,6 +480,8 @@ function MainAppContent() {
         setActiveView("pre-launch-profile");
       } else if (p === "/portal-login") {
         setActiveView("portal-login");
+      } else if (p === "/hire" || p === "/hire/" || p === "/employer/hire" || p === "/want-to-hire") {
+        setActiveView("employer-landing");
       } else if (p === "/hrms" || p === "/hrms/") {
         setActiveView("hrms");
       } else if (p === "/hrms/login") {
@@ -871,7 +880,9 @@ function MainAppContent() {
     "candidate-login",
     "candidate-register",
     "portal-login",
-    "portal-role-login"
+    "portal-role-login",
+    "employer-landing",
+    "hire"
   ].includes(activeView);
 
   return (
@@ -889,7 +900,7 @@ function MainAppContent() {
       )}
 
       {/* Header */}
-      {activeView !== "dashboard" && !activeView.startsWith("hrms") && (
+      {activeView !== "dashboard" && activeView !== "employer-landing" && !activeView.startsWith("hrms") && (
         <Header
           user={user}
           onLogout={handleLogout}
@@ -938,6 +949,50 @@ function MainAppContent() {
                 {activeView === "unsubscribe" ? (
                   <Suspense fallback={<GeneralLoading />}>
                     <UnsubscribeViewLazy />
+                  </Suspense>
+                ) : activeView === "employer-landing" ? (
+                  <Suspense fallback={<GeneralLoading />}>
+                    <EmployerHiringLandingLazy
+                      onGoToEmployerLogin={() => {
+                        setInternalLoginRole("employer");
+                        window.history.pushState({}, "", "/employer/login");
+                        setActiveView("internal-login");
+                      }}
+                      onGoToCandidateLogin={() => {
+                        window.history.pushState({}, "", "/candidate-login");
+                        setActiveView("candidate-login");
+                      }}
+                      onGoToPostJob={() => {
+                        if (user && (user.role === "employer" || user.role === "admin")) {
+                          window.history.pushState({}, "", "/internal/employer");
+                          setActiveView("internal-employer");
+                        } else {
+                          setInternalLoginRole("employer");
+                          window.history.pushState({}, "", "/employer/login");
+                          setActiveView("internal-login");
+                        }
+                      }}
+                      onGoToCandidateSearch={() => {
+                        if (user && (user.role === "employer" || user.role === "admin")) {
+                          window.history.pushState({}, "", "/internal/employer");
+                          setActiveView("internal-employer");
+                        } else {
+                          setInternalLoginRole("employer");
+                          window.history.pushState({}, "", "/employer/login");
+                          setActiveView("internal-login");
+                        }
+                      }}
+                      onGoToPricing={() => {
+                        if (user && (user.role === "employer" || user.role === "admin")) {
+                          window.history.pushState({}, "", "/internal/employer");
+                          setActiveView("internal-employer");
+                        } else {
+                          setInternalLoginRole("employer");
+                          window.history.pushState({}, "", "/employer/login");
+                          setActiveView("internal-login");
+                        }
+                      }}
+                    />
                   </Suspense>
                 ) : activeView === "hrms" ? (
                   <Suspense fallback={<GeneralLoading />}>
@@ -1323,6 +1378,8 @@ export default function App() {
       <GlobalMarketplaceProvider>
         <ToastProvider>
           <MainAppContent />
+          <CandidateConversionDock />
+          <OfficialContactDock />
         </ToastProvider>
       </GlobalMarketplaceProvider>
     </LanguageProvider>

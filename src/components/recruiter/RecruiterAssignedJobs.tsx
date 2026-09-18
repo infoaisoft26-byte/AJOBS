@@ -9,18 +9,21 @@ import {
   Building2, 
   CheckCircle2, 
   Calendar,
-  ArrowRight
+  ArrowRight,
+  Brain
 } from "lucide-react";
 import { RecruiterJob } from "./RecruiterTypes";
 
 interface RecruiterAssignedJobsProps {
   jobs: RecruiterJob[];
   onSelectJobForPipeline: (jobId: string) => void;
+  onViewJobDetails?: (jobId: string) => void;
 }
 
 export default function RecruiterAssignedJobs({
   jobs,
-  onSelectJobForPipeline
+  onSelectJobForPipeline,
+  onViewJobDetails
 }: RecruiterAssignedJobsProps) {
   const [filterQuery, setFilterQuery] = useState("");
 
@@ -105,18 +108,29 @@ export default function RecruiterAssignedJobs({
             </div>
 
             {/* Actions */}
-            <div className="pt-3 border-t border-purple-500/15 flex items-center justify-between gap-2">
+            <div className="pt-3 border-t border-purple-500/15 flex flex-wrap items-center justify-between gap-2">
               <span className="text-[11px] text-slate-400 font-mono">
                 Assigned {job.assignedAt || "Recently"}
               </span>
 
-              <button
-                onClick={() => onSelectJobForPipeline(job.id)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-blue-600/20 cursor-pointer"
-              >
-                <span>Sourced Candidates</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => onViewJobDetails ? onViewJobDetails(job.id) : onSelectJobForPipeline(job.id)}
+                  className="px-3.5 py-2 bg-purple-600/20 hover:bg-purple-600/35 border border-purple-500/35 text-purple-200 hover:text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                  title="Open Job Details & AI Candidate Screening Summary"
+                >
+                  <Brain className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>AI Screening & Specs</span>
+                </button>
+
+                <button
+                  onClick={() => onSelectJobForPipeline(job.id)}
+                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-blue-600/20 cursor-pointer"
+                >
+                  <span>Candidates</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           </div>
         ))}

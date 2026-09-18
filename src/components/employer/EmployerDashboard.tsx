@@ -1,42 +1,26 @@
 import React, { useState, useEffect } from "react";
-import { 
-  Briefcase, 
-  PlusCircle, 
-  Users, 
-  Search, 
-  Sparkles, 
-  Calendar, 
-  MessageSquare, 
-  Building2, 
-  CreditCard, 
-  HelpCircle, 
-  LogOut, 
-  Bell, 
-  Menu, 
-  X, 
-  ShieldCheck, 
-  ChevronDown, 
-  TrendingUp, 
-  Layers, 
-  FileText,
-  Plus
-} from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
-import { collection, getDocs, doc, getDoc, updateDoc } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, updateDoc, setDoc, deleteDoc } from "firebase/firestore";
 import { db, auth } from "../../firebase";
-import AIJobsLogo from "../AIJobsLogo";
-import EmployerOverview from "./EmployerOverview";
+import HiringPanelLayout from "../hiring/HiringPanelLayout";
+import HiringOverview from "../hiring/HiringOverview";
+import PostJobMenuModal from "../hiring/PostJobMenuModal";
+import CandidateDatabaseView from "../hiring/CandidateDatabaseView";
+import AiMatchesView from "../hiring/AiMatchesView";
+import AiHiringAssistantView from "../hiring/AiHiringAssistantView";
+import AiCallingAgentView from "../hiring/AiCallingAgentView";
+import HiringReportsView from "../hiring/HiringReportsView";
+import CreditsUsageView from "../hiring/CreditsUsageView";
+import PlanPurchaseView from "../hiring/PlanPurchaseView";
+import ProfileDetailsView from "../hiring/ProfileDetailsView";
+import HelpSupportModal from "../hiring/HelpSupportModal";
+
+import EmployerMyJobs from "./EmployerMyJobs";
 import EmployerPostJob from "./EmployerPostJob";
 import EmployerApplications from "./EmployerApplications";
-import EmployerMyJobs from "./EmployerMyJobs";
-import EmployerCandidateSearch from "./EmployerCandidateSearch";
-import EmployerAiShortlist from "./EmployerAiShortlist";
 import EmployerInterviews from "./EmployerInterviews";
 import EmployerMessages from "./EmployerMessages";
-import EmployerCompanyProfile from "./EmployerCompanyProfile";
-import SubscriptionBillingHub from "../SubscriptionBillingHub";
 import { CompanyJob, CompanyApplication, CompanyInterview, CompanyProfile } from "./EmployerTypes";
-import EmployerSidebar from "./EmployerSidebar";
+import { CreditBalance, CreditUsageLog } from "../hiring/HiringTypes";
 
 interface EmployerDashboardProps {
   userId: string;
@@ -53,14 +37,17 @@ export default function EmployerDashboard({
   userRole = "employer",
   onLogout
 }: EmployerDashboardProps) {
-  const [activeTab, setActiveTab] = useState<string>("overview");
-  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [selectedCandidateForDrawer, setSelectedCandidateForDrawer] = useState<CompanyApplication | null>(null);
   const [selectedJobForFilter, setSelectedJobForFilter] = useState<string>("all");
   const [activeChatRecipient, setActiveChatRecipient] = useState<{ id: string; name: string } | null>(null);
+
+  // Modals
+  const [showPostJobMenu, setShowPostJobMenu] = useState(false);
+  const [showHelpSupport, setShowHelpSupport] = useState(false);
+
+  // Post Job prefilled state from Template or AI
+  const [postJobPrefill, setPostJobPrefill] = useState<any>(null);
 
   // Core Data Stores
   const [jobs, setJobs] = useState<CompanyJob[]>([]);
@@ -69,27 +56,75 @@ export default function EmployerDashboard({
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Sync Data from Firestore
+  // Credits Balance
+  const [credits, setCredits] = useState<CreditBalance>({
+    jobCredits: 6,
+    jobCreditsUsed: 4,
+    databaseCredits: 125,
+    databaseCreditsUsed: 48,
+    aiCredits: 500,
+    aiCreditsUsed: 110,
+    callingCredits: 180,
+    callingCreditsUsed: 45,
+    validityDate: "Dec 31, 2026"
+  });
+
+  const [usageHistory, setUsageHistory] = useState<CreditUsageLog[]>([
+    {
+      id: "tx_101",
+      date: new Date(Date.now() - 3600000 * 2).toLocaleDateString() + " " + new Date(Date.now() - 3600000 * 2).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      activity: "Candidate Contact & Resume Unlock",
+      item: "Aarav Sharma",
+      quantity: 1,
+      creditsUsed: 1,
+      recruiter: userName,
+      refId: "CAND_9872"
+    },
+    {
+      id: "tx_102",
+      date: new Date(Date.now() - 86400000).toLocaleDateString() + " " + new Date(Date.now() - 86400000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      activity: "Job Requisition Published & Indexed",
+      item: "Senior React & TypeScript Architect",
+      quantity: 1,
+      creditsUsed: 1,
+      recruiter: userName,
+      refId: "JOB_4421"
+    },
+    {
+      id: "tx_103",
+      date: new Date(Date.now() - 86400000 * 2).toLocaleDateString() + " " + new Date(Date.now() - 86400000 * 2).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      activity: "AI Voice Telephony Screening (4 mins)",
+      item: "Sneha Deshmukh",
+      quantity: 4,
+      creditsUsed: 4,
+      recruiter: userName,
+      refId: "CALL_1109"
+    }
+  ]);
+
+  // Load real Firestore data
   const loadData = async () => {
     setLoading(true);
     try {
       // 1. Company Profile
-      const compSnap = await getDoc(doc(db, "companies", userId));
-      if (compSnap.exists()) {
-        setCompanyProfile(compSnap.data() as CompanyProfile);
-      } else {
-        const empSnap = await getDoc(doc(db, "employers", userId));
-        if (empSnap.exists()) {
-          const ed = empSnap.data();
-          setCompanyProfile({
-            id: userId,
-            userId,
-            companyName: ed.companyName || companyName,
-            industry: ed.industry || "Software & Technology",
-            companySize: ed.size || "10-50 Employees",
-            isVerified: true,
-            createdAt: new Date().toISOString()
-          });
+      if (userId) {
+        const compSnap = await getDoc(doc(db, "companies", userId));
+        if (compSnap.exists()) {
+          setCompanyProfile(compSnap.data() as CompanyProfile);
+        } else {
+          const empSnap = await getDoc(doc(db, "employers", userId));
+          if (empSnap.exists()) {
+            const ed = empSnap.data();
+            setCompanyProfile({
+              id: userId,
+              userId,
+              companyName: ed.companyName || companyName,
+              industry: ed.industry || "Software & Technology",
+              companySize: ed.size || "51-200 Employees",
+              isVerified: true,
+              createdAt: new Date().toISOString()
+            });
+          }
         }
       }
 
@@ -98,10 +133,30 @@ export default function EmployerDashboard({
       const jobList: CompanyJob[] = [];
       jobsSnap.forEach((d) => {
         const jd = d.data() as CompanyJob;
-        if (jd.employerId === userId || jd.userId === userId || jd.companyId === userId) {
+        if (!userId || jd.employerId === userId || jd.userId === userId || jd.companyId === userId || !jd.employerId) {
           jobList.push({ id: d.id, ...jd });
         }
       });
+
+      // If user has no jobs yet, provide default verified template job
+      if (jobList.length === 0) {
+        jobList.push({
+          id: "job_sample_1",
+          employerId: userId,
+          title: "Senior Full Stack Engineer (React & Node.js)",
+          companyName: companyName,
+          location: "Bengaluru, Karnataka (Hybrid)",
+          department: "Engineering",
+          employmentType: "Full-time",
+          experience: "3-5 Years",
+          salary: "18,00,000 - 26,00,000",
+          openings: 2,
+          skillsRequired: ["React", "TypeScript", "Node.js", "PostgreSQL", "AWS"],
+          status: "active",
+          approved: true,
+          createdAt: new Date().toISOString()
+        });
+      }
       setJobs(jobList);
 
       // 3. Applications
@@ -109,10 +164,45 @@ export default function EmployerDashboard({
       const appList: CompanyApplication[] = [];
       appsSnap.forEach((d) => {
         const ad = d.data() as CompanyApplication;
-        if (jobList.some(j => j.id === ad.jobId) || ad.jobId === userId) {
+        if (jobList.some(j => j.id === ad.jobId) || ad.jobId === userId || !ad.jobId) {
           appList.push({ id: d.id, ...ad });
         }
       });
+
+      if (appList.length === 0) {
+        appList.push(
+          {
+            id: "app_sample_1",
+            jobId: jobList[0]?.id || "job_sample_1",
+            jobTitle: jobList[0]?.title || "Senior Full Stack Engineer",
+            candidateId: "cand_aarav",
+            candidateName: "Aarav Sharma",
+            candidateEmail: "aarav.sharma@domain.in",
+            candidatePhone: "+91 98765 43210",
+            location: "Bengaluru, Karnataka",
+            experience: "5.5 Years",
+            status: "new",
+            aiScore: 96,
+            skills: ["React", "TypeScript", "Node.js", "AWS"],
+            appliedAt: new Date(Date.now() - 3600000 * 3).toISOString()
+          },
+          {
+            id: "app_sample_2",
+            jobId: jobList[0]?.id || "job_sample_1",
+            jobTitle: jobList[0]?.title || "Senior Full Stack Engineer",
+            candidateId: "cand_sneha",
+            candidateName: "Sneha Deshmukh",
+            candidateEmail: "sneha.d@domain.in",
+            candidatePhone: "+91 98123 45678",
+            location: "Pune, Maharashtra",
+            experience: "4.2 Years",
+            status: "shortlisted",
+            aiScore: 94,
+            skills: ["React", "Next.js", "Tailwind CSS"],
+            appliedAt: new Date(Date.now() - 86400000).toISOString()
+          }
+        );
+      }
       setApplications(appList);
 
       // 4. Interviews
@@ -120,13 +210,28 @@ export default function EmployerDashboard({
       const intList: CompanyInterview[] = [];
       intSnap.forEach((d) => {
         const idat = d.data() as CompanyInterview;
-        if (jobList.some(j => j.id === idat.jobId) || (idat as any).companyId === userId) {
-          intList.push({ id: d.id, ...idat });
-        }
+        intList.push({ id: d.id, ...idat });
       });
+
+      if (intList.length === 0) {
+        intList.push({
+          id: "int_sample_1",
+          jobId: jobList[0]?.id || "job_sample_1",
+          jobTitle: jobList[0]?.title || "Senior Full Stack Engineer",
+          candidateId: "cand_aarav",
+          candidateName: "Aarav Sharma",
+          candidateEmail: "aarav.sharma@domain.in",
+          dateTime: new Date(Date.now() + 86400000 * 2).toISOString(),
+          roundName: "Technical Deep Dive & Architecture",
+          interviewer: "Hiring Manager",
+          meetLink: "https://meet.google.com/aij-interview-01",
+          status: "scheduled"
+        });
+      }
       setInterviews(intList);
-    } catch (e) {
-      console.warn("Employer data loading notice:", e);
+
+    } catch (err) {
+      console.warn("Error loading employer Firestore data:", err);
     } finally {
       setLoading(false);
     }
@@ -136,416 +241,313 @@ export default function EmployerDashboard({
     loadData();
   }, [userId]);
 
-  // Handle URL sync
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.location.pathname !== "/employer/dashboard") {
-      window.history.pushState({}, "", "/employer/dashboard");
-    }
-  }, []);
+  // Credit Deduction handler
+  const handleDeductCredit = (amount: number, activity: string, targetName: string) => {
+    setCredits(prev => ({
+      ...prev,
+      databaseCredits: Math.max(0, prev.databaseCredits - amount),
+      databaseCreditsUsed: prev.databaseCreditsUsed + amount
+    }));
 
-  const handleUpdateApplicationStatus = async (appId: string, newStatus: string) => {
-    try {
-      await updateDoc(doc(db, "company_applications", appId), {
-        status: newStatus,
-        updatedAt: new Date().toISOString()
-      });
-    } catch (e) {}
-
-    setApplications(prev => prev.map(a => a.id === appId ? { ...a, status: newStatus } : a));
+    const newLog: CreditUsageLog = {
+      id: "tx_" + Date.now(),
+      date: new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      activity: activity,
+      item: targetName,
+      quantity: amount,
+      creditsUsed: amount,
+      recruiter: userName,
+      refId: "TX_" + Math.floor(1000 + Math.random() * 9000)
+    };
+    setUsageHistory(prev => [newLog, ...prev]);
   };
 
+  // Add Credits handler
+  const handleAddCredits = (jobCreds: number, dbCreds: number, planName: string, amount: number) => {
+    setCredits(prev => ({
+      ...prev,
+      jobCredits: prev.jobCredits + jobCreds,
+      databaseCredits: prev.databaseCredits + dbCreds
+    }));
+
+    const newLog: CreditUsageLog = {
+      id: "tx_" + Date.now(),
+      date: new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      activity: `Subscription Order: ${planName}`,
+      item: `₹${amount.toLocaleString()}`,
+      quantity: 1,
+      creditsUsed: 0,
+      recruiter: userName,
+      refId: "INV_" + Math.floor(1000 + Math.random() * 9000)
+    };
+    setUsageHistory(prev => [newLog, ...prev]);
+  };
+
+  // Job status update
   const handleUpdateJobStatus = async (jobId: string, newStatus: string) => {
     try {
       await updateDoc(doc(db, "jobs", jobId), { status: newStatus });
-      await updateDoc(doc(db, "company_jobs", jobId), { status: newStatus });
     } catch (e) {}
-    setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: newStatus } : j));
+    setJobs(jobs.map(j => j.id === jobId ? { ...j, status: newStatus } : j));
   };
 
-  const handleJobPublished = (newJob: CompanyJob) => {
-    setJobs([newJob, ...jobs]);
-    setActiveTab("my-jobs");
+  // Delete Job
+  const handleDeleteJob = async (jobId: string) => {
+    try {
+      await deleteDoc(doc(db, "jobs", jobId));
+    } catch (e) {}
+    setJobs(jobs.filter(j => j.id !== jobId));
   };
 
-  const handleOpenLiveChat = (recipientId?: string, recipientName?: string) => {
-    if (recipientId && recipientName) {
-      setActiveChatRecipient({ id: recipientId, name: recipientName });
+  // Duplicate Job
+  const handleDuplicateJob = async (job: CompanyJob) => {
+    const clone = {
+      ...job,
+      id: "job_clone_" + Date.now(),
+      title: `${job.title} (Copy)`,
+      status: "draft",
+      approved: false,
+      createdAt: new Date().toISOString()
+    };
+    setJobs([clone, ...jobs]);
+  };
+
+  // Application status update
+  const handleUpdateApplicationStatus = async (appId: string, newStatus: string, note?: string) => {
+    try {
+      await updateDoc(doc(db, "company_applications", appId), {
+        status: newStatus,
+        ...(note ? { notes: note } : {})
+      });
+    } catch (e) {}
+    setApplications(applications.map(a => a.id === appId ? { ...a, status: newStatus, ...(note ? { notes: note } : {}) } : a));
+  };
+
+  // Select Option from Post Job Menu
+  const handleSelectPostJobOption = (mode: "new" | "template" | "reuse" | "ai", data?: any) => {
+    if (mode === "new") {
+      setPostJobPrefill(null);
+    } else {
+      setPostJobPrefill(data);
     }
+    setActiveTab("post-job");
+  };
+
+  const handleOpenLiveChat = (recipientId: string, recipientName: string) => {
+    setActiveChatRecipient({ id: recipientId, name: recipientName });
     setActiveTab("messages");
   };
 
-  const navItems = [
-    { id: "overview", label: "Overview", icon: TrendingUp },
-    { id: "post-job", label: "Post a Job", icon: PlusCircle, highlight: true },
-    { id: "my-jobs", label: "My Jobs", icon: Briefcase, count: jobs.length },
-    { id: "applications", label: "Applications", icon: Users, count: applications.length },
-    { id: "candidate-search", label: "Candidate Search", icon: Search },
-    { id: "ai-shortlist", label: "AI Shortlist", icon: Sparkles },
-    { id: "interviews", label: "Interviews", icon: Calendar, count: interviews.length },
-    { id: "messages", label: "Messages", icon: MessageSquare },
-    { id: "company-profile", label: "Company Profile", icon: Building2 },
-    { id: "billing", label: "Billing & Plans", icon: CreditCard },
-    { id: "support", label: "Help & Support", icon: HelpCircle },
-  ];
-
-  const currentCorpName = companyProfile?.companyName || companyName || "AIJOBS Corporate";
+  const pendingAppsCount = applications.filter(a => a.status === "new").length;
 
   return (
-    <div className="min-h-screen bg-[#0e0a14] text-slate-100 flex flex-col antialiased selection:bg-cyan-500/30 selection:text-cyan-200" id="employer-dashboard-app">
-      
-      {/* Top Bar Header */}
-      <header className="sticky top-0 z-40 w-full bg-[#17111F]/90 border-b border-purple-500/20 backdrop-blur-2xl px-4 sm:px-6 py-3 shadow-xl">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          
-          {/* Left: Mobile Menu Toggle & Brand */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setMobileDrawerOpen(true)}
-              className="lg:hidden p-2 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white cursor-pointer"
-              title="Open Navigation"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <AIJobsLogo size="sm" showTagline={false} />
-            <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-500/15 border border-blue-500/30 text-blue-300">
-              <ShieldCheck className="w-3 h-3 text-blue-400" />
-              <span>EMPLOYER PORTAL</span>
-            </span>
-          </div>
+    <HiringPanelLayout
+      currentTab={activeTab}
+      onNavigateTab={(tab) => {
+        if (tab === "post-job") {
+          setPostJobPrefill(null);
+        }
+        setActiveTab(tab);
+      }}
+      userName={userName}
+      userEmail={companyProfile?.contactEmail || "employer@aijobs1.in"}
+      companyName={companyProfile?.companyName || companyName}
+      userRole={userRole}
+      credits={credits}
+      onOpenPostJobMenu={() => setShowPostJobMenu(true)}
+      onOpenHelpSupport={() => setShowHelpSupport(true)}
+      onLogout={onLogout || (() => { window.location.href = "/"; })}
+      pendingCount={pendingAppsCount}
+    >
+      {/* 1. Dashboard Overview Tab */}
+      {activeTab === "dashboard" && (
+        <HiringOverview
+          userName={userName}
+          companyName={companyProfile?.companyName || companyName}
+          userRole={userRole}
+          jobs={jobs}
+          applications={applications}
+          interviews={interviews}
+          credits={credits}
+          companyProfile={companyProfile}
+          onNavigateTab={setActiveTab}
+          onOpenPostJobMenu={() => setShowPostJobMenu(true)}
+          onSelectJobForFilter={(jobId) => {
+            setSelectedJobForFilter(jobId);
+            setActiveTab("applications");
+          }}
+          onViewCandidate={(app) => {
+            setSelectedCandidateForDrawer(app);
+            setActiveTab("applications");
+          }}
+          onUpdateJobStatus={handleUpdateJobStatus}
+          onDeleteJob={handleDeleteJob}
+          onDuplicateJob={handleDuplicateJob}
+        />
+      )}
 
-          {/* Center: Search Candidates / Jobs */}
-          <div className="hidden md:flex flex-1 max-w-md mx-4">
-            <div className="relative w-full">
-              <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && searchQuery.trim()) {
-                    setActiveTab("candidate-search");
-                  }
-                }}
-                placeholder="Search candidates, skills, active jobs..."
-                className="w-full pl-9 pr-4 py-2 rounded-2xl bg-[#0e0a14] border border-purple-500/30 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 transition-all"
-              />
-            </div>
-          </div>
+      {/* 2. All Jobs Tab */}
+      {activeTab === "my-jobs" && (
+        <EmployerMyJobs
+          jobs={jobs}
+          onNavigateTab={setActiveTab}
+          onSelectJobForFilter={(jobId) => {
+            setSelectedJobForFilter(jobId);
+            setActiveTab("applications");
+          }}
+          onUpdateJobStatus={handleUpdateJobStatus}
+        />
+      )}
 
-          {/* Right: Notifications, Post Job Emerald Button & Profile Menu */}
-          <div className="flex items-center gap-3">
-            
-            {/* Primary Bright Green "Post a Job" Button */}
-            <button
-              id="employer-topbar-post-job"
-              onClick={() => setActiveTab("post-job")}
-              className="px-4 py-2 rounded-2xl bg-[#10B981] hover:bg-emerald-400 text-slate-950 font-extrabold text-xs shadow-lg shadow-emerald-500/25 flex items-center gap-1.5 transition-all cursor-pointer transform hover:scale-105 active:scale-95 shrink-0"
-            >
-              <Plus className="w-4 h-4 text-slate-950" />
-              <span className="hidden sm:inline">Post a Job</span>
-              <span className="sm:hidden">Post</span>
-            </button>
+      {/* 3. Post Job Wizard Tab */}
+      {activeTab === "post-job" && (
+        <EmployerPostJob
+          userId={userId}
+          companyName={companyProfile?.companyName || companyName}
+          onJobPublished={(newJob) => {
+            setJobs([newJob, ...jobs]);
+            setActiveTab("my-jobs");
+          }}
+          onCancel={() => setActiveTab("dashboard")}
+        />
+      )}
 
-            {/* Notification Bell */}
-            <div className="relative">
-              <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all cursor-pointer relative"
-                title="Notifications"
-              >
-                <Bell className="w-4 h-4" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-cyan-400 ring-2 ring-[#17111F] animate-pulse" />
-              </button>
+      {/* 4. Applications Pipeline Tab */}
+      {activeTab === "applications" && (
+        <EmployerApplications
+          jobs={jobs}
+          applications={applications}
+          onUpdateApplicationStatus={handleUpdateApplicationStatus}
+          onOpenLiveChat={handleOpenLiveChat}
+          selectedCandidate={selectedCandidateForDrawer}
+          onCloseDrawer={() => setSelectedCandidateForDrawer(null)}
+          onSelectCandidate={setSelectedCandidateForDrawer}
+        />
+      )}
 
-              {showNotifications && (
-                <div className="absolute right-0 mt-2 w-80 rounded-3xl bg-[#17111F] border border-purple-500/30 shadow-2xl p-4 z-50 animate-in fade-in">
-                  <div className="flex items-center justify-between border-b border-purple-500/20 pb-2 mb-3">
-                    <span className="text-xs font-bold text-white">Notifications</span>
-                    <button onClick={() => setShowNotifications(false)} className="text-slate-400 hover:text-white text-xs">
-                      ✕
-                    </button>
-                  </div>
-                  <div className="space-y-2 text-xs text-slate-300">
-                    <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                      <span className="font-bold text-white block">3 New AI Matched Applicants</span>
-                      <span className="text-[11px] text-slate-400">Senior React Engineer has received high scoring candidates.</span>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                      <span className="font-bold text-white block">Interview Scheduled</span>
-                      <span className="text-[11px] text-slate-400">Technical round confirmed with Aarav Sharma for Thursday.</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+      {/* 5. Candidate Database Tab */}
+      {(activeTab === "candidate-search" || activeTab === "saved-searches" || activeTab === "unlocked-candidates") && (
+        <CandidateDatabaseView
+          userId={userId}
+          credits={credits}
+          jobs={jobs}
+          onDeductCredit={handleDeductCredit}
+          onOpenLiveChat={handleOpenLiveChat}
+          onNavigateTab={setActiveTab}
+        />
+      )}
 
-            {/* Profile Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setShowProfileMenu(!showProfileMenu)}
-                className="flex items-center gap-2.5 p-1.5 pr-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-purple-500/20 transition-all cursor-pointer"
-              >
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold flex items-center justify-center text-xs shadow-md">
-                  {currentCorpName.charAt(0)}
-                </div>
-                <div className="hidden sm:block text-left">
-                  <div className="text-xs font-bold text-white truncate max-w-[120px]">{currentCorpName}</div>
-                  <div className="text-[10px] text-slate-400 truncate">Employer</div>
-                </div>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-              </button>
+      {/* 6. AI Matches Tab */}
+      {activeTab === "ai-matches" && (
+        <AiMatchesView
+          jobs={jobs}
+          applications={applications}
+          onShortlistCandidate={(candId) => {}}
+          onScheduleInterview={(candId, candName, jobTitle) => {
+            setActiveTab("interviews");
+          }}
+          onOpenLiveChat={handleOpenLiveChat}
+        />
+      )}
 
-              {showProfileMenu && (
-                <div className="absolute right-0 mt-2 w-56 rounded-3xl bg-[#17111F] border border-purple-500/30 shadow-2xl p-2 z-50 animate-in fade-in space-y-1 text-xs">
-                  <div className="px-3 py-2 border-b border-purple-500/20">
-                    <div className="font-bold text-white truncate">{currentCorpName}</div>
-                    <div className="text-[10px] text-slate-400 truncate">{userName}</div>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setActiveTab("company-profile");
-                      setShowProfileMenu(false);
-                    }}
-                    className="w-full px-3 py-2 text-left text-slate-300 hover:text-white hover:bg-white/5 rounded-xl flex items-center gap-2 cursor-pointer"
-                  >
-                    <Building2 className="w-4 h-4 text-blue-400" />
-                    <span>Company Profile</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setActiveTab("billing");
-                      setShowProfileMenu(false);
-                    }}
-                    className="w-full px-3 py-2 text-left text-slate-300 hover:text-white hover:bg-white/5 rounded-xl flex items-center gap-2 cursor-pointer"
-                  >
-                    <CreditCard className="w-4 h-4 text-purple-400" />
-                    <span>Billing & Plans</span>
-                  </button>
-                  <div className="border-t border-purple-500/20 pt-1">
-                    <button
-                      onClick={async () => {
-                        setShowProfileMenu(false);
-                        if (onLogout) {
-                          onLogout();
-                        } else {
-                          await auth.signOut();
-                          window.location.reload();
-                        }
-                      }}
-                      className="w-full px-3 py-2 text-left text-red-400 hover:bg-red-500/10 rounded-xl flex items-center gap-2 cursor-pointer font-bold"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      <span>Logout</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* 7. AI Hiring Assistant Tab */}
+      {activeTab === "ai-assistant" && (
+        <AiHiringAssistantView
+          onInsertIntoJob={(jdText) => {
+            setActiveTab("post-job");
+          }}
+          onNavigateTab={setActiveTab}
+        />
+      )}
 
-      {/* Main Layout Container */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 w-full flex-1 flex gap-6">
-        
-        {/* Left Sidebar (Desktop) */}
-        <aside className="hidden lg:block shrink-0">
-          <EmployerSidebar
-            activeTab={activeTab}
-            onSelectTab={setActiveTab}
-            onLogout={async () => {
-              if (onLogout) onLogout();
-              else {
-                await auth.signOut();
-                window.location.reload();
-              }
-            }}
-            counts={{
-              jobs: jobs.length,
-              applications: applications.length,
-              interviews: interviews.length
-            }}
-            companyName={currentCorpName}
-            userName={userName}
-          />
-        </aside>
+      {/* 8. AI Calling Agent Tab */}
+      {activeTab === "ai-calling" && (
+        <AiCallingAgentView
+          jobs={jobs}
+          onOpenLiveChat={handleOpenLiveChat}
+        />
+      )}
 
-        {/* Mobile Navigation Drawer */}
-        <AnimatePresence>
-          {mobileDrawerOpen && (
-            <div className="fixed inset-0 z-50 lg:hidden">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/70 backdrop-blur-sm"
-                onClick={() => setMobileDrawerOpen(false)}
-              />
-              <motion.aside
-                initial={{ x: "-100%" }}
-                animate={{ x: 0 }}
-                exit={{ x: "-100%" }}
-                transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="fixed inset-y-0 left-0 w-72 bg-[#17111F] border-r border-purple-500/30 p-0 z-50 shadow-2xl overflow-y-auto"
-              >
-                <EmployerSidebar
-                  activeTab={activeTab}
-                  onSelectTab={setActiveTab}
-                  onLogout={async () => {
-                    setMobileDrawerOpen(false);
-                    if (onLogout) onLogout();
-                    else {
-                      await auth.signOut();
-                      window.location.reload();
-                    }
-                  }}
-                  counts={{
-                    jobs: jobs.length,
-                    applications: applications.length,
-                    interviews: interviews.length
-                  }}
-                  companyName={currentCorpName}
-                  userName={userName}
-                  isMobile={true}
-                  onCloseMobile={() => setMobileDrawerOpen(false)}
-                />
-              </motion.aside>
-            </div>
-          )}
-        </AnimatePresence>
+      {/* 9. Interviews Tab */}
+      {activeTab === "interviews" && (
+        <EmployerInterviews
+          userId={userId}
+          interviews={interviews}
+          jobs={jobs}
+          applications={applications}
+          onInterviewScheduled={(newInt) => {
+            setInterviews([newInt, ...interviews]);
+          }}
+        />
+      )}
 
-        {/* Center Main Workspace Canvas */}
-        <main className="flex-1 min-w-0">
-          {activeTab === "overview" && (
-            <EmployerOverview
-              userName={userName}
-              companyName={currentCorpName}
-              jobs={jobs}
-              applications={applications}
-              interviews={interviews}
-              onNavigateTab={(t) => setActiveTab(t)}
-              onViewCandidate={(app) => {
-                setSelectedCandidateForDrawer(app);
-                setActiveTab("applications");
-              }}
-              onOpenLiveChat={handleOpenLiveChat}
-            />
-          )}
+      {/* 10. Reports Tab */}
+      {activeTab === "reports" && (
+        <HiringReportsView
+          jobs={jobs}
+          applications={applications}
+          interviews={interviews}
+        />
+      )}
 
-          {activeTab === "post-job" && (
-            <EmployerPostJob
-              userId={userId}
-              companyName={currentCorpName}
-              onJobPublished={handleJobPublished}
-              onCancel={() => setActiveTab("overview")}
-            />
-          )}
+      {/* 11. Credits & Usage Tab */}
+      {activeTab === "credits-usage" && (
+        <CreditsUsageView
+          credits={credits}
+          usageHistory={usageHistory}
+          onNavigateTab={setActiveTab}
+        />
+      )}
 
-          {activeTab === "my-jobs" && (
-            <EmployerMyJobs
-              jobs={jobs}
-              onNavigateTab={(t) => setActiveTab(t)}
-              onSelectJobForFilter={(jobId) => {
-                setSelectedJobForFilter(jobId);
-                setActiveTab("applications");
-              }}
-              onUpdateJobStatus={handleUpdateJobStatus}
-            />
-          )}
+      {/* 12. Plans & Billing Tab */}
+      {activeTab === "billing" && (
+        <PlanPurchaseView
+          userId={userId}
+          userEmail={companyProfile?.contactEmail || "employer@aijobs1.in"}
+          userName={userName}
+          credits={credits}
+          onAddCredits={handleAddCredits}
+        />
+      )}
 
-          {activeTab === "applications" && (
-            <EmployerApplications
-              jobs={jobs}
-              applications={applications}
-              onUpdateApplicationStatus={handleUpdateApplicationStatus}
-              onOpenLiveChat={handleOpenLiveChat}
-              selectedCandidate={selectedCandidateForDrawer}
-              onCloseDrawer={() => setSelectedCandidateForDrawer(null)}
-              onSelectCandidate={(c) => setSelectedCandidateForDrawer(c)}
-            />
-          )}
+      {/* 13. Company & Profile Tab */}
+      {activeTab === "company-profile" && (
+        <ProfileDetailsView
+          userId={userId}
+          userRole={userRole}
+          initialProfile={companyProfile}
+          userEmail={companyProfile?.contactEmail || "employer@aijobs1.in"}
+          userName={userName}
+          onProfileUpdated={(updated) => setCompanyProfile(updated)}
+        />
+      )}
 
-          {activeTab === "candidate-search" && (
-            <EmployerCandidateSearch
-              onShortlistCandidate={(c) => {
-                alert(`Candidate ${c.name} added to your active shortlist.`);
-              }}
-              onMessageCandidate={handleOpenLiveChat}
-            />
-          )}
+      {/* 14. Messages Tab */}
+      {activeTab === "messages" && (
+        <EmployerMessages
+          userId={userId}
+          companyName={companyProfile?.companyName || companyName}
+          initialRecipient={activeChatRecipient}
+        />
+      )}
 
-          {activeTab === "ai-shortlist" && (
-            <EmployerAiShortlist
-              applications={applications}
-              onOpenCandidateDrawer={(app) => {
-                setSelectedCandidateForDrawer(app);
-                setActiveTab("applications");
-              }}
-              onOpenLiveChat={handleOpenLiveChat}
-            />
-          )}
+      {/* Post Job Structured Menu Modal */}
+      <PostJobMenuModal
+        isOpen={showPostJobMenu}
+        onClose={() => setShowPostJobMenu(false)}
+        onSelectOption={handleSelectPostJobOption}
+        existingJobs={jobs}
+      />
 
-          {activeTab === "interviews" && (
-            <EmployerInterviews
-              userId={userId}
-              interviews={interviews}
-              jobs={jobs}
-              applications={applications}
-              onInterviewScheduled={(newInt) => {
-                setInterviews([newInt, ...interviews]);
-              }}
-            />
-          )}
+      {/* Help & Support Modal */}
+      <HelpSupportModal
+        isOpen={showHelpSupport}
+        onClose={() => setShowHelpSupport(false)}
+        userId={userId}
+        userEmail={companyProfile?.contactEmail || "employer@aijobs1.in"}
+        userName={userName}
+      />
 
-          {activeTab === "messages" && (
-            <EmployerMessages
-              initialRecipientId={activeChatRecipient?.id}
-              initialRecipientName={activeChatRecipient?.name}
-            />
-          )}
-
-          {activeTab === "company-profile" && (
-            <EmployerCompanyProfile
-              userId={userId}
-              userName={userName}
-              initialProfile={companyProfile}
-              onProfileUpdated={(p) => setCompanyProfile(p)}
-            />
-          )}
-
-          {activeTab === "billing" && (
-            <div className="space-y-6">
-              <div className="p-6 rounded-3xl bg-[#17111F]/80 border border-purple-500/20 backdrop-blur-md shadow-xl">
-                <h2 className="text-xl font-extrabold text-white">Subscription & Hiring Credits</h2>
-                <p className="text-xs text-slate-400">Manage plan limits, candidate resume unlock credits, and billing history</p>
-              </div>
-              <SubscriptionBillingHub
-                userId={userId}
-                userName={userName || companyName}
-                userRole="employer"
-                onRefresh={loadData}
-              />
-            </div>
-          )}
-
-          {activeTab === "support" && (
-            <div className="p-8 rounded-3xl bg-[#17111F]/80 border border-purple-500/20 backdrop-blur-md shadow-xl text-center space-y-4 max-w-lg mx-auto my-12">
-              <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto">
-                <HelpCircle className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-white">AIJOBS Enterprise Support</h3>
-              <p className="text-xs text-slate-400">
-                Need assistance with custom ATS integrations, job posting guidelines, or hiring manager accounts?
-              </p>
-              <div className="p-4 rounded-2xl bg-[#0e0a14] border border-purple-500/30 text-xs space-y-1 font-mono text-left">
-                <div className="text-blue-300 font-bold">Priority Support Desk</div>
-                <div className="text-slate-300">Email: enterprise-support@aijobs1.in</div>
-                <div className="text-slate-300">Hotline: +91 80 4567 8900 (Mon - Sat, 9am - 7pm IST)</div>
-              </div>
-            </div>
-          )}
-        </main>
-      </div>
-    </div>
+    </HiringPanelLayout>
   );
 }

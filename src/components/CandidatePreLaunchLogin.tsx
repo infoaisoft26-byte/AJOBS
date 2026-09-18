@@ -8,6 +8,7 @@ import { useToast } from "./GlobalToast";
 import CandidateEmailVerification from "./CandidateEmailVerification";
 import { trackLogin } from "../utils/analytics";
 import { normalizeRole } from "../utils/roleUtils";
+import AIJobsLogo from "./AIJobsLogo";
 
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
@@ -210,6 +211,9 @@ export default function CandidatePreLaunchLogin({ onLoginSuccess, onNavigateToRe
       <div className="w-full max-w-md bg-gray-950/80 backdrop-blur-2xl border border-blue-500/20 rounded-3xl p-8 shadow-[0_0_50px_rgba(59,130,246,0.15)] relative overflow-hidden">
         <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
         <div className="text-center space-y-3 mb-8 relative">
+          <div className="flex justify-center mb-2">
+            <AIJobsLogo size="md" variant="compact" />
+          </div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-mono font-semibold uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5 text-blue-400" />
             <span>Candidate Workspace</span>

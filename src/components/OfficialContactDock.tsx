@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from "react";
+import React, { FormEvent, useMemo, useState } from "react";
 import { BriefcaseBusiness, ChevronDown, Mail, Scale, Send, Users } from "lucide-react";
 import { CONTACT_EMAILS } from "../config/site";
 

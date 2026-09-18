@@ -32,6 +32,7 @@ import RecruiterEarnings from "./RecruiterEarnings";
 import EmployerInterviews from "../employer/EmployerInterviews";
 import EmployerMessages from "../employer/EmployerMessages";
 import EmployerAiShortlist from "../employer/EmployerAiShortlist";
+import JobDetails from "../JobDetails";
 import { RecruiterJob, PipelineCandidate } from "./RecruiterTypes";
 
 interface RecruiterDashboardProps {
@@ -48,6 +49,7 @@ export default function RecruiterDashboard({
   onLogout
 }: RecruiterDashboardProps) {
   const [activeTab, setActiveTab] = useState<string>("overview");
+  const [selectedJobDetailsId, setSelectedJobDetailsId] = useState<string | null>(null);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -505,92 +507,110 @@ export default function RecruiterDashboard({
 
         {/* Center Main Workspace */}
         <main className="flex-1 min-w-0">
-          {activeTab === "overview" && (
-            <RecruiterOverview
-              userName={userName}
-              assignedJobs={assignedJobs}
-              pipelineCandidates={pipelineCandidates}
-              onNavigateTab={(t) => setActiveTab(t)}
-              onSelectCandidateForPipeline={(c) => {
-                setActiveTab("pipeline");
-              }}
-              onOpenLiveChat={handleOpenLiveChat}
-            />
-          )}
-
-          {activeTab === "pipeline" && (
-            <RecruiterPipeline
-              candidates={pipelineCandidates}
-              assignedJobs={assignedJobs}
-              onUpdateCandidateStage={handleUpdateStage}
-              onOpenLiveChat={handleOpenLiveChat}
-            />
-          )}
-
-          {activeTab === "assigned-jobs" && (
-            <RecruiterAssignedJobs
-              jobs={assignedJobs}
-              onSelectJobForPipeline={(jobId) => {
-                setActiveTab("pipeline");
-              }}
-            />
-          )}
-
-          {activeTab === "find-candidates" && (
-            <RecruiterFindCandidates
-              onOpenLiveChat={handleOpenLiveChat}
-            />
-          )}
-
-          {activeTab === "ai-matching" && (
-            <EmployerAiShortlist
-              applications={pipelineCandidates as any}
-              onOpenCandidateDrawer={() => setActiveTab("pipeline")}
-              onOpenLiveChat={handleOpenLiveChat}
-            />
-          )}
-
-          {activeTab === "interviews" && (
-            <EmployerInterviews
+          {selectedJobDetailsId ? (
+            <JobDetails
+              jobId={selectedJobDetailsId}
               userId={userId}
-              interviews={[]}
-              jobs={assignedJobs as any}
-              applications={pipelineCandidates as any}
-            />
-          )}
-
-          {activeTab === "leads" && (
-            <RecruiterLeads
+              userName={userName}
+              userRole={userRole}
+              isRecruiterMode={true}
+              onBack={() => setSelectedJobDetailsId(null)}
               onOpenLiveChat={handleOpenLiveChat}
+              onUpdateCandidateStage={handleUpdateStage}
             />
-          )}
+          ) : (
+            <>
+              {activeTab === "overview" && (
+                <RecruiterOverview
+                  userName={userName}
+                  assignedJobs={assignedJobs}
+                  pipelineCandidates={pipelineCandidates}
+                  onNavigateTab={(t) => setActiveTab(t)}
+                  onSelectCandidateForPipeline={(c) => {
+                    setActiveTab("pipeline");
+                  }}
+                  onOpenLiveChat={handleOpenLiveChat}
+                />
+              )}
 
-          {activeTab === "messages" && (
-            <EmployerMessages
-              initialRecipientId={activeChatRecipient?.id}
-              initialRecipientName={activeChatRecipient?.name}
-            />
-          )}
+              {activeTab === "pipeline" && (
+                <RecruiterPipeline
+                  candidates={pipelineCandidates}
+                  assignedJobs={assignedJobs}
+                  onUpdateCandidateStage={handleUpdateStage}
+                  onOpenLiveChat={handleOpenLiveChat}
+                />
+              )}
 
-          {activeTab === "earnings" && (
-            <RecruiterEarnings />
-          )}
+              {activeTab === "assigned-jobs" && (
+                <RecruiterAssignedJobs
+                  jobs={assignedJobs}
+                  onSelectJobForPipeline={(jobId) => {
+                    setActiveTab("pipeline");
+                  }}
+                  onViewJobDetails={(jobId) => {
+                    setSelectedJobDetailsId(jobId);
+                  }}
+                />
+              )}
 
-          {activeTab === "support" && (
-            <div className="p-8 rounded-3xl bg-[#17111F]/80 border border-purple-500/20 backdrop-blur-md shadow-xl text-center space-y-4 max-w-lg mx-auto my-12">
-              <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto">
-                <HelpCircle className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-white">Recruiter Partner Support Desk</h3>
-              <p className="text-xs text-slate-400">
-                Contact our agency partnerships team for mandate allocations, commission payout inquiries, or technical support.
-              </p>
-              <div className="p-4 rounded-2xl bg-[#0e0a14] border border-purple-500/30 text-xs space-y-1 font-mono text-left">
-                <div className="text-purple-300 font-bold">Partner Desk</div>
-                <div className="text-slate-300">Email: recruiter-desk@aijobs1.in</div>
-                <div className="text-slate-300">Helpline: +91 80 4567 8901</div>
-              </div>
-            </div>
+              {activeTab === "find-candidates" && (
+                <RecruiterFindCandidates
+                  onOpenLiveChat={handleOpenLiveChat}
+                />
+              )}
+
+              {activeTab === "ai-matching" && (
+                <EmployerAiShortlist
+                  applications={pipelineCandidates as any}
+                  onOpenCandidateDrawer={() => setActiveTab("pipeline")}
+                  onOpenLiveChat={handleOpenLiveChat}
+                />
+              )}
+
+              {activeTab === "interviews" && (
+                <EmployerInterviews
+                  userId={userId}
+                  interviews={[]}
+                  jobs={assignedJobs as any}
+                  applications={pipelineCandidates as any}
+                />
+              )}
+
+              {activeTab === "leads" && (
+                <RecruiterLeads
+                  onOpenLiveChat={handleOpenLiveChat}
+                />
+              )}
+
+              {activeTab === "messages" && (
+                <EmployerMessages
+                  initialRecipientId={activeChatRecipient?.id}
+                  initialRecipientName={activeChatRecipient?.name}
+                />
+              )}
+
+              {activeTab === "earnings" && (
+                <RecruiterEarnings />
+              )}
+
+              {activeTab === "support" && (
+                <div className="p-8 rounded-3xl bg-[#17111F]/80 border border-purple-500/20 backdrop-blur-md shadow-xl text-center space-y-4 max-w-lg mx-auto my-12">
+                  <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto">
+                    <HelpCircle className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white">Recruiter Partner Support Desk</h3>
+                  <p className="text-xs text-slate-400">
+                    Contact our agency partnerships team for mandate allocations, commission payout inquiries, or technical support.
+                  </p>
+                  <div className="p-4 rounded-2xl bg-[#0e0a14] border border-purple-500/30 text-xs space-y-1 font-mono text-left">
+                    <div className="text-purple-300 font-bold">Partner Desk</div>
+                    <div className="text-slate-300">Email: recruiter-desk@aijobs1.in</div>
+                    <div className="text-slate-300">Helpline: +91 80 4567 8901</div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </main>
       </div>

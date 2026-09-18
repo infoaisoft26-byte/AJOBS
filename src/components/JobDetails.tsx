@@ -10,29 +10,52 @@ import { applyToJob } from "../services/applicationService";
 import { saveJobToBookmarks, removeJobFromBookmarks } from "../services/savedJobsService";
 import { useJobPostingSchema } from "../hooks/useJobPostingSchema";
 import { useToast } from "./GlobalToast";
+import AiScreeningSummarySection from "./recruiter/AiScreeningSummarySection";
 
 interface JobDetailsProps {
   jobId: string;
-  userId: string;
-  userName: string;
-  profile: any;
+  userId?: string;
+  userName?: string;
+  profile?: any;
   resumeText?: string;
+  userRole?: string;
+  isRecruiterMode?: boolean;
   onBack: () => void;
   onSelectSimilarJob?: (similarJobId: string) => void;
   onAppliedSuccess?: (newApp: JobApplication) => void;
+  onUpdateCandidateStage?: (candidateId: string, newStage: string) => void;
+  onOpenLiveChat?: (candidateId: string, candidateName: string) => void;
 }
 
 export default function JobDetails({
   jobId,
-  userId,
-  userName,
+  userId = "",
+  userName = "",
   profile,
   resumeText,
+  userRole = "",
+  isRecruiterMode = false,
   onBack,
   onSelectSimilarJob,
-  onAppliedSuccess
+  onAppliedSuccess,
+  onUpdateCandidateStage,
+  onOpenLiveChat
 }: JobDetailsProps) {
   const { showToast } = useToast();
+  const isRecruiterUser = 
+    isRecruiterMode || 
+    userRole === "recruiter" || 
+    userRole === "employer" || 
+    userRole === "admin" || 
+    userRole === "superadmin" || 
+    profile?.role === "recruiter" || 
+    profile?.role === "employer" || 
+    profile?.role === "admin" || 
+    profile?.role === "superadmin";
+
+  const [viewPerspective, setViewPerspective] = useState<"recruiter" | "candidate">(
+    isRecruiterUser ? "recruiter" : "candidate"
+  );
   const [job, setJob] = useState<JobPosting | null>(null);
   const [similarJobs, setSimilarJobs] = useState<JobPosting[]>([]);
   const [loading, setLoading] = useState(true);
@@ -238,16 +261,42 @@ export default function JobDetails({
     <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in duration-300">
       
       {/* Top Navigation */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <button
           onClick={onBack}
           className="group flex items-center gap-2 text-xs font-mono text-cyan-400/80 hover:text-cyan-300 transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          <span>Return to listings</span>
+          <span>{isRecruiterUser ? "Return to Recruiter Dashboard" : "Return to listings"}</span>
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
+          {/* Recruiter / Job Specs Perspective Switcher */}
+          <div className="flex items-center bg-[#0d0918]/80 p-1 rounded-xl border border-purple-500/30">
+            <button
+              onClick={() => setViewPerspective("recruiter")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                viewPerspective === "recruiter"
+                  ? "bg-purple-600 text-white shadow-md shadow-purple-600/30"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <Brain className="w-3.5 h-3.5 text-cyan-400" />
+              <span>AI Screening</span>
+            </button>
+            <button
+              onClick={() => setViewPerspective("candidate")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                viewPerspective === "candidate"
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5 text-blue-300" />
+              <span>Job Specs</span>
+            </button>
+          </div>
+
           <button
             onClick={handleShare}
             className="p-2 bg-[rgba(4,12,35,0.8)] hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl transition-all border border-[rgba(37,99,235,0.35)] cursor-pointer text-xs flex items-center gap-1.5 font-bold"
@@ -258,6 +307,21 @@ export default function JobDetails({
           </button>
         </div>
       </div>
+
+      {/* Recruiter Mode: AI Screening Summary Section */}
+      {viewPerspective === "recruiter" && (
+        <AiScreeningSummarySection
+          jobId={job.id}
+          jobTitle={job.title}
+          companyName={job.companyName}
+          jobDescription={job.description}
+          requirements={job.requirements}
+          skillsRequired={job.skillsRequired || ["React", "TypeScript", "Node.js", "System Design"]}
+          screeningQuestions={(job as any).screeningQuestions}
+          onUpdateCandidateStage={onUpdateCandidateStage}
+          onOpenLiveChat={onOpenLiveChat}
+        />
+      )}
 
       {/* Main Job details card */}
       <div className="bg-[rgba(4,12,35,0.85)] backdrop-blur-2xl rounded-3xl border border-[rgba(37,99,235,0.35)] shadow-[0_16px_48px_rgba(0,0,0,0.6)] overflow-hidden">
