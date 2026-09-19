@@ -56,6 +56,14 @@ export async function syncPaidPaymentOrdersToAccounting() {
       currency: order.currency || "INR",
       gateway: String(order.gateway || "razorpay").toLowerCase(),
       gatewayPaymentId: paymentId,
+      buyer: agreement?.buyer || { name: userName, email: userEmail, gstin: user.gstin || user.gstNumber || "" },
+      seller: agreement?.seller || {
+        legalEntityName: process.env.AIJOBS_LEGAL_ENTITY_NAME || "AIJOBS / The Flex Force Services",
+        gstin: process.env.AIJOBS_GSTIN || "",
+        registeredAddress: process.env.AIJOBS_REGISTERED_ADDRESS || "",
+        state: process.env.AIJOBS_GST_STATE || "",
+        sacCode: process.env.AIJOBS_SAC_CODE || ""
+      },
       status: "paid",
       gatewaySignatureVerified: Boolean(order.gatewayVerified ?? true),
       paidAt,
