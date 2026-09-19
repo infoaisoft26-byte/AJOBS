@@ -439,7 +439,7 @@ export const FinanceAndAccountingModule: React.FC<FinanceAndAccountingModuleProp
                     ₹{dashboardData.totalGstLiability?.toLocaleString("en-IN") || "0"}
                   </div>
                   <div className="text-[11px] text-slate-400 pt-1">
-                    SAC 998311 (CGST + SGST + IGST)
+                    GST ledger from configured billing profile (CGST + SGST + IGST)
                   </div>
                 </div>
 
@@ -520,6 +520,21 @@ export const FinanceAndAccountingModule: React.FC<FinanceAndAccountingModuleProp
                       <span className={`font-bold ${dashboardData.pendingReconciliationCount > 0 ? "text-amber-400" : "text-emerald-400"}`}>
                         {dashboardData.pendingReconciliationCount || 0}
                       </span>
+                    </div>
+
+                    <div className="p-3.5 bg-slate-800/60 rounded-xl border border-slate-700 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-300">Paid Orders Synced:</span>
+                        <span className="font-bold text-cyan-400">{dashboardData.paymentOrdersSynced || 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-300">Invoices Backfilled:</span>
+                        <span className="font-bold text-purple-300">{dashboardData.invoicesBackfilled || 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-300">Invoice Emails Queued:</span>
+                        <span className="font-bold text-emerald-400">{dashboardData.invoiceEmailsQueued || 0}</span>
+                      </div>
                     </div>
 
                     <div className="p-3.5 bg-slate-800/60 rounded-xl border border-slate-700 space-y-1">
@@ -1263,9 +1278,12 @@ export const FinanceAndAccountingModule: React.FC<FinanceAndAccountingModuleProp
               {/* Header Seller Info */}
               <div className="flex justify-between border-b border-slate-800 pb-4">
                 <div className="space-y-1">
-                  <h2 className="text-lg font-bold text-white">AIJOBS Technologies India Private Limited</h2>
-                  <p className="text-slate-400">45 Cyber Tower, Outer Ring Road, Marathahalli, Bengaluru, Karnataka 560103</p>
-                  <p className="text-emerald-400 font-mono font-semibold">GSTIN: 29AAAAA0000A1Z5 | SAC: 998311</p>
+                  <h2 className="text-lg font-bold text-white">{selectedDoc.seller?.legalEntityName || "AIJOBS / The Flex Force Services"}</h2>
+                  <p className="text-slate-400">{selectedDoc.seller?.registeredAddress || "Registered billing address not configured"}</p>
+                  <p className="text-emerald-400 font-mono font-semibold">
+                    GSTIN: {selectedDoc.seller?.gstin || "Not configured"}
+                    {selectedDoc.seller?.sacCode ? ` | SAC: ${selectedDoc.seller.sacCode}` : ""}
+                  </p>
                 </div>
                 <div className="text-right space-y-1 font-mono">
                   <h3 className="text-sm font-bold text-emerald-400 uppercase">
@@ -1334,7 +1352,7 @@ export const FinanceAndAccountingModule: React.FC<FinanceAndAccountingModuleProp
               </div>
 
               <p className="text-[11px] text-slate-500 text-center italic">
-                This is a system-generated computer Tax Invoice / Credit Note issued by AIJOBS Technologies India Private Limited.
+                This document is generated from the verified AIJOBS accounting ledger and configured billing identity.
               </p>
             </div>
           </div>

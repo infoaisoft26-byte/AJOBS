@@ -229,8 +229,13 @@ export default function PaymentManagement({
                 {/* Print Layout */}
                 <div className="p-4 bg-white text-neutral-900 rounded-xl font-mono text-[9px] leading-relaxed border border-gray-200 shadow space-y-3">
                   <div className="text-center border-b border-gray-200 pb-2 mb-2">
-                    <h5 className="font-sans font-black text-xs text-indigo-950 uppercase tracking-widest">AIJobs Sourcing India Private Ltd</h5>
-                    <p className="text-[8px] text-gray-400">GSTIN: 29AABCA2210G1ZY • SAC Code: 998311</p>
+                    <h5 className="font-sans font-black text-xs text-indigo-950 uppercase tracking-widest">
+                      {selectedTxnForInvoice.seller?.legalEntityName || "AIJOBS / The Flex Force Services"}
+                    </h5>
+                    <p className="text-[8px] text-gray-400">
+                      {selectedTxnForInvoice.seller?.gstin ? `GSTIN: ${selectedTxnForInvoice.seller.gstin}` : "GSTIN not configured"}
+                      {selectedTxnForInvoice.seller?.sacCode ? ` • SAC Code: ${selectedTxnForInvoice.seller.sacCode}` : ""}
+                    </p>
                   </div>
 
                   <div className="flex justify-between border-b border-gray-100 pb-2 text-[8px] text-gray-500">
@@ -246,8 +251,9 @@ export default function PaymentManagement({
 
                   <div className="space-y-1">
                     <p className="text-gray-500">BILLED TO:</p>
-                    <p className="font-bold text-neutral-900">{selectedTxnForInvoice.userName || "Valued Client"}</p>
-                    <p className="text-[8px] text-gray-400">{selectedTxnForInvoice.userEmail || ""}</p>
+                    <p className="font-bold text-neutral-900">{selectedTxnForInvoice.buyer?.legalName || selectedTxnForInvoice.buyer?.name || selectedTxnForInvoice.userName || "Valued Client"}</p>
+                    <p className="text-[8px] text-gray-400">{selectedTxnForInvoice.buyer?.email || selectedTxnForInvoice.userEmail || ""}</p>
+                    {selectedTxnForInvoice.buyer?.gstin && <p className="text-[8px] text-gray-400">GSTIN: {selectedTxnForInvoice.buyer.gstin}</p>}
                   </div>
 
                   <div className="space-y-1.5 pt-2 border-t border-gray-200">
@@ -257,12 +263,12 @@ export default function PaymentManagement({
                     </div>
                     <div className="flex justify-between font-bold text-neutral-900 border-b border-gray-100 pb-1.5">
                       <span>{selectedTxnForInvoice.planName || "Subscription Plan"}</span>
-                      <span>₹{(selectedTxnForInvoice.amount || 0).toLocaleString()}</span>
+                      <span>₹{(selectedTxnForInvoice.amount || 0).toLocaleString("en-IN")}</span>
                     </div>
 
                     <div className="space-y-1 text-right text-gray-500">
                       <p>Line Subtotal: ₹{(selectedTxnForInvoice.amount || 0).toLocaleString()}</p>
-                      <p>Integrated GST (18%): ₹{(selectedTxnForInvoice.gstAmount || 0).toLocaleString()}</p>
+                      <p>GST: ₹{(selectedTxnForInvoice.gstAmount || 0).toLocaleString("en-IN")}</p>
                       {(selectedTxnForInvoice.discountAmount || 0) > 0 && (
                         <p className="text-rose-600">Discounts/Coupons: -₹{(selectedTxnForInvoice.discountAmount || 0).toLocaleString()}</p>
                       )}
@@ -273,7 +279,7 @@ export default function PaymentManagement({
                   </div>
 
                   <div className="text-center text-[7px] text-gray-400 pt-2 border-t border-gray-200">
-                    This is an electronically generated valid tax certificate. No manual signatures required.
+                    This invoice is generated from the verified AIJOBS payment and accounting ledger.
                   </div>
                 </div>
 
