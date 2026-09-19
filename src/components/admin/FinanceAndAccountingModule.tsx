@@ -360,7 +360,7 @@ export const FinanceAndAccountingModule: React.FC<FinanceAndAccountingModuleProp
           { id: "coa", label: "Chart of Accounts", icon: BookOpen },
           { id: "journals", label: "Journal Entries", icon: FileText },
           { id: "reports", label: "Financial Reports", icon: FileSpreadsheet },
-          { id: "gst", label: "Tax & GST Compliance", icon: Receipt },
+          
           { id: "invoices", label: "Invoices & Credit Notes", icon: CreditCard },
           { id: "expenses", label: "Vendor Expenses", icon: DollarSign },
           { id: "audit", label: "Audit Logs", icon: History }
@@ -432,14 +432,14 @@ export const FinanceAndAccountingModule: React.FC<FinanceAndAccountingModuleProp
 
                 <div className="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl space-y-2">
                   <div className="flex items-center justify-between text-xs text-slate-400 font-medium">
-                    <span>Output GST Liability</span>
+                    <span>Successful Collections</span>
                     <Receipt className="w-4 h-4 text-amber-400" />
                   </div>
                   <div className="text-2xl font-bold text-amber-300">
-                    ₹{dashboardData.totalGstLiability?.toLocaleString("en-IN") || "0"}
+                    {dashboardData.successfulPaymentsCount || 0}
                   </div>
                   <div className="text-[11px] text-slate-400 pt-1">
-                    GST ledger from configured billing profile (CGST + SGST + IGST)
+                    Verified paid transactions in the real payment ledger
                   </div>
                 </div>
 
@@ -1261,7 +1261,7 @@ export const FinanceAndAccountingModule: React.FC<FinanceAndAccountingModuleProp
           <div className="bg-slate-950 border border-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
             <div className="p-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
               <span className="text-xs font-bold text-slate-200">
-                {docType === "invoice" ? `TAX INVOICE: ${selectedDoc.invoiceNumber}` : `CREDIT NOTE: ${selectedDoc.creditNoteNumber}`}
+                {docType === "invoice" ? `INVOICE: ${selectedDoc.invoiceNumber}` : `CREDIT NOTE: ${selectedDoc.creditNoteNumber}`}
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -1280,14 +1280,13 @@ export const FinanceAndAccountingModule: React.FC<FinanceAndAccountingModuleProp
                 <div className="space-y-1">
                   <h2 className="text-lg font-bold text-white">{selectedDoc.seller?.legalEntityName || "AIJOBS / The Flex Force Services"}</h2>
                   <p className="text-slate-400">{selectedDoc.seller?.registeredAddress || "Registered billing address not configured"}</p>
-                  <p className="text-emerald-400 font-mono font-semibold">
-                    GSTIN: {selectedDoc.seller?.gstin || "Not configured"}
-                    {selectedDoc.seller?.sacCode ? ` | SAC: ${selectedDoc.seller.sacCode}` : ""}
-                  </p>
+                  {selectedDoc.seller?.registeredAddress && (
+                    <p className="text-slate-400 font-mono">{selectedDoc.seller.registeredAddress}</p>
+                  )}
                 </div>
                 <div className="text-right space-y-1 font-mono">
                   <h3 className="text-sm font-bold text-emerald-400 uppercase">
-                    {docType === "invoice" ? "TAX INVOICE" : "CREDIT NOTE"}
+                    {docType === "invoice" ? "INVOICE" : "CREDIT NOTE"}
                   </h3>
                   <p className="text-white font-bold">{selectedDoc.invoiceNumber || selectedDoc.creditNoteNumber}</p>
                   <p className="text-slate-400 text-[11px]">{selectedDoc.invoiceDate || selectedDoc.createdAt?.slice(0, 10)}</p>
@@ -1303,7 +1302,7 @@ export const FinanceAndAccountingModule: React.FC<FinanceAndAccountingModuleProp
                 </div>
                 <div className="text-right space-y-1 font-mono text-[11px]">
                   <p className="text-slate-400">Payment ID: {selectedDoc.paymentId}</p>
-                  <p className="text-slate-400">Place of Supply: Karnataka</p>
+                  
                 </div>
               </div>
 
@@ -1312,41 +1311,22 @@ export const FinanceAndAccountingModule: React.FC<FinanceAndAccountingModuleProp
                 <thead className="bg-slate-900 text-slate-400 uppercase border-b border-slate-800">
                   <tr>
                     <th className="p-3">Description</th>
-                    <th className="p-3 text-center">SAC Code</th>
-                    <th className="p-3 text-right">Taxable Value</th>
-                    <th className="p-3 text-right">GST Rate</th>
-                    <th className="p-3 text-right">GST Amount</th>
-                    <th className="p-3 text-right">Total Amount</th>
+                    <th className="p-3 text-right">Plan Amount</th>
+                    <th className="p-3 text-right">Total Paid</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
                   <tr>
                     <td className="p-3 font-medium text-white">{selectedDoc.planName || "AIJOBS Database Access Plan"}</td>
-                    <td className="p-3 text-center font-mono">998311</td>
-                    <td className="p-3 text-right font-mono">₹{selectedDoc.taxableAmount || selectedDoc.baseAmount || selectedDoc.taxableAmountReversed}</td>
-                    <td className="p-3 text-right font-mono">18%</td>
-                    <td className="p-3 text-right font-mono text-amber-300">₹{selectedDoc.gstAmount || selectedDoc.gstReversed}</td>
+                    <td className="p-3 text-right font-mono">₹{selectedDoc.taxableAmount || selectedDoc.baseAmount || selectedDoc.taxableAmountReversed || selectedDoc.totalAmount || selectedDoc.totalReversed}</td>
                     <td className="p-3 text-right font-mono font-bold text-emerald-400">₹{selectedDoc.totalAmount || selectedDoc.totalReversed}</td>
                   </tr>
                 </tbody>
               </table>
 
-              {/* Tax Breakdown Summary */}
-              <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-2 font-mono text-xs">
-                <div className="flex justify-between text-slate-300">
-                  <span>CGST (9%):</span>
-                  <span>₹{selectedDoc.cgst || (selectedDoc.gstAmount ? selectedDoc.gstAmount / 2 : 0)}</span>
-                </div>
-                <div className="flex justify-between text-slate-300">
-                  <span>SGST (9%):</span>
-                  <span>₹{selectedDoc.sgst || (selectedDoc.gstAmount ? selectedDoc.gstAmount / 2 : 0)}</span>
-                </div>
-                <div className="flex justify-between text-slate-300">
-                  <span>IGST (0%):</span>
-                  <span>₹{selectedDoc.igst || 0}</span>
-                </div>
-                <div className="flex justify-between border-t border-slate-800 pt-2 font-bold text-white text-sm">
-                  <span>Total Payable:</span>
+              <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800 font-mono text-xs">
+                <div className="flex justify-between font-bold text-white text-sm">
+                  <span>Total Paid:</span>
                   <span className="text-emerald-400">₹{selectedDoc.totalAmount || selectedDoc.totalReversed}</span>
                 </div>
               </div>
