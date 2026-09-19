@@ -20,10 +20,11 @@ import {
   UserCheck,
   CheckCircle2,
   AlertTriangle,
-  Lock
+  Lock,
+  WalletCards
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { collection, getDocs, doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, updateDoc } from "firebase/firestore";
 import { db, auth } from "../../firebase";
 import AIJobsLogo from "../AIJobsLogo";
 import RecruiterOverview from "./RecruiterOverview";
@@ -32,6 +33,7 @@ import RecruiterAssignedJobs from "./RecruiterAssignedJobs";
 import RecruiterFindCandidates from "./RecruiterFindCandidates";
 import RecruiterLeads from "./RecruiterLeads";
 import RecruiterEarnings from "./RecruiterEarnings";
+import RecruiterAccountCenter from "./RecruiterAccountCenter";
 import EmployerInterviews from "../employer/EmployerInterviews";
 import EmployerMessages from "../employer/EmployerMessages";
 import EmployerAiShortlist from "../employer/EmployerAiShortlist";
@@ -60,8 +62,11 @@ export default function RecruiterDashboard({
   const [activeChatRecipient, setActiveChatRecipient] = useState<{ id: string; name: string } | null>(null);
   const [kycStatus, setKycStatus] = useState<string>("pending");
   const [isApproved, setIsApproved] = useState<boolean>(false);
-  const [subscriptionStatus, setSubscriptionStatus] = useState<string>("active");
-  const [activePlanName, setActivePlanName] = useState<string>("Database Access Plan");
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string>("inactive");
+  const [activePlanName, setActivePlanName] = useState<string>("No active plan");
+  const [accountCenterData, setAccountCenterData] = useState<any>(null);
+  const [accountCenterLoading, setAccountCenterLoading] = useState<boolean>(true);
+  const [accountCenterError, setAccountCenterError] = useState<string>("");
 
   // Recruiter Data Stores
   const [assignedJobs, setAssignedJobs] = useState<RecruiterJob[]>([
@@ -173,6 +178,31 @@ export default function RecruiterDashboard({
     }
   ]);
 
+  const loadAccountCenter = async () => {
+    if (!userId) return;
+    setAccountCenterLoading(true);
+    setAccountCenterError("");
+    try {
+      const token = await auth.currentUser?.getIdToken(true);
+      if (!token) throw new Error("Your login session expired. Please sign in again.");
+      const response = await fetch("/api/recruiter/account-center", {
+        headers: { Authorization: "Bearer " + token }
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.message || data.error || "Could not load account details.");
+
+      setAccountCenterData(data);
+      setKycStatus(data.kyc?.status || "pending");
+      setIsApproved(Boolean(data.kyc?.approved || data.profile?.isApproved));
+      setSubscriptionStatus(data.subscription?.status || "inactive");
+      setActivePlanName(data.subscription?.name || "No active plan");
+    } catch (e: any) {
+      setAccountCenterError(e?.message || "Could not load account details.");
+    } finally {
+      setAccountCenterLoading(false);
+    }
+  };
+
   // Sync Data
   const loadData = async () => {
     try {
@@ -201,31 +231,28 @@ export default function RecruiterDashboard({
         setPipelineCandidates(loaded);
       }
 
+      // Account/KYC/billing status is loaded through the canonical authenticated account-center API.
     } catch (e) {}
   };
 
   useEffect(() => {
     loadData();
+    loadAccountCenter();
   }, [userId]);
 
-  // Keep approval, KYC and subscription badges in sync with Super Admin changes.
-  // This avoids requiring the recruiter to log out or hard-refresh after approval.
+  // Refresh canonical KYC/billing state after Super Admin changes without
+  // requiring the recruiter to sign out or hard-refresh the page.
   useEffect(() => {
     if (!userId) return;
-    const unsub = onSnapshot(doc(db, "users", userId), (userDocSnap) => {
-      if (!userDocSnap.exists()) return;
-      const u = userDocSnap.data() as any;
-      const nextKyc = String(u.kycStatus || u.verificationStatus || (u.isApproved ? "verified" : "pending")).toLowerCase();
-      setKycStatus(nextKyc);
-      setIsApproved(Boolean(u.isApproved) || ["verified", "approved", "active", "kyc_approved"].includes(nextKyc));
-      setSubscriptionStatus(u.subscriptionStatus || (u.paymentStatus === "paid" ? "active" : "inactive"));
-      if (u.activePlanName || u.planName || u.pricingPlan) {
-        setActivePlanName(u.activePlanName || u.planName || u.pricingPlan);
-      }
-    }, (error) => {
-      console.warn("[RecruiterDashboard] Failed to sync approval status:", error);
-    });
-    return unsub;
+    const refresh = () => { void loadAccountCenter(); };
+    const intervalId = window.setInterval(refresh, 15000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
   }, [userId]);
 
   // Handle URL sync and cleanly remove callback query parameters
@@ -261,6 +288,7 @@ export default function RecruiterDashboard({
     { id: "leads", label: "Admin Leads", icon: Layers, count: 2 },
     { id: "messages", label: "Messages", icon: MessageSquare },
     { id: "earnings", label: "Referral & Earnings", icon: IndianRupee },
+    { id: "account", label: "Profile, KYC & Billing", icon: WalletCards },
     { id: "support", label: "Help & Support", icon: HelpCircle },
   ];
 
@@ -282,10 +310,17 @@ export default function RecruiterDashboard({
             <AIJobsLogo size="sm" showTagline={false} />
             {/* Distinction between paid/subscription active and KYC verification pending */}
             <div className="hidden sm:flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
-                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                <span>PAID PLAN ACTIVE</span>
-              </span>
+              {String(subscriptionStatus).toLowerCase() === "active" ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                  <span>PAID PLAN ACTIVE</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-500/15 border border-slate-500/30 text-slate-300">
+                  <WalletCards className="w-3 h-3" />
+                  <span>{String(subscriptionStatus || "inactive").toUpperCase()}</span>
+                </span>
+              )}
               {isApproved || kycStatus === "approved" || kycStatus === "verified" ? (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-purple-500/15 border border-purple-500/30 text-purple-300">
                   <ShieldCheck className="w-3 h-3 text-purple-400" />
@@ -376,8 +411,20 @@ export default function RecruiterDashboard({
                 <div className="absolute right-0 mt-2 w-56 rounded-3xl bg-[#17111F] border border-purple-500/30 shadow-2xl p-2 z-50 animate-in fade-in space-y-1 text-xs">
                   <div className="px-3 py-2 border-b border-purple-500/20">
                     <div className="font-bold text-white truncate">{userName}</div>
-                    <div className="text-[10px] text-cyan-300">Verified Recruiter Partner</div>
+                    <div className="text-[10px] text-cyan-300">
+                      {isApproved || ["approved", "verified"].includes(String(kycStatus).toLowerCase()) ? "Verified Recruiter Partner" : "Recruiter Partner • KYC Review"}
+                    </div>
                   </div>
+                  <button
+                    onClick={() => {
+                      setActiveTab("account");
+                      setShowProfileMenu(false);
+                    }}
+                    className="w-full px-3 py-2 text-left text-slate-300 hover:text-white hover:bg-white/5 rounded-xl flex items-center gap-2 cursor-pointer"
+                  >
+                    <WalletCards className="w-4 h-4 text-cyan-400" />
+                    <span>Profile, KYC & Billing</span>
+                  </button>
                   <button
                     onClick={() => {
                       setActiveTab("earnings");
@@ -423,10 +470,13 @@ export default function RecruiterDashboard({
                 <strong>KYC Verification Pending:</strong> Your database plan is active and search is enabled. Direct candidate messaging, contact reveals, and offer releases remain restricted until our compliance team clears your submitted identity documents.
               </span>
             </div>
-            <div className="flex items-center gap-2 shrink-0 text-[11px] font-mono text-amber-300">
+            <button
+              onClick={() => setActiveTab("account")}
+              className="flex items-center gap-2 shrink-0 text-[11px] font-mono text-amber-300 hover:text-amber-200"
+            >
               <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span>Admin Clearance ETA: 2-4 hrs</span>
-            </div>
+              <span>View KYC status & documents</span>
+            </button>
           </div>
         </div>
       )}
@@ -659,6 +709,15 @@ export default function RecruiterDashboard({
 
               {activeTab === "earnings" && (
                 <RecruiterEarnings />
+              )}
+
+              {activeTab === "account" && (
+                <RecruiterAccountCenter
+                  data={accountCenterData}
+                  loading={accountCenterLoading}
+                  error={accountCenterError}
+                  onRefresh={loadAccountCenter}
+                />
               )}
 
               {activeTab === "support" && (
