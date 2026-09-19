@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import crypto from "crypto";
-import { getFirebaseAuth } from "./firestoreHelper.js";
+import { getFirebaseAuth, getFirestoreDb } from "./firestoreHelper.js";
 
 const ALLOWED_ASSET_TYPES = new Set(["resumes", "documents", "chat-attachments"]);
 const ALLOWED_DOCUMENT_TYPES = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);

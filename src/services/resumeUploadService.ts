@@ -236,31 +236,34 @@ export async function uploadResumeService(
   onProgress?.(0);
 
   let uploaded: CloudinaryUploadResult;
-  let provider = "firebase_storage";
-  let firebaseFailure = "";
+  let provider = "cloudinary";
+  let cloudinaryFailure = "";
 
+  // Candidate resumes use the authenticated, server-signed Cloudinary flow first.
+  // This avoids long Firebase Storage stalls while preserving Firebase as a backup.
   try {
-    console.log(`[ResumeUploadService] Uploading "${file.name}" to Firebase Storage for ${uid}`);
-    uploaded = await uploadResumeToFirebase(file, uid, onProgress, timeoutMs);
-  } catch (firebaseError: any) {
-    provider = "cloudinary";
-    firebaseFailure = storageErrorMessage(firebaseError);
-    console.warn("[ResumeUploadService] Firebase Storage unavailable; falling back to Cloudinary:", firebaseFailure);
+    console.log(`[ResumeUploadService] Uploading "${file.name}" to signed Cloudinary storage for ${uid}`);
+    uploaded = await uploadToCloudinary(file, {
+      userId: uid,
+      assetType: "resumes",
+      maxRetries,
+      timeoutMs: Math.min(timeoutMs, 60000),
+      onProgress: (percent) => onProgress?.(normalizeProgress(percent))
+    });
+  } catch (cloudinaryError: any) {
+    provider = "firebase_storage";
+    cloudinaryFailure = cloudinaryError?.message || "Cloudinary upload failed.";
+    console.warn("[ResumeUploadService] Cloudinary unavailable; falling back to Firebase Storage:", cloudinaryFailure);
+
     try {
-      uploaded = await uploadToCloudinary(file, {
-        userId: uid,
-        assetType: "resumes",
-        maxRetries,
-        timeoutMs,
-        onProgress: (percent) => onProgress?.(normalizeProgress(percent))
-      });
-    } catch (cloudinaryError: any) {
-      const cloudinaryFailure = cloudinaryError?.message || "Cloudinary fallback failed.";
+      uploaded = await uploadResumeToFirebase(file, uid, onProgress, Math.min(timeoutMs, 60000));
+    } catch (firebaseError: any) {
+      const firebaseFailure = storageErrorMessage(firebaseError);
       console.error("[ResumeUploadService] All resume upload providers failed", {
-        firebase: firebaseFailure,
-        cloudinary: cloudinaryFailure
+        cloudinary: cloudinaryFailure,
+        firebase: firebaseFailure
       });
-      throw new Error(`Resume upload failed. ${firebaseFailure} Backup upload also failed: ${cloudinaryFailure}`);
+      throw new Error(`Resume upload failed. Primary upload failed: ${cloudinaryFailure} Backup storage failed: ${firebaseFailure}`);
     }
   }
 
