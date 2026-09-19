@@ -181,14 +181,14 @@ export default function CandidateResumeSection({
     }
 
     setIsUploading(true);
-    setUploadProgress(15);
+    setUploadProgress(5);
 
     try {
       // Direct Cloudinary upload service
       const uploadRes = await uploadResumeService({
         uid: userId,
         file,
-        onProgress: (pct) => setUploadProgress(Math.min(99, Math.max(15, pct)))
+        onProgress: (pct) => setUploadProgress(Math.min(99, Math.max(5, pct)))
       });
 
       if (!uploadRes.success || !uploadRes.downloadUrl) {
@@ -241,7 +241,8 @@ export default function CandidateResumeSection({
       runAiAnalysis(storageUrl, file.name, fileExt, file);
     } catch (err: any) {
       console.error("[CandidateResumeSection] Upload failure:", err);
-      showToast(`Upload failed: ${err.message || err}`, "error");
+      const reason = String(err?.message || err || "Unknown upload error");
+      showToast(`Resume upload failed: ${reason}`, "error");
     } finally {
       setIsUploading(false);
       setTimeout(() => setUploadProgress(0), 400);
