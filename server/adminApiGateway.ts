@@ -6,6 +6,7 @@ type AccessLevel = "admin" | "superadmin";
 const SUPERADMIN_ONLY = new Set([
   "/api/admin/create-admin",
   "/api/admin/repair-wrong-users",
+  "/api/admin/manual-partner-override",
   "/api/cleanup-demo-data",
 ]);
 
