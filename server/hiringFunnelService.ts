@@ -260,8 +260,51 @@ export async function handleHiringFunnelApi(req: Request, res: Response): Promis
         const companyRef = db.collection("companies").doc(decoded.uid);
         tx.set(companyRef, { companyId: decoded.uid, ownerUid: decoded.uid, companyName, officialEmail: profile.email, officialPhone: phone, createdAt: now, updatedAt: now }, { merge: true });
       });
-      await writeEvent(db, decoded.uid, "registration_completed", { role, campaign: attribution.campaign, source: attribution.source, medium: attribution.medium, content: attribution.content, dedupeKey: `registration_completed:${decoded.uid}` });
-      return void res.json({ success: true, profile, jobCredits: { freeCredits: 1 }, message: "Welcome to AIJOBS. You have received 1 FREE Job Posting Credit." }) as any;
+      const leadId = `lead_hiring_${crypto.createHash("sha256").update(decoded.uid).digest("hex").slice(0, 24)}`;
+      await Promise.all([
+        writeEvent(db, decoded.uid, "registration_completed", {
+          role,
+          campaign: attribution.campaign,
+          source: attribution.source,
+          medium: attribution.medium,
+          content: attribution.content,
+          term: attribution.term,
+          gclid: attribution.gclid,
+          landingPage: attribution.landingPage,
+          dedupeKey: `registration_completed:${decoded.uid}`
+        }),
+        db.collection("leads").doc(leadId).set({
+          id: leadId,
+          leadId,
+          userId: decoded.uid,
+          role,
+          fullName: name,
+          candidateName: name,
+          email: profile.email,
+          candidateEmail: profile.email,
+          mobile: phone,
+          phone,
+          candidatePhone: phone,
+          companyName,
+          source: attribution.source || (attribution.gclid ? "google_ads" : "direct"),
+          medium: attribution.medium || (attribution.gclid ? "cpc" : "web"),
+          campaign: attribution.campaign || "Organic / Direct",
+          content: attribution.content || "",
+          term: attribution.term || "",
+          gclid: attribution.gclid || "",
+          landingPage: attribution.landingPage || "/hire",
+          referrer: attribution.referrer || "",
+          firstVisitAt: attribution.firstVisitAt,
+          registeredAt: now,
+          status: "new",
+          assignedTo: "",
+          nextFollowUpAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          adminNotes: "Hiring lead created automatically from AIJOBS registration.",
+          createdAt: existing.data()?.createdAt || now,
+          updatedAt: now
+        }, { merge: true })
+      ]);
+      return void res.json({ success: true, profile, leadId, jobCredits: { freeCredits: 1 }, message: "Welcome to AIJOBS. You have received 1 FREE Job Posting Credit." }) as any;
     }
 
     if (req.method === "GET" && path === "/api/hire/me") {
