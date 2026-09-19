@@ -126,7 +126,7 @@ export default function RecruiterFindCandidates({
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold flex items-center justify-center text-base shadow-lg">
-                    {cand.name.charAt(0)}
+                    {(cand.name || "Candidate").charAt(0)}
                   </div>
                   <div>
                     <h3 className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors">
