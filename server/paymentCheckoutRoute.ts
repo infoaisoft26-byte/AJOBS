@@ -27,7 +27,7 @@ async function ensurePaymentFinancialArtifacts(params: {
   const userName = String(params.userName || user.name || user.displayName || agreement?.buyer?.authorizedPerson || agreement?.buyer?.legalName || "AIJOBS Partner").trim();
   const role = String(params.role || user.role || agreement?.role || "recruiter").trim().toLowerCase();
 
-  const paymentDocId = `payment_${String(order.orderId || order.id || paymentId).replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+  const paymentDocId = String(paymentId).replace(/[^a-zA-Z0-9_-]/g, "_");
   const baseAmount = money(order.baseAmount ?? agreement?.planSummary?.baseAmount ?? agreement?.baseAmount, 0);
   const gstAmount = money(order.gstAmount ?? agreement?.planSummary?.gstAmount ?? agreement?.gstAmount, 0);
   const totalAmount = money(order.totalAmount ?? order.amount ?? agreement?.planSummary?.totalAmount ?? agreement?.totalAmount, baseAmount + gstAmount);
