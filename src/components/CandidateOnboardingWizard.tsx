@@ -157,6 +157,42 @@ const ROLE_SUGGESTIONS = [
 
 const STORAGE_DRAFT_KEY = "aijobs_candidate_draft_v2";
 
+async function postCandidateMarketingEvent(
+  eventName: "candidate_registration_started" | "candidate_registration_completed" | "candidate_profile_completed" | "candidate_resume_uploaded",
+  attribution: AttributionData,
+  extra: Record<string, any> = {}
+) {
+  try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    const current = auth.currentUser;
+    if (current) {
+      headers.Authorization = `Bearer ${await current.getIdToken()}`;
+    }
+    await fetch("/api/hire/event", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        eventName,
+        role: "candidate",
+        visitorId: attribution.gclid || attribution.capturedAt || "candidate_web",
+        marketingAttribution: {
+          source: attribution.utm_source || (attribution.gclid ? "google" : "direct"),
+          medium: attribution.utm_medium || (attribution.gclid ? "cpc" : "none"),
+          campaign: attribution.utm_campaign || "",
+          content: attribution.utm_content || "",
+          term: attribution.utm_term || "",
+          gclid: attribution.gclid || "",
+          landingPage: attribution.landingPage || window.location.pathname,
+          referrer: attribution.referrer || document.referrer || "direct"
+        },
+        ...extra
+      })
+    });
+  } catch (err) {
+    console.debug("[Candidate Marketing] event delivery notice:", err);
+  }
+}
+
 export default function CandidateOnboardingWizard({
   onRegisterSuccess,
   onNavigateToLogin,
@@ -303,6 +339,7 @@ export default function CandidateOnboardingWizard({
     const attr = captureAttribution();
     setAttribution(attr);
     trackCandidateRegistrationStarted(attr.gclid ? "google_ads" : "organic");
+    void postCandidateMarketingEvent("candidate_registration_started", attr);
   }, []);
 
   // 3. Load Draft from SessionStorage
@@ -603,7 +640,7 @@ export default function CandidateOnboardingWizard({
       setDoc(doc(db, "candidateProfiles", uid), detailedProfileData, { merge: true })
     ]);
 
-    // Fire Google Ads & GA4 conversion telemetry event
+    // Fire Google Ads, GA4 and first-party conversion telemetry.
     try {
       trackCandidateRegistrationComplete({
         method: auth.currentUser?.providerData[0]?.providerId || "email",
@@ -613,6 +650,19 @@ export default function CandidateOnboardingWizard({
         utm_campaign: attribution.utm_campaign,
         intendedJobId: intendedJobId || undefined
       });
+      await postCandidateMarketingEvent("candidate_registration_completed", attribution, {
+        dedupeKey: `candidate_registration_completed:${uid}`
+      });
+      if (finalScore >= 80) {
+        await postCandidateMarketingEvent("candidate_profile_completed", attribution, {
+          dedupeKey: `candidate_profile_completed:${uid}`
+        });
+      }
+      if (resumeUrl) {
+        await postCandidateMarketingEvent("candidate_resume_uploaded", attribution, {
+          dedupeKey: `candidate_resume_uploaded:${uid}`
+        });
+      }
     } catch (e) {
       console.debug("[Telemetry] Notice tracking conversion:", e);
     }

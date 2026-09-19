@@ -2,7 +2,7 @@ import AIJobsLogo from "./AIJobsLogo";
 import React, { useEffect, useState } from "react";
 import { collection, doc, getDoc, getDocs, onSnapshot, setDoc } from "firebase/firestore";
 import { motion } from "motion/react";
-import { BarChart2, Baseline, Bell, BookOpen, Brain, Briefcase, Building, Check, CheckCircle, ChevronLeft, ChevronRight, Clock, CreditCard, Database, DollarSign, FileText, Funnel, Globe, HelpCircle, Layers, Lock, LogOut, Mail, Menu, MessageSquare, Navigation, RefreshCw, Scale, Settings, ShieldAlert, ShieldCheck, Sidebar, Store, Terminal, Tickets, User, UserCheck, Users, Verified, X } from "lucide-react";
+import { BarChart2, Baseline, Bell, BookOpen, Brain, Briefcase, Building, Check, CheckCircle, ChevronLeft, ChevronRight, Clock, CreditCard, Database, DollarSign, FileText, Funnel, Globe, HelpCircle, Layers, Lock, LogOut, Mail, Menu, MessageSquare, Navigation, RefreshCw, Scale, Settings, ShieldAlert, ShieldCheck, Sidebar, Store, Target, Terminal, Tickets, User, UserCheck, Users, Verified, X } from "lucide-react";
 import { auth, db } from "../firebase";
 import { parseJsonResponse } from "../utils/apiHelper";
 import { normalizeRole } from "../utils/roleUtils";
@@ -41,6 +41,7 @@ import OnboardingControlCenter from "./admin/OnboardingControlCenter";
 import FinanceAndAccountingModule from "./admin/FinanceAndAccountingModule";
 import ApplicationManagement from "./admin/ApplicationManagement";
 import HiringFunnelAnalytics from "./admin/HiringFunnelAnalytics";
+import MarketingGrowthDashboard from "./admin/MarketingGrowthDashboard";
 import ExportActivityCsvButton from "./ExportActivityCsvButton";
 import OfflineSyncBadge from "./OfflineSyncBadge";
 
@@ -570,6 +571,7 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
     { id: "compliance", label: "GDPR & Compliance", icon: ShieldCheck, authorizedRoles: ["Super Admin", "Support Desk", "Finance Officer", "Moderator", "Read Only"] },
     { id: "applications", label: "Applications Directory", icon: FileText, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "funnel", label: "Hiring Funnel Analytics", icon: BarChart2, authorizedRoles: ["Super Admin", "Finance Officer", "Moderator", "Read Only"] },
+    { id: "marketing-growth", label: "Google Growth & Marketing", icon: Target, authorizedRoles: ["Super Admin", "Finance Officer", "Moderator", "Read Only"] },
     { id: "users", label: "User Management", icon: Users, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "emp-directory", label: "Employee Directory", icon: UserCheck, authorizedRoles: ["Super Admin", "Support Desk", "Finance Officer", "Moderator", "Read Only"] },
     { id: "emp-attendance", label: "Attendance Live View", icon: Clock, authorizedRoles: ["Super Admin", "Support Desk", "Finance Officer", "Moderator", "Read Only"] },
@@ -990,6 +992,12 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
               {activeView === "funnel" && (
                 <HiringFunnelAnalytics
                   onRefresh={fetchWorkspaceData}
+                />
+              )}
+
+              {activeView === "marketing-growth" && (
+                <MarketingGrowthDashboard
+                  onOpenLeads={() => setActiveTab("leads")}
                 />
               )}
 

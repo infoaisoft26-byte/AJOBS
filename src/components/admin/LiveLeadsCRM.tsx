@@ -162,7 +162,10 @@ export default function LiveLeadsCRM() {
       email.includes(query) ||
       mobile.includes(query);
 
-    const matchesSource = filterSource === "all" || source === filterSource.toLowerCase();
+    const matchesSource =
+      filterSource === "all" ||
+      (filterSource === "google" && (source.includes("google") || Boolean(lead.gclid))) ||
+      source === filterSource.toLowerCase();
     const matchesStatus = filterStatus === "all" || status === filterStatus;
     const matchesRole = filterRole === "all" || role.toLowerCase() === filterRole.toLowerCase();
 
@@ -238,12 +241,12 @@ export default function LiveLeadsCRM() {
             className="px-3 py-2 text-xs bg-black/40 border border-white/10 rounded-xl text-white focus:outline-none focus:border-indigo-500"
           >
             <option value="all">All Traffic Sources</option>
-            <option value="Google Ads / Organic">Google Ads / Organic</option>
-            <option value="Facebook">Facebook</option>
+            <option value="google">Google Ads / Organic</option>
+            <option value="facebook">Facebook</option>
 
-            <option value="Instagram">Instagram</option>
-            <option value="Direct">Direct Traffic</option>
-            <option value="Referral">Referral Program</option>
+            <option value="instagram">Instagram</option>
+            <option value="direct">Direct Traffic</option>
+            <option value="referral">Referral Program</option>
           </select>
 
           <select
@@ -320,8 +323,10 @@ export default function LiveLeadsCRM() {
                     </td>
 
                     <td className="py-3 px-4">
-                      <div className="font-semibold text-white">{lead.source || "Direct"}</div>
+                      <div className="font-semibold text-white">{lead.gclid ? "Google Ads" : (lead.source || "Direct")}</div>
                       <div className="text-[10px] text-gray-400 font-mono">{lead.campaign || "Organic"}</div>
+                      {lead.term && <div className="text-[10px] text-cyan-400/80 mt-0.5">Keyword: {lead.term}</div>}
+                      {lead.gclid && <div className="text-[9px] text-indigo-400 font-mono mt-0.5">GCLID tracked</div>}
                     </td>
 
                     <td className="py-3 px-4">

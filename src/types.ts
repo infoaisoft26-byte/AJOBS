@@ -116,6 +116,10 @@ export interface CrmLead {
   source: string;
   medium?: string;
   campaign: string;
+  content?: string;
+  term?: string;
+  gclid?: string;
+  landingPage?: string;
   status: "new" | "contacted" | "interested" | "documents_pending" | "interview_scheduled" | "selected" | "not_interested" | "no_response" | "converted" | "closed";
   assignedTo?: string;
   assignedRecruiterId?: string;
