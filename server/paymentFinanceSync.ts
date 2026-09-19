@@ -129,7 +129,7 @@ export async function syncPaidPaymentOrdersToAccounting() {
         await mailRef.set({
           to: [userEmail],
           message: {
-            subject: "AIJOBS Payment Receipt & Tax Invoice " + invoiceNumber,
+            subject: "AIJOBS Payment Receipt & Invoice " + invoiceNumber,
             html:
               '<div style="font-family:Arial,sans-serif;max-width:680px;margin:auto;padding:24px;color:#0f172a">' +
               '<h2 style="color:#07152F">Payment received successfully</h2>' +
@@ -138,8 +138,7 @@ export async function syncPaidPaymentOrdersToAccounting() {
               '<div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px">' +
               '<p><strong>Invoice:</strong> ' + invoiceNumber + '</p>' +
               '<p><strong>Plan:</strong> ' + planName + '</p>' +
-              '<p><strong>Taxable amount:</strong> ₹' + baseAmount.toFixed(2) + '</p>' +
-              '<p><strong>GST:</strong> ₹' + gstAmount.toFixed(2) + '</p>' +
+              '<p><strong>Plan amount:</strong> ₹' + baseAmount.toFixed(2) + '</p>' +
               '<p><strong>Total paid:</strong> ₹' + totalAmount.toFixed(2) + '</p>' +
               '<p><strong>Payment ID:</strong> ' + paymentId + '</p>' +
               '</div><p>You can view billing and subscription details from your AIJOBS dashboard.</p></div>'
