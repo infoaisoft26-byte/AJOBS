@@ -165,7 +165,38 @@ export default function OnboardingControlCenter() {
     }
   };
 
-  // 5. Final Approve Account
+  // 5. Explicitly approve KYC from this same onboarding control.
+  const handleApproveKyc = async (user: any) => {
+    if (!user.verificationRequestId) {
+      showToast("No submitted KYC verification request was found for this account.");
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const res = await fetch("/api/kyc/review-decision", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requestId: user.verificationRequestId,
+          userId: user.uid,
+          decision: "APPROVED",
+          adminNotes: adminNotes || "KYC approved from Onboarding Control Center.",
+          reviewedBy: "Super Admin"
+        })
+      });
+      const data = await parseJsonResponse(res);
+      if (!res.ok || !data.success) throw new Error(data.message || data.error || "KYC approval failed.");
+      showToast(`KYC approved for ${user.email}. You can now run final clearance after agreement/payment are complete.`);
+      setSelectedUser(null);
+      await fetchOnboardingUsers();
+    } catch (err: any) {
+      showToast(err?.message || "KYC approval failed.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 6. Final Approve Account
   const handleApproveAccount = async (user: any) => {
     setActionLoading(true);
     try {
@@ -180,11 +211,14 @@ export default function OnboardingControlCenter() {
       });
       const data = await parseJsonResponse(res);
       if (data.success) {
-        showToast(`🎉 Account ${user.email} ACTIVATED! Workspace access granted.`);
+        showToast(`Account ${user.email} ACTIVATED. Workspace access granted.`);
         setSelectedUser(null);
         fetchOnboardingUsers();
       } else {
-        alert(data.error || "Failed to approve account.");
+        const details = data.prerequisites
+          ? `KYC: ${data.prerequisites.kycApproved ? "OK" : "Pending"} • Agreement: ${data.prerequisites.agreementSigned ? "OK" : "Pending"} • Payment: ${data.prerequisites.paymentVerified ? "OK" : "Pending"}`
+          : "";
+        showToast(data.message || data.error || details || "Failed to approve account.");
       }
     } catch (err) {
       console.error(err);
@@ -520,6 +554,19 @@ export default function OnboardingControlCenter() {
                     <span>Generate & Send Service Agreement</span>
                   </div>
                   <span className="text-[10px] font-mono text-gray-400">GST 18%</span>
+                </button>
+
+                {/* Explicit KYC Approval */}
+                <button
+                  onClick={() => handleApproveKyc(selectedUser)}
+                  disabled={actionLoading || ["approved", "verified", "kyc_approved"].includes(String(selectedUser.kycStatus || "").toLowerCase())}
+                  className="p-3 bg-cyan-600/20 hover:bg-cyan-600/40 disabled:opacity-50 text-cyan-300 border border-cyan-500/30 rounded-xl font-bold flex items-center justify-between transition-all cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                    <span>Approve KYC & Documents</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-gray-400">{selectedUser.verificationRequestId ? "Request Ready" : "No Request"}</span>
                 </button>
 
                 {/* Verify Payment Override */}
