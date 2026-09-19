@@ -16,6 +16,7 @@ import { handleRecruiterLiveLeadsRoute } from "../server/recruiterLiveLeadsRoute
 import { handleAdminProfileRepairRoute } from "../server/adminProfileRepairRoute.js";
 import { handlePublicJobApplyRoute } from "../server/publicJobApplyRoute.js";
 import { handleAdminPaymentAccessRoute } from "../server/adminPaymentAccessRoute.js";
+import { handleAdminOnboardingApprovalRoute } from "../server/adminOnboardingApprovalRoute.js";
 import { verifyAndInjectAbacIdentity } from "../server/authenticatedAbacGateway.js";
 import { verifyAndInjectAdminIdentity } from "../server/adminApiGateway.js";
 
@@ -61,6 +62,10 @@ export default async function handler(req: any, res: any) {
   }
   if (path === "/api/payment/verify-and-transition") {
     const handled = await handleAdminPaymentAccessRoute(req, res);
+    if (handled || res.headersSent) return;
+  }
+  if (path === "/api/admin/onboarding-list" || path === "/api/admin/approve-account") {
+    const handled = await handleAdminOnboardingApprovalRoute(req, res);
     if (handled || res.headersSent) return;
   }
   if (path === "/api/admin-platform-insights" || path === "/api/consultancy-natural-search") {
