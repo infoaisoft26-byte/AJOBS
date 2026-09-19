@@ -2,7 +2,7 @@ import nodemailer from "nodemailer";
 import crypto from "crypto";
 import { getFirestoreDb } from "./firestoreHelper.js";
 import { EMAIL_TEMPLATES, EmailTemplateData } from "./emailTemplates.js";
-import { getPublicSiteUrl } from "./siteConfig.js";
+import { getPublicSiteUrl, getRoleContactEmail } from "./siteConfig.js";
 
 const getSenderAddress = () => {
   const fromName = process.env.EMAIL_FROM_NAME || "AIJobs";
@@ -10,7 +10,6 @@ const getSenderAddress = () => {
   return `"${fromName}" <${fromAddress}>`;
 };
 
-const REPLY_TO = process.env.EMAIL_FROM_ADDRESS || "aijobs1401@gmail.com";
 const APP_URL = getPublicSiteUrl();
 
 let transporter: nodemailer.Transporter | null = null;
@@ -85,7 +84,8 @@ async function queueEmailInFirestore({
   rendered,
   createdBy,
   createdAt,
-  fallbackReason
+  fallbackReason,
+  replyTo
 }: any): Promise<boolean> {
   const db = getFirestoreDb();
   if (!db || !db.collection) return false;
@@ -94,7 +94,7 @@ async function queueEmailInFirestore({
     // Compatible with Firebase's official "Trigger Email" extension.
     await db.collection("mail").doc(emailId).set({
       to: [recipient],
-      replyTo: REPLY_TO,
+      replyTo: replyTo || getRoleContactEmail(recipientRole),
       message: {
         subject: rendered.subject,
         html: rendered.html,
@@ -222,13 +222,15 @@ export async function dispatchEmail(params: DispatchEmailParams): Promise<Dispat
   };
 
   const rendered = templateFn(templateData);
+  const roleReplyTo = getRoleContactEmail(recipientRole);
 
   const smtpTransporter = getTransporter();
   if (!smtpTransporter) {
     const queued = await queueEmailInFirestore({
       emailId, userId, recipient, recipientRole, templateName, templateData,
       rendered, createdBy, createdAt: now,
-      fallbackReason: "SMTP credentials unavailable"
+      fallbackReason: "SMTP credentials unavailable",
+      replyTo: roleReplyTo
     });
     if (queued) {
       return {
@@ -269,7 +271,7 @@ export async function dispatchEmail(params: DispatchEmailParams): Promise<Dispat
     const mailHeader: any = {
       from: getSenderAddress(),
       to: recipient,
-      replyTo: REPLY_TO,
+      replyTo: roleReplyTo,
       subject: rendered.subject,
       html: rendered.html,
       text: rendered.text
@@ -328,7 +330,8 @@ export async function dispatchEmail(params: DispatchEmailParams): Promise<Dispat
       const queued = await queueEmailInFirestore({
         emailId, userId, recipient, recipientRole, templateName, templateData,
         rendered, createdBy, createdAt: now,
-        fallbackReason: `${errorCategory}: ${errorMessage}`
+        fallbackReason: `${errorCategory}: ${errorMessage}`,
+        replyTo: roleReplyTo
       });
       if (queued) {
         return {
