@@ -116,7 +116,7 @@ export default function EmployerAiShortlist({
             <div className="space-y-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-slate-950 font-black text-lg flex items-center justify-center shadow-lg">
-                  {cand.candidateName.charAt(0)}
+                  {(cand.candidateName || "Candidate").charAt(0)}
                 </div>
 
                 <div className="px-2.5 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-mono font-bold">
@@ -126,7 +126,7 @@ export default function EmployerAiShortlist({
 
               <div>
                 <h3 className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors">
-                  {cand.candidateName}
+                  {cand.candidateName || "Candidate"}
                 </h3>
                 <p className="text-xs text-slate-400 font-medium">{cand.jobTitle}</p>
                 <span className="text-[11px] text-blue-300 font-mono">{cand.candidateExperience || "3+ Yrs Exp"}</span>
@@ -163,7 +163,7 @@ export default function EmployerAiShortlist({
                 View Profile
               </button>
               <button
-                onClick={() => onOpenLiveChat && onOpenLiveChat(cand.candidateId, cand.candidateName)}
+                onClick={() => onOpenLiveChat && onOpenLiveChat(cand.candidateId, cand.candidateName || "Candidate")}
                 className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 rounded-xl transition-all cursor-pointer"
                 title="Message"
               >

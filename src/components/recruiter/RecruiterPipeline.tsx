@@ -50,14 +50,14 @@ export default function RecruiterPipeline({
     if (selectedJob !== "all" && c.jobId !== selectedJob && c.jobTitle !== selectedJob) {
       return false;
     }
-    if (locationFilter !== "all" && !c.location.toLowerCase().includes(locationFilter.toLowerCase())) {
+    if (locationFilter !== "all" && !(c.location || "").toLowerCase().includes(locationFilter.toLowerCase())) {
       return false;
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      const matchName = c.name.toLowerCase().includes(q);
-      const matchRole = c.role.toLowerCase().includes(q);
-      const matchSkills = c.skills.some(s => s.toLowerCase().includes(q));
+      const matchName = (c.name || "Candidate").toLowerCase().includes(q);
+      const matchRole = (c.role || "").toLowerCase().includes(q);
+      const matchSkills = (c.skills || []).some(s => (s || "").toLowerCase().includes(q));
       if (!matchName && !matchRole && !matchSkills) return false;
     }
     return true;
@@ -169,7 +169,7 @@ export default function RecruiterPipeline({
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-center gap-2.5">
                             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold flex items-center justify-center text-xs shadow-md">
-                              {cand.name.charAt(0)}
+                              {(cand.name || "Candidate").charAt(0)}
                             </div>
                             <div>
                               <h4 className="text-xs font-bold text-white group-hover:text-cyan-300 transition-colors">
@@ -223,7 +223,7 @@ export default function RecruiterPipeline({
                           </select>
 
                           <button
-                            onClick={() => onOpenLiveChat && onOpenLiveChat(cand.id, cand.name)}
+                            onClick={() => onOpenLiveChat && onOpenLiveChat(cand.id, cand.name || "Candidate")}
                             className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all cursor-pointer"
                             title="Message Candidate"
                           >
