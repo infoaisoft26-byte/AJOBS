@@ -61,6 +61,20 @@ export default function PartnerApprovalCenter({ adminUserId, adminUserName }: { 
   const [showAlertPopup, setShowAlertPopup] = useState(false);
   const [working, setWorking] = useState(false);
   const [toast, setToast] = useState("");
+  const [showManualEditor, setShowManualEditor] = useState(false);
+  const [manualForm, setManualForm] = useState({
+    fullName: "",
+    mobile: "",
+    kycStatus: "verified",
+    documentsStatus: "verified",
+    agreementStatus: "accepted",
+    paymentStatus: "paid",
+    paymentAmount: "",
+    subscriptionStatus: "active",
+    planName: "AIJOBS Database Access Plan",
+    expiresAt: "",
+    adminNotes: ""
+  });
 
   useEffect(() => {
     const collections: Array<[string, React.Dispatch<React.SetStateAction<AnyRow[]>>]> = [
@@ -121,13 +135,14 @@ export default function PartnerApprovalCenter({ adminUserId, adminUserName }: { 
 
   const getBlocker = (row: PartnerRecord) => {
     const docs = row.verification?.submittedDocuments || row.verification?.documents || [];
+    const documentsStatus = String(row.verification?.documentsStatus || row.user.documentsStatus || "").toLowerCase();
     const kyc = String(row.verification?.kycStatus || row.verification?.verificationStatus || row.user.kycStatus || "").toLowerCase();
     const payment = String(row.paymentOrder?.status || row.user.paymentStatus || "").toLowerCase();
     const subscription = String(row.subscription?.status || row.user.subscriptionStatus || "").toLowerCase();
     const agreement = String(row.agreement?.status || row.user.agreementStatus || "").toLowerCase();
 
     if (!row.verification) return "KYC not submitted";
-    if (!Array.isArray(docs) || docs.length === 0) return "Verification documents missing";
+    if ((!Array.isArray(docs) || docs.length === 0) && !["verified", "approved", "submitted", "complete", "completed"].includes(documentsStatus)) return "Verification documents missing";
     if (["rejected", "resubmit_required", "resubmission_required"].includes(kyc)) return "KYC resubmission required";
     if (!["verified", "approved", "active"].includes(kyc)) return "KYC awaiting Admin approval";
     if (!["accepted", "payment_completed"].includes(agreement)) return "Agreement / eSign incomplete";
@@ -233,6 +248,45 @@ export default function PartnerApprovalCenter({ adminUserId, adminUserName }: { 
       setTimeout(() => setToast(""), 4500);
     }
   };
+  const openManualEditor = (row: PartnerRecord) => {
+    const defaultExpiry = row.subscription?.expiresAt || row.user.subscriptionExpiresAt || "";
+    setManualForm({
+      fullName: row.user.name || row.user.displayName || row.user.companyName || row.user.agencyName || "",
+      mobile: row.user.phone || row.user.phoneNumber || "",
+      kycStatus: String(row.verification?.kycStatus || row.verification?.verificationStatus || row.user.kycStatus || "verified").toLowerCase(),
+      documentsStatus: String(row.verification?.documentsStatus || ((row.verification?.submittedDocuments?.length || row.verification?.documents?.length) ? "verified" : "pending")).toLowerCase(),
+      agreementStatus: String(row.agreement?.status || row.user.agreementStatus || "accepted").toLowerCase(),
+      paymentStatus: String(row.paymentOrder?.status || row.user.paymentStatus || "paid").toLowerCase(),
+      paymentAmount: String(row.paymentOrder?.amount || row.paymentOrder?.totalAmount || ""),
+      subscriptionStatus: String(row.subscription?.status || row.user.subscriptionStatus || "active").toLowerCase(),
+      planName: row.agreement?.planSummary?.planName || row.subscription?.planName || row.user.activePlanName || row.user.planName || "AIJOBS Database Access Plan",
+      expiresAt: defaultExpiry ? new Date(defaultExpiry).toISOString().slice(0, 10) : "",
+      adminNotes: ""
+    });
+    setShowManualEditor(true);
+  };
+
+  const saveManualOverride = async (row: PartnerRecord) => {
+    setWorking(true);
+    try {
+      await apiPost("/api/admin/manual-partner-override", {
+        targetUserId: row.user.uid || row.user.id,
+        verificationRequestId: row.verification?.requestId || row.verification?.id,
+        agreementId: row.agreement?.agreementId || row.agreement?.id,
+        paymentOrderId: row.paymentOrder?.orderId || row.paymentOrder?.id,
+        reviewedBy: adminUserName || adminUserId,
+        ...manualForm
+      });
+      setToast("Manual onboarding details saved. Recruiter KYC and access status are now synchronized.");
+      setShowManualEditor(false);
+    } catch (e: any) {
+      setToast(e.message || "Manual onboarding update failed.");
+    } finally {
+      setWorking(false);
+      setTimeout(() => setToast(""), 4500);
+    }
+  };
+
 
   return (
     <div className="space-y-6">
@@ -315,7 +369,7 @@ export default function PartnerApprovalCenter({ adminUserId, adminUserName }: { 
                     </td>
                     <td className="px-4 py-4 space-y-1.5">
                       <Pill label="KYC" value={row.verification?.kycStatus || row.verification?.verificationStatus || user.kycStatus || "not submitted"} />
-                      <Pill label="Docs" value={row.verification?.submittedDocuments?.length || row.verification?.documents?.length ? "submitted" : "pending"} />
+                      <Pill label="Docs" value={row.verification?.documentsStatus || (row.verification?.submittedDocuments?.length || row.verification?.documents?.length ? "submitted" : "pending")} />
                     </td>
                     <td className="px-4 py-4 space-y-1.5"><Pill label="Agreement" value={row.agreement?.status || user.agreementStatus || "pending"} /></td>
                     <td className="px-4 py-4 space-y-1.5">
@@ -371,7 +425,7 @@ export default function PartnerApprovalCenter({ adminUserId, adminUserName }: { 
                 ["Risk", selected.verification?.riskLevel || "—"],
                 ["Submitted", fmt(selected.verification?.submittedAt || selected.verification?.createdAt)],
                 ["Reviewed", fmt(selected.verification?.reviewedAt)],
-                ["Documents", String(selected.verification?.submittedDocuments?.length || selected.verification?.documents?.length || 0)]
+                ["Documents", selected.verification?.documentsStatus || String(selected.verification?.submittedDocuments?.length || selected.verification?.documents?.length || 0)]
               ]} />
               <AuditCard icon={FileText} title="Agreement" rows={[
                 ["Status", selected.agreement?.status || selected.user.agreementStatus || "Pending"],
@@ -418,7 +472,68 @@ export default function PartnerApprovalCenter({ adminUserId, adminUserName }: { 
               </div>
             )}
 
+            {showManualEditor && (
+              <div className="mx-5 mb-5 rounded-xl border border-indigo-500/25 bg-indigo-500/[0.05] p-4">
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <div>
+                    <h4 className="text-sm font-bold text-white">Super Admin Manual Edit / Override</h4>
+                    <p className="text-[11px] text-slate-400 mt-1">Use this when onboarding was completed offline or a legacy record is incomplete. Manual payment entries are explicitly marked as admin overrides, not gateway-verified transactions.</p>
+                  </div>
+                  <button onClick={() => setShowManualEditor(false)} className="text-xs text-slate-400 hover:text-white">Close</button>
+                </div>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <label className="text-[11px] text-slate-400">Name
+                    <input value={manualForm.fullName} onChange={e => setManualForm(v => ({...v, fullName:e.target.value}))} className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white" />
+                  </label>
+                  <label className="text-[11px] text-slate-400">Mobile
+                    <input value={manualForm.mobile} onChange={e => setManualForm(v => ({...v, mobile:e.target.value}))} className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white" />
+                  </label>
+                  <label className="text-[11px] text-slate-400">KYC Status
+                    <select value={manualForm.kycStatus} onChange={e => setManualForm(v => ({...v, kycStatus:e.target.value}))} className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white">
+                      <option value="verified">Verified</option><option value="pending_admin_approval">Pending Approval</option><option value="resubmit_required">Resubmit Required</option><option value="rejected">Rejected</option>
+                    </select>
+                  </label>
+                  <label className="text-[11px] text-slate-400">Documents
+                    <select value={manualForm.documentsStatus} onChange={e => setManualForm(v => ({...v, documentsStatus:e.target.value}))} className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white">
+                      <option value="verified">Verified</option><option value="submitted">Submitted</option><option value="pending">Pending</option><option value="rejected">Rejected</option>
+                    </select>
+                  </label>
+                  <label className="text-[11px] text-slate-400">Agreement
+                    <select value={manualForm.agreementStatus} onChange={e => setManualForm(v => ({...v, agreementStatus:e.target.value}))} className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white">
+                      <option value="accepted">Accepted / Signed</option><option value="generated">Generated</option><option value="pending">Pending</option><option value="rejected">Rejected</option>
+                    </select>
+                  </label>
+                  <label className="text-[11px] text-slate-400">Payment
+                    <select value={manualForm.paymentStatus} onChange={e => setManualForm(v => ({...v, paymentStatus:e.target.value}))} className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white">
+                      <option value="paid">Paid (Manual)</option><option value="pending">Pending</option><option value="failed">Failed</option><option value="refunded">Refunded</option>
+                    </select>
+                  </label>
+                  <label className="text-[11px] text-slate-400">Payment Amount (₹)
+                    <input type="number" min="0" value={manualForm.paymentAmount} onChange={e => setManualForm(v => ({...v, paymentAmount:e.target.value}))} className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white" />
+                  </label>
+                  <label className="text-[11px] text-slate-400">Plan Status
+                    <select value={manualForm.subscriptionStatus} onChange={e => setManualForm(v => ({...v, subscriptionStatus:e.target.value}))} className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white">
+                      <option value="active">Active</option><option value="inactive">Inactive</option><option value="suspended">Suspended</option><option value="expired">Expired</option>
+                    </select>
+                  </label>
+                  <label className="text-[11px] text-slate-400">Plan Name
+                    <input value={manualForm.planName} onChange={e => setManualForm(v => ({...v, planName:e.target.value}))} className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white" />
+                  </label>
+                  <label className="text-[11px] text-slate-400">Expiry Date
+                    <input type="date" value={manualForm.expiresAt} onChange={e => setManualForm(v => ({...v, expiresAt:e.target.value}))} className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white" />
+                  </label>
+                  <label className="sm:col-span-2 lg:col-span-3 text-[11px] text-slate-400">Admin Notes / Reason
+                    <textarea value={manualForm.adminNotes} onChange={e => setManualForm(v => ({...v, adminNotes:e.target.value}))} rows={3} className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white" placeholder="Reason for manual KYC/payment/agreement override..." />
+                  </label>
+                </div>
+                <div className="mt-4 flex justify-end">
+                  <button disabled={working} onClick={() => saveManualOverride(selected)} className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold disabled:opacity-50">{working ? "Saving..." : "Save Manual Details & Sync Access"}</button>
+                </div>
+              </div>
+            )}
+
             <div className="p-5 border-t border-white/10 flex flex-wrap gap-2 justify-end">
+              <button disabled={working} onClick={() => openManualEditor(selected)} className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-slate-200 font-semibold disabled:opacity-50">Manual Edit / Override</button>
               <button disabled={working} onClick={() => approveKyc(selected)} className="px-4 py-2 rounded-lg bg-cyan-600/20 border border-cyan-500/30 text-cyan-200 font-semibold disabled:opacity-50">Approve KYC</button>
               <button disabled={working} onClick={() => approveSubscription(selected)} className="px-4 py-2 rounded-lg bg-purple-600/20 border border-purple-500/30 text-purple-200 font-semibold disabled:opacity-50">Activate Plan</button>
               <button disabled={working} onClick={() => fullyApprove(selected)} className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold disabled:opacity-50">{working ? "Processing..." : "Approve All & Activate"}</button>
