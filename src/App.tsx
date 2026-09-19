@@ -6,6 +6,7 @@ import { auth, isFirebaseConfigured } from "./firebase";
 import { db } from "./firebase";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import CandidateEmailVerification from "./components/CandidateEmailVerification";
+import { captureAttribution } from "./utils/attribution";
 
 // Helper function to dynamically import components with automatic retry logic on chunk/network errors
 function safeLazy<T extends React.ComponentType<any>>(
@@ -454,12 +455,15 @@ function MainAppContent() {
 
   // Handle URL Routing & Popstate
   useEffect(() => {
+    captureAttribution();
     const path = window.location.pathname;
     const searchParams = new URLSearchParams(window.location.search);
     const searchJobId = searchParams.get("jobId");
 
     const routePath = (p: string) => {
-      if (searchJobId) {
+      if (p === "/candidate-register" || p === "/candidate/register" || p === "/register") {
+        setActiveView("candidate-register");
+      } else if (searchJobId) {
         setActiveView(`job-details-${searchJobId}`);
       } else if (p.startsWith("/jobs/")) {
         const parts = p.split("-");
@@ -467,15 +471,6 @@ function MainAppContent() {
         if (jId) setActiveView(`job-details-${jId}`);
       } else if (p === "/candidate-login") {
         setActiveView("candidate-login");
-      } else if (p === "/candidate-register") {
-        setActiveView("candidate-register");
-      } else if (p === "/register" || p === "/candidate/register") {
-        // Keep campaign/deep-link registration URLs functional. The public
-        // header uses the shared AuthModal, so direct visits should open the
-        // same candidate signup experience instead of silently showing home.
-        setAuthRole("candidate");
-        setAuthMode("signup");
-        setActiveView("home");
       } else if (p === "/candidate/pre-launch-profile") {
         setActiveView("pre-launch-profile");
       } else if (p === "/portal-login") {
@@ -1100,9 +1095,15 @@ function MainAppContent() {
                 ) : activeView === "candidate-register" ? (
                   <Suspense fallback={<GeneralLoading />}>
                     <CandidateRegisterLazy
+                      initialJobId={new URLSearchParams(window.location.search).get("jobId") || undefined}
                       onRegisterSuccess={(profile) => {
                         setUser(profile);
-                        setActiveView("pre-launch-profile");
+                        const jId = new URLSearchParams(window.location.search).get("jobId");
+                        if (jId) {
+                          setActiveView(`job-details-${jId}`);
+                        } else {
+                          setActiveView("pre-launch-profile");
+                        }
                       }}
                       onNavigateToLogin={() => setActiveView("candidate-login")}
                     />
