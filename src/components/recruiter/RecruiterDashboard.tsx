@@ -295,10 +295,17 @@ export default function RecruiterDashboard({
             <AIJobsLogo size="sm" showTagline={false} />
             {/* Distinction between paid/subscription active and KYC verification pending */}
             <div className="hidden sm:flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
-                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                <span>PAID PLAN ACTIVE</span>
-              </span>
+              {String(subscriptionStatus).toLowerCase() === "active" ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                  <span>PAID PLAN ACTIVE</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-500/15 border border-slate-500/30 text-slate-300">
+                  <WalletCards className="w-3 h-3" />
+                  <span>{String(subscriptionStatus || "inactive").toUpperCase()}</span>
+                </span>
+              )}
               {isApproved || kycStatus === "approved" || kycStatus === "verified" ? (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-purple-500/15 border border-purple-500/30 text-purple-300">
                   <ShieldCheck className="w-3 h-3 text-purple-400" />
@@ -448,10 +455,13 @@ export default function RecruiterDashboard({
                 <strong>KYC Verification Pending:</strong> Your database plan is active and search is enabled. Direct candidate messaging, contact reveals, and offer releases remain restricted until our compliance team clears your submitted identity documents.
               </span>
             </div>
-            <div className="flex items-center gap-2 shrink-0 text-[11px] font-mono text-amber-300">
+            <button
+              onClick={() => setActiveTab("account")}
+              className="flex items-center gap-2 shrink-0 text-[11px] font-mono text-amber-300 hover:text-amber-200"
+            >
               <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span>Admin Clearance ETA: 2-4 hrs</span>
-            </div>
+              <span>View KYC status & documents</span>
+            </button>
           </div>
         </div>
       )}
