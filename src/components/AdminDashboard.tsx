@@ -36,6 +36,7 @@ import AbacControlInspector from "./AbacControlInspector";
 import LeadManagement from "./LeadManagement";
 import LiveLeadsCRM from "./admin/LiveLeadsCRM";
 import KycVerificationCenter from "./admin/KycVerificationCenter";
+import PartnerApprovalCenter from "./admin/PartnerApprovalCenter";
 import OnboardingControlCenter from "./admin/OnboardingControlCenter";
 import FinanceAndAccountingModule from "./admin/FinanceAndAccountingModule";
 import ApplicationManagement from "./admin/ApplicationManagement";
@@ -124,6 +125,8 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
   const [error, setError] = useState<string | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [partnerAlertCount, setPartnerAlertCount] = useState(0);
+  const [showPartnerAlert, setShowPartnerAlert] = useState(false);
 
   const fetchWorkspaceData = async () => {
     setLoading(true);
@@ -407,6 +410,58 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
     syncAdminRoleFromFirestore();
   }, [currentUserId]);
 
+  // Surface recruiter / consultancy / employer onboarding blockers globally in Super Admin.
+  useEffect(() => {
+    let pendingKycUsers = new Set<string>();
+    let unpaidUsers = new Set<string>();
+    const updateCount = () => {
+      const all = new Set<string>([...pendingKycUsers, ...unpaidUsers]);
+      setPartnerAlertCount(all.size);
+      if (all.size > 0 && !sessionStorage.getItem("aijobs-partner-admin-alert-seen")) {
+        setShowPartnerAlert(true);
+        sessionStorage.setItem("aijobs-partner-admin-alert-seen", "1");
+      }
+    };
+
+    const unsubVerification = onSnapshot(collection(db, "verification_requests"), snapshot => {
+      pendingKycUsers = new Set(
+        snapshot.docs
+          .map(d => d.data() as any)
+          .filter(r => {
+            const status = String(r.kycStatus || r.verificationStatus || "pending").toLowerCase();
+            return !["verified", "approved", "active"].includes(status);
+          })
+          .map(r => String(r.userId || ""))
+          .filter(Boolean)
+      );
+      updateCount();
+    }, error => console.warn("Admin realtime partner verification:", error.message));
+
+    const unsubPayments = onSnapshot(collection(db, "payment_orders"), snapshot => {
+      const latest = new Map<string, any>();
+      snapshot.docs.forEach(d => {
+        const row: any = { id: d.id, ...d.data() };
+        const uid = String(row.userId || "");
+        if (!uid) return;
+        const ts = new Date(row.updatedAt || row.paidAt || row.createdAt || 0).getTime();
+        const prev = latest.get(uid);
+        const prevTs = prev ? new Date(prev.updatedAt || prev.paidAt || prev.createdAt || 0).getTime() : -1;
+        if (!prev || ts >= prevTs) latest.set(uid, row);
+      });
+      unpaidUsers = new Set(
+        [...latest.entries()]
+          .filter(([, row]) => !["paid", "success"].includes(String(row.status || "").toLowerCase()))
+          .map(([uid]) => uid)
+      );
+      updateCount();
+    }, error => console.warn("Admin realtime partner payments:", error.message));
+
+    return () => {
+      unsubVerification();
+      unsubPayments();
+    };
+  }, []);
+
   // Core admin directory and headline counters remain live without manual refresh.
   useEffect(() => {
     const unsubs = [
@@ -477,6 +532,7 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
     { id: "internal-access", label: "Internal Access Management", icon: ShieldCheck, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "leads", label: "Live Leads CRM", icon: Users, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "onboarding-pipeline", label: "Onboarding & Verification Pipeline", icon: ShieldCheck, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
+    { id: "partner-approvals", label: "Partner Approval Command Center", icon: UserCheck, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "kyc-verification", label: "KYC Verification Center", icon: ShieldCheck, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "approvals", label: "Approval Center", icon: ShieldCheck, authorizedRoles: ["Super Admin", "Moderator", "Read Only"] },
     { id: "chat-monitoring", label: "Chat & Anti-Fraud Center", icon: MessageSquare, authorizedRoles: ["Super Admin", "Support Desk", "Moderator", "Read Only"] },
@@ -595,7 +651,12 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
                     }`}
                   >
                     <Icon className={`w-4 h-4 shrink-0 ${isSelected ? "text-white" : "text-slate-400"}`} />
-                    <span className="truncate">{item.label}</span>
+                    <span className="truncate flex-1">{item.label}</span>
+                    {item.id === "partner-approvals" && partnerAlertCount > 0 && (
+                      <span className="ml-auto min-w-5 h-5 px-1 rounded-full bg-amber-500 text-black text-[10px] font-extrabold flex items-center justify-center">
+                        {partnerAlertCount > 99 ? "99+" : partnerAlertCount}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -679,7 +740,12 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
               >
                 <Icon className={`w-4.5 h-4.5 shrink-0 ${isSelected ? "text-white" : "text-slate-400"}`} />
                 {!isSidebarCollapsed && (
-                  <span className="truncate">{item.label}</span>
+                  <span className="truncate flex-1">{item.label}</span>
+                )}
+                {!isSidebarCollapsed && item.id === "partner-approvals" && partnerAlertCount > 0 && (
+                  <span className="ml-auto min-w-5 h-5 px-1 rounded-full bg-amber-500 text-black text-[10px] font-extrabold flex items-center justify-center">
+                    {partnerAlertCount > 99 ? "99+" : partnerAlertCount}
+                  </span>
                 )}
               </button>
             );
@@ -710,6 +776,41 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
         </div>
 
       </aside>
+
+      {showPartnerAlert && partnerAlertCount > 0 && (
+        <div className="fixed inset-0 z-[120] bg-black/75 flex items-center justify-center p-4">
+          <div className="max-w-lg w-full rounded-2xl border border-amber-500/30 bg-[#0b1020] p-6 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className="p-3 rounded-xl bg-amber-500/15">
+                <Bell className="w-6 h-6 text-amber-300" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-white">Partner onboarding approvals pending</h3>
+                <p className="mt-1 text-sm text-slate-400">
+                  {partnerAlertCount} recruiter / consultancy / employer account(s) need KYC, document, payment, or onboarding review.
+                </p>
+                <p className="mt-3 text-xs text-slate-500">
+                  Open the command center to see exact stage, timestamps, payment, invoice and email trail.
+                </p>
+                <div className="flex gap-2 mt-5">
+                  <button
+                    onClick={() => { setShowPartnerAlert(false); setActiveTab("partner-approvals"); }}
+                    className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold"
+                  >
+                    Review Approvals
+                  </button>
+                  <button
+                    onClick={() => setShowPartnerAlert(false)}
+                    className="px-4 py-2 rounded-lg bg-white/5 text-slate-300 text-sm"
+                  >
+                    Later
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Panel Content container */}
       <main className="flex-1 flex flex-col min-w-0">
@@ -866,6 +967,13 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
 
               {activeView === "kyc-verification" && (
                 <KycVerificationCenter />
+              )}
+
+              {activeView === "partner-approvals" && (
+                <PartnerApprovalCenter
+                  adminUserId={currentUserId}
+                  adminUserName={currentUserName}
+                />
               )}
 
               {activeView === "approvals" && (
