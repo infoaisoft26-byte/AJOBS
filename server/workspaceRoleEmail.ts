@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
-import { CAREER_EMAIL, COMPLIANCE_EMAIL, HELP_EMAIL, INFO_EMAIL, SALES_EMAIL, SUPPORT_EMAIL } from "./siteConfig.js";
+import { CAREER_EMAIL, COMPLIANCE_EMAIL, HELP_EMAIL, INFO_EMAIL, INVOICE_EMAIL, SALES_EMAIL, SUPPORT_EMAIL } from "./siteConfig.js";
 
-export type WorkspaceSenderRole = "info" | "help" | "support" | "career" | "sales" | "compliance";
+export type WorkspaceSenderRole = "info" | "help" | "support" | "career" | "invoice" | "sales" | "compliance";
 
 type RoleSmtpConfig = {
   role: WorkspaceSenderRole;
@@ -46,6 +46,16 @@ function roleConfig(role: WorkspaceSenderRole): RoleSmtpConfig {
       user: process.env.SMTP_CAREER_USER || sharedUser,
       pass: process.env.SMTP_CAREER_APP_PASSWORD || sharedPass,
       fromName: process.env.EMAIL_CAREER_FROM_NAME || "AIJOBS Career",
+    };
+  }
+
+  if (role === "invoice") {
+    return {
+      role,
+      address: INVOICE_EMAIL,
+      user: process.env.SMTP_INVOICE_USER || sharedUser,
+      pass: process.env.SMTP_INVOICE_APP_PASSWORD || sharedPass,
+      fromName: process.env.EMAIL_INVOICE_FROM_NAME || "AIJOBS Accounts",
     };
   }
 
