@@ -1,5 +1,6 @@
 import { getFirestoreDb } from "./firestoreHelper.js";
 import { processPaymentAccounting } from "./accountingEngine.js";
+import { INVOICE_EMAIL } from "./siteConfig.js";
 
 const num = (v: any) => Number(v || 0) || 0;
 
@@ -128,6 +129,7 @@ export async function syncPaidPaymentOrdersToAccounting() {
         const invoiceNumber = invoice.invoiceNumber || invoice.id;
         await mailRef.set({
           to: [userEmail],
+          replyTo: INVOICE_EMAIL,
           message: {
             subject: "AIJOBS Payment Receipt & Invoice " + invoiceNumber,
             html:
@@ -153,6 +155,7 @@ export async function syncPaidPaymentOrdersToAccounting() {
 
         await invoiceSnap.docs[0].ref.set({
           emailRecipient: userEmail,
+          replyTo: INVOICE_EMAIL,
           emailStatus: "queued",
           emailQueuedAt: new Date().toISOString()
         }, { merge: true });

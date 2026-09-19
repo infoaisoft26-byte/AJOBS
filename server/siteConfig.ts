@@ -9,6 +9,7 @@ export const INFO_EMAIL = (process.env.INFO_EMAIL || "info@aijobs1.in").trim().t
 export const HELP_EMAIL = (process.env.HELP_EMAIL || "help@aijobs1.in").trim().toLowerCase();
 export const SUPPORT_EMAIL = (process.env.SUPPORT_EMAIL || "support@aijobs1.in").trim().toLowerCase();
 export const CAREER_EMAIL = (process.env.CAREER_EMAIL || "career@aijobs1.in").trim().toLowerCase();
+export const INVOICE_EMAIL = (process.env.INVOICE_EMAIL || "invoice@aijobs1.in").trim().toLowerCase();
 export const SALES_EMAIL = (process.env.SALES_EMAIL || "salesindia@aijobs1.in").trim().toLowerCase();
 export const COMPLIANCE_EMAIL = (process.env.COMPLIANCE_EMAIL || "compliant@aijobs1.in").trim().toLowerCase();
 
@@ -20,6 +21,11 @@ export const ROLE_EMAILS = Object.freeze({
   candidate: CAREER_EMAIL,
   career: CAREER_EMAIL,
   jobseeker: CAREER_EMAIL,
+  invoice: INVOICE_EMAIL,
+  accounts: INVOICE_EMAIL,
+  accounting: INVOICE_EMAIL,
+  finance: INVOICE_EMAIL,
+  receipt: INVOICE_EMAIL,
   employer: SALES_EMAIL,
   recruiter: SALES_EMAIL,
   consultancy: SALES_EMAIL,
@@ -45,6 +51,10 @@ export function getRoleContactEmail(role?: string | null): string {
 
   if (["candidate", "career", "jobseeker", "job_seeker", "job_alert", "career_guidance", "resume", "application"].includes(normalized)) {
     return CAREER_EMAIL;
+  }
+
+  if (["invoice", "receipt", "accounts", "accounting", "finance", "payment_receipt", "invoice_support"].includes(normalized)) {
+    return INVOICE_EMAIL;
   }
 
   if (["employer", "recruiter", "consultancy", "agency", "corporate", "sales", "partner", "partnership", "billing", "subscription", "hiring"].includes(normalized)) {
