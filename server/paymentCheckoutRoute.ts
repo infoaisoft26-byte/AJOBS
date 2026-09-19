@@ -2,11 +2,178 @@ import type { Request, Response } from "express";
 import crypto from "crypto";
 import { getFirebaseAuth, getFirestoreDb } from "./firestoreHelper.js";
 import { getPublicSiteUrl } from "./siteConfig.js";
+import { processPaymentAccounting } from "./accountingEngine.js";
 
 const money = (value: unknown, fallback: number) => {
   const n = Number(value);
   return Number.isFinite(n) && n >= 0 ? n : fallback;
 };
+
+async function ensurePaymentFinancialArtifacts(params: {
+  db: any;
+  order: any;
+  agreement: any;
+  userId: string;
+  userEmail?: string;
+  userName?: string;
+  role?: string;
+  paymentId: string;
+  paidAt: string;
+}) {
+  const { db, order, agreement, userId, paymentId, paidAt } = params;
+  const userSnap = await db.collection("users").doc(userId).get();
+  const user: any = userSnap.exists ? userSnap.data() || {} : {};
+  const userEmail = String(params.userEmail || user.email || agreement?.userEmail || agreement?.buyer?.email || "").trim();
+  const userName = String(params.userName || user.name || user.displayName || agreement?.buyer?.authorizedPerson || agreement?.buyer?.legalName || "AIJOBS Partner").trim();
+  const role = String(params.role || user.role || agreement?.role || "recruiter").trim().toLowerCase();
+
+  const paymentDocId = `payment_${String(order.orderId || order.id || paymentId).replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+  const baseAmount = money(order.baseAmount ?? agreement?.planSummary?.baseAmount ?? agreement?.baseAmount, 0);
+  const gstAmount = money(order.gstAmount ?? agreement?.planSummary?.gstAmount ?? agreement?.gstAmount, 0);
+  const totalAmount = money(order.totalAmount ?? order.amount ?? agreement?.planSummary?.totalAmount ?? agreement?.totalAmount, baseAmount + gstAmount);
+  const planName = String(order.planName || agreement?.planSummary?.planName || "AIJOBS Subscription Plan");
+  const customerState = String(agreement?.buyer?.state || user.state || user.billingState || "").trim();
+  const sellerState = String(agreement?.seller?.state || process.env.AIJOBS_GST_STATE || "").trim();
+
+  const paymentDoc = {
+    paymentId,
+    orderId: order.orderId || order.id || "",
+    userId,
+    userEmail,
+    userName,
+    role,
+    agreementId: order.agreementId || agreement?.agreementId || agreement?.id || "",
+    planId: agreement?.planSummary?.planId || agreement?.planId || "",
+    planName,
+    baseAmount,
+    amount: baseAmount,
+    gstAmount,
+    totalAmount,
+    totalPaid: totalAmount,
+    currency: order.currency || "INR",
+    gateway: String(order.gateway || "razorpay").toLowerCase(),
+    gatewayPaymentId: paymentId,
+    status: "paid",
+    gatewaySignatureVerified: true,
+    accountingStatus: "pending_reconciliation",
+    paidAt,
+    createdAt: order.createdAt || paidAt,
+    updatedAt: paidAt
+  };
+
+  await db.collection("payments").doc(paymentDocId).set(paymentDoc, { merge: true });
+
+  let invoice: any = null;
+  let accountingError = "";
+  const existingInvoiceSnap = await db.collection("invoices").where("paymentId", "==", paymentId).limit(1).get();
+
+  if (!existingInvoiceSnap.empty) {
+    invoice = { id: existingInvoiceSnap.docs[0].id, ...existingInvoiceSnap.docs[0].data() };
+  } else {
+    const accounting = await processPaymentAccounting({
+      paymentId,
+      userId,
+      userEmail,
+      role,
+      planName,
+      baseAmount,
+      gstAmount,
+      totalAmount,
+      cgst: agreement?.cgst ?? agreement?.planSummary?.cgst,
+      sgst: agreement?.sgst ?? agreement?.planSummary?.sgst,
+      igst: agreement?.igst ?? agreement?.planSummary?.igst,
+      customerState: customerState || "Not configured",
+      sellerState: sellerState || "Not configured"
+    });
+
+    if (accounting.success && accounting.invoiceId) {
+      const invoiceRef = db.collection("invoices").doc(accounting.invoiceId);
+      await invoiceRef.set({
+        buyer: agreement?.buyer || {
+          name: userName,
+          email: userEmail,
+          gstin: user.gstin || user.gstNumber || "",
+          state: customerState || ""
+        },
+        seller: agreement?.seller || {
+          legalEntityName: process.env.AIJOBS_LEGAL_ENTITY_NAME || "AIJOBS / The Flex Force Services",
+          gstin: process.env.AIJOBS_GSTIN || "",
+          registeredAddress: process.env.AIJOBS_REGISTERED_ADDRESS || "",
+          state: sellerState || "",
+          sacCode: process.env.AIJOBS_SAC_CODE || ""
+        },
+        orderId: order.orderId || order.id || "",
+        gateway: String(order.gateway || "razorpay").toLowerCase(),
+        gatewayPaymentId: paymentId,
+        status: "generated",
+        issuedAt: paidAt,
+        updatedAt: paidAt
+      }, { merge: true });
+      const invSnap = await invoiceRef.get();
+      invoice = { id: invoiceRef.id, ...invSnap.data() };
+    } else {
+      accountingError = accounting.error || "Accounting/invoice generation failed.";
+    }
+  }
+
+  if (invoice && userEmail) {
+    const mailId = `invoice_${String(invoice.invoiceId || invoice.id || paymentId).replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+    const mailRef = db.collection("mail").doc(mailId);
+    const mailSnap = await mailRef.get();
+    if (!mailSnap.exists) {
+      const sellerName = invoice?.seller?.legalEntityName || process.env.AIJOBS_LEGAL_ENTITY_NAME || "AIJOBS";
+      const invoiceNumber = invoice.invoiceNumber || invoice.id || "AIJOBS Invoice";
+      await mailRef.set({
+        to: [userEmail],
+        message: {
+          subject: `AIJOBS Payment Receipt & Tax Invoice ${invoiceNumber}`,
+          html: `
+            <div style="font-family:Arial,sans-serif;max-width:680px;margin:auto;padding:24px;color:#0f172a">
+              <h2 style="margin:0 0 8px;color:#07152F">Payment received successfully</h2>
+              <p>Hello <strong>${userName}</strong>,</p>
+              <p>Your AIJOBS payment has been verified and your invoice has been generated automatically.</p>
+              <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin:20px 0">
+                <p><strong>Invoice:</strong> ${invoiceNumber}</p>
+                <p><strong>Plan:</strong> ${planName}</p>
+                <p><strong>Taxable amount:</strong> ₹${Number(baseAmount).toFixed(2)}</p>
+                <p><strong>GST:</strong> ₹${Number(gstAmount).toFixed(2)}</p>
+                <p><strong>Total paid:</strong> ₹${Number(totalAmount).toFixed(2)}</p>
+                <p><strong>Payment ID:</strong> ${paymentId}</p>
+                <p><strong>Paid at:</strong> ${paidAt}</p>
+              </div>
+              <p style="font-size:12px;color:#475569">Seller: ${sellerName}</p>
+              <p style="font-size:12px;color:#475569">You can also view the invoice and subscription details from your AIJOBS dashboard.</p>
+              <a href="${getPublicSiteUrl()}/recruiter/dashboard" style="display:inline-block;background:#2563EB;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:700">Open AIJOBS Dashboard</a>
+            </div>
+          `
+        },
+        category: "Payment Invoice",
+        userId,
+        invoiceId: invoice.invoiceId || invoice.id || "",
+        paymentId,
+        status: "queued",
+        createdAt: paidAt
+      });
+
+      const invoiceRef = db.collection("invoices").doc(invoice.invoiceId || invoice.id);
+      await invoiceRef.set({
+        emailRecipient: userEmail,
+        emailStatus: "queued",
+        emailQueuedAt: paidAt
+      }, { merge: true });
+    }
+  }
+
+  if (accountingError) {
+    await db.collection("payments").doc(paymentDocId).set({
+      accountingStatus: "pending_reconciliation",
+      accountingError,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+  }
+
+  return { paymentDocId, invoice, accountingError };
+}
 
 export async function handlePaymentCheckoutRoute(req: Request, res: Response): Promise<boolean> {
   const path = String(req.url || "").split("?")[0].replace(/\/+$/, "") || "/";
@@ -61,7 +228,20 @@ export async function handlePaymentCheckoutRoute(req: Request, res: Response): P
       const existingSubSnap = await existingSubRef.get();
       if (String(order.status || "").toLowerCase() === "paid") {
         const subscription = existingSubSnap.exists ? existingSubSnap.data() : null;
-        res.json({ success: true, alreadyPaid: true, order: { ...order, orderId }, subscription });
+        const paymentId = String(order.razorpayPaymentId || razorpayPaymentId || orderId);
+        const agreementRefExisting = db.collection("agreements").doc(String(order.agreementId || ""));
+        const agreementSnapExisting = order.agreementId ? await agreementRefExisting.get() : null;
+        const agreementExisting: any = agreementSnapExisting?.exists ? agreementSnapExisting.data() || {} : {};
+        const financials = await ensurePaymentFinancialArtifacts({
+          db,
+          order: { ...order, orderId },
+          agreement: agreementExisting,
+          userId: decoded.uid,
+          userEmail: decoded.email || "",
+          paymentId,
+          paidAt: order.paidAt || new Date().toISOString()
+        });
+        res.json({ success: true, alreadyPaid: true, order: { ...order, orderId }, subscription, invoice: financials.invoice });
         return true;
       }
 
@@ -185,11 +365,27 @@ export async function handlePaymentCheckoutRoute(req: Request, res: Response): P
         }, { merge: true });
       });
 
+      const paymentIdForAccounting = razorpayPaymentId || String(verifiedLink?.payments?.[0]?.payment_id || orderId);
+      const financials = await ensurePaymentFinancialArtifacts({
+        db,
+        order: { ...order, orderId, status: "paid", paidAt, razorpayPaymentId: paymentIdForAccounting },
+        agreement,
+        userId: decoded.uid,
+        userEmail: decoded.email || agreement?.buyer?.email || "",
+        role: agreement.role || undefined,
+        paymentId: paymentIdForAccounting,
+        paidAt
+      });
+
       res.json({
         success: true,
-        message: "Payment verified. Your AIJOBS plan is active.",
+        message: financials.accountingError
+          ? "Payment verified and plan activated. Invoice/accounting sync is queued for reconciliation."
+          : "Payment verified, plan activated, invoice generated and emailed.",
         order: { ...order, orderId, status: "paid", paidAt },
-        subscription
+        subscription,
+        invoice: financials.invoice,
+        accountingPending: Boolean(financials.accountingError)
       });
       return true;
     }
