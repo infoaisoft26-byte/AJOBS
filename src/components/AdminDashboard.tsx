@@ -290,6 +290,8 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
           couponCode: p.couponCode || undefined,
           gateway: (p.gateway || "Razorpay") as any,
           invoiceNumber: p.invoiceNumber || "",
+          buyer: p.buyer || null,
+          seller: p.seller || null,
           createdAt: p.paidAt || p.createdAt || p.updatedAt || ""
         } as PaymentTransaction);
       });
