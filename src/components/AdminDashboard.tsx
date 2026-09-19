@@ -264,12 +264,36 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
       setNotificationsList([]);
     }
 
-    // 8. Fetch Payments
+    // 8. Fetch real payment ledger and normalize backend payment records for Admin billing UI.
     try {
       const paySnap = await getDocs(collection(db, "payments"));
-      paySnap.forEach(doc => {
-        payments.push({ id: doc.id, ...doc.data() } as PaymentTransaction);
+      paySnap.forEach(paymentDoc => {
+        const p: any = paymentDoc.data() || {};
+        const rawStatus = String(p.status || "pending").toLowerCase();
+        const status: PaymentTransaction["status"] =
+          rawStatus === "paid" || rawStatus === "success" ? "SUCCESS" :
+          rawStatus === "refunded" || rawStatus === "partially_refunded" ? "REFUNDED" :
+          rawStatus === "failed" ? "FAILED" : "PENDING";
+
+        payments.push({
+          id: p.paymentId || paymentDoc.id,
+          userId: p.userId || "",
+          userName: p.userName || p.customerName || p.buyerName || "",
+          userEmail: p.userEmail || p.email || "",
+          planName: p.planName || "AIJOBS Subscription",
+          amount: Number(p.baseAmount ?? p.amount ?? 0) || 0,
+          gstAmount: Number(p.gstAmount ?? 0) || 0,
+          discountAmount: Number(p.discountAmount ?? 0) || 0,
+          totalPaid: Number(p.totalPaid ?? p.totalAmount ?? p.amount ?? 0) || 0,
+          currency: p.currency || "INR",
+          status,
+          couponCode: p.couponCode || undefined,
+          gateway: (p.gateway || "Razorpay") as any,
+          invoiceNumber: p.invoiceNumber || "",
+          createdAt: p.paidAt || p.createdAt || p.updatedAt || ""
+        } as PaymentTransaction);
       });
+      payments.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
       setPaymentsList(payments);
     } catch (err: any) {
       console.warn("Resilient Fetch: Failed to retrieve payments from Firestore:", err.message);
@@ -332,9 +356,30 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
       return typeof dateValue === "string" && dateValue.startsWith(todayIsoStr);
     }).length;
 
-    // Billing aggregations
+    // Real billing aggregations from successful payment records.
     const successPayments = payments.filter(p => p.status === "SUCCESS");
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
     const totalRevCollected = successPayments.reduce((sum, current) => sum + (current.totalPaid || 0), 0);
+    const revenueTodayReal = successPayments
+      .filter(p => {
+        const d = new Date(p.createdAt || 0);
+        return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === todayIsoStr;
+      })
+      .reduce((sum, current) => sum + (current.totalPaid || 0), 0);
+    const monthlyRevenueReal = successPayments
+      .filter(p => {
+        const d = new Date(p.createdAt || 0);
+        return !Number.isNaN(d.getTime()) && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      })
+      .reduce((sum, current) => sum + (current.totalPaid || 0), 0);
+    const yearlyRevenueReal = successPayments
+      .filter(p => {
+        const d = new Date(p.createdAt || 0);
+        return !Number.isNaN(d.getTime()) && d.getFullYear() === currentYear;
+      })
+      .reduce((sum, current) => sum + (current.totalPaid || 0), 0);
 
     // Fetch live telemetry from Express server
     let telemetryData = { activeUsers: 1, aiRequests: 0, failedAiRequests: 0, paymentsCount: 0, errorsCount: 0, averageLatencyMs: 120 };
@@ -358,9 +403,9 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
       applicationsToday: totalAppsCount,
       interviewsToday: 0,
       resumesAnalyzedToday: totalResumesCount,
-      revenueToday: telemetryData.paymentsCount * 9999,
-      monthlyRevenue: totalRevCollected,
-      yearlyRevenue: totalRevCollected * 12,
+      revenueToday: revenueTodayReal,
+      monthlyRevenue: monthlyRevenueReal,
+      yearlyRevenue: yearlyRevenueReal,
       pendingApprovals: pendingVerificationCount,
       supportTickets: openSupportCount,
       liveOnlineUsers: telemetryData.activeUsers || 1,
