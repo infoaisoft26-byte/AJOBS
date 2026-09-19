@@ -249,7 +249,6 @@ export default function PartnerApprovalCenter({ adminUserId, adminUserName }: { 
     }
   };
   const openManualEditor = (row: PartnerRecord) => {
-    const uid = row.user.uid || row.user.id;
     const defaultExpiry = row.subscription?.expiresAt || row.user.subscriptionExpiresAt || "";
     setManualForm({
       fullName: row.user.name || row.user.displayName || row.user.companyName || row.user.agencyName || "",
