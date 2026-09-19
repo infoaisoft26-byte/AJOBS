@@ -23,7 +23,7 @@ import {
   Lock
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { collection, getDocs, doc, getDoc, updateDoc } from "firebase/firestore";
+import { collection, getDocs, doc, onSnapshot, updateDoc } from "firebase/firestore";
 import { db, auth } from "../../firebase";
 import AIJobsLogo from "../AIJobsLogo";
 import RecruiterOverview from "./RecruiterOverview";
@@ -201,24 +201,31 @@ export default function RecruiterDashboard({
         setPipelineCandidates(loaded);
       }
 
-      // Fetch user profile and subscription status
-      if (userId) {
-        const userDocSnap = await getDoc(doc(db, "users", userId));
-        if (userDocSnap.exists()) {
-          const u = userDocSnap.data() as any;
-          setKycStatus(u.kycStatus || (u.isApproved ? "approved" : "pending"));
-          setIsApproved(Boolean(u.isApproved));
-          setSubscriptionStatus(u.subscriptionStatus || (u.paymentStatus === "paid" ? "active" : "inactive"));
-          if (u.activePlanName || u.planName) {
-            setActivePlanName(u.activePlanName || u.planName);
-          }
-        }
-      }
     } catch (e) {}
   };
 
   useEffect(() => {
     loadData();
+  }, [userId]);
+
+  // Keep approval, KYC and subscription badges in sync with Super Admin changes.
+  // This avoids requiring the recruiter to log out or hard-refresh after approval.
+  useEffect(() => {
+    if (!userId) return;
+    const unsub = onSnapshot(doc(db, "users", userId), (userDocSnap) => {
+      if (!userDocSnap.exists()) return;
+      const u = userDocSnap.data() as any;
+      const nextKyc = String(u.kycStatus || u.verificationStatus || (u.isApproved ? "verified" : "pending")).toLowerCase();
+      setKycStatus(nextKyc);
+      setIsApproved(Boolean(u.isApproved) || ["verified", "approved", "active", "kyc_approved"].includes(nextKyc));
+      setSubscriptionStatus(u.subscriptionStatus || (u.paymentStatus === "paid" ? "active" : "inactive"));
+      if (u.activePlanName || u.planName || u.pricingPlan) {
+        setActivePlanName(u.activePlanName || u.planName || u.pricingPlan);
+      }
+    }, (error) => {
+      console.warn("[RecruiterDashboard] Failed to sync approval status:", error);
+    });
+    return unsub;
   }, [userId]);
 
   // Handle URL sync and cleanly remove callback query parameters
