@@ -134,7 +134,7 @@ async function ensurePaymentFinancialArtifacts(params: {
       await mailRef.set({
         to: [userEmail],
         message: {
-          subject: `AIJOBS Payment Receipt & Tax Invoice ${invoiceNumber}`,
+          subject: `AIJOBS Payment Receipt & Invoice ${invoiceNumber}`,
           html: `
             <div style="font-family:Arial,sans-serif;max-width:680px;margin:auto;padding:24px;color:#0f172a">
               <h2 style="margin:0 0 8px;color:#07152F">Payment received successfully</h2>

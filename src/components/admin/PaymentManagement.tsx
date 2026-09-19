@@ -101,10 +101,10 @@ export default function PaymentManagement({
       <div className="border-b border-white/5 pb-4">
         <h3 className="text-xl font-bold text-white flex items-center gap-2">
           <CreditCard className="w-5 h-5 text-indigo-400" />
-          <span>Billing, Subscriptions & GST Invoicing Ledger</span>
+          <span>Billing, Subscriptions & Invoice Ledger</span>
         </h3>
         <p className="text-xs text-gray-400 mt-1">
-          Perform administrative billing reviews, trace transaction footprints, issue refund certificates, and generate GST-compliant printable invoice files.
+          Perform administrative billing reviews, trace transaction footprints, issue refund certificates, and generate printable payment invoices and receipts.
         </p>
       </div>
 
@@ -184,7 +184,7 @@ export default function PaymentManagement({
                           <button
                             onClick={() => setSelectedTxnForInvoice(t)}
                             className="p-1.5 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white rounded transition-all cursor-pointer inline-flex items-center"
-                            title="Generate GST Invoice PDF"
+                            title="Open Invoice"
                           >
                             <FileText className="w-3.5 h-3.5" />
                           </button>
@@ -221,7 +221,7 @@ export default function PaymentManagement({
           <div className="glass p-5 rounded-2xl border border-white/5 space-y-4">
             <h4 className="text-xs font-bold text-white uppercase font-mono tracking-wider flex items-center gap-1.5">
               <Printer className="w-4 h-4 text-indigo-400" />
-              <span>Tax Compliant PDF Generator</span>
+              <span>Invoice / Receipt Generator</span>
             </h4>
 
             {selectedTxnForInvoice ? (
@@ -232,10 +232,9 @@ export default function PaymentManagement({
                     <h5 className="font-sans font-black text-xs text-indigo-950 uppercase tracking-widest">
                       {selectedTxnForInvoice.seller?.legalEntityName || "AIJOBS / The Flex Force Services"}
                     </h5>
-                    <p className="text-[8px] text-gray-400">
-                      {selectedTxnForInvoice.seller?.gstin ? `GSTIN: ${selectedTxnForInvoice.seller.gstin}` : "GSTIN not configured"}
-                      {selectedTxnForInvoice.seller?.sacCode ? ` • SAC Code: ${selectedTxnForInvoice.seller.sacCode}` : ""}
-                    </p>
+                    {selectedTxnForInvoice.seller?.registeredAddress && (
+                      <p className="text-[8px] text-gray-400">{selectedTxnForInvoice.seller.registeredAddress}</p>
+                    )}
                   </div>
 
                   <div className="flex justify-between border-b border-gray-100 pb-2 text-[8px] text-gray-500">
@@ -253,7 +252,7 @@ export default function PaymentManagement({
                     <p className="text-gray-500">BILLED TO:</p>
                     <p className="font-bold text-neutral-900">{selectedTxnForInvoice.buyer?.legalName || selectedTxnForInvoice.buyer?.name || selectedTxnForInvoice.userName || "Valued Client"}</p>
                     <p className="text-[8px] text-gray-400">{selectedTxnForInvoice.buyer?.email || selectedTxnForInvoice.userEmail || ""}</p>
-                    {selectedTxnForInvoice.buyer?.gstin && <p className="text-[8px] text-gray-400">GSTIN: {selectedTxnForInvoice.buyer.gstin}</p>}
+                    
                   </div>
 
                   <div className="space-y-1.5 pt-2 border-t border-gray-200">
@@ -268,7 +267,7 @@ export default function PaymentManagement({
 
                     <div className="space-y-1 text-right text-gray-500">
                       <p>Line Subtotal: ₹{(selectedTxnForInvoice.amount || 0).toLocaleString()}</p>
-                      <p>GST: ₹{(selectedTxnForInvoice.gstAmount || 0).toLocaleString("en-IN")}</p>
+                      
                       {(selectedTxnForInvoice.discountAmount || 0) > 0 && (
                         <p className="text-rose-600">Discounts/Coupons: -₹{(selectedTxnForInvoice.discountAmount || 0).toLocaleString()}</p>
                       )}
@@ -288,7 +287,7 @@ export default function PaymentManagement({
                   className="w-full py-2 bg-neutral-900 hover:bg-neutral-800 text-xs text-gray-300 font-bold rounded-lg border border-white/10 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                 >
                   <Printer className="w-4 h-4" />
-                  <span>Print Tax Invoice</span>
+                  <span>Print Invoice</span>
                 </button>
               </div>
             ) : (
