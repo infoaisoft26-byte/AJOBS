@@ -439,7 +439,7 @@ export const FinanceAndAccountingModule: React.FC<FinanceAndAccountingModuleProp
                     ₹{dashboardData.totalGstLiability?.toLocaleString("en-IN") || "0"}
                   </div>
                   <div className="text-[11px] text-slate-400 pt-1">
-                    SAC 998311 (CGST + SGST + IGST)
+                    GST ledger from configured billing profile (CGST + SGST + IGST)
                   </div>
                 </div>
 
@@ -520,6 +520,21 @@ export const FinanceAndAccountingModule: React.FC<FinanceAndAccountingModuleProp
                       <span className={`font-bold ${dashboardData.pendingReconciliationCount > 0 ? "text-amber-400" : "text-emerald-400"}`}>
                         {dashboardData.pendingReconciliationCount || 0}
                       </span>
+                    </div>
+
+                    <div className="p-3.5 bg-slate-800/60 rounded-xl border border-slate-700 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-300">Paid Orders Synced:</span>
+                        <span className="font-bold text-cyan-400">{dashboardData.paymentOrdersSynced || 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-300">Invoices Backfilled:</span>
+                        <span className="font-bold text-purple-300">{dashboardData.invoicesBackfilled || 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-300">Invoice Emails Queued:</span>
+                        <span className="font-bold text-emerald-400">{dashboardData.invoiceEmailsQueued || 0}</span>
+                      </div>
                     </div>
 
                     <div className="p-3.5 bg-slate-800/60 rounded-xl border border-slate-700 space-y-1">
