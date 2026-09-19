@@ -161,6 +161,8 @@ export interface PaymentTransaction {
   couponCode?: string;
   gateway: "PayU" | "Stripe" | "Razorpay" | "razorpay" | "System Manual";
   invoiceNumber: string;
+  buyer?: any;
+  seller?: any;
   createdAt: string;
 }
 
