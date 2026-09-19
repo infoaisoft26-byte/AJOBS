@@ -3,6 +3,8 @@ import { getFirestoreDb, getFirebaseAuth } from "./firestoreHelper.js";
 import { processPaymentAccounting } from "./accountingEngine.js";
 import { dispatchEmail } from "./emailService.js";
 import { getPublicSiteUrl } from "./siteConfig.js";
+import { handlePaymentCheckoutRoute } from "./paymentCheckoutRoute.js";
+import { handleCloudinarySignatureRoute } from "./cloudinarySignatureRoute.js";
 import crypto from "crypto";
 
 const router = Router();
@@ -649,64 +651,126 @@ router.post(["/accept", "/agreements/accept"], async (req, res) => {
 });
 
 /**
- * POST /api/payments/create-order
- * Creates payment order on backend with server-calculated amounts
+ * POST /api/payments/create-order & /api/payments/verify-return
+ * Secure Razorpay payment order generation and return verification
  */
-router.post("/payments/create-order", async (req, res) => {
+router.post(["/payments/create-order", "/create-order"], async (req, res) => {
   try {
     const db = getFirestoreDb();
-    const { userId, agreementId, gateway = "razorpay" } = req.body || {};
+    const body: any = req.body || {};
+    const userId = String(body.userId || "").trim();
+    const agreementId = String(body.agreementId || "").trim();
+    const planId = String(body.planId || body.planSummary?.planId || "").trim();
 
-    if (!userId) {
-      return res.status(400).json({ success: false, error: "Missing required userId parameter." });
-    }
-
-    const resolvedAgrId = agreementId || `agmt_${userId}`;
-    let agrSnap = await db.collection("agreements").doc(resolvedAgrId).get();
-
-    if (!agrSnap.exists && userId) {
-      try {
-        const qSnap = await db.collection("agreements").where("userId", "==", userId).get();
-        if (!qSnap.empty) {
-          agrSnap = qSnap.docs[0];
+    if (userId) {
+      // 1. Check if user already has an active subscription
+      const subSnap = await db.collection("subscriptions").doc(`sub_${userId}`).get();
+      if (subSnap.exists) {
+        const subData: any = subSnap.data() || {};
+        if (String(subData.status || "").toLowerCase() === "active") {
+          return res.json({
+            success: true,
+            alreadyPaid: true,
+            active: true,
+            message: "Subscription is already active.",
+            subscription: subData,
+            planId: subData.planId || planId
+          });
         }
-      } catch (e) {}
+      }
+
+      // 2. Check user profile for active payment/subscription
+      const userSnap = await db.collection("users").doc(userId).get();
+      if (userSnap.exists) {
+        const userData: any = userSnap.data() || {};
+        const isPaid = String(userData.paymentStatus || "").toLowerCase() === "paid" || String(userData.subscriptionStatus || "").toLowerCase() === "active";
+        if (isPaid) {
+          return res.json({
+            success: true,
+            alreadyPaid: true,
+            active: true,
+            message: "Subscription is already active.",
+            subscription: subSnap.exists ? subSnap.data() : null
+          });
+        }
+      }
+
+      // 3. Check agreement paymentStatus
+      if (agreementId) {
+        const agSnap = await db.collection("agreements").doc(agreementId).get();
+        if (agSnap.exists) {
+          const agData: any = agSnap.data() || {};
+          if (String(agData.paymentStatus || "").toLowerCase() === "paid") {
+            return res.json({
+              success: true,
+              alreadyPaid: true,
+              active: true,
+              message: "Subscription is already active for this agreement.",
+              agreement: agData,
+              subscription: subSnap.exists ? subSnap.data() : null
+            });
+          }
+        }
+      }
+
+      // 4. Idempotency query by userId + agreementId + planId on payment_orders
+      if (agreementId) {
+        const existingOrdersSnap = await db.collection("payment_orders")
+          .where("userId", "==", userId)
+          .where("agreementId", "==", agreementId)
+          .limit(5)
+          .get();
+
+        if (!existingOrdersSnap.empty) {
+          for (const docSnap of existingOrdersSnap.docs) {
+            const ord: any = docSnap.data() || {};
+            const ordPlanId = String(ord.planId || ord.planSummary?.planId || "");
+            if (!planId || !ordPlanId || ordPlanId === planId) {
+              if (String(ord.status || "").toLowerCase() === "paid") {
+                return res.json({
+                  success: true,
+                  alreadyPaid: true,
+                  active: true,
+                  message: "Payment already completed for this plan.",
+                  order: ord,
+                  subscription: subSnap.exists ? subSnap.data() : null
+                });
+              }
+              if (["created", "pending"].includes(String(ord.status || "").toLowerCase()) && ord.checkoutUrl) {
+                return res.json({
+                  success: true,
+                  reusedOrder: true,
+                  message: "Existing payment order reused.",
+                  order: ord
+                });
+              }
+            }
+          }
+        }
+      }
     }
 
-    const agr = agrSnap.exists ? agrSnap.data() || {} : {};
-    const planSummary = agr.planSummary || {};
-    const baseAmount = planSummary.baseAmount || agr.baseAmount || 499;
-    const gstPercentage = planSummary.gstPercentage || 18;
-    const gstAmount = planSummary.gstAmount || Number((baseAmount * gstPercentage / 100).toFixed(2));
-    const totalAmount = planSummary.totalAmount || Number((baseAmount + gstAmount).toFixed(2));
-
-    const orderId = `order_aijobs_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
-    const paymentId = `pay_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
-
-    const orderDoc = sanitizeFirestoreData({
-      orderId,
-      paymentId,
-      userId,
-      agreementId: resolvedAgrId,
-      amount: totalAmount,
-      baseAmount,
-      gstAmount,
-      currency: "INR",
-      gateway,
-      status: "created",
-      createdAt: new Date().toISOString()
-    });
-
-    await db.collection("payment_orders").doc(orderId).set(orderDoc);
-
-    return res.json({
-      success: true,
-      message: "Payment order created successfully.",
-      order: orderDoc
-    });
+    const handled = await handlePaymentCheckoutRoute(req, res);
+    if (!handled && !res.headersSent) {
+      res.status(404).json({ success: false, error: "NOT_FOUND" });
+    }
   } catch (err: any) {
-    console.error("Error creating payment order:", err);
-    return res.status(500).json({ success: false, error: err.message || "Failed to create payment order." });
+    console.error("Error in subscriptionRoutes create-order idempotency:", err);
+    return res.status(500).json({ success: false, error: err.message || "Failed to process payment order." });
+  }
+});
+
+router.post(["/payments/verify-return", "/verify-return"], async (req, res) => {
+  const handled = await handlePaymentCheckoutRoute(req, res);
+  if (!handled && !res.headersSent) {
+    res.status(404).json({ success: false, error: "NOT_FOUND" });
+  }
+});
+
+router.post(["/cloudinary/signature", "/api/cloudinary/signature"], async (req, res) => {
+  const handled = await handleCloudinarySignatureRoute(req, res);
+  if (!handled && !res.headersSent) {
+    res.status(404).json({ success: false, error: "NOT_FOUND" });
   }
 });
 

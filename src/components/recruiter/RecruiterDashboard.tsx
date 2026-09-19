@@ -17,7 +17,10 @@ import {
   ChevronDown, 
   Layers,
   IndianRupee,
-  UserCheck
+  UserCheck,
+  CheckCircle2,
+  AlertTriangle,
+  Lock
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { collection, getDocs, doc, getDoc, updateDoc } from "firebase/firestore";
@@ -55,6 +58,10 @@ export default function RecruiterDashboard({
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeChatRecipient, setActiveChatRecipient] = useState<{ id: string; name: string } | null>(null);
+  const [kycStatus, setKycStatus] = useState<string>("pending");
+  const [isApproved, setIsApproved] = useState<boolean>(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string>("active");
+  const [activePlanName, setActivePlanName] = useState<string>("Database Access Plan");
 
   // Recruiter Data Stores
   const [assignedJobs, setAssignedJobs] = useState<RecruiterJob[]>([
@@ -193,6 +200,20 @@ export default function RecruiterDashboard({
       if (loaded.length > 0) {
         setPipelineCandidates(loaded);
       }
+
+      // Fetch user profile and subscription status
+      if (userId) {
+        const userDocSnap = await getDoc(doc(db, "users", userId));
+        if (userDocSnap.exists()) {
+          const u = userDocSnap.data() as any;
+          setKycStatus(u.kycStatus || (u.isApproved ? "approved" : "pending"));
+          setIsApproved(Boolean(u.isApproved));
+          setSubscriptionStatus(u.subscriptionStatus || (u.paymentStatus === "paid" ? "active" : "inactive"));
+          if (u.activePlanName || u.planName) {
+            setActivePlanName(u.activePlanName || u.planName);
+          }
+        }
+      }
     } catch (e) {}
   };
 
@@ -200,10 +221,15 @@ export default function RecruiterDashboard({
     loadData();
   }, [userId]);
 
-  // Handle URL sync
+  // Handle URL sync and cleanly remove callback query parameters
   useEffect(() => {
-    if (typeof window !== "undefined" && window.location.pathname !== "/recruiter/dashboard") {
-      window.history.pushState({}, "", "/recruiter/dashboard");
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("payment") === "return" || window.location.search.includes("razorpay_") || window.location.search.includes("orderId")) {
+        window.history.replaceState({}, document.title, "/recruiter/dashboard");
+      } else if (window.location.pathname !== "/recruiter/dashboard") {
+        window.history.replaceState({}, document.title, "/recruiter/dashboard");
+      }
     }
   }, []);
 
@@ -247,10 +273,24 @@ export default function RecruiterDashboard({
               <Menu className="w-5 h-5" />
             </button>
             <AIJobsLogo size="sm" showTagline={false} />
-            <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-purple-500/15 border border-purple-500/30 text-purple-300">
-              <ShieldCheck className="w-3 h-3 text-purple-400" />
-              <span>VERIFIED RECRUITER</span>
-            </span>
+            {/* Distinction between paid/subscription active and KYC verification pending */}
+            <div className="hidden sm:flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                <span>PAID PLAN ACTIVE</span>
+              </span>
+              {isApproved || kycStatus === "approved" || kycStatus === "verified" ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-purple-500/15 border border-purple-500/30 text-purple-300">
+                  <ShieldCheck className="w-3 h-3 text-purple-400" />
+                  <span>VERIFIED RECRUITER</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/15 border border-amber-500/30 text-amber-300">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  <span>KYC IN REVIEW</span>
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Center: Search Candidates / Mandates */}
@@ -363,6 +403,26 @@ export default function RecruiterDashboard({
           </div>
         </div>
       </header>
+
+      {/* Non-intrusive warning badge for restricted actions until admin approval */}
+      {(!isApproved && kycStatus !== "approved" && kycStatus !== "verified") && (
+        <div id="recruiter-kyc-pending-warning" className="bg-amber-950/40 border-b border-amber-500/30 px-4 sm:px-6 py-2.5 text-xs text-amber-200 backdrop-blur-md">
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono text-[10px] font-bold uppercase">
+                Plan Active: {activePlanName}
+              </span>
+              <span className="text-gray-200">
+                <strong>KYC Verification Pending:</strong> Your database plan is active and search is enabled. Direct candidate messaging, contact reveals, and offer releases remain restricted until our compliance team clears your submitted identity documents.
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 text-[11px] font-mono text-amber-300">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span>Admin Clearance ETA: 2-4 hrs</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Container */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 w-full flex-1 flex gap-6">

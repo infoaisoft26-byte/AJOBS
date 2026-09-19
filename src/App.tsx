@@ -671,8 +671,12 @@ function MainAppContent() {
         }
       case "consultancy":
         {
-          const isVerified = user.isApproved === true && user.status === "active" && user.kycStatus === "verified";
-          if (!isVerified || user.accountStatus === "pending_verification" || user.accountStatus === "suspended_for_review" || user.accountStatus === "resubmission_required") {
+          const hasPaidPlan = 
+            String(user.paymentStatus || "").toLowerCase() === "paid" || 
+            String(user.subscriptionStatus || "").toLowerCase() === "active" ||
+            String(user.accountStatus || "").toLowerCase() === "active_limited";
+          const isVerified = (user.isApproved === true && user.status === "active") || user.kycStatus === "verified" || user.kycStatus === "approved";
+          if (!hasPaidPlan && (!isVerified || user.accountStatus === "pending_verification" || user.accountStatus === "suspended_for_review" || user.accountStatus === "resubmission_required")) {
             return (
               <VerificationOnboardingView 
                 user={user} 
@@ -697,8 +701,12 @@ function MainAppContent() {
         }
       case "employer":
         {
-          const isVerified = user.isApproved === true && user.status === "active" && user.kycStatus === "verified";
-          if (!isVerified || user.accountStatus === "pending_verification" || user.accountStatus === "suspended_for_review" || user.accountStatus === "resubmission_required") {
+          const hasPaidPlan = 
+            String(user.paymentStatus || "").toLowerCase() === "paid" || 
+            String(user.subscriptionStatus || "").toLowerCase() === "active" ||
+            String(user.accountStatus || "").toLowerCase() === "active_limited";
+          const isVerified = (user.isApproved === true && user.status === "active") || user.kycStatus === "verified" || user.kycStatus === "approved";
+          if (!hasPaidPlan && (!isVerified || user.accountStatus === "pending_verification" || user.accountStatus === "suspended_for_review" || user.accountStatus === "resubmission_required")) {
             return (
               <VerificationOnboardingView 
                 user={user} 
@@ -723,8 +731,12 @@ function MainAppContent() {
         }
       case "recruiter":
         {
-          const isVerified = user.isApproved === true && user.status === "active" && user.kycStatus === "verified";
-          if (!isVerified || user.accountStatus === "pending_verification" || user.accountStatus === "suspended_for_review" || user.accountStatus === "resubmission_required") {
+          const hasPaidPlan = 
+            String(user.paymentStatus || "").toLowerCase() === "paid" || 
+            String(user.subscriptionStatus || "").toLowerCase() === "active" ||
+            String(user.accountStatus || "").toLowerCase() === "active_limited";
+          const isVerified = (user.isApproved === true && user.status === "active") || user.kycStatus === "verified" || user.kycStatus === "approved";
+          if (!hasPaidPlan && (!isVerified || user.accountStatus === "pending_verification" || user.accountStatus === "suspended_for_review" || user.accountStatus === "resubmission_required")) {
             return (
               <VerificationOnboardingView 
                 user={user} 

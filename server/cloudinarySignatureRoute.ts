@@ -15,7 +15,7 @@ function cloudinarySignature(params: Record<string, string | number>, secret: st
 
 export async function handleCloudinarySignatureRoute(req: Request, res: Response): Promise<boolean> {
   const path = String(req.url || "").split("?")[0].replace(/\/+$/, "") || "/";
-  if (path !== "/api/cloudinary/signature") return false;
+  if (path !== "/api/cloudinary/signature" && path !== "/cloudinary/signature") return false;
 
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -44,9 +44,27 @@ export async function handleCloudinarySignatureRoute(req: Request, res: Response
       res.status(400).json({ success: false, error: "INVALID_ASSET_TYPE", message: "Unsupported upload asset type." });
       return true;
     }
-    if (assetType === "documents" && !ALLOWED_DOCUMENT_TYPES.has(fileType)) {
-      res.status(400).json({ success: false, error: "INVALID_DOCUMENT_TYPE", message: "Verification documents must be PDF, JPG, PNG or WEBP." });
-      return true;
+    if (assetType === "documents") {
+      if (!ALLOWED_DOCUMENT_TYPES.has(fileType)) {
+        res.status(400).json({ success: false, error: "INVALID_DOCUMENT_TYPE", message: "Verification documents must be PDF, JPG, PNG or WEBP." });
+        return true;
+      }
+      const db = getFirestoreDb();
+      const userDoc = await db.collection("users").doc(decoded.uid).get();
+      const userData: any = userDoc.exists ? userDoc.data() || {} : {};
+      const role = String(userData.role || decoded.role || "").toLowerCase();
+      const isAuthorized = ["recruiter", "independent_recruiter", "consultancy", "agency", "employer", "admin", "super_admin"].includes(role);
+      if (!isAuthorized) {
+        const verifDoc = await db.collection("verification_requests").doc(`verif_${decoded.uid}`).get();
+        if (!verifDoc.exists) {
+          res.status(403).json({
+            success: false,
+            error: "UNAUTHORIZED_DOCUMENT_UPLOADER",
+            message: "KYC document signatures are restricted to authenticated recruiters and business entities."
+          });
+          return true;
+        }
+      }
     }
 
     const cloudName = String(process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME || "").trim();

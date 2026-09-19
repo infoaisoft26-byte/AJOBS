@@ -144,7 +144,9 @@ export default function VerificationOnboardingView({ user, onLogout, onStatusUpd
     setDocState: React.Dispatch<React.SetStateAction<DocUploadState>>
   ) => {
     const allowedTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
-    if (!allowedTypes.includes(file.type)) {
+    const fileExt = file.name.split(".").pop()?.toLowerCase() || "";
+    const isValidExt = ["pdf", "jpg", "jpeg", "png", "webp"].includes(fileExt);
+    if (!allowedTypes.includes(file.type) && !isValidExt) {
       setDocState({
         file: null,
         status: "error",
@@ -166,7 +168,7 @@ export default function VerificationOnboardingView({ user, onLogout, onStatusUpd
 
     try {
       const result = await uploadToCloudinary(file, {
-        userId: user?.uid || "anonymous",
+        userId: user?.uid || auth.currentUser?.uid || "anonymous",
         assetType: "documents"
       });
 
@@ -366,22 +368,47 @@ export default function VerificationOnboardingView({ user, onLogout, onStatusUpd
                 <strong className="text-indigo-300 uppercase">{existingRequest.selectedPlan}</strong>
               </div>
               <div>
-                <span className="text-gray-400 block text-[10px]">PAYMENT STATUS</span>
-                <strong className={existingRequest.paymentStatus === "paid" ? "text-emerald-400" : "text-amber-400"}>
-                  {existingRequest.paymentStatus === "paid" ? "✅ PAID & VERIFIED" : "⏳ PENDING PAYMENT"}
+                <span className="text-gray-400 block text-[10px]">PAYMENT / SUBSCRIPTION</span>
+                <strong className={hasPaidRecruiterAccess ? "text-emerald-400" : "text-amber-400"}>
+                  {hasPaidRecruiterAccess ? "✅ PLAN ACTIVE & PAID" : "⏳ PENDING PAYMENT"}
                 </strong>
               </div>
               <div>
-                <span className="text-gray-400 block text-[10px]">STATUS</span>
-                <strong className="text-amber-400 uppercase">{existingRequest.verificationStatus}</strong>
+                <span className="text-gray-400 block text-[10px]">KYC VERIFICATION</span>
+                <strong className={existingRequest.verificationStatus === "approved" ? "text-emerald-400" : "text-amber-400 uppercase"}>
+                  {existingRequest.verificationStatus === "approved" ? "✅ APPROVED" : "⏳ PENDING ADMIN REVIEW"}
+                </strong>
               </div>
             </div>
+
+            {/* Direct Dashboard Access for Paid Recruiters */}
+            {hasPaidRecruiterAccess && (
+              <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                <div>
+                  <h4 className="font-bold text-white flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>Database Access Plan Active</span>
+                  </h4>
+                  <p className="text-gray-300 text-[11px] mt-0.5">
+                    Your candidate database access plan is active. You can browse candidate profiles right now on the recruiter dashboard while KYC verification is under review.
+                  </p>
+                </div>
+                <button
+                  id="btn-onboarding-goto-dashboard"
+                  type="button"
+                  onClick={() => window.location.assign("/recruiter/dashboard")}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shrink-0 transition-all cursor-pointer shadow-lg shadow-emerald-900/30"
+                >
+                  Enter Recruiter Dashboard
+                </button>
+              </div>
+            )}
 
             {/* Pending Permissions Warning */}
             <div className="p-3.5 bg-black/40 border border-white/5 rounded-xl text-xs text-gray-300 flex items-center space-x-2.5">
               <Lock className="w-4 h-4 text-amber-400 shrink-0" />
               <span>
-                <strong>Restricted Mode:</strong> Job posting, candidate messaging, resume downloads, and offer letter releases remain locked until final Admin clearance.
+                <strong>Restricted Mode:</strong> Job posting, direct candidate messaging, and offer letter releases remain locked until final Admin KYC clearance.
               </span>
             </div>
           </div>
@@ -514,6 +541,7 @@ export default function VerificationOnboardingView({ user, onLogout, onStatusUpd
                   </span>
                   
                   <input
+                    id="doc-upload-gov-id"
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png,.webp"
                     onChange={(e) => {
@@ -522,9 +550,9 @@ export default function VerificationOnboardingView({ user, onLogout, onStatusUpd
                     className="text-xs text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white cursor-pointer"
                   />
 
-                  {docGovId.status === "uploading" && <p className="text-[10px] text-indigo-400 animate-pulse font-mono">Encrypting and uploading file...</p>}
-                  {docGovId.status === "success" && <p className="text-[10px] text-emerald-400 font-mono">✅ Uploaded: {docGovId.file?.name}</p>}
-                  {docGovId.status === "error" && <p className="text-[10px] text-rose-400 font-mono">❌ {docGovId.errorMsg}</p>}
+                  {docGovId.status === "uploading" && <p className="text-[10px] text-indigo-400 animate-pulse font-mono">Uploading...</p>}
+                  {docGovId.status === "success" && <p className="text-[10px] text-emerald-400 font-mono">✅ Success: {docGovId.file?.name}</p>}
+                  {docGovId.status === "error" && <p className="text-[10px] text-rose-400 font-mono">❌ Failed: {docGovId.errorMsg}</p>}
                 </div>
 
                 {/* Recruiter Photo OR Consultancy PAN */}
@@ -532,6 +560,7 @@ export default function VerificationOnboardingView({ user, onLogout, onStatusUpd
                   <div className="p-4 bg-white/5 border border-white/10 rounded-xl space-y-2">
                     <span className="text-xs font-bold text-white block">Consultancy PAN Card *</span>
                     <input
+                      id="doc-upload-pan"
                       type="file"
                       accept=".pdf,.jpg,.jpeg,.png,.webp"
                       onChange={(e) => {
@@ -539,14 +568,15 @@ export default function VerificationOnboardingView({ user, onLogout, onStatusUpd
                       }}
                       className="text-xs text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white cursor-pointer"
                     />
-                    {docPan.status === "uploading" && <p className="text-[10px] text-indigo-400 animate-pulse font-mono">Encrypting and uploading file...</p>}
-                    {docPan.status === "success" && <p className="text-[10px] text-emerald-400 font-mono">✅ Uploaded: {docPan.file?.name}</p>}
-                    {docPan.status === "error" && <p className="text-[10px] text-rose-400 font-mono">❌ {docPan.errorMsg}</p>}
+                    {docPan.status === "uploading" && <p className="text-[10px] text-indigo-400 animate-pulse font-mono">Uploading...</p>}
+                    {docPan.status === "success" && <p className="text-[10px] text-emerald-400 font-mono">✅ Success: {docPan.file?.name}</p>}
+                    {docPan.status === "error" && <p className="text-[10px] text-rose-400 font-mono">❌ Failed: {docPan.errorMsg}</p>}
                   </div>
                 ) : (
                   <div className="p-4 bg-white/5 border border-white/10 rounded-xl space-y-2">
                     <span className="text-xs font-bold text-white block">Recent Profile Photo *</span>
                     <input
+                      id="doc-upload-photo"
                       type="file"
                       accept=".pdf,.jpg,.jpeg,.png,.webp"
                       onChange={(e) => {
@@ -554,9 +584,9 @@ export default function VerificationOnboardingView({ user, onLogout, onStatusUpd
                       }}
                       className="text-xs text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white cursor-pointer"
                     />
-                    {docPhoto.status === "uploading" && <p className="text-[10px] text-indigo-400 animate-pulse font-mono">Encrypting and uploading file...</p>}
-                    {docPhoto.status === "success" && <p className="text-[10px] text-emerald-400 font-mono">✅ Uploaded: {docPhoto.file?.name}</p>}
-                    {docPhoto.status === "error" && <p className="text-[10px] text-rose-400 font-mono">❌ {docPhoto.errorMsg}</p>}
+                    {docPhoto.status === "uploading" && <p className="text-[10px] text-indigo-400 animate-pulse font-mono">Uploading...</p>}
+                    {docPhoto.status === "success" && <p className="text-[10px] text-emerald-400 font-mono">✅ Success: {docPhoto.file?.name}</p>}
+                    {docPhoto.status === "error" && <p className="text-[10px] text-rose-400 font-mono">❌ Failed: {docPhoto.errorMsg}</p>}
                   </div>
                 )}
 
@@ -565,6 +595,7 @@ export default function VerificationOnboardingView({ user, onLogout, onStatusUpd
                   <div className="p-4 bg-white/5 border border-white/10 rounded-xl space-y-2">
                     <span className="text-xs font-bold text-white block">Business Address Proof *</span>
                     <input
+                      id="doc-upload-address"
                       type="file"
                       accept=".pdf,.jpg,.jpeg,.png,.webp"
                       onChange={(e) => {
@@ -572,14 +603,15 @@ export default function VerificationOnboardingView({ user, onLogout, onStatusUpd
                       }}
                       className="text-xs text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white cursor-pointer"
                     />
-                    {docAddress.status === "uploading" && <p className="text-[10px] text-indigo-400 animate-pulse font-mono">Encrypting and uploading file...</p>}
-                    {docAddress.status === "success" && <p className="text-[10px] text-emerald-400 font-mono">✅ Uploaded: {docAddress.file?.name}</p>}
-                    {docAddress.status === "error" && <p className="text-[10px] text-rose-400 font-mono">❌ {docAddress.errorMsg}</p>}
+                    {docAddress.status === "uploading" && <p className="text-[10px] text-indigo-400 animate-pulse font-mono">Uploading...</p>}
+                    {docAddress.status === "success" && <p className="text-[10px] text-emerald-400 font-mono">✅ Success: {docAddress.file?.name}</p>}
+                    {docAddress.status === "error" && <p className="text-[10px] text-rose-400 font-mono">❌ Failed: {docAddress.errorMsg}</p>}
                   </div>
                 ) : (
                   <div className="p-4 bg-white/5 border border-white/10 rounded-xl space-y-2 md:col-span-2">
                     <span className="text-xs font-bold text-white block">Employment Proof (ID Card / Offer Letter / HR Confirmation) *</span>
                     <input
+                      id="doc-upload-proof"
                       type="file"
                       accept=".pdf,.jpg,.jpeg,.png,.webp"
                       onChange={(e) => {
@@ -587,9 +619,9 @@ export default function VerificationOnboardingView({ user, onLogout, onStatusUpd
                       }}
                       className="text-xs text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white cursor-pointer"
                     />
-                    {docProof.status === "uploading" && <p className="text-[10px] text-indigo-400 animate-pulse font-mono">Encrypting and uploading file...</p>}
-                    {docProof.status === "success" && <p className="text-[10px] text-emerald-400 font-mono">✅ Uploaded: {docProof.file?.name}</p>}
-                    {docProof.status === "error" && <p className="text-[10px] text-rose-400 font-mono">❌ {docProof.errorMsg}</p>}
+                    {docProof.status === "uploading" && <p className="text-[10px] text-indigo-400 animate-pulse font-mono">Uploading...</p>}
+                    {docProof.status === "success" && <p className="text-[10px] text-emerald-400 font-mono">✅ Success: {docProof.file?.name}</p>}
+                    {docProof.status === "error" && <p className="text-[10px] text-rose-400 font-mono">❌ Failed: {docProof.errorMsg}</p>}
                   </div>
                 )}
 
@@ -598,6 +630,7 @@ export default function VerificationOnboardingView({ user, onLogout, onStatusUpd
                   <div className="p-4 bg-white/5 border border-white/10 rounded-xl space-y-2 md:col-span-2">
                     <span className="text-xs font-bold text-white block">Business Proof (GST / MSME / Incorporation Certificate) *</span>
                     <input
+                      id="doc-upload-business-proof"
                       type="file"
                       accept=".pdf,.jpg,.jpeg,.png,.webp"
                       onChange={(e) => {
@@ -605,9 +638,9 @@ export default function VerificationOnboardingView({ user, onLogout, onStatusUpd
                       }}
                       className="text-xs text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white cursor-pointer"
                     />
-                    {docBusinessProof.status === "uploading" && <p className="text-[10px] text-indigo-400 animate-pulse font-mono">Encrypting and uploading file...</p>}
-                    {docBusinessProof.status === "success" && <p className="text-[10px] text-emerald-400 font-mono">✅ Uploaded: {docBusinessProof.file?.name}</p>}
-                    {docBusinessProof.status === "error" && <p className="text-[10px] text-rose-400 font-mono">❌ {docBusinessProof.errorMsg}</p>}
+                    {docBusinessProof.status === "uploading" && <p className="text-[10px] text-indigo-400 animate-pulse font-mono">Uploading...</p>}
+                    {docBusinessProof.status === "success" && <p className="text-[10px] text-emerald-400 font-mono">✅ Success: {docBusinessProof.file?.name}</p>}
+                    {docBusinessProof.status === "error" && <p className="text-[10px] text-rose-400 font-mono">❌ Failed: {docBusinessProof.errorMsg}</p>}
                   </div>
                 )}
 

@@ -10,7 +10,12 @@ const money = (value: unknown, fallback: number) => {
 
 export async function handlePaymentCheckoutRoute(req: Request, res: Response): Promise<boolean> {
   const path = String(req.url || "").split("?")[0].replace(/\/+$/, "") || "/";
-  if (path !== "/api/payments/create-order" && path !== "/api/payments/verify-return") return false;
+  if (
+    path !== "/api/payments/create-order" &&
+    path !== "/api/payments/verify-return" &&
+    path !== "/payments/create-order" &&
+    path !== "/payments/verify-return"
+  ) return false;
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     res.status(405).json({ success: false, error: "Method not allowed." });
@@ -26,7 +31,7 @@ export async function handlePaymentCheckoutRoute(req: Request, res: Response): P
     }
     const decoded: any = await getFirebaseAuth().verifyIdToken(authHeader.slice(7).trim());
 
-    if (path === "/api/payments/verify-return") {
+    if (path === "/api/payments/verify-return" || path === "/payments/verify-return") {
       const orderId = String(body.orderId || "").trim();
       const razorpayPaymentId = String(body.razorpay_payment_id || body.razorpayPaymentId || "").trim();
       const razorpayPaymentLinkId = String(body.razorpay_payment_link_id || body.razorpayPaymentLinkId || "").trim();

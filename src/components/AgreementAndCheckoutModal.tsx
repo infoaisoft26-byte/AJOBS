@@ -365,8 +365,39 @@ export default function AgreementAndCheckoutModal({
           </span>
         </div>
 
-        {/* STEP 1: PLAN & BUYER DETAILS */}
-        {step === "plan" && (
+        {/* ALREADY PAID SHIELD */}
+        {(String(user?.paymentStatus || "").toLowerCase() === "paid" || String(user?.subscriptionStatus || "").toLowerCase() === "active") ? (
+          <div className="p-6 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-center space-y-4">
+            <div className="w-12 h-12 bg-emerald-500/20 border border-emerald-500/30 rounded-full flex items-center justify-center mx-auto text-emerald-400">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white">Plan already paid and activated</h3>
+              <p className="text-xs text-emerald-300 font-mono mt-1">
+                Your AIJOBS candidate database access subscription is active.
+              </p>
+            </div>
+            <p className="text-xs text-gray-300">
+              You do not need to make another payment. You already have active candidate database access privileges under your subscription.
+            </p>
+            <div className="pt-2">
+              <button
+                id="btn-already-paid-dashboard"
+                onClick={() => {
+                  onClose();
+                  onSuccess();
+                  window.location.assign("/recruiter/dashboard");
+                }}
+                className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg transition-all cursor-pointer"
+              >
+                Go to Recruiter Dashboard
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* STEP 1: PLAN & BUYER DETAILS */}
+            {step === "plan" && (
           <div className="space-y-5">
             <h3 className="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider flex items-center space-x-2">
               <Building2 className="w-4 h-4" />
@@ -816,6 +847,8 @@ export default function AgreementAndCheckoutModal({
               Done & Return to Dashboard
             </button>
           </div>
+        )}
+        </>
         )}
 
       </div>

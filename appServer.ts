@@ -45,6 +45,9 @@ import candidateAuthRoutes from "./server/candidateAuthRoutes.js";
 import { processPaymentAccounting } from "./server/accountingEngine.js";
 import { handleAiAssistantChat, handleAiAssistantHealth } from "./server/aiAssistantService.js";
 import { extractResumeText, parseResumeWithAI, syncParsedResumeToFirestore, extractFallbackResumeData } from "./server/resumeParserService.js";
+import { handlePaymentCheckoutRoute } from "./server/paymentCheckoutRoute.js";
+import { handleCloudinarySignatureRoute } from "./server/cloudinarySignatureRoute.js";
+import { handleAgreementOtpRoute } from "./server/agreementOtpRoute.js";
 
 dotenv.config();
 
@@ -155,6 +158,23 @@ app.use("/api/application", applicationRoutes);
 app.use("/api/candidates", applicationRoutes);
 app.use("/api/candidate", applicationRoutes);
 app.use("/api/consultancy", applicationRoutes);
+app.use(async (req: any, res: any, next: any) => {
+  const path = String(req.url || "").split("?")[0].replace(/\/+$/, "") || "/";
+  if (path === "/api/payments/create-order" || path === "/api/payments/verify-return") {
+    const handled = await handlePaymentCheckoutRoute(req, res);
+    if (handled || res.headersSent) return;
+  }
+  if (path === "/api/cloudinary/signature") {
+    const handled = await handleCloudinarySignatureRoute(req, res);
+    if (handled || res.headersSent) return;
+  }
+  if (path === "/api/agreements/send-otp") {
+    const handled = await handleAgreementOtpRoute(req, res);
+    if (handled || res.headersSent) return;
+  }
+  next();
+});
+
 app.use("/api/plans", subscriptionRoutes);
 app.use("/api/plan", subscriptionRoutes);
 app.use("/api/agreements", subscriptionRoutes);

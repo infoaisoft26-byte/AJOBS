@@ -128,8 +128,9 @@ async function attemptSingleUpload(
     }
   }
 
-  if (options?.assetType === "documents" && !signedParams) {
-    throw new Error("Secure document upload is temporarily unavailable. Please try again.");
+  const isSensitiveFile = options?.assetType === "documents" || options?.assetType === "kyc";
+  if (isSensitiveFile && !signedParams?.signature) {
+    throw new Error("Signed Cloudinary authorization is required for sensitive verification documents. Unsigned fallback is disabled.");
   }
 
   return new Promise((resolve, reject) => {
@@ -151,6 +152,9 @@ async function attemptSingleUpload(
       formData.append("folder", signedParams.folder);
       formData.append("signature", signedParams.signature);
     } else {
+      if (isSensitiveFile) {
+        return reject(new Error("Unsigned fallback is prohibited for sensitive KYC and verification documents."));
+      }
       formData.append("upload_preset", uploadPreset);
       if (options?.folder) {
         formData.append("folder", options.folder);
