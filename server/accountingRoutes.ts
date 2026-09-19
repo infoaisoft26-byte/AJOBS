@@ -10,6 +10,7 @@ import {
   getFinancialYearStr,
   isPeriodClosed
 } from "./accountingEngine.js";
+import { syncPaidPaymentOrdersToAccounting } from "./paymentFinanceSync.js";
 
 const router = Router();
 
@@ -35,8 +36,9 @@ router.get("/dashboard", async (req, res) => {
   try {
     const db = getFirestoreDb();
     
-    // Make sure COA is seeded
+    // Make sure COA is seeded and sync real verified Razorpay orders into accounting.
     await initializeChartOfAccounts();
+    const paymentOrderSync = await syncPaidPaymentOrdersToAccounting();
 
     // Fetch all journal lines to build account balances
     const linesSnap = await db.collection("journal_lines").get();
@@ -132,7 +134,10 @@ router.get("/dashboard", async (req, res) => {
         netProfit,
         totalPaymentsCount,
         successfulPaymentsCount,
-        pendingReconciliationCount
+        pendingReconciliationCount,
+        paymentOrdersSynced: paymentOrderSync.ordersSynced,
+        invoicesBackfilled: paymentOrderSync.invoicesCreated,
+        invoiceEmailsQueued: paymentOrderSync.emailsQueued
       },
       chartOfAccounts: CHART_OF_ACCOUNTS.map(acc => ({
         ...acc,
@@ -731,6 +736,7 @@ router.get("/credit-notes", async (req, res) => {
 router.post("/reconcile", async (req, res) => {
   try {
     const db = getFirestoreDb();
+    const paymentOrderSync = await syncPaidPaymentOrdersToAccounting();
     const paymentsSnap = await db.collection("payments").get();
 
     let syncedCount = 0;
@@ -783,7 +789,10 @@ router.post("/reconcile", async (req, res) => {
         totalInspected: paymentsSnap.size,
         journalsCreated: createdJournalCount,
         statusSynced: syncedCount,
-        errorsEncountered: errorsCount
+        errorsEncountered: errorsCount,
+        paymentOrdersSynced: paymentOrderSync.ordersSynced,
+        invoicesBackfilled: paymentOrderSync.invoicesCreated,
+        invoiceEmailsQueued: paymentOrderSync.emailsQueued
       }
     });
   } catch (err: any) {
