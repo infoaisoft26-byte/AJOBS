@@ -64,7 +64,7 @@ export default async function handler(req: any, res: any) {
     const handled = await handleAdminPaymentAccessRoute(req, res);
     if (handled || res.headersSent) return;
   }
-  if (path === "/api/admin/onboarding-list" || path === "/api/admin/approve-account") {
+  if (path === "/api/admin/onboarding-list" || path === "/api/admin/approve-account" || path === "/api/admin/manual-partner-override") {
     const handled = await handleAdminOnboardingApprovalRoute(req, res);
     if (handled || res.headersSent) return;
   }
