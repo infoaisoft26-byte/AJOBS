@@ -60,30 +60,44 @@ export function trackPageView(pagePath: string, pageTitle?: string) {
 
 // Generic safe event sender
 export function sendGAEvent(eventName: string, params: Record<string, any> = {}) {
-  if (typeof window !== "undefined" && typeof window.gtag === "function") {
-    try {
-      // Sanitize: ensure no accidental PII keys
-      const sanitized: Record<string, any> = {};
-      for (const [key, val] of Object.entries(params)) {
-        const lowerKey = key.toLowerCase();
-        if (
-          lowerKey.includes("password") ||
-          lowerKey.includes("otp") ||
-          lowerKey.includes("phone") ||
-          lowerKey.includes("email") ||
-          lowerKey.includes("resume_text") ||
-          lowerKey.includes("token")
-        ) {
-          continue; // Skip PII
-        }
+  if (typeof window === "undefined") return;
+
+  try {
+    // Always ensure a gtag queue exists before dispatch. This makes conversion events
+    // survive slow/async Google tag loading instead of being silently skipped.
+    if (typeof window.gtag !== "function") {
+      initGA();
+    }
+
+    // Sanitize: ensure no accidental PII keys
+    const sanitized: Record<string, any> = {};
+    for (const [key, val] of Object.entries(params)) {
+      const lowerKey = key.toLowerCase();
+      if (
+        lowerKey.includes("password") ||
+        lowerKey.includes("otp") ||
+        lowerKey.includes("phone") ||
+        lowerKey.includes("email") ||
+        lowerKey.includes("resume_text") ||
+        lowerKey.includes("token")
+      ) {
+        continue; // Skip PII
+      }
+      if (val !== undefined && val !== null && val !== "") {
         sanitized[key] = val;
       }
-
-      window.gtag("event", eventName, sanitized);
-      console.debug(`[Analytics] Tracked event: ${eventName}`, sanitized);
-    } catch (e) {
-      console.debug("[Analytics] Event tracking notice:", e);
     }
+
+    // Explicitly route to the production AIJOBS GA4 stream. This is important when
+    // multiple Analytics properties are linked to the same Google Ads account.
+    window.gtag?.("event", eventName, {
+      ...sanitized,
+      send_to: GA_MEASUREMENT_ID,
+      transport_type: "beacon"
+    });
+    console.debug(`[Analytics] Tracked event: ${eventName}`, sanitized);
+  } catch (e) {
+    console.debug("[Analytics] Event tracking notice:", e);
   }
 }
 
@@ -148,7 +162,7 @@ export function trackCandidateRegistrationComplete(params: {
   utm_campaign?: string;
   intendedJobId?: string;
 }) {
-  sendGAEvent("candidate_registration_complete", {
+  const conversionParams = {
     method: params.method || "email",
     gclid: params.gclid || undefined,
     utm_source: params.utm_source || undefined,
@@ -156,7 +170,17 @@ export function trackCandidateRegistrationComplete(params: {
     utm_campaign: params.utm_campaign || undefined,
     intended_job_id: params.intendedJobId || undefined,
     user_role: "candidate"
-  });
+  };
+
+  // Recommended GA4 registration event. This is the easiest event to import as a
+  // Google Ads Sign-up conversion.
+  sendGAEvent("sign_up", conversionParams);
+
+  // AIJOBS-specific event retained for campaign diagnostics and custom reporting.
+  sendGAEvent("candidate_registration_complete", conversionParams);
+
+  // Compatibility with the earlier plural event name already used elsewhere.
+  sendGAEvent("candidate_registration_completed", conversionParams);
 }
 
 // Legacy helper compatibility
