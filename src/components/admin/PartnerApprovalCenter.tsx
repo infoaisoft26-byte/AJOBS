@@ -119,6 +119,25 @@ export default function PartnerApprovalCenter({ adminUserId, adminUserName }: { 
     return !["verified", "approved", "active"].some(v => kyc === v) || !["paid", "success"].some(v => payment === v) || !["active"].includes(subscription);
   };
 
+  const getBlocker = (row: PartnerRecord) => {
+    const docs = row.verification?.submittedDocuments || row.verification?.documents || [];
+    const kyc = String(row.verification?.kycStatus || row.verification?.verificationStatus || row.user.kycStatus || "").toLowerCase();
+    const payment = String(row.paymentOrder?.status || row.user.paymentStatus || "").toLowerCase();
+    const subscription = String(row.subscription?.status || row.user.subscriptionStatus || "").toLowerCase();
+    const agreement = String(row.agreement?.status || row.user.agreementStatus || "").toLowerCase();
+
+    if (!row.verification) return "KYC not submitted";
+    if (!Array.isArray(docs) || docs.length === 0) return "Verification documents missing";
+    if (["rejected", "resubmit_required", "resubmission_required"].includes(kyc)) return "KYC resubmission required";
+    if (!["verified", "approved", "active"].includes(kyc)) return "KYC awaiting Admin approval";
+    if (!["accepted", "payment_completed"].includes(agreement)) return "Agreement / eSign incomplete";
+    if (!["paid", "success"].includes(payment)) return row.paymentOrder ? "Payment pending / failed" : "Payment not started";
+    if (row.paymentOrder && !row.invoice) return "Invoice generation pending";
+    if (!["active"].includes(subscription)) return "Subscription activation pending";
+    if (!row.latestMail) return "Activation email not queued";
+    return "Fully active";
+  };
+
   const attentionCount = partnerRows.filter(needsAttention).length;
 
   useEffect(() => {
@@ -278,6 +297,7 @@ export default function PartnerApprovalCenter({ adminUserId, adminUserName }: { 
                 <th className="px-4 py-3">Payment</th>
                 <th className="px-4 py-3">Subscription</th>
                 <th className="px-4 py-3">Invoice / Mail</th>
+                <th className="px-4 py-3">Current Blocker</th>
                 <th className="px-4 py-3">Last Activity</th>
                 <th className="px-4 py-3 text-right">Action</th>
               </tr>
@@ -307,12 +327,17 @@ export default function PartnerApprovalCenter({ adminUserId, adminUserName }: { 
                       <Pill label="Invoice" value={row.invoice ? "generated" : "pending"} />
                       <Pill label="Mail" value={row.latestMail?.status || row.latestMail?.deliveryStatus || (row.latestMail ? "queued" : "not sent")} />
                     </td>
+                    <td className="px-4 py-4">
+                      <span className={`inline-flex px-2.5 py-1 rounded-full border text-[10px] font-bold ${getBlocker(row) === "Fully active" ? "bg-emerald-500/15 border-emerald-500/25 text-emerald-300" : "bg-amber-500/15 border-amber-500/25 text-amber-300"}`}>
+                        {getBlocker(row)}
+                      </span>
+                    </td>
                     <td className="px-4 py-4 text-slate-400">{lastActivity ? fmt(lastActivity) : "—"}</td>
                     <td className="px-4 py-4 text-right"><button onClick={() => setSelected(row)} className="px-3 py-2 rounded-lg bg-indigo-600/20 hover:bg-indigo-600 border border-indigo-500/30 text-indigo-200 hover:text-white font-semibold">Inspect & Approve</button></td>
                   </tr>
                 );
               })}
-              {filtered.length === 0 && <tr><td colSpan={8} className="px-4 py-12 text-center text-slate-500">No partner records match the current filter.</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={9} className="px-4 py-12 text-center text-slate-500">No partner records match the current filter.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -327,6 +352,17 @@ export default function PartnerApprovalCenter({ adminUserId, adminUserName }: { 
                 <p className="text-xs text-slate-400 mt-1">{selected.user.email} • {normalizeRole(selected.user.role)} • {selected.user.uid || selected.user.id}</p>
               </div>
               <button onClick={() => setSelected(null)} className="p-2 rounded-lg bg-white/5 text-slate-400 hover:text-white"><XCircle className="w-5 h-5" /></button>
+            </div>
+
+            <div className="px-5 pt-5">
+              <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] p-4 flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-300 shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-amber-300 font-bold">Current Stage / Problem</div>
+                  <div className="text-white font-semibold mt-1">{getBlocker(selected)}</div>
+                  <div className="text-xs text-slate-400 mt-1">Last profile update: {fmt(selected.user.updatedAt || selected.user.createdAt)}</div>
+                </div>
+              </div>
             </div>
 
             <div className="p-5 grid md:grid-cols-2 gap-4">
@@ -360,6 +396,27 @@ export default function PartnerApprovalCenter({ adminUserId, adminUserName }: { 
                 ["Mail Date", fmt(selected.latestMail?.createdAt || selected.latestMail?.updatedAt)]
               ]} />
             </div>
+
+            {Array.isArray(selected.verification?.submittedDocuments || selected.verification?.documents) && (selected.verification?.submittedDocuments || selected.verification?.documents).length > 0 && (
+              <div className="px-5 pb-5">
+                <div className="rounded-xl border border-white/10 bg-white/[0.025] p-4">
+                  <div className="flex items-center gap-2 mb-3"><FileCheck2 className="w-4 h-4 text-cyan-400" /><h4 className="text-sm font-bold text-white">Submitted Documents</h4></div>
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    {(selected.verification?.submittedDocuments || selected.verification?.documents).map((doc: any, idx: number) => (
+                      <div key={doc.publicId || doc.id || idx} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/20 p-3">
+                        <div className="min-w-0">
+                          <div className="text-xs font-semibold text-white truncate">{doc.docType || doc.documentType || doc.fileName || `Document ${idx + 1}`}</div>
+                          <div className="text-[10px] text-slate-500 truncate">{doc.fileName || doc.publicId || "Secure upload"}</div>
+                        </div>
+                        {doc.secureUrl && (
+                          <a href={doc.secureUrl} target="_blank" rel="noreferrer" className="text-[10px] text-cyan-300 border border-cyan-500/30 rounded px-2 py-1 hover:bg-cyan-500/10">View</a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="p-5 border-t border-white/10 flex flex-wrap gap-2 justify-end">
               <button disabled={working} onClick={() => approveKyc(selected)} className="px-4 py-2 rounded-lg bg-cyan-600/20 border border-cyan-500/30 text-cyan-200 font-semibold disabled:opacity-50">Approve KYC</button>
