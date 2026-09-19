@@ -6,13 +6,20 @@
 export const PRODUCTION_DOMAIN = "https://aijobs1.in";
 
 export const INFO_EMAIL = (process.env.INFO_EMAIL || "info@aijobs1.in").trim().toLowerCase();
+export const HELP_EMAIL = (process.env.HELP_EMAIL || "help@aijobs1.in").trim().toLowerCase();
+export const SUPPORT_EMAIL = (process.env.SUPPORT_EMAIL || "support@aijobs1.in").trim().toLowerCase();
+export const CAREER_EMAIL = (process.env.CAREER_EMAIL || "career@aijobs1.in").trim().toLowerCase();
 export const SALES_EMAIL = (process.env.SALES_EMAIL || "salesindia@aijobs1.in").trim().toLowerCase();
 export const COMPLIANCE_EMAIL = (process.env.COMPLIANCE_EMAIL || "compliant@aijobs1.in").trim().toLowerCase();
 
 export const ROLE_EMAILS = Object.freeze({
   info: INFO_EMAIL,
-  support: INFO_EMAIL,
-  candidate: INFO_EMAIL,
+  help: HELP_EMAIL,
+  helpdesk: HELP_EMAIL,
+  support: SUPPORT_EMAIL,
+  candidate: CAREER_EMAIL,
+  career: CAREER_EMAIL,
+  jobseeker: CAREER_EMAIL,
   employer: SALES_EMAIL,
   recruiter: SALES_EMAIL,
   consultancy: SALES_EMAIL,
@@ -27,6 +34,18 @@ export const ROLE_EMAILS = Object.freeze({
 
 export function getRoleContactEmail(role?: string | null): string {
   const normalized = String(role || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+
+  if (["help", "helpdesk", "faq", "general_help", "general_query"].includes(normalized)) {
+    return HELP_EMAIL;
+  }
+
+  if (["support", "ticket", "technical_support", "account_support", "kyc_support", "payment_support", "billing_support"].includes(normalized)) {
+    return SUPPORT_EMAIL;
+  }
+
+  if (["candidate", "career", "jobseeker", "job_seeker", "job_alert", "career_guidance", "resume", "application"].includes(normalized)) {
+    return CAREER_EMAIL;
+  }
 
   if (["employer", "recruiter", "consultancy", "agency", "corporate", "sales", "partner", "partnership", "billing", "subscription", "hiring"].includes(normalized)) {
     return SALES_EMAIL;

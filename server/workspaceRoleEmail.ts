@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
-import { COMPLIANCE_EMAIL, INFO_EMAIL, SALES_EMAIL } from "./siteConfig.js";
+import { CAREER_EMAIL, COMPLIANCE_EMAIL, HELP_EMAIL, INFO_EMAIL, SALES_EMAIL, SUPPORT_EMAIL } from "./siteConfig.js";
 
-export type WorkspaceSenderRole = "info" | "sales" | "compliance";
+export type WorkspaceSenderRole = "info" | "help" | "support" | "career" | "sales" | "compliance";
 
 type RoleSmtpConfig = {
   role: WorkspaceSenderRole;
@@ -18,6 +18,36 @@ const SMTP_SECURE = process.env.SMTP_SECURE !== "false";
 function roleConfig(role: WorkspaceSenderRole): RoleSmtpConfig {
   const sharedUser = process.env.SMTP_USER || process.env.EMAIL_FROM_ADDRESS || INFO_EMAIL;
   const sharedPass = process.env.SMTP_APP_PASSWORD || process.env.SMTP_PASS;
+
+  if (role === "help") {
+    return {
+      role,
+      address: HELP_EMAIL,
+      user: process.env.SMTP_HELP_USER || sharedUser,
+      pass: process.env.SMTP_HELP_APP_PASSWORD || sharedPass,
+      fromName: process.env.EMAIL_HELP_FROM_NAME || "AIJOBS Help",
+    };
+  }
+
+  if (role === "support") {
+    return {
+      role,
+      address: SUPPORT_EMAIL,
+      user: process.env.SMTP_SUPPORT_USER || sharedUser,
+      pass: process.env.SMTP_SUPPORT_APP_PASSWORD || sharedPass,
+      fromName: process.env.EMAIL_SUPPORT_FROM_NAME || "AIJOBS Support",
+    };
+  }
+
+  if (role === "career") {
+    return {
+      role,
+      address: CAREER_EMAIL,
+      user: process.env.SMTP_CAREER_USER || sharedUser,
+      pass: process.env.SMTP_CAREER_APP_PASSWORD || sharedPass,
+      fromName: process.env.EMAIL_CAREER_FROM_NAME || "AIJOBS Career",
+    };
+  }
 
   if (role === "sales") {
     return {
