@@ -269,10 +269,10 @@ export default function RecruiterOverview({
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold flex items-center justify-center text-xs shadow-md">
-                    {cand.name.charAt(0)}
+                    {(cand.name || "Candidate").charAt(0)}
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-white">{cand.name}</h4>
+                    <h4 className="text-xs font-bold text-white">{cand.name || "Candidate"}</h4>
                     <span className="text-[10px] text-blue-300">{cand.role}</span>
                     <div className="text-[10px] text-slate-400">{cand.experience} • {cand.location}</div>
                   </div>
@@ -283,7 +283,7 @@ export default function RecruiterOverview({
                     {cand.aiScore}% Match
                   </span>
                   <button
-                    onClick={() => onOpenLiveChat && onOpenLiveChat(cand.id, cand.name)}
+                    onClick={() => onOpenLiveChat && onOpenLiveChat(cand.id, cand.name || "Candidate")}
                     className="p-2 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 transition-all cursor-pointer"
                     title="Send Outreach"
                   >
