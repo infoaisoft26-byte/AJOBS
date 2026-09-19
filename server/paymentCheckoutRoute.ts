@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import crypto from "crypto";
 import { getFirebaseAuth, getFirestoreDb } from "./firestoreHelper.js";
-import { getPublicSiteUrl } from "./siteConfig.js";
+import { getPublicSiteUrl, INVOICE_EMAIL } from "./siteConfig.js";
 import { processPaymentAccounting } from "./accountingEngine.js";
 
 const money = (value: unknown, fallback: number) => {
@@ -133,6 +133,7 @@ async function ensurePaymentFinancialArtifacts(params: {
       const invoiceNumber = invoice.invoiceNumber || invoice.id || "AIJOBS Invoice";
       await mailRef.set({
         to: [userEmail],
+        replyTo: INVOICE_EMAIL,
         message: {
           subject: `AIJOBS Payment Receipt & Invoice ${invoiceNumber}`,
           html: `
@@ -166,6 +167,7 @@ async function ensurePaymentFinancialArtifacts(params: {
       const invoiceRef = db.collection("invoices").doc(invoice.invoiceId || invoice.id);
       await invoiceRef.set({
         emailRecipient: userEmail,
+        replyTo: INVOICE_EMAIL,
         emailStatus: "queued",
         emailQueuedAt: paidAt
       }, { merge: true });
