@@ -698,9 +698,11 @@ export default function CandidateOnboardingWizard({
     }
 
     setLoading(true);
+    let createdAuthUser: any = null;
     try {
       // 1. Create auth user
       const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      createdAuthUser = cred.user;
       await updateProfile(cred.user, { displayName: fullName.trim() });
       setCreatedUid(cred.user.uid);
 
@@ -728,15 +730,35 @@ export default function CandidateOnboardingWizard({
       showToast("Account created! Let's complete your profile details.", "success");
       setStep(3); // Move forward to Location
     } catch (err: any) {
-      console.error("[Candidate Registration Error]:", err);
+      const code = String(err?.code || "");
+      const details = String(err?.message || "");
+      console.error("[Candidate Registration Error]:", { code, details, createdUid: createdAuthUser?.uid || null });
+
       let msg = "Failed to create account. Please try again.";
-      if (err.code === "auth/email-already-in-use") {
+      if (code === "auth/email-already-in-use") {
         msg = "This email address is already registered. Please log in instead or use another email.";
-      } else if (err.code === "auth/invalid-email") {
+      } else if (code === "auth/invalid-email") {
         msg = "Please enter a valid email address.";
-      } else if (err.code === "auth/weak-password") {
+      } else if (code === "auth/weak-password") {
         msg = "Password is too weak. Please use at least 6 characters.";
+      } else if (code === "auth/operation-not-allowed") {
+        msg = "Email/password registration is not enabled in Firebase Authentication.";
+      } else if (code === "auth/network-request-failed") {
+        msg = "Network request failed while creating your account. Please check your connection and try again.";
+      } else if (code === "auth/unauthorized-domain") {
+        msg = "This website domain is not authorized in Firebase Authentication.";
+      } else if (code === "auth/too-many-requests") {
+        msg = "Too many registration attempts. Please wait a few minutes and try again.";
+      } else if (code === "permission-denied" || code === "firestore/permission-denied") {
+        msg = createdAuthUser
+          ? "Your login account was created, but the candidate profile could not be saved because of a database permission error. Please log in and retry profile setup."
+          : "Candidate profile database permission was denied.";
+      } else if (createdAuthUser) {
+        msg = `Your login account was created, but profile setup failed (${code || "profile-save-error"}). Please log in and continue profile setup.`;
+      } else if (code) {
+        msg = `Registration failed (${code}). Please try again.`;
       }
+
       setErrorMsg(msg);
       showToast(msg, "error");
     } finally {
@@ -764,8 +786,18 @@ export default function CandidateOnboardingWizard({
       showToast(`Signed up with Google as ${displayName}!`, "success");
       setStep(3); // Move to Location
     } catch (err: any) {
-      console.error("[Google Sign-up Error]:", err);
-      setErrorMsg("Google Sign-up was cancelled or failed. Please try email registration.");
+      const code = String(err?.code || "");
+      console.error("[Google Sign-up Error]:", { code, message: err?.message || "" });
+      let msg = "Google Sign-up was cancelled or failed. Please try email registration.";
+      if (code === "auth/unauthorized-domain") msg = "Google Sign-up is blocked because this domain is not authorized in Firebase.";
+      else if (code === "auth/popup-blocked") msg = "Google Sign-up popup was blocked by the browser. Please allow popups and try again.";
+      else if (code === "auth/popup-closed-by-user") msg = "Google Sign-up window was closed before completion.";
+      else if (code === "auth/account-exists-with-different-credential") msg = "An account already exists with this email using another sign-in method.";
+      else if (code === "auth/operation-not-allowed") msg = "Google Sign-In is not enabled for this Firebase project.";
+      else if (code === "auth/network-request-failed") msg = "Google Sign-up could not reach Firebase. Please check the auth domain/network configuration.";
+      else if (code) msg = `Google Sign-up failed (${code}).`;
+      setErrorMsg(msg);
+      showToast(msg, "error");
     } finally {
       setLoading(false);
     }
