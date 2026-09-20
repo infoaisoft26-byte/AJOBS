@@ -622,20 +622,27 @@ export default function CandidateOnboardingWizard({
       updatedAt: nowIso
     };
 
+    // Firestore rejects undefined field values with code "invalid-argument".
+    // Google Sign-Up can legitimately arrive before phone/resume are filled, so
+    // normalize optional fields before persisting the initial candidate profile.
+    const userDocData = {
+      ...userProfile,
+      phone: phone.trim() || null,
+      resumeURL: resumeUrl || null,
+      candidateId,
+      intendedJobId: intendedJobId || null,
+      gclid: attribution.gclid || null,
+      utm_source: attribution.utm_source || null,
+      utm_campaign: attribution.utm_campaign || null,
+      acquisitionSource: attribution.gclid ? "google_ads" : "organic",
+      profileCompletion: finalScore,
+      createdAt: nowIso,
+      updatedAt: nowIso
+    };
+
     // Save across all 3 Firestore collections in parallel
     await Promise.all([
-      setDoc(doc(db, "users", uid), {
-        ...userProfile,
-        candidateId,
-        intendedJobId: intendedJobId || null,
-        gclid: attribution.gclid || null,
-        utm_source: attribution.utm_source || null,
-        utm_campaign: attribution.utm_campaign || null,
-        acquisitionSource: attribution.gclid ? "google_ads" : "organic",
-        profileCompletion: finalScore,
-        createdAt: nowIso,
-        updatedAt: nowIso
-      }, { merge: true }),
+      setDoc(doc(db, "users", uid), userDocData, { merge: true }),
       setDoc(doc(db, "candidates", uid), detailedProfileData, { merge: true }),
       setDoc(doc(db, "candidateProfiles", uid), detailedProfileData, { merge: true })
     ]);
@@ -770,8 +777,10 @@ export default function CandidateOnboardingWizard({
   const handleGoogleSignUp = async () => {
     setErrorMsg("");
     setLoading(true);
+    let googleAuthUser: any = null;
     try {
       const res = await signInWithPopup(auth, googleProvider);
+      googleAuthUser = res.user;
       const displayName = res.user.displayName || fullName.trim() || res.user.email?.split("@")[0] || "Candidate";
       const userEmail = res.user.email || "";
       
@@ -787,7 +796,8 @@ export default function CandidateOnboardingWizard({
       setStep(3); // Move to Location
     } catch (err: any) {
       const code = String(err?.code || "");
-      console.error("[Google Sign-up Error]:", { code, message: err?.message || "" });
+      const message = String(err?.message || "");
+      console.error("[Google Sign-up Error]:", { code, message, authenticatedUid: googleAuthUser?.uid || null });
       let msg = "Google Sign-up was cancelled or failed. Please try email registration.";
       if (code === "auth/unauthorized-domain") msg = "Google Sign-up is blocked because this domain is not authorized in Firebase.";
       else if (code === "auth/popup-blocked") msg = "Google Sign-up popup was blocked by the browser. Please allow popups and try again.";
@@ -795,7 +805,11 @@ export default function CandidateOnboardingWizard({
       else if (code === "auth/account-exists-with-different-credential") msg = "An account already exists with this email using another sign-in method.";
       else if (code === "auth/operation-not-allowed") msg = "Google Sign-In is not enabled for this Firebase project.";
       else if (code === "auth/network-request-failed") msg = "Google Sign-up could not reach Firebase. Please check the auth domain/network configuration.";
-      else if (code) msg = `Google Sign-up failed (${code}).`;
+      else if (googleAuthUser && (code === "invalid-argument" || code === "firestore/invalid-argument")) {
+        msg = "Google sign-in succeeded, but candidate profile setup hit a database validation error. Please try again.";
+      } else if (googleAuthUser) {
+        msg = `Google sign-in succeeded, but candidate profile setup failed (${code || "profile-save-error"}). Please try again.`;
+      } else if (code) msg = `Google Sign-up failed (${code}).`;
       setErrorMsg(msg);
       showToast(msg, "error");
     } finally {
