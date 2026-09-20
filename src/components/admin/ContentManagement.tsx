@@ -38,7 +38,7 @@ export default function ContentManagement({
 
   // Social Links state
   const [socialFb, setSocialFb] = useState("https://facebook.com/aijobs");
-  const [socialIg, setSocialIg] = useState("https://instagram.com/aijobs");
+  const [socialIg, setSocialIg] = useState("https://www.instagram.com/aijobs1_official/");
   const [socialLi, setSocialLi] = useState("https://linkedin.com/company/aijobs");
   const [socialYt, setSocialYt] = useState("https://youtube.com/aijobs");
   const [socialTw, setSocialTw] = useState("https://twitter.com/aijobs");
