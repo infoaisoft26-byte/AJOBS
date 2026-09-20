@@ -103,13 +103,27 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
       try {
         setLoading(true);
 
-        // Fetch candidate profile
+        // Fetch and merge canonical candidate profile records so legacy/nested
+        // fields (phone, resume, profileDetails) do not get lost in the dashboard.
         if (userId) {
-          const pDoc = await getDoc(doc(db, "candidates", userId));
-          if (pDoc.exists() && isMounted) {
-            const data = pDoc.data();
-            setProfile({ id: pDoc.id, userId, ...data });
-            if (data.resumeText) setResumeText(data.resumeText);
+          const [candidateSnap, userSnap, profileSnap, legacyProfileSnap] = await Promise.all([
+            getDoc(doc(db, "candidates", userId)),
+            getDoc(doc(db, "users", userId)),
+            getDoc(doc(db, "candidateProfiles", userId)),
+            getDoc(doc(db, "candidate_profiles", userId))
+          ]);
+
+          if (isMounted) {
+            const merged = {
+              ...(userSnap.exists() ? userSnap.data() : {}),
+              ...(legacyProfileSnap.exists() ? legacyProfileSnap.data() : {}),
+              ...(profileSnap.exists() ? profileSnap.data() : {}),
+              ...(candidateSnap.exists() ? candidateSnap.data() : {}),
+              id: userId,
+              userId
+            };
+            setProfile(merged);
+            if (merged.resumeText) setResumeText(merged.resumeText);
           }
         }
 
@@ -220,30 +234,12 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
       showToast(`You have already applied for "${job.title}"!`, "warning");
       return;
     }
-    const missing: string[] = [];
-    const details = profile?.profileDetails || {};
-    const resolvedName = profile?.name || profile?.fullName || details.fullName || userName;
-    const resolvedEmail = profile?.email || details.email || auth.currentUser?.email;
-    const resolvedPhone =
-      profile?.phone ||
-      profile?.phoneNumber ||
-      profile?.mobileNumber ||
-      details.mobileNumber ||
-      details.phone;
-    const resolvedResume =
-      profile?.resumeUrl ||
-      profile?.resumeURL ||
-      profile?.resumeText ||
-      resumeText;
-
-    if (!resolvedName) missing.push("name");
-    if (!resolvedEmail) missing.push("email");
-    if (!resolvedPhone) missing.push("mobile number");
-    if (!resolvedResume) missing.push("resume");
-
-    if (missing.length) {
-      setActiveTab(missing.includes("resume") && missing.length === 1 ? "resume" : "profile");
-      showToast(`Apply karne se pehle ${missing.join(", ")} complete karein.`, "warning");
+    // Do not bounce candidates back to Profile for optional fields.
+    // Application service resolves phone/resume from all canonical records and
+    // safely supports "not provided" values. The review modal lets the user
+    // confirm what will be submitted and optionally add a resume.
+    if (!auth.currentUser) {
+      showToast("Please sign in again to apply for this job.", "warning");
       return;
     }
     setApplyModalJob(job);

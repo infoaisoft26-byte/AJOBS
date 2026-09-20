@@ -33,10 +33,7 @@ export default function EasyApplyModal({
 }: EasyApplyModalProps) {
   const t = (key: string) => getTranslation(lang, key);
 
-  const [step, setStep] = useState<"review" | "confirm_dialog" | "missing_resume" | "success">(() => {
-    const hasResume = Boolean(profile?.resumeUrl || profile?.resumeText || resumeText);
-    return hasResume ? "review" : "missing_resume";
-  });
+  const [step, setStep] = useState<"review" | "confirm_dialog" | "missing_resume" | "success">("review");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -58,10 +55,20 @@ export default function EasyApplyModal({
     setStep("confirm_dialog");
   };
 
-  const resumeFileName = profile?.resumeFileName || (profile?.resumeUrl ? "Uploaded resume" : "");
+  const hasResume = Boolean(profile?.resumeUrl || profile?.resumeURL || profile?.resumeText || resumeText);
+  const resumeFileName =
+    profile?.resumeFileName ||
+    ((profile?.resumeUrl || profile?.resumeURL) ? "Uploaded resume" : "");
   const candidateEmail = profile?.email || profile?.profileDetails?.email || "Not provided";
-  const candidateMobile = profile?.profileDetails?.mobileNumber || profile?.mobile || "Not provided";
-  const candidateName = profile?.name || profile?.fullName || userName || "Candidate";
+  const candidateMobile =
+    profile?.phone ||
+    profile?.phoneNumber ||
+    profile?.mobileNumber ||
+    profile?.mobile ||
+    profile?.profileDetails?.mobileNumber ||
+    profile?.profileDetails?.phone ||
+    "Not provided";
+  const candidateName = profile?.name || profile?.fullName || profile?.profileDetails?.fullName || userName || "Candidate";
   const parsedResumeScore = Number(profile?.resumeScore);
   const resumeScore = Number.isFinite(parsedResumeScore) ? parsedResumeScore : null;
 
@@ -153,7 +160,7 @@ export default function EasyApplyModal({
               <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-slate-300 flex items-center gap-1.5 font-mono">
                   <FileText className="w-4 h-4 text-cyan-400" />
-                  Attached Resume for Submission
+                  Resume for Submission <span className="text-slate-500">(optional)</span>
                 </span>
                 {onUploadResumeClick && (
                   <button
@@ -173,10 +180,10 @@ export default function EasyApplyModal({
                   <div className="w-7 h-7 rounded-lg bg-cyan-500/20 border border-cyan-400/30 text-cyan-300 flex items-center justify-center font-bold text-[10px] shrink-0 font-mono">
                     PDF
                   </div>
-                  <span className="font-semibold text-white truncate max-w-[200px]">{resumeFileName || "Resume uploaded"}</span>
+                  <span className="font-semibold text-white truncate max-w-[200px]">{resumeFileName || "No resume attached"}</span>
                 </div>
                 <span className="px-2 py-0.5 rounded-md bg-emerald-950/80 text-emerald-300 font-bold text-[10px] border border-emerald-500/40 font-mono shadow-[0_0_8px_rgba(16,185,129,0.2)]">
-                  {resumeScore !== null ? `Ready (${resumeScore}% ATS Fit)` : "Ready"}
+                  {hasResume ? (resumeScore !== null ? `Ready (${resumeScore}% ATS Fit)` : "Ready") : "Optional"}
                 </span>
               </div>
             </div>
@@ -210,7 +217,7 @@ export default function EasyApplyModal({
                 className="mt-0.5 w-4 h-4 text-cyan-500 rounded border-slate-700 bg-slate-900 focus:ring-cyan-400 cursor-pointer"
               />
               <span className="text-xs text-slate-300 font-medium leading-relaxed">
-                I have reviewed my attached resume, experience, and contact details and confirm they are accurate for this application.
+                I have reviewed my profile and contact details and confirm they are accurate for this application.
               </span>
             </label>
 
@@ -266,7 +273,7 @@ export default function EasyApplyModal({
             <div className="p-4 bg-slate-950/70 rounded-2xl border border-blue-500/25 space-y-2 text-xs">
               <div className="flex justify-between items-center text-slate-400">
                 <span>Resume:</span>
-                <span className="font-bold text-white truncate max-w-[200px]">{resumeFileName || "Resume uploaded"}</span>
+                <span className="font-bold text-white truncate max-w-[200px]">{resumeFileName || "No resume attached"}</span>
               </div>
               <div className="flex justify-between items-center text-slate-400">
                 <span>Applicant:</span>
@@ -366,7 +373,9 @@ export default function EasyApplyModal({
 
             <div>
               <h2 className="text-xl font-extrabold text-white tracking-tight">{t("applicationSubmitted")}</h2>
-              <p className="text-xs text-slate-300 mt-1">Your profile and resume have been submitted to {job.companyName}.</p>
+              <p className="text-xs text-slate-300 mt-1">
+                Your application{hasResume ? " and resume" : ""} has been submitted to {job.companyName}.
+              </p>
             </div>
 
             <div className="p-3 bg-blue-950/60 border border-blue-500/30 rounded-xl text-cyan-300 text-xs flex items-center space-x-2 text-left">
