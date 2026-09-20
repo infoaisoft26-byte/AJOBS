@@ -35,7 +35,7 @@ export default function CompanySection({ pageType, onClose, setActiveCompanyPage
 
   const [socialLinks, setSocialLinks] = useState<any>({
     facebook: "https://facebook.com/aijobs",
-    instagram: "https://instagram.com/aijobs",
+    instagram: "https://www.instagram.com/aijobs1_official/",
     linkedin: "https://linkedin.com/company/aijobs",
     youtube: "https://youtube.com/aijobs",
     twitter: "https://twitter.com/aijobs",
