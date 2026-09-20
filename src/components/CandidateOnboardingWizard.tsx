@@ -213,6 +213,11 @@ export default function CandidateOnboardingWizard({
     return captureAttribution();
   });
 
+  const isPaidCandidateAcquisition =
+    attribution.gclid != null ||
+    (String(attribution.utm_source || "").toLowerCase() === "google" &&
+      ["cpc", "ppc", "paid", "paid_search", "demandgen"].includes(String(attribution.utm_medium || "").toLowerCase()));
+
   // Wizard Step (1 to 10)
   const [step, setStep] = useState<number>(() => {
     if (typeof window !== "undefined") {
@@ -226,6 +231,7 @@ export default function CandidateOnboardingWizard({
         } catch {}
       }
     }
+    if (isPaidCandidateAcquisition && initialStep === 1) return 2;
     return initialStep;
   });
 
@@ -524,7 +530,13 @@ export default function CandidateOnboardingWizard({
   // -------------------------------------------------------------
   // Firestore Candidate Persistence
   // -------------------------------------------------------------
-  const saveCandidateData = async (uid: string, targetEmail: string, targetName: string, isEmailVerified: boolean): Promise<UserProfile> => {
+  const saveCandidateData = async (
+    uid: string,
+    targetEmail: string,
+    targetName: string,
+    isEmailVerified: boolean,
+    markProfileComplete = false
+  ): Promise<UserProfile> => {
     const nowIso = new Date().toISOString();
     const candidateId = await getNextSequentialId("candidates").catch(() => `CAN-${uid.slice(0, 6).toUpperCase()}`);
     const finalScore = calculateCompletionScore();
@@ -538,7 +550,7 @@ export default function CandidateOnboardingWizard({
       emailVerified: isEmailVerified,
       status: "active",
       accountStatus: isEmailVerified ? "active" : "pending_verification",
-      profileCompleted: true,
+      profileCompleted: markProfileComplete,
       resumeURL: resumeUrl || undefined,
       createdAt: nowIso,
       lastLogin: nowIso
@@ -555,9 +567,9 @@ export default function CandidateOnboardingWizard({
       emailVerified: isEmailVerified,
       verificationStatus: isEmailVerified ? "verified" : "pending",
       accountStatus: isEmailVerified ? "active" : "pending_verification",
-      profileStatus: "complete",
+      profileStatus: markProfileComplete ? "complete" : "incomplete",
       profileCompletion: finalScore,
-      onboardingStep: "completed",
+      onboardingStep: markProfileComplete ? "completed" : "account_created",
       dob,
       gender,
       whatsappConsent,
@@ -731,11 +743,17 @@ export default function CandidateOnboardingWizard({
       await sendEmailVerification(cred.user).catch(() => {});
 
       // 4. Initial partial save
-      const profile = await saveCandidateData(cred.user.uid, email.trim(), fullName.trim(), false);
+      const profile = await saveCandidateData(cred.user.uid, email.trim(), fullName.trim(), false, false);
       setRegisteredProfile(profile);
 
-      showToast("Account created! Let's complete your profile details.", "success");
-      setStep(3); // Move forward to Location
+      if (isPaidCandidateAcquisition) {
+        showToast("Account created successfully. You can complete your profile from your dashboard.", "success");
+        sessionStorage.removeItem(STORAGE_DRAFT_KEY);
+        onRegisterSuccess(profile);
+      } else {
+        showToast("Account created! Let's complete your profile details.", "success");
+        setStep(3); // Move forward to Location
+      }
     } catch (err: any) {
       const code = String(err?.code || "");
       const details = String(err?.message || "");
@@ -789,11 +807,17 @@ export default function CandidateOnboardingWizard({
       setCreatedUid(res.user.uid);
 
       const isVerified = res.user.emailVerified === true;
-      const profile = await saveCandidateData(res.user.uid, userEmail, displayName, isVerified);
+      const profile = await saveCandidateData(res.user.uid, userEmail, displayName, isVerified, false);
       setRegisteredProfile(profile);
 
-      showToast(`Signed up with Google as ${displayName}!`, "success");
-      setStep(3); // Move to Location
+      if (isPaidCandidateAcquisition) {
+        showToast(`Welcome to AIJOBS, ${displayName}! Your free candidate account is ready.`, "success");
+        sessionStorage.removeItem(STORAGE_DRAFT_KEY);
+        onRegisterSuccess(profile);
+      } else {
+        showToast(`Signed up with Google as ${displayName}!`, "success");
+        setStep(3); // Move to Location
+      }
     } catch (err: any) {
       const code = String(err?.code || "");
       const message = String(err?.message || "");
@@ -828,7 +852,7 @@ export default function CandidateOnboardingWizard({
         const userEmail = auth.currentUser?.email || email.trim();
         const userName = auth.currentUser?.displayName || fullName.trim();
         const isVerified = auth.currentUser?.emailVerified === true;
-        const profile = await saveCandidateData(uid, userEmail, userName, isVerified);
+        const profile = await saveCandidateData(uid, userEmail, userName, isVerified, true);
         setRegisteredProfile(profile);
       }
       setStep(10); // Success step
@@ -1271,14 +1295,18 @@ export default function CandidateOnboardingWizard({
                     Personal Details
                   </h2>
                   <p className="text-xs text-slate-500 mt-1">
-                    Create your free candidate account to get matched with verified jobs.
+                    {isPaidCandidateAcquisition
+                      ? "Create your free AIJOBS account in under a minute. Complete the rest of your profile later."
+                      : "Create your free candidate account to get matched with verified jobs."}
                   </p>
                 </div>
 
                 {/* Google Sign-up Quick Alternative */}
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
                   <p className="text-xs text-slate-600 font-medium text-center">
-                    Quick option: Sign up with Google to skip manual password setup
+                    {isPaidCandidateAcquisition
+                      ? "Fastest option: Continue with Google"
+                      : "Quick option: Sign up with Google to skip manual password setup"}
                   </p>
                   <button
                     type="button"
@@ -1329,42 +1357,48 @@ export default function CandidateOnboardingWizard({
                     />
                   </div>
 
-                  {/* Date of Birth */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">Date of Birth</label>
-                    <input
-                      type="date"
-                      value={dob}
-                      onChange={(e) => setDob(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl py-2.5 px-3.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white font-mono"
-                    />
-                  </div>
+                  {!isPaidCandidateAcquisition && (
+                    <>
+                      {/* Date of Birth */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-700">Date of Birth</label>
+                        <input
+                          type="date"
+                          value={dob}
+                          onChange={(e) => setDob(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-300 rounded-xl py-2.5 px-3.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white font-mono"
+                        />
+                      </div>
 
-                  {/* Gender */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">Gender</label>
-                    <select
-                      value={gender}
-                      onChange={(e: any) => setGender(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl py-2.5 px-3.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white cursor-pointer"
-                    >
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other</option>
-                      <option value="Prefer not to say">Prefer not to say</option>
-                    </select>
-                  </div>
+                      {/* Gender */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-700">Gender</label>
+                        <select
+                          value={gender}
+                          onChange={(e: any) => setGender(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-300 rounded-xl py-2.5 px-3.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white cursor-pointer"
+                        >
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                          <option value="Other">Other</option>
+                          <option value="Prefer not to say">Prefer not to say</option>
+                        </select>
+                      </div>
+                    </>
+                  )}
 
                   {/* Mobile Number (+91) */}
                   <div className="space-y-1 sm:col-span-2">
-                    <label className="text-xs font-bold text-slate-700">Mobile Number *</label>
+                    <label className="text-xs font-bold text-slate-700">
+                      Mobile Number {isPaidCandidateAcquisition ? "(optional)" : "*"}
+                    </label>
                     <div className="flex items-center">
                       <span className="px-3 py-2.5 bg-slate-100 border border-r-0 border-slate-300 rounded-l-xl text-xs font-semibold text-slate-700">
                         🇮🇳 +91
                       </span>
                       <input
                         type="tel"
-                        required
+                        required={!isPaidCandidateAcquisition}
                         value={phone}
                         onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
                         placeholder="9876543210"
@@ -1399,6 +1433,12 @@ export default function CandidateOnboardingWizard({
                     />
                   </div>
                 </div>
+
+                {isPaidCandidateAcquisition && (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[11px] text-emerald-800">
+                    Your account is created immediately after sign-up. Resume, education, experience and job preferences can be completed later from your candidate profile.
+                  </div>
+                )}
 
                 {/* Consent Checkboxes */}
                 <div className="pt-2 space-y-2.5">
