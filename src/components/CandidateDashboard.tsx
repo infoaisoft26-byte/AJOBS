@@ -221,10 +221,26 @@ export default function CandidateDashboard({ userId, userName }: CandidateDashbo
       return;
     }
     const missing: string[] = [];
-    if (!(profile?.name || userName)) missing.push("name");
-    if (!(profile?.email || auth.currentUser?.email)) missing.push("email");
-    if (!profile?.phone) missing.push("mobile number");
-    if (!(profile?.resumeUrl || profile?.resumeURL || profile?.resumeText || resumeText)) missing.push("resume");
+    const details = profile?.profileDetails || {};
+    const resolvedName = profile?.name || profile?.fullName || details.fullName || userName;
+    const resolvedEmail = profile?.email || details.email || auth.currentUser?.email;
+    const resolvedPhone =
+      profile?.phone ||
+      profile?.phoneNumber ||
+      profile?.mobileNumber ||
+      details.mobileNumber ||
+      details.phone;
+    const resolvedResume =
+      profile?.resumeUrl ||
+      profile?.resumeURL ||
+      profile?.resumeText ||
+      resumeText;
+
+    if (!resolvedName) missing.push("name");
+    if (!resolvedEmail) missing.push("email");
+    if (!resolvedPhone) missing.push("mobile number");
+    if (!resolvedResume) missing.push("resume");
+
     if (missing.length) {
       setActiveTab(missing.includes("resume") && missing.length === 1 ? "resume" : "profile");
       showToast(`Apply karne se pehle ${missing.join(", ")} complete karein.`, "warning");
