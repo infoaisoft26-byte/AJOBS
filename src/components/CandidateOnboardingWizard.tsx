@@ -43,7 +43,7 @@ import { auth, db, googleProvider } from "../firebase";
 import { JobPosting, UserProfile } from "../types";
 import { getJobById } from "../services/jobService";
 import { parseResumeData } from "../services/aiParser";
-import { uploadToCloudinary } from "../services/cloudinaryService";
+import { uploadResumeService } from "../services/resumeUploadService";
 import { getNextSequentialId } from "../services/sequentialIdService";
 import { 
   captureAttribution, 
@@ -465,33 +465,42 @@ export default function CandidateOnboardingWizard({
 
     setResumeFile(file);
     setResumeFileName(file.name);
+
+    // Do not attempt secure cloud uploads before Firebase authentication exists.
+    // The old flow tried an unsigned/temp upload on Step 1, which caused Cloudinary
+    // permission/preset failures before the candidate account had even been created.
+    if (!auth.currentUser) {
+      setUploadProgress(0);
+      setParsedSummary("Resume selected. It will upload securely after your account is created.");
+      showToast("Resume selected. Create your account to upload it securely.", "info");
+      return;
+    }
+
     setIsUploadingResume(true);
-    setUploadProgress(20);
+    setUploadProgress(10);
 
     try {
-      // 1. Upload to Cloudinary / storage
-      const uidForUpload = auth.currentUser?.uid || createdUid || `temp_${Date.now()}`;
-      setUploadProgress(50);
-      const uploadRes = await uploadToCloudinary(file, {
-        folder: "candidate_resumes",
-        publicId: `resume_${uidForUpload}`
+      const uidForUpload = auth.currentUser.uid;
+      const uploadRes = await uploadResumeService(file, {
+        uid: uidForUpload,
+        onProgress: (progress) => setUploadProgress(progress),
+        timeoutMs: 90000,
+        maxRetries: 2
       });
 
-      const uploadedUrl = uploadRes.secureUrl || uploadRes.url || "";
+      const uploadedUrl = uploadRes.downloadUrl || "";
       setResumeUrl(uploadedUrl);
-      setUploadProgress(80);
+      setUploadProgress(90);
 
       trackResumeUploaded(ext, "candidate_wizard");
 
-      // 2. Parse resume using Gemini API parser
+      // Parsing is best-effort and must never make the successful file upload fail.
       setIsParsingResume(true);
       try {
         const parseResult = await parseResumeData(file, { userId: uidForUpload }, file.name);
         if (parseResult && parseResult.success && parseResult.parsedData) {
           const p = parseResult.parsedData;
           setParsedSummary(`Parsed ${p.skills?.length || 0} skills, ${p.designation || "experience"}`);
-          
-          // Auto-fill fields if not already populated by user
           if (p.fullName && !fullName.trim()) setFullName(p.fullName);
           if (p.email && !email.trim()) setEmail(p.email);
           if (p.phone && !phone.trim()) setPhone(p.phone);
@@ -505,23 +514,50 @@ export default function CandidateOnboardingWizard({
           if (p.designation && !preferredRoles.includes(p.designation)) {
             setPreferredRoles((prev) => [p.designation, ...prev]);
           }
-          showToast("Resume parsed! We've auto-filled relevant details.", "success");
         } else {
-          // Never claim resume parsed if parser failed
-          setParseError("Could not automatically extract all fields, but your file is safely attached.");
+          setParseError("Resume uploaded successfully. Automatic profile extraction can be retried later.");
         }
       } catch (parseErr) {
-        console.warn("[ResumeParser] Parse error handled gracefully:", parseErr);
-        setParseError("Auto-fill unavailable for this document format, but your resume is saved.");
+        console.warn("[ResumeParser] Parse notice:", parseErr);
+        setParseError("Resume uploaded successfully. Automatic profile extraction can be retried later.");
       } finally {
         setIsParsingResume(false);
       }
 
       setUploadProgress(100);
-      showToast("Resume attached successfully!", "success");
+      showToast("Resume uploaded successfully!", "success");
     } catch (uploadErr: any) {
       console.error("[Resume Upload Error]:", uploadErr);
-      setErrorMsg("Failed to upload resume document. You can skip this step and upload later.");
+      const detail = String(uploadErr?.message || "");
+      setErrorMsg(
+        detail.includes("sign in again")
+          ? "Your login session expired. Please sign in again and retry the resume upload."
+          : "Resume upload could not be completed. Your account is safe; you can retry from the Resume section."
+      );
+    } finally {
+      setIsUploadingResume(false);
+    }
+  };
+
+  const uploadSelectedResumeAfterAccountCreation = async (uid: string) => {
+    if (!resumeFile || resumeUrl) return "";
+    try {
+      setIsUploadingResume(true);
+      const result = await uploadResumeService(resumeFile, {
+        uid,
+        onProgress: (progress) => setUploadProgress(progress),
+        timeoutMs: 90000,
+        maxRetries: 2
+      });
+      setResumeUrl(result.downloadUrl);
+      setUploadProgress(100);
+      trackResumeUploaded("." + (resumeFile.name.split(".").pop()?.toLowerCase() || "file"), "candidate_wizard");
+      return result.downloadUrl;
+    } catch (err) {
+      console.warn("[CandidateOnboarding] Deferred resume upload notice:", err);
+      // Account creation must not fail just because an optional resume upload failed.
+      setParseError("Account created successfully. Resume upload can be retried from your dashboard.");
+      return "";
     } finally {
       setIsUploadingResume(false);
     }
@@ -745,6 +781,7 @@ export default function CandidateOnboardingWizard({
       // 4. Initial partial save
       const profile = await saveCandidateData(cred.user.uid, email.trim(), fullName.trim(), false, false);
       setRegisteredProfile(profile);
+      await uploadSelectedResumeAfterAccountCreation(cred.user.uid);
 
       if (isPaidCandidateAcquisition) {
         showToast("Account created successfully. You can complete your profile from your dashboard.", "success");
@@ -809,6 +846,7 @@ export default function CandidateOnboardingWizard({
       const isVerified = res.user.emailVerified === true;
       const profile = await saveCandidateData(res.user.uid, userEmail, displayName, isVerified, false);
       setRegisteredProfile(profile);
+      await uploadSelectedResumeAfterAccountCreation(res.user.uid);
 
       if (isPaidCandidateAcquisition) {
         showToast(`Welcome to AIJOBS, ${displayName}! Your free candidate account is ready.`, "success");
