@@ -42,7 +42,15 @@ export async function applyToJob(
   // 2. Check candidate role & basic profile info
   let candidateName = profile?.name || profile?.fullName || auth.currentUser.displayName || "Candidate";
   let candidateEmail = auth.currentUser.email || profile?.email || "";
-  let candidatePhone = profile?.phone || profile?.mobileNumber || profile?.personalDetails?.mobile || profile?.profileDetails?.mobileNumber || "";
+  let candidatePhone =
+    profile?.phone ||
+    profile?.phoneNumber ||
+    profile?.mobileNumber ||
+    profile?.mobile ||
+    profile?.personalDetails?.mobile ||
+    profile?.profileDetails?.mobileNumber ||
+    profile?.profileDetails?.phone ||
+    "";
   let candidateLocation = profile?.location || profile?.city || profile?.personalDetails?.city || "";
   let candidateExperience = profile?.experience || profile?.yearsOfExperience || profile?.employmentDetails?.designation || "";
   let candidateSkills = Array.isArray(profile?.skills || profile?.skillsRequired) ? (profile?.skills || profile?.skillsRequired) : [];
@@ -63,7 +71,7 @@ export async function applyToJob(
       candidateName = pick(candidateName, data.name, data.fullName, data.displayName) || "Candidate";
       candidateEmail = pick(candidateEmail, data.email, data.contactEmail);
       candidatePhone = pick(candidatePhone, data.phone, data.mobile, data.mobileNumber, data.phoneNumber, data.personalDetails?.mobile, data.profileDetails?.mobileNumber);
-      candidateLocation = pick(candidateLocation, data.location, data.city, data.personalDetails?.city);
+      candidateLocation = pick(candidateLocation, data.location, data.city, data.currentLocation, data.profileDetails?.currentLocation, data.personalDetails?.city);
       candidateExperience = pick(candidateExperience, data.experience, data.yearsOfExperience, data.employmentDetails?.designation);
       if (!candidateSkills.length && Array.isArray(data.skills)) candidateSkills = data.skills.filter((s: any) => typeof s === "string");
       resumeUrl = resumeUrl || data.resumeUrl || data.resumeURL || null;
