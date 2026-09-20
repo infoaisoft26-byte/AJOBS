@@ -1,6 +1,6 @@
 import React, { FormEvent, useMemo, useState } from "react";
-import { BriefcaseBusiness, ChevronDown, Mail, Scale, Send, Users } from "lucide-react";
-import { CONTACT_EMAILS } from "../config/site";
+import { BriefcaseBusiness, ChevronDown, Instagram, Mail, Scale, Send, Users } from "lucide-react";
+import { CONTACT_EMAILS, OFFICIAL_SOCIAL_LINKS } from "../config/site";
 
 type ContactKey = keyof typeof CONTACT_EMAILS;
 
@@ -172,10 +172,20 @@ export default function OfficialContactDock() {
             </form>
           )}
 
-          <div className="mt-2 flex flex-wrap gap-2 px-1">
+          <div className="mt-2 flex flex-wrap items-center gap-2 px-1">
             {(Object.keys(CONTACT_EMAILS) as ContactKey[]).map((key) => (
               <a key={key} href={`mailto:${CONTACT_EMAILS[key]}`} className="text-[9px] text-slate-500 hover:text-blue-300">Email {key}</a>
             ))}
+            <a
+              href={OFFICIAL_SOCIAL_LINKS.instagram}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex items-center gap-1 rounded-full border border-pink-400/20 bg-pink-500/10 px-2 py-1 text-[9px] font-bold text-pink-300 hover:bg-pink-500/20"
+              aria-label="Follow AIJOBS on Instagram"
+            >
+              <Instagram className="h-3 w-3" />
+              @aijobs1_official
+            </a>
           </div>
         </div>
       )}
