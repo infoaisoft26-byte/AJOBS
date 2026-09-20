@@ -18,7 +18,7 @@ export interface CloudinaryUploadOptions {
   timeoutMs?: number;
   userId?: string;
   folder?: string;
-  assetType?: "resumes" | "documents" | "chat-attachments";
+  assetType?: "resumes" | "documents" | "chat-attachments" | "profile-images";
 }
 
 export function getCloudinaryConfig() {

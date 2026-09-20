@@ -234,8 +234,8 @@ export default function CandidateProfileSection({
         let finalPhotoUrl = compressedDataUrl;
         try {
           const cloudRes = await uploadToCloudinary(photoFile, {
-            userId: userId || "anonymous",
-            assetType: "documents"
+            userId,
+            assetType: "profile-images"
           });
           if (cloudRes.secure_url) {
             finalPhotoUrl = cloudRes.secure_url;
@@ -311,7 +311,33 @@ export default function CandidateProfileSection({
     };
 
     const handleSave = () => {
-      handleSaveWithBiometricGuard({ profileDetails: form, name: form.fullName }, "General profile contact cards updated successfully!");
+      const normalizedPhone = String(form.mobileNumber || "").replace(/\s+/g, "").trim();
+      const normalizedEmail = String(form.email || "").trim().toLowerCase();
+
+      handleSaveWithBiometricGuard(
+        {
+          profileDetails: form,
+          name: form.fullName.trim(),
+          fullName: form.fullName.trim(),
+          phone: normalizedPhone,
+          phoneNumber: normalizedPhone,
+          mobileNumber: normalizedPhone,
+          email: normalizedEmail,
+          dateOfBirth: form.dateOfBirth || "",
+          dob: form.dateOfBirth || "",
+          gender: form.gender || "",
+          currentLocation: form.currentLocation || "",
+          preferredLocation: form.preferredLocation || "",
+          expectedSalary: form.expectedSalary || "",
+          noticePeriod: form.noticePeriod || "",
+          employmentType: form.employmentType || "",
+          languages: form.languages || "",
+          linkedin: form.linkedinProfile || "",
+          portfolioUrl: form.portfolioUrl || "",
+          photoUrl: form.profilePhoto || ""
+        },
+        "Profile details saved successfully!"
+      );
     };
 
     return (

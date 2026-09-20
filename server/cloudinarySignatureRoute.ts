@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import crypto from "crypto";
 import { getFirebaseAuth, getFirestoreDb } from "./firestoreHelper.js";
 
-const ALLOWED_ASSET_TYPES = new Set(["resumes", "documents", "chat-attachments"]);
+const ALLOWED_ASSET_TYPES = new Set(["resumes", "documents", "chat-attachments", "profile-images"]);
 const ALLOWED_DOCUMENT_TYPES = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
 
 function cloudinarySignature(params: Record<string, string | number>, secret: string) {
@@ -84,7 +84,9 @@ export async function handleCloudinarySignatureRoute(req: Request, res: Response
       ? `aijobs/verification/${decoded.uid}/documents`
       : assetType === "chat-attachments"
         ? `aijobs/chat/${decoded.uid}`
-        : `aijobs/candidates/${decoded.uid}/resumes`;
+        : assetType === "profile-images"
+          ? `aijobs/candidates/${decoded.uid}/profile-images`
+          : `aijobs/candidates/${decoded.uid}/resumes`;
 
     const signature = cloudinarySignature({ folder, timestamp }, apiSecret);
     res.json({ success: true, signature, timestamp, apiKey, cloudName, folder });
