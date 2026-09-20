@@ -155,6 +155,11 @@ service cloud.firestore {
     }
     match /mail/{id} { allow read, write: if isAdmin(); }
 
+    match /social_links/{linkId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /system_settings/{id} {
       allow read: if true;
       allow write: if isAdmin();
@@ -171,7 +176,7 @@ service cloud.firestore {
         collection in [
           'users','admins','companies','employers','recruiters','consultancies','recruiter_profiles',
           'jobCredits','marketingEvents','jobs','company_jobs','consultancy_jobs','applications','company_applications',
-          'candidates','candidateProfiles','candidate_profiles','resumes','candidate_documents','notifications','mail','plans','email_templates','cms','resume_templates','system_settings'
+          'candidates','candidateProfiles','candidate_profiles','resumes','candidate_documents','notifications','mail','plans','email_templates','cms','resume_templates','social_links','system_settings'
         ]
       );
     }

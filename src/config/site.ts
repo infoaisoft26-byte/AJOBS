@@ -8,6 +8,10 @@ export const OFFICIAL_ADMIN_EMAIL = "admin@aijobs1.in";
 
 export const PRODUCTION_DOMAIN = "https://aijobs1.in";
 
+export const OFFICIAL_SOCIAL_LINKS = Object.freeze({
+  instagram: "https://www.instagram.com/aijobs1_official/",
+} as const);
+
 /**
  * Official role-based AIJOBS mailboxes.
  *
