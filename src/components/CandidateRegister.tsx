@@ -1,5 +1,5 @@
 import React from "react";
-import CandidateOnboardingWizard from "./CandidateOnboardingWizard";
+import CandidateRegistrationFlow from "./CandidateRegistrationFlow";
 import { UserProfile } from "../types";
 
 interface CandidateRegisterProps {
@@ -12,15 +12,13 @@ interface CandidateRegisterProps {
 export default function CandidateRegister({
   onRegisterSuccess,
   onNavigateToLogin,
-  initialJobId,
-  initialStep = 1
+  initialJobId
 }: CandidateRegisterProps) {
   return (
-    <CandidateOnboardingWizard
+    <CandidateRegistrationFlow
       onRegisterSuccess={onRegisterSuccess}
       onNavigateToLogin={onNavigateToLogin}
       initialJobId={initialJobId}
-      initialStep={initialStep}
     />
   );
 }
