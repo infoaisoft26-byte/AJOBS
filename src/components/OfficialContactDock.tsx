@@ -1,5 +1,5 @@
 import React, { FormEvent, useMemo, useState } from "react";
-import { BriefcaseBusiness, ChevronDown, Instagram, Mail, Scale, Send, Users } from "lucide-react";
+import { BriefcaseBusiness, ChevronDown, Instagram, Mail, MessageCircle, Scale, Send, Users } from "lucide-react";
 import { CONTACT_EMAILS, OFFICIAL_SOCIAL_LINKS } from "../config/site";
 
 type ContactKey = keyof typeof CONTACT_EMAILS;
@@ -96,13 +96,29 @@ export default function OfficialContactDock() {
   };
 
   return (
-    <aside className="fixed bottom-4 left-4 z-[9997] max-w-[calc(100vw-2rem)] text-white print:hidden" aria-label="AIJOBS official contact emails">
+    <aside className="fixed bottom-4 left-4 z-[9997] max-w-[calc(100vw-2rem)] text-white print:hidden" aria-label="AIJOBS official contacts">
       {open && (
         <div className="mb-2 w-[360px] max-w-full overflow-hidden rounded-2xl border border-white/15 bg-[#07152F]/95 p-3 shadow-2xl backdrop-blur-xl">
           <div className="mb-2 px-2 py-1">
             <p className="text-xs font-black tracking-wide">Official AIJOBS Contacts</p>
             <p className="mt-1 text-[10px] leading-4 text-slate-400">Choose the correct team or send your request directly from the website.</p>
           </div>
+
+          <a
+            href={OFFICIAL_SOCIAL_LINKS.whatsapp}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="mb-2 flex w-full items-center gap-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2.5 text-left transition hover:bg-emerald-500/20"
+            aria-label="Chat with AIJOBS on WhatsApp"
+          >
+            <MessageCircle className="h-4 w-4 shrink-0 text-emerald-300" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[11px] font-bold text-white">WhatsApp Support</span>
+              <span className="block text-[10px] text-emerald-300">+91 93247 73994</span>
+              <span className="mt-0.5 block text-[9px] leading-3 text-slate-500">Jobs, registration, applications and account help</span>
+            </span>
+            <Send className="h-3.5 w-3.5 text-emerald-300" />
+          </a>
 
           {(Object.keys(CONTACT_EMAILS) as ContactKey[]).map((key) => {
             const meta = CONTACT_META[key];
@@ -190,14 +206,28 @@ export default function OfficialContactDock() {
         </div>
       )}
 
-      <button type="button" onClick={() => setOpen((value) => !value)} className="flex max-w-[320px] items-center gap-2 rounded-full border border-blue-400/30 bg-[#07152F]/95 px-4 py-2.5 shadow-xl backdrop-blur-xl transition hover:border-blue-300/60 hover:bg-[#0b1d3d]" aria-expanded={open}>
-        <PreferredIcon className="h-4 w-4 text-blue-300" />
-        <span className="min-w-0 text-left">
-          <span className="block text-[9px] font-semibold uppercase tracking-wider text-slate-500">Official contact</span>
-          <span className="block truncate text-[11px] font-bold text-blue-200">{CONTACT_EMAILS[preferred]}</span>
-        </span>
-        <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition ${open ? "rotate-180" : ""}`} />
-      </button>
+      <div className="flex items-center gap-2">
+        <a
+          href={OFFICIAL_SOCIAL_LINKS.whatsapp}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="flex items-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-500/95 px-3.5 py-2.5 text-white shadow-xl transition hover:bg-emerald-400"
+          aria-label="Chat with AIJOBS on WhatsApp"
+          title="Chat with AIJOBS on WhatsApp"
+        >
+          <MessageCircle className="h-4 w-4" />
+          <span className="hidden text-[11px] font-bold sm:inline">WhatsApp</span>
+        </a>
+
+        <button type="button" onClick={() => setOpen((value) => !value)} className="flex max-w-[320px] items-center gap-2 rounded-full border border-blue-400/30 bg-[#07152F]/95 px-4 py-2.5 shadow-xl backdrop-blur-xl transition hover:border-blue-300/60 hover:bg-[#0b1d3d]" aria-expanded={open}>
+          <PreferredIcon className="h-4 w-4 text-blue-300" />
+          <span className="min-w-0 text-left">
+            <span className="block text-[9px] font-semibold uppercase tracking-wider text-slate-500">Official contact</span>
+            <span className="block truncate text-[11px] font-bold text-blue-200">{CONTACT_EMAILS[preferred]}</span>
+          </span>
+          <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition ${open ? "rotate-180" : ""}`} />
+        </button>
+      </div>
     </aside>
   );
 }

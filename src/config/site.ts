@@ -10,6 +10,7 @@ export const PRODUCTION_DOMAIN = "https://aijobs1.in";
 
 export const OFFICIAL_SOCIAL_LINKS = Object.freeze({
   instagram: "https://www.instagram.com/aijobs1_official/",
+  whatsapp: "https://wa.me/919324773994?text=Hello%20AIJOBS%2C%20I%20need%20help%20regarding%20jobs%2C%20candidate%20registration%20or%20application.",
 } as const);
 
 /**
