@@ -43,17 +43,30 @@ service cloud.firestore {
         data.jobOwnerUid == request.auth.uid || data.assignedRecruiterId == request.auth.uid
       );
     }
+    function isAllowedPublicRole(value) {
+      return value in ['candidate','employer','recruiter','consultancy'];
+    }
+    function ownerMayCompleteMissingRole() {
+      return isSignedIn() &&
+        (!('role' in resource.data) || resource.data.role == null || resource.data.role == '') &&
+        ('role' in request.resource.data) &&
+        isAllowedPublicRole(request.resource.data.role) &&
+        (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == false) &&
+        (!('isSuperAdmin' in request.resource.data) || request.resource.data.isSuperAdmin == false);
+    }
 
     match /users/{uid} {
       allow read: if isOwner(uid) || isAdmin();
       allow create: if isOwner(uid) && request.resource.data.uid == request.auth.uid &&
-        (!('role' in request.resource.data) || request.resource.data.role in ['candidate','employer','recruiter','consultancy']) &&
+        (!('role' in request.resource.data) || isAllowedPublicRole(request.resource.data.role)) &&
         (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == false) &&
         (!('isSuperAdmin' in request.resource.data) || request.resource.data.isSuperAdmin == false);
-      allow update: if isAdmin() || (isOwner(uid) &&
+      allow update: if isAdmin() || (isOwner(uid) && (
+        ownerMayCompleteMissingRole() ||
         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
           'role','isAdmin','isSuperAdmin','adminLevel','approvedBy','approvedAt'
-        ]));
+        ])
+      ));
       allow delete: if isAdmin();
       match /email_preferences/{id} { allow read, write: if isOwner(uid) || isAdmin(); }
     }
@@ -83,19 +96,14 @@ service cloud.firestore {
     }
 
     match /jobs/{jobId} {
-      // Public pages may read only statuses that are intentionally public.
       allow read: if resource.data.status in ['approved','Approved','Published','Live','open','Open'] ||
         isAdmin() || isJobReviewer() || ownsJob(resource.data);
-
-      // Admin/Super Admin may create directly. Recruiter/Employer/Consultancy
-      // creation remains restricted to owned, non-public workflow states.
       allow create: if isAdmin() || (
         isSignedIn() && isHiringRole() &&
         request.resource.data.ownerUid == request.auth.uid &&
         request.resource.data.createdBy == request.auth.uid &&
         request.resource.data.status in ['draft','pending_review','changes_requested']
       );
-
       allow update: if isAdmin() || (ownsJob(resource.data) &&
         resource.data.status != 'approved' &&
         request.resource.data.status in ['draft','pending_review','changes_requested','closed'] &&
@@ -169,8 +177,6 @@ service cloud.firestore {
     match /cms/{id} { allow read: if true; allow write: if isAdmin(); }
     match /resume_templates/{id} { allow read: if true; allow write: if isAdmin(); }
 
-    // Preserve existing signed-in application behavior for non-sensitive collections.
-    // Sensitive identity, company, job, credit, marketing and application collections are excluded above.
     match /{collection}/{document=**} {
       allow read, write: if isSignedIn() && !(
         collection in [
