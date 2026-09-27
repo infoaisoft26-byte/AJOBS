@@ -98,8 +98,6 @@ export default function CandidateRegistrationFlow({
       isActive: true,
       isApproved: true,
       approved: true,
-      approvedAt: existingUser?.exists() ? existingUser.data()?.approvedAt || now : now,
-      approvedBy: "system_candidate_auto_approval",
       kycRequired: false,
       kycStatus: "not_required",
       profileCompleted: false,
