@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
-  sendEmailVerification,
   signInWithPopup,
   signOut,
   updateProfile,
@@ -70,8 +69,6 @@ export default function CandidateRegistrationFlow({
     const normalizedMobile = normalizePhone(phone || fbUser.phoneNumber || "");
     const now = new Date().toISOString();
 
-    // Do not silently overwrite an existing non-candidate account when the same Google
-    // identity is used from the candidate registration screen.
     const existingUser = await getDoc(doc(db, "users", fbUser.uid)).catch(() => null);
     const existingRole = existingUser?.exists() ? String(existingUser.data()?.role || "").toLowerCase() : "";
     if (existingRole && !["candidate", "jobseeker", "job_seeker"].includes(existingRole)) {
@@ -94,11 +91,17 @@ export default function CandidateRegistrationFlow({
       mobileNumber: normalizedMobile,
       role: "candidate",
       emailVerified: fbUser.emailVerified === true,
-      verificationStatus: fbUser.emailVerified ? "verified" : "pending",
+      verificationStatus: "verified",
+      approvalStatus: "approved",
       status: "active",
       accountStatus: "active",
       isActive: true,
       isApproved: true,
+      approved: true,
+      approvedAt: existingUser?.exists() ? existingUser.data()?.approvedAt || now : now,
+      approvedBy: "system_candidate_auto_approval",
+      kycRequired: false,
+      kycStatus: "not_required",
       profileCompleted: false,
       profileStatus: "incomplete",
       profileCompletion: normalizedMobile ? 30 : 20,
@@ -131,7 +134,6 @@ export default function CandidateRegistrationFlow({
       savedJobIds: [],
     };
 
-    // Write canonical profile documents together. Merge keeps any existing real profile data.
     await Promise.all([
       setDoc(doc(db, "users", fbUser.uid), userData, { merge: true }),
       setDoc(doc(db, "candidates", fbUser.uid), candidateData, { merge: true }),
@@ -165,8 +167,6 @@ export default function CandidateRegistrationFlow({
       intendedJobId: intendedJobId || undefined,
     });
 
-    // First-party marketing event is non-blocking. Registration success must never
-    // depend on analytics, email, resume or optional integrations.
     try {
       const token = await fbUser.getIdToken();
       await fetch("/api/hire/event", {
@@ -195,8 +195,6 @@ export default function CandidateRegistrationFlow({
   const finish = (profile: UserProfile) => {
     setSuccess("Registration successful. Opening your candidate dashboard…");
     onRegisterSuccess(profile);
-    // Hard navigation guarantees a clean authenticated dashboard state and avoids
-    // legacy pre-launch verification/profile routing from intercepting new users.
     window.setTimeout(() => window.location.assign("/candidate/dashboard"), 250);
   };
 
@@ -215,19 +213,7 @@ export default function CandidateRegistrationFlow({
     try {
       const credential = await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
       await updateProfile(credential.user, { displayName: name.trim() }).catch(() => {});
-
       const profile = await persistCandidate(credential.user, name.trim(), "email");
-
-      // Verification is encouraged but never blocks account creation or dashboard access.
-      sendEmailVerification(credential.user).catch((verificationError) => {
-        console.debug("[CandidateRegistration] verification email notice:", verificationError);
-      });
-      fetch("/api/auth/candidate/send-email-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: credential.user.email, name: name.trim(), role: "candidate" }),
-      }).catch(() => {});
-
       finish(profile);
     } catch (registerError: any) {
       console.error("[CandidateRegistration] email registration error:", registerError);
@@ -269,11 +255,11 @@ export default function CandidateRegistrationFlow({
             <div className="mt-10 max-w-sm">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-300">Candidate Registration</p>
               <h1 className="mt-3 text-3xl font-black leading-tight">Create your AIJOBS account and start applying.</h1>
-              <p className="mt-4 text-sm leading-6 text-slate-300">Registration is free for candidates. Complete your basic account now; resume and profile details can be added later from your dashboard.</p>
+              <p className="mt-4 text-sm leading-6 text-slate-300">Registration is free and instant. No KYC or Admin approval is required for candidates; profile and resume details can be added later from your dashboard.</p>
             </div>
             <div className="mt-8 space-y-3 text-sm text-slate-200">
               <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-cyan-300" /> Free candidate account</div>
-              <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-cyan-300" /> Apply directly from the candidate dashboard</div>
+              <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-cyan-300" /> Instant account activation — no KYC or approval wait</div>
               <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-cyan-300" /> AIJOBS does not charge candidates for jobs</div>
             </div>
           </section>
