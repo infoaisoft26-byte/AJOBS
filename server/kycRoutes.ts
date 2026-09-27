@@ -4,17 +4,23 @@ import { getFirestoreDb } from "./firestoreHelper.js";
 
 const router = Router();
 
-// Helper to mask sensitive fields
 function maskIdentifier(val: string): string {
   if (!val) return "";
   if (val.length <= 4) return "****";
   return "*".repeat(val.length - 4) + val.slice(-4);
 }
 
-// Helper to hash sensitive identifiers (e.g., PAN, Aadhaar ref) for duplicate check
 function hashValue(val: string): string {
   if (!val) return "";
   return crypto.createHash("sha256").update(val.trim().toLowerCase()).digest("hex");
+}
+
+function normalizeRole(role: unknown): string {
+  return String(role || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+}
+
+function isCandidateRole(role: unknown): boolean {
+  return ["candidate", "jobseeker", "job_seeker"].includes(normalizeRole(role));
 }
 
 /**
@@ -27,17 +33,18 @@ router.post("/upload-signature", async (req, res) => {
     if (!userId || !role || !documentType) {
       return res.status(400).json({ success: false, error: "userId, role, and documentType are required" });
     }
+    if (isCandidateRole(role)) {
+      return res.status(400).json({ success: false, error: "CANDIDATE_KYC_NOT_REQUIRED", message: "Candidate accounts do not require KYC." });
+    }
 
     const timestamp = Math.round(new Date().getTime() / 1000);
     const sanitizedRole = role.toLowerCase().replace(/[^a-z0-9]/g, "");
     const folder = `aijobs/private-kyc/${sanitizedRole}s/${userId}`;
 
-    // Cloudinary configuration from environment or fallback parameters
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME || "aijobs-cloud";
     const apiKey = process.env.CLOUDINARY_API_KEY || "123456789012345";
     const apiSecret = process.env.CLOUDINARY_API_SECRET || "aijobs_private_secret_key";
 
-    // Generate SHA256 signature for signed upload
     const paramsToSign = `folder=${folder}&timestamp=${timestamp}`;
     const signature = crypto.createHash("sha1").update(paramsToSign + apiSecret).digest("hex");
 
@@ -48,7 +55,7 @@ router.post("/upload-signature", async (req, res) => {
       timestamp,
       apiKey,
       signature,
-      maxFileSizeBytes: 10 * 1024 * 1024, // 10MB limit
+      maxFileSizeBytes: 10 * 1024 * 1024,
       allowedTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp"]
     });
   } catch (error: any) {
@@ -79,7 +86,6 @@ router.post("/verify-gstin", async (req, res) => {
       });
     }
 
-    // Duplicate check across consultancies in Firestore
     const db = getFirestoreDb();
     const duplicateGstinSnap = await db.collection("kyc_profiles")
       .where("gstinHash", "==", hashValue(cleanGstin))
@@ -87,7 +93,6 @@ router.post("/verify-gstin", async (req, res) => {
 
     const isDuplicate = !duplicateGstinSnap.empty;
 
-    // Simulate official GST Portal Lookup details
     const stateCodeMap: Record<string, string> = {
       "27": "Maharashtra",
       "29": "Karnataka",
@@ -101,13 +106,10 @@ router.post("/verify-gstin", async (req, res) => {
 
     const stateCode = cleanGstin.slice(0, 2);
     const stateName = stateCodeMap[stateCode] || "Pan-India Jurisdiction";
-
-    // Standard business lookup mock for verified enterprise GSTINs
     const isCancelled = cleanGstin.endsWith("9");
     const legalName = submittedBusinessName
       ? submittedBusinessName.toUpperCase() + " PRIVATE LIMITED"
       : "ENTERPRISE RECRUITMENT SOLUTIONS PRIVATE LIMITED";
-
     const tradeName = submittedBusinessName || "AIJobs Consultancy Partner";
 
     return res.json({
@@ -156,11 +158,9 @@ router.post("/verify-aadhaar-offline", async (req, res) => {
       });
     }
 
-    // Generate consent audit trail
     const consentId = `consent_aadhaar_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const refId = `ref_uidai_${Date.now()}`;
 
-    // Extract fields (never store raw full Aadhaar)
     const extractedData = {
       provider: "aadhaar_offline",
       verificationMethod: xmlContent ? "offline_xml" : "secure_qr",
@@ -188,7 +188,7 @@ router.post("/verify-aadhaar-offline", async (req, res) => {
 });
 
 /**
- * 4. Submit Complete KYC Profile (Recruiter / Consultancy / Candidate)
+ * 4. Submit Complete KYC Profile (Recruiter / Consultancy only)
  */
 router.post("/submit", async (req, res) => {
   try {
@@ -208,14 +208,42 @@ router.post("/submit", async (req, res) => {
       return res.status(400).json({ success: false, error: "userId and role are required" });
     }
 
+    if (isCandidateRole(role)) {
+      const db = getFirestoreDb();
+      const nowIso = new Date().toISOString();
+      const activePatch = {
+        accountStatus: "active",
+        status: "active",
+        verificationStatus: "verified",
+        approvalStatus: "approved",
+        isApproved: true,
+        approved: true,
+        isActive: true,
+        kycRequired: false,
+        kycStatus: "not_required",
+        approvedAt: nowIso,
+        approvedBy: "system_candidate_auto_approval",
+        updatedAt: nowIso
+      };
+      await Promise.all([
+        db.collection("users").doc(userId).set(activePatch, { merge: true }),
+        db.collection("candidates").doc(userId).set(activePatch, { merge: true }),
+        db.collection("candidateProfiles").doc(userId).set(activePatch, { merge: true })
+      ]);
+      return res.json({
+        success: true,
+        skipped: true,
+        kycRequired: false,
+        accountStatus: "active",
+        message: "Candidate KYC is not required. Account is active."
+      });
+    }
+
     const db = getFirestoreDb();
     const nowIso = new Date().toISOString();
-
-    // Duplicate & Risk Analysis
     const riskFlags: string[] = [];
     let riskLevel: "low" | "medium" | "high" | "critical" = "low";
 
-    // Email & Mobile check
     if (personalDetails?.email) {
       const emailSnap = await db.collection("users").where("email", "==", personalDetails.email).get();
       if (emailSnap.docs.filter((d) => d.id !== userId).length > 0) {
@@ -232,7 +260,6 @@ router.post("/submit", async (req, res) => {
       }
     }
 
-    // GSTIN duplicate check
     if (businessDetails?.gstin) {
       const gHash = hashValue(businessDetails.gstin);
       const gSnap = await db.collection("kyc_profiles").where("gstinHash", "==", gHash).get();
@@ -242,14 +269,12 @@ router.post("/submit", async (req, res) => {
       }
     }
 
-    // Face match liveness
     const faceMatchScore = selfieData?.faceMatchScore || 85;
     if (faceMatchScore < 70) {
       riskFlags.push("LOW_SELFIE_FACE_MATCH_SCORE");
       if (riskLevel !== "critical") riskLevel = "medium";
     }
 
-    // Save/Update kyc_profiles/{userId}
     const kycProfileRef = db.collection("kyc_profiles").doc(userId);
     const kycData = {
       userId,
@@ -295,7 +320,6 @@ router.post("/submit", async (req, res) => {
 
     await kycProfileRef.set(kycData, { merge: true });
 
-    // Save document subcollection
     if (Array.isArray(documents)) {
       for (const docItem of documents) {
         const docRef = kycProfileRef.collection("documents").doc();
@@ -311,7 +335,6 @@ router.post("/submit", async (req, res) => {
       }
     }
 
-    // Save verification_requests/{requestId}
     const requestId = `req_kyc_${userId}_${Date.now()}`;
     const verifReqRef = db.collection("verification_requests").doc(requestId);
     await verifReqRef.set({
@@ -327,7 +350,6 @@ router.post("/submit", async (req, res) => {
       submittedAt: nowIso
     });
 
-    // Update user profile status in users/{userId}
     await db.collection("users").doc(userId).set({
       accountStatus: "pending_admin_approval",
       kycStatus: "pending_admin_approval",
@@ -365,7 +387,6 @@ router.post("/review", async (req, res) => {
     const nowIso = new Date().toISOString();
 
     if (decision === "approve") {
-      // Set account to active & verified
       await db.collection("users").doc(userId).set({
         accountStatus: "active",
         kycStatus: "verified",
@@ -399,7 +420,6 @@ router.post("/review", async (req, res) => {
         message: `User ${userId} KYC approved successfully. Account is now ACTIVE.`
       });
     } else {
-      // Reject or Resubmit
       const kycStatus = decision === "resubmit" ? "resubmit_required" : "rejected";
       const accountStatus = decision === "resubmit" ? "pending_kyc" : "rejected";
 
@@ -455,7 +475,6 @@ router.post("/document-url", async (req, res) => {
     const db = getFirestoreDb();
     const nowIso = new Date().toISOString();
 
-    // Log admin access in audit trails
     await db.collection("audit_logs").add({
       action: "VIEW_PRIVATE_KYC_DOCUMENT",
       targetUserId: userId || "unknown",
@@ -465,7 +484,6 @@ router.post("/document-url", async (req, res) => {
       ipAddress: req.headers["x-forwarded-for"] || req.socket.remoteAddress || "local"
     });
 
-    // Secure temporary signed URL
     const tempUrl = publicId && publicId.startsWith("http")
       ? publicId
       : `https://res.cloudinary.com/aijobs-cloud/image/authenticated/s--tempSignedToken--/${publicId || "sample_doc"}.pdf`;
@@ -473,7 +491,7 @@ router.post("/document-url", async (req, res) => {
     return res.json({
       success: true,
       url: tempUrl,
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // 15 min expiry
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
       message: "Temporary access token generated. Action logged in compliance audit trails."
     });
   } catch (error: any) {
@@ -515,6 +533,7 @@ router.get("/admin-pending-list", async (req, res) => {
 
     verifSnap.forEach((docSnap) => {
       const data = docSnap.data();
+      if (isCandidateRole(data.role)) return;
       const reqStatus = (data.kycStatus || data.verificationStatus || "pending").toLowerCase();
 
       let match = false;
@@ -536,7 +555,7 @@ router.get("/admin-pending-list", async (req, res) => {
           requestId: data.requestId || docSnap.id,
           userId: data.userId || "",
           userEmail: data.userEmail || data.email || "",
-          role: data.role || "Candidate",
+          role: data.role || "Business",
           status: data.kycStatus || data.verificationStatus || "pending",
           kycStatus: data.kycStatus || data.verificationStatus || "pending",
           submittedAt: data.submittedAt || data.createdAt || new Date().toISOString(),
