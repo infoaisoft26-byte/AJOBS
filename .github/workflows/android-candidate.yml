@@ -23,13 +23,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
           cache: gradle
-      - run: npm ci
+      - run: npm install --no-audit --no-fund
+      - run: chmod +x android/gradlew
       - run: npm run android:debug
       - uses: actions/upload-artifact@v4
         with:
