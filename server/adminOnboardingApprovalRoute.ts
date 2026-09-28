@@ -23,7 +23,7 @@ async function allRows(db: any, name: string) {
 
 export async function handleAdminOnboardingApprovalRoute(req: Request, res: Response): Promise<boolean> {
   const path = String(req.url || "").split("?")[0].replace(/\/+$/, "") || "/";
-  if (!["/api/admin/onboarding-list","/api/admin/approve-account"].includes(path)) return false;
+  if (!["/api/admin/onboarding-list","/api/admin/approve-account","/api/admin/manual-partner-override"].includes(path)) return false;
 
   const db = getFirestoreDb();
 
@@ -76,6 +76,161 @@ export async function handleAdminOnboardingApprovalRoute(req: Request, res: Resp
       });
 
       return res.json({ success:true, totalCount:out.length, users:out }), true;
+    }
+
+    if (path === "/api/admin/manual-partner-override" && req.method === "POST") {
+      const body:any = req.body || {};
+      const uid = String(body.targetUserId || "").trim();
+      if (!uid) { res.status(400).json({success:false,error:"targetUserId is required."}); return true; }
+
+      const userRef = db.collection("users").doc(uid);
+      const userSnap = await userRef.get();
+      if (!userSnap.exists) { res.status(404).json({success:false,error:"User profile not found."}); return true; }
+
+      const user:any = userSnap.data() || {};
+      const now = new Date().toISOString();
+      const reviewedBy = String(body.reviewedBy || body.adminUserName || "Super Admin").trim();
+      const kycStatus = norm(body.kycStatus || user.kycStatus || "pending");
+      const documentsStatus = norm(body.documentsStatus || "pending");
+      const agreementStatus = norm(body.agreementStatus || user.agreementStatus || "pending");
+      const paymentStatus = norm(body.paymentStatus || user.paymentStatus || "pending");
+      const subscriptionStatus = norm(body.subscriptionStatus || user.subscriptionStatus || "inactive");
+      const planName = String(body.planName || user.activePlanName || user.planName || "AIJOBS Database Access Plan").trim();
+      const adminNotes = String(body.adminNotes || "").trim();
+      const fullName = String(body.fullName || user.name || user.displayName || "").trim();
+      const mobile = String(body.mobile || user.phone || user.phoneNumber || "").trim();
+      const paymentAmount = Number(body.paymentAmount || 0);
+      const expiresAtInput = String(body.expiresAt || "").trim();
+      const expiresAt = expiresAtInput
+        ? new Date(expiresAtInput).toISOString()
+        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+      const kycApproved = okKyc(kycStatus);
+      const agreementAccepted = okAgreement(agreementStatus);
+      const paymentPaid = okPayment(paymentStatus);
+      const subscriptionActive = subscriptionStatus === "active";
+      const allActive = kycApproved && agreementAccepted && paymentPaid && subscriptionActive;
+
+      const userUpdates:any = {
+        name: fullName || user.name || user.displayName || "Partner",
+        phone: mobile || user.phone || user.phoneNumber || "",
+        kycStatus: kycApproved ? "verified" : kycStatus,
+        verificationStatus: kycApproved ? "approved" : kycStatus,
+        agreementStatus,
+        paymentStatus: paymentPaid ? "paid" : paymentStatus,
+        subscriptionStatus,
+        activePlanName: planName,
+        subscriptionExpiresAt: subscriptionActive ? expiresAt : (user.subscriptionExpiresAt || null),
+        isApproved: allActive ? true : Boolean(user.isApproved && kycApproved),
+        isActive: allActive ? true : user.isActive !== false,
+        status: allActive ? "active" : (user.status || "pending"),
+        accountStatus: allActive ? "active" : (kycApproved ? "pending_activation" : "pending_kyc"),
+        manualOverrideAt: now,
+        manualOverrideBy: reviewedBy,
+        adminNotes,
+        updatedAt: now
+      };
+
+      const batch = db.batch();
+      batch.set(userRef, userUpdates, {merge:true});
+
+      const verificationId = String(body.verificationRequestId || `manual_kyc_${uid}`);
+      batch.set(db.collection("verification_requests").doc(verificationId), {
+        requestId: verificationId,
+        userId: uid,
+        role: user.role || "recruiter",
+        kycStatus: kycApproved ? "verified" : kycStatus,
+        verificationStatus: kycApproved ? "approved" : kycStatus,
+        documentsStatus,
+        manualEntry: true,
+        reviewedAt: now,
+        reviewedBy,
+        adminNotes,
+        updatedAt: now
+      }, {merge:true});
+
+      batch.set(db.collection("kyc_profiles").doc(uid), {
+        userId: uid,
+        role: user.role || "recruiter",
+        kycStatus: kycApproved ? "verified" : kycStatus,
+        documentsStatus,
+        personalDetails: {
+          fullName: fullName || user.name || user.displayName || "",
+          mobile: mobile || user.phone || user.phoneNumber || "",
+          email: user.email || ""
+        },
+        manualEntry: true,
+        reviewedAt: now,
+        reviewedBy,
+        adminNotes,
+        updatedAt: now
+      }, {merge:true});
+
+      const agreementId = String(body.agreementId || `manual_agreement_${uid}`);
+      batch.set(db.collection("agreements").doc(agreementId), {
+        agreementId,
+        userId: uid,
+        role: user.role || "recruiter",
+        status: agreementAccepted ? "accepted" : agreementStatus,
+        acceptedAt: agreementAccepted ? now : null,
+        planSummary: { planName, validityDays: 30 },
+        manualEntry: true,
+        reviewedBy,
+        updatedAt: now
+      }, {merge:true});
+
+      const orderId = String(body.paymentOrderId || `manual_order_${uid}`);
+      batch.set(db.collection("payment_orders").doc(orderId), {
+        orderId,
+        userId: uid,
+        role: user.role || "recruiter",
+        status: paymentPaid ? "paid" : paymentStatus,
+        amount: Number.isFinite(paymentAmount) ? paymentAmount : 0,
+        paidAt: paymentPaid ? now : null,
+        paymentSource: "admin_manual_override",
+        paymentMethod: "manual_admin",
+        gatewaySignatureVerified: false,
+        manualEntry: true,
+        reviewedBy,
+        updatedAt: now
+      }, {merge:true});
+
+      const subscriptionId = `sub_${uid}`;
+      batch.set(db.collection("subscriptions").doc(subscriptionId), {
+        subscriptionId,
+        userId: uid,
+        role: user.role || "recruiter",
+        planName,
+        status: subscriptionStatus,
+        startsAt: subscriptionActive ? now : null,
+        expiresAt: subscriptionActive ? expiresAt : null,
+        paymentStatus: paymentPaid ? "paid" : paymentStatus,
+        manualEntry: true,
+        approvedBy: reviewedBy,
+        updatedAt: now
+      }, {merge:true});
+
+      if (norm(user.role)==="recruiter") batch.set(db.collection("recruiters").doc(uid), userUpdates, {merge:true});
+      if (["consultancy","agency"].includes(norm(user.role))) batch.set(db.collection("consultancies").doc(uid), userUpdates, {merge:true});
+      if (norm(user.role)==="employer") batch.set(db.collection("employers").doc(uid), userUpdates, {merge:true});
+
+      batch.set(db.collection("onboarding_timelines").doc(`manual_${uid}_${Date.now()}`), {
+        userId: uid,
+        stage: "ADMIN_MANUAL_OVERRIDE",
+        title: "Onboarding status manually updated",
+        description: `KYC=${kycStatus}; Documents=${documentsStatus}; Agreement=${agreementStatus}; Payment=${paymentStatus}; Subscription=${subscriptionStatus}`,
+        timestamp: now,
+        actor: reviewedBy,
+        adminNotes
+      });
+
+      await batch.commit();
+      res.json({
+        success:true,
+        message:"Manual onboarding details saved and recruiter access state synchronized.",
+        resolved:{kycStatus:kycApproved ? "verified" : kycStatus,documentsStatus,agreementStatus,paymentStatus:paymentPaid ? "paid" : paymentStatus,subscriptionStatus,accountStatus:allActive ? "active" : userUpdates.accountStatus}
+      });
+      return true;
     }
 
     if (path === "/api/admin/approve-account" && req.method === "POST") {
