@@ -1,5 +1,4 @@
 import { collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from "firebase/firestore";
-import { Search, Type } from "lucide-react";
 import { db } from "../firebase";
 
 import { JobPosting } from "../types";
@@ -97,7 +96,6 @@ export async function getLiveJobs(): Promise<JobPosting[]> {
  */
 export async function getJobById(jobIdOrSlug: string): Promise<JobPosting | null> {
   try {
-    // 1. Try direct ID lookup
     const docRef = doc(db, JOBS_COLLECTION, jobIdOrSlug);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
@@ -107,7 +105,6 @@ export async function getJobById(jobIdOrSlug: string): Promise<JobPosting | null
       return { id: docSnap.id, slug, canonicalUrl, ...data } as JobPosting;
     }
 
-    // 2. Search by slug field or slug ending with ID
     const q = query(collection(db, JOBS_COLLECTION), where("slug", "==", jobIdOrSlug));
     const snap = await getDocs(q);
     if (!snap.empty) {
@@ -117,7 +114,6 @@ export async function getJobById(jobIdOrSlug: string): Promise<JobPosting | null
       return { id: firstDoc.id, canonicalUrl, ...data } as JobPosting;
     }
 
-    // 3. Extract trailing ID if slug format (e.g. "customer-support-executive-AJ1024" or "job_123")
     const parts = jobIdOrSlug.split("-");
     const trailingId = parts[parts.length - 1];
     if (trailingId && trailingId !== jobIdOrSlug) {
@@ -143,14 +139,11 @@ export async function getJobById(jobIdOrSlug: string): Promise<JobPosting | null
  */
 export async function createJob(jobData: Omit<JobPosting, "id">): Promise<string> {
   try {
-    const rawId = jobData.employerId || "AJ" + Math.floor(1000 + Math.random() * 9000);
     const jobId = "job_" + Math.random().toString(36).substring(2, 11);
-    
     const isDup = await checkDuplicateJob(jobData.title, jobData.companyName, jobData.location);
 
     const slug = generateJobSlug(jobData.title, jobData.location, jobId);
     const canonicalUrl = getPublicJobUrl({ title: jobData.title, location: jobData.location, id: jobId, slug });
-
     const finalStatus = isDup ? "Pending Approval" : (jobData.status || "Published");
 
     const fullJob: JobPosting = {
@@ -168,7 +161,6 @@ export async function createJob(jobData: Omit<JobPosting, "id">): Promise<string
     const jobRef = doc(db, JOBS_COLLECTION, jobId);
     await setDoc(jobRef, fullJob);
 
-    // If published, trigger backend Google Indexing API
     if (["Published", "Live", "Approved"].includes(finalStatus)) {
       fetch("/api/indexing/publish", {
         method: "POST",
@@ -254,12 +246,16 @@ export async function deleteJob(jobId: string): Promise<void> {
 }
 
 /**
- * Fetches jobs in pages from Firestore.
+ * Fetches public jobs in stable pages without requiring a composite Firestore index.
+ *
+ * Firestore still performs the same public-status security-filtered query. We then
+ * sort the current public result set and use a numeric offset cursor so the caller
+ * can progressively load the next slice instead of receiving the first page again.
  */
 export async function fetchPaginatedLiveJobs(
   pageSize: number = 15,
   lastVisibleDoc: any = null
-): Promise<{ jobs: JobPosting[]; lastDoc: any }> {
+): Promise<{ jobs: JobPosting[]; lastDoc: number | null }> {
   try {
     const publicJobsQuery = query(
       collection(db, JOBS_COLLECTION),
@@ -285,12 +281,20 @@ export async function fetchPaginatedLiveJobs(
     const sorted = jobsList.sort((a, b) => {
       const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return dateB - dateA;
+      if (dateB !== dateA) return dateB - dateA;
+      return String(a.id || "").localeCompare(String(b.id || ""));
     });
 
+    const safePageSize = Math.max(1, Math.min(50, Number(pageSize) || 15));
+    const rawOffset = Number(lastVisibleDoc);
+    const start = Number.isFinite(rawOffset) && rawOffset > 0 ? Math.floor(rawOffset) : 0;
+    const end = Math.min(sorted.length, start + safePageSize);
+    const page = sorted.slice(start, end);
+    const nextCursor = end < sorted.length ? end : null;
+
     return {
-      jobs: sorted.slice(0, Math.max(1, pageSize)),
-      lastDoc: null
+      jobs: page,
+      lastDoc: nextCursor
     };
   } catch (error) {
     console.warn("fetchPaginatedLiveJobs fallback:", error);
