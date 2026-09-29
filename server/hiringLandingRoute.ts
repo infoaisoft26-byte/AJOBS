@@ -26,6 +26,12 @@ async function writeEvent(visitorId: string, eventName: string, role: string, a:
   if (!snap.exists) await ref.set({ id, eventName, visitorId, uid: null, role: role || null, marketingAttribution: a, ...a, createdAt: new Date().toISOString() });
 }
 
+function withHiringAnalytics(html: string) {
+  const tag = '<script defer src="/hiring-analytics.js"></script>';
+  if (html.includes('/hiring-analytics.js')) return html;
+  return html.includes('</body>') ? html.replace('</body>', `${tag}</body>`) : `${html}${tag}`;
+}
+
 export async function handleHiringLandingRoute(req: Request, res: Response): Promise<boolean> {
   const pathname = String(req.url || "").split("?")[0].replace(/\/+$/, "") || "/";
   if (!(pathname === "/hire" || pathname.startsWith("/hire/")) || req.method !== "GET") return false;
@@ -41,6 +47,6 @@ export async function handleHiringLandingRoute(req: Request, res: Response): Pro
   if (!fs.existsSync(file)) { res.status(500).send("Hiring page unavailable."); return true; }
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Cache-Control", "public, max-age=60, s-maxage=120");
-  res.status(200).send(fs.readFileSync(file, "utf-8"));
+  res.status(200).send(withHiringAnalytics(fs.readFileSync(file, "utf-8")));
   return true;
 }
