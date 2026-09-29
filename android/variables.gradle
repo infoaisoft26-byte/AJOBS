@@ -1,4 +1,6 @@
 ext {
+    // Include the native Google sign-in handler in FirebaseAuthentication.
+    rgcfaIncludeGoogle = true
     minSdkVersion = 23
     compileSdkVersion = 35
     targetSdkVersion = 35

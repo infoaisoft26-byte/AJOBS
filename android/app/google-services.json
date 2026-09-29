@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "1011372734924",
+    "firebase_url": "https://planning-with-ai-1ea1c-default-rtdb.firebaseio.com",
+    "project_id": "planning-with-ai-1ea1c",
+    "storage_bucket": "planning-with-ai-1ea1c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1011372734924:android:2e314e7c549362cefe8569",
+        "android_client_info": {
+          "package_name": "in.aijobs.candidate"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1011372734924-gsdn1hqknr2sjtr84mad0qd92hpmqmnk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDj13EDg5y4lp9XMYeGu4AL3QYZswkOURo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1011372734924-gsdn1hqknr2sjtr84mad0qd92hpmqmnk.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
