@@ -148,6 +148,7 @@ export default function CandidateRegistrationFlow({
       referredById: referredConsultancyId,
       referredByName: referredConsultancyName,
       registrationSource: referredConsultancyId ? "Consultancy Referral" : "Direct Website",
+      source: referredConsultancyId ? "Consultancy Referral" : "Direct Website",
       createdAt: existingUser?.exists() ? existingUser.data()?.createdAt || now : now,
       updatedAt: now,
       lastLogin: now,
