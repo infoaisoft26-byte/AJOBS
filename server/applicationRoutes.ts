@@ -48,6 +48,42 @@ router.get("/referral/:consultancyId", async (req, res) => {
   }
 });
 
+router.get("/referrals/candidates", async (req, res) => {
+  try {
+    const authHeader = String(req.headers.authorization || "");
+    if (!authHeader.startsWith("Bearer ")) return res.status(401).json({ success: false, error: "Authentication required." });
+
+    const decoded = await getFirebaseAuth().verifyIdToken(authHeader.slice(7).trim(), true);
+    const requestedId = String(req.query.consultancyId || decoded.uid).trim();
+    if (requestedId !== decoded.uid) return res.status(403).json({ success: false, error: "Consultancy access denied." });
+
+    const db = getFirestoreDb();
+    const userSnap = await db.collection("users").doc(decoded.uid).get();
+    const role = String(userSnap.data()?.role || (decoded as any).role || "").toLowerCase();
+    if (!["consultancy", "agency"].includes(role)) return res.status(403).json({ success: false, error: "Consultancy access denied." });
+
+    const [usersSnap, candidatesSnap, profilesSnap] = await Promise.all([
+      db.collection("users").where("consultancyId", "==", decoded.uid).limit(500).get(),
+      db.collection("candidates").where("consultancyId", "==", decoded.uid).limit(500).get(),
+      db.collection("candidateProfiles").where("consultancyId", "==", decoded.uid).limit(500).get(),
+    ]);
+
+    const merged = new Map<string, any>();
+    for (const snap of [usersSnap, candidatesSnap, profilesSnap]) {
+      snap.docs.forEach((doc) => {
+        const data = doc.data() || {};
+        const key = String(data.uid || data.userId || doc.id);
+        merged.set(key, { ...(merged.get(key) || {}), ...data, uid: key, id: key });
+      });
+    }
+
+    return res.json({ success: true, candidates: Array.from(merged.values()) });
+  } catch (err: any) {
+    console.error("[/api/consultancy/referrals/candidates] lookup failed:", err?.message || err);
+    return res.status(500).json({ success: false, error: "Unable to load consultancy candidates." });
+  }
+});
+
 router.post("/admin/jobs/review", async (req, res) => {
   try {
     const authHeader = req.headers.authorization || "";
