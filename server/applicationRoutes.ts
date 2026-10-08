@@ -5,6 +5,49 @@ import { getPublicSiteUrl } from "./siteConfig.js";
 
 const router = Router();
 
+router.get("/referral/:consultancyId", async (req, res) => {
+  try {
+    const consultancyId = String(req.params.consultancyId || "").trim();
+    if (!consultancyId || consultancyId.length > 160) {
+      return res.status(400).json({ success: false, error: "Invalid consultancy referral." });
+    }
+
+    const db = getFirestoreDb();
+    const [consultancySnap, userSnap] = await Promise.all([
+      db.collection("consultancies").doc(consultancyId).get(),
+      db.collection("users").doc(consultancyId).get(),
+    ]);
+
+    if (!consultancySnap.exists && !userSnap.exists) {
+      return res.status(404).json({ success: false, error: "Consultancy referral not found." });
+    }
+
+    const consultancy = consultancySnap.data() || {};
+    const user = userSnap.data() || {};
+    const role = String(user.role || consultancy.role || "").toLowerCase();
+    if (role && !["consultancy", "agency"].includes(role) && !consultancySnap.exists) {
+      return res.status(404).json({ success: false, error: "Consultancy referral not found." });
+    }
+
+    const name = String(
+      consultancy.agencyName ||
+      consultancy.businessName ||
+      consultancy.companyName ||
+      consultancy.name ||
+      user.agencyName ||
+      user.businessName ||
+      user.companyName ||
+      user.name ||
+      "AIJOBS Consultancy"
+    ).trim();
+
+    return res.json({ success: true, consultancy: { id: consultancyId, name } });
+  } catch (err: any) {
+    console.error("[/api/consultancy/referral] lookup failed:", err?.message || err);
+    return res.status(500).json({ success: false, error: "Unable to resolve consultancy referral." });
+  }
+});
+
 router.post("/admin/jobs/review", async (req, res) => {
   try {
     const authHeader = req.headers.authorization || "";
