@@ -5518,7 +5518,7 @@ app.get("/sitemap.xml", async (req, res) => {
         const expiryDate = expiry && typeof expiry?.toDate === "function" ? expiry.toDate() : expiry ? new Date(expiry) : null;
         const isExpired = expiryDate instanceof Date && !Number.isNaN(expiryDate.getTime()) && expiryDate < currentDate;
         const excludedStatus = ["draft", "pending", "pending_approval", "pending approval", "pending_admin_verification", "rejected", "expired", "closed", "deleted"].includes(status);
-        const isApproved = data.approved === true || data.isApproved === true || ["approved", "live", "published"].includes(status);
+        const isApproved = ["approved", "live", "published", "open"].includes(status) && data.approved !== false && data.verificationStatus !== "rejected";
         const isPublic = data.isPublic !== false && data.publicVisibility !== false && data.visibility !== "private";
 
         if (isApproved && isPublic && !excludedStatus && !isExpired) {
@@ -5634,7 +5634,16 @@ app.get(["/jobs/:jobSlug", "/jobs/id/:jobId"], async (req, res) => {
       }
     }
 
-    if (!jobData || ["Closed", "Expired", "Deleted", "Draft"].includes(jobData.status)) {
+    const publicJobStatus = String(jobData?.status || "").trim().toLowerCase();
+    const publicJobEligible =
+      ["approved", "live", "published", "open"].includes(publicJobStatus) &&
+      jobData?.approved !== false &&
+      String(jobData?.verificationStatus || "").toLowerCase() !== "rejected" &&
+      jobData?.isPublic !== false &&
+      jobData?.publicVisibility !== false &&
+      String(jobData?.visibility || "").toLowerCase() !== "private";
+
+    if (!jobData || !publicJobEligible) {
       res.status(404);
       return res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -5656,8 +5665,8 @@ app.get(["/jobs/:jobSlug", "/jobs/id/:jobId"], async (req, res) => {
 
     // Active Job Page Details
     const title = jobData.title || "Job Vacancy";
-    const company = jobData.hiringOrganizationName || jobData.companyName || "AIJobs Partner Enterprise";
-    const location = jobData.location || "Mumbai, India";
+    const company = jobData.hiringOrganizationName || jobData.companyName || "AIJobs";
+    const location = jobData.location || "Location not specified";
     const cleanTitle = title.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
     const slug = jobData.slug || `${cleanTitle}-${jobId}`;
     const canonicalUrl = `${siteUrl}/jobs/${slug}`;
@@ -5677,13 +5686,15 @@ app.get(["/jobs/:jobSlug", "/jobs/id/:jobId"], async (req, res) => {
         "value": jobId
       },
       "datePosted": jobData.datePosted || (jobData.createdAt ? jobData.createdAt.split("T")[0] : new Date().toISOString().split("T")[0]),
-      "validThrough": jobData.validThrough || jobData.applyDeadline || jobData.expiryDate || new Date(Date.now() + 60*24*60*60*1000).toISOString().split("T")[0],
+      ...(jobData.validThrough || jobData.applyDeadline || jobData.expiryDate
+        ? { "validThrough": jobData.validThrough || jobData.applyDeadline || jobData.expiryDate }
+        : {}),
       "employmentType": jobData.employmentType || "FULL_TIME",
       "hiringOrganization": {
         "@type": "Organization",
         "name": company,
-        "sameAs": jobData.companyWebsite || `https://${company.toLowerCase().replace(/[^a-z0-9]/g, "")}.com`,
-        "logo": jobData.companyLogo || undefined
+        ...(jobData.companyWebsite ? { "sameAs": jobData.companyWebsite } : {}),
+        ...(jobData.companyLogo ? { "logo": jobData.companyLogo } : {})
       },
       "jobLocation": {
         "@type": "Place",
@@ -5696,16 +5707,18 @@ app.get(["/jobs/:jobSlug", "/jobs/id/:jobId"], async (req, res) => {
           "addressCountry": jobData.country || "IN"
         }
       },
-      "baseSalary": {
-        "@type": "MonetaryAmount",
-        "currency": jobData.salaryCurrency || "INR",
-        "value": {
-          "@type": "QuantitativeValue",
-          "minValue": jobData.minimumSalary || 300000,
-          "maxValue": jobData.maximumSalary || 1200000,
-          "unitText": "YEAR"
+      ...(jobData.minimumSalary != null || jobData.maximumSalary != null ? {
+        "baseSalary": {
+          "@type": "MonetaryAmount",
+          "currency": jobData.salaryCurrency || "INR",
+          "value": {
+            "@type": "QuantitativeValue",
+            ...(jobData.minimumSalary != null ? { "minValue": Number(jobData.minimumSalary) } : {}),
+            ...(jobData.maximumSalary != null ? { "maxValue": Number(jobData.maximumSalary) } : {}),
+            "unitText": jobData.salaryUnitText || "YEAR"
+          }
         }
-      },
+      } : {}),
       "directApply": true
     };
 
@@ -5771,7 +5784,7 @@ ${JSON.stringify(jsonLd, null, 2)}
         <div class="meta-item"><span class="meta-label">Location</span><span class="meta-val">${location}</span></div>
         <div class="meta-item"><span class="meta-label">Employment Type</span><span class="meta-val">${jobData.employmentType || jobData.type || "Full Time"}</span></div>
         <div class="meta-item"><span class="meta-label">Work Mode</span><span class="meta-val">${jobData.workMode || "On-site"}</span></div>
-        <div class="meta-item"><span class="meta-label">Salary Package</span><span class="meta-val">${jobData.salary || "₹" + (jobData.minimumSalary || 300000).toLocaleString() + " - ₹" + (jobData.maximumSalary || 1200000).toLocaleString()}</span></div>
+        <div class="meta-item"><span class="meta-label">Salary Package</span><span class="meta-val">${jobData.salary || (jobData.minimumSalary != null || jobData.maximumSalary != null ? "₹" + Number(jobData.minimumSalary || 0).toLocaleString() + (jobData.maximumSalary != null ? " - ₹" + Number(jobData.maximumSalary).toLocaleString() : "") : "Not specified")}</span></div>
       </div>
 
       <div class="section-title">Job Specification & Requirements</div>
