@@ -105,7 +105,7 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
         (!!agencyKey && clean(a.consultancyName || a.consultancy).toLowerCase() === agencyKey)
       );
       const relatedApplications = applications;
-      const sources = [...(cache.candidates || []), ...(cache.candidateProfiles || []), ...(cache.users || []), ...(cache.consultancy_candidates || [])];
+      const sources = [...(cache.candidates || []), ...(cache.candidateProfiles || []), ...(cache.users || []), ...(cache.consultancy_candidates || []), ...(cache.referral_candidates || [])];
       const merged = new Map<string, any>();
       const directReferralCandidates = sources.filter(c =>
         String(c.consultancyId || "").trim() === userId ||
@@ -162,6 +162,23 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
       setCandidates(candidateRows);
     };
 
+    const loadReferralCandidates = async () => {
+      try {
+        const currentUser = auth.currentUser;
+        if (!currentUser) return;
+        const token = await currentUser.getIdToken();
+        const response = await fetch(`/api/consultancy/referrals/candidates?consultancyId=${encodeURIComponent(userId)}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        cache.referral_candidates = Array.isArray(data?.candidates) ? data.candidates : [];
+        rebuild();
+      } catch (err) {
+        console.warn("Consultancy referral candidates sync failed:", err);
+      }
+    };
+
     const unsubs: Unsubscribe[] = [];
     const listen = (name: string, setter?: (rows: any[]) => void) => {
       unsubs.push(onSnapshot(collection(db, name), snapshot => {
@@ -175,6 +192,7 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
       setLoading(false);
     }));
     listen("clients", rows => setClients(rows as ClientModel[]));
+    void loadReferralCandidates();
     listen("jobs"); listen("consultancy_jobs"); listen("applications");
     listen("candidates"); listen("candidateProfiles"); listen("users"); listen("consultancy_candidates");
     listen("placements", rows => setPlacements(rows as PlacementModel[]));
