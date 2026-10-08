@@ -179,3 +179,89 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .candidate-glow, .candidate-light-beam, .candidate-particles span, .candidate-final-cta { animation: none !important; }
 }
+
+
+/* AIJOBS 8D Motion System: layered depth, hover parallax, light sweep and cinematic elevation. */
+.ai-8d-scene {
+  perspective: 1400px;
+  transform-style: preserve-3d;
+}
+.ai-8d-card {
+  position: relative;
+  transform: translateZ(0) rotateX(0deg) rotateY(0deg);
+  transform-style: preserve-3d;
+  will-change: transform, box-shadow;
+  transition: transform 420ms cubic-bezier(.2,.75,.2,1), box-shadow 420ms ease, border-color 300ms ease;
+}
+.ai-8d-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(120deg, rgba(255,255,255,.18), transparent 32%, transparent 68%, rgba(6,182,212,.10));
+  opacity: .45;
+  transform: translateZ(2px);
+}
+.ai-8d-card::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 20%, rgba(96,165,250,.22) 48%, transparent 70%);
+  background-size: 220% 100%;
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+.ai-8d-card:hover {
+  transform: translateY(-8px) translateZ(22px) rotateX(2deg) rotateY(-2deg);
+  box-shadow: 0 28px 70px -30px rgba(37,99,235,.48), 0 12px 35px -20px rgba(6,182,212,.35);
+}
+.ai-8d-card:hover::after {
+  opacity: 1;
+  animation: ai-8d-light-sweep 1.15s ease-out;
+}
+.ai-8d-float {
+  animation: ai-8d-float 5.5s ease-in-out infinite;
+}
+.ai-8d-depth {
+  transform-style: preserve-3d;
+}
+.ai-8d-depth > * {
+  transform: translateZ(12px);
+}
+.ai-8d-glow {
+  position: relative;
+}
+.ai-8d-glow::before {
+  content: "";
+  position: absolute;
+  inset: -18%;
+  z-index: -1;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(37,99,235,.20), rgba(6,182,212,.10) 35%, transparent 70%);
+  filter: blur(24px);
+  opacity: .75;
+  animation: ai-8d-glow-pulse 4s ease-in-out infinite;
+}
+@keyframes ai-8d-light-sweep {
+  from { background-position: 120% 0; }
+  to { background-position: -20% 0; }
+}
+@keyframes ai-8d-float {
+  0%, 100% { transform: translate3d(0,0,0); }
+  50% { transform: translate3d(0,-7px,0); }
+}
+@keyframes ai-8d-glow-pulse {
+  0%, 100% { transform: scale(.92); opacity: .45; }
+  50% { transform: scale(1.08); opacity: .85; }
+}
+@media (max-width: 640px) {
+  .ai-8d-card:hover { transform: translateY(-4px) translateZ(8px); }
+  .ai-8d-card { transition-duration: 280ms; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-8d-card, .ai-8d-float, .ai-8d-glow::before { animation: none !important; transition: none !important; }
+  .ai-8d-card:hover { transform: none !important; }
+}
