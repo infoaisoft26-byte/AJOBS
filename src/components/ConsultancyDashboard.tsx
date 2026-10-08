@@ -107,6 +107,16 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
       const relatedApplications = applications;
       const sources = [...(cache.candidates || []), ...(cache.candidateProfiles || []), ...(cache.users || []), ...(cache.consultancy_candidates || [])];
       const merged = new Map<string, any>();
+      const directReferralCandidates = sources.filter(c =>
+        String(c.consultancyId || "").trim() === userId ||
+        String(c.assignedConsultancyId || "").trim() === userId
+      );
+      directReferralCandidates.forEach(c => {
+        const key = clean(c.uid || c.userId || c.candidateId || c.email || c.id).toLowerCase();
+        if (!key) return;
+        const old = merged.get(key) || {};
+        merged.set(key, { ...old, ...c, id: c.uid || c.userId || c.candidateId || old.id || c.id, __directConsultancyReferral: true });
+      });
       const allowedCandidateKeys = new Set(relatedApplications.flatMap(a => [a.candidateId, a.userId, a.candidateEmail, a.email].filter(Boolean).map((v: any) => clean(v).toLowerCase())));
       sources.forEach(c => {
         if (c.role && !["candidate", "jobseeker", "job_seeker"].includes(String(c.role).toLowerCase())) return;
@@ -141,9 +151,11 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
           resumeScore: Number(c.resumeScore || 0), aiInterviewScore: Number(c.aiInterviewScore || c.interviewScore || 0),
           applicationId: latest.id, applicationStatus: clean(latest.status),
           appliedJobId: latest.jobId, appliedJobTitle: clean(latest.jobTitle), companyName: clean(latest.companyName || latest.company),
-          appliedAt: iso(latest.appliedAt || latest.createdAt), consultancyId: userId,
-          consultancyName: clean(latest.consultancyName || latest.consultancy || c.consultancyName, agencyName),
-          source: clean(latest.source || c.source, "AIJobs"), resumeUrl: c.resumeUrl || latest.resumeUrl,
+          appliedAt: iso(latest.appliedAt || latest.createdAt),
+          consultancyId: userId,
+          consultancyName: clean(c.consultancyName || latest.consultancyName || latest.consultancy, agencyName),
+          source: clean(c.registrationSource || latest.source || c.source, c.__directConsultancyReferral ? "Consultancy Referral" : "AIJobs"),
+          resumeUrl: c.resumeUrl || latest.resumeUrl,
           applications: apps.map(a => ({ id: a.id, jobId: a.jobId || "", jobTitle: clean(a.jobTitle, "Untitled Job"), companyName: clean(a.companyName || a.company, "Company not provided"), status: clean(a.status, "applied"), appliedAt: iso(a.appliedAt || a.createdAt) }))
         };
       });
@@ -212,6 +224,26 @@ export default function ConsultancyDashboard({ userId, userName }: ConsultancyDa
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6" id="consultancy-crm-workspace">
+      {/* Mobile Top Header */}
+      <div className="mb-4 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-300">Candidate Registration Link</p>
+            <p className="mt-1 text-xs text-gray-300">Share this link with candidates. New registrations are automatically tagged to {profile.agencyName} and appear in Admin and your Candidates CRM.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const link = `${window.location.origin}/candidate/register?consultancyId=${encodeURIComponent(userId)}`;
+              navigator.clipboard?.writeText(link);
+            }}
+            className="shrink-0 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-500"
+          >
+            Copy Registration Link
+          </button>
+        </div>
+      </div>
+
       {/* Mobile Top Header */}
       <div className="lg:hidden flex items-center justify-between p-4 glass rounded-2xl border border-white/5">
         <div className="flex items-center gap-3 truncate">
