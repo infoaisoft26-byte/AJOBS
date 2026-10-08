@@ -125,6 +125,40 @@ export function resolveUserIntent(message: string): "APPLICATION_STATUS" | "JOB_
 }
 
 /**
+ * Query the real AIJOBS job collection. Only jobs in approved/published/live/open
+ * states are exposed to the assistant; no job data is invented.
+ */
+export async function getLiveJobMatches(db: any, query: string, limit = 10): Promise<any[]> {
+  const allowedStatuses = ["approved","Approved","published","Published","live","Live","open","Open"];
+  const terms = String(query || "").toLowerCase().split(/[^a-z0-9+#.]+/i).filter(Boolean).slice(0, 18);
+  try {
+    const snap = await db.collection("jobs").where("status", "in", allowedStatuses).limit(100).get();
+    const matches:any[]=[];
+    snap.forEach((doc:any)=>{
+      const j=doc.data()||{};
+      const title=String(j.title||j.jobTitle||"").trim();
+      const company=String(j.company||j.companyName||"").trim();
+      const location=String(j.location||"").trim();
+      const salary=String(j.salary||j.salaryRange||"").trim();
+      const experienceRequired=String(j.experience||j.minExperience||j.experienceRequired||"").trim();
+      const skills=Array.isArray(j.skills)?j.skills.map((s:any)=>String(s)).filter(Boolean).slice(0,12):[];
+      const searchable=[title,company,location,salary,experienceRequired,...skills].join(" ").toLowerCase();
+      let score=0;
+      for(const term of terms){
+        if(title.toLowerCase().includes(term)) score+=6;
+        else if(skills.some((s:string)=>s.toLowerCase().includes(term))) score+=4;
+        else if(searchable.includes(term)) score+=1;
+      }
+      matches.push({jobId:doc.id,title,company,location,salary,experienceRequired,skills,status:j.status||"",score});
+    });
+    return matches.filter(x=>!terms.length||x.score>0).sort((a,b)=>b.score-a.score).slice(0,limit).map(({score,...job})=>job);
+  } catch(err:any) {
+    console.warn("[AIAssistant] Live job lookup notice:",err?.message||err);
+    return [];
+  }
+}
+
+/**
  * Build live, role-authorized Firestore context for the AI prompt
  */
 export async function buildAssistantContext(db: any, uid: string | null, role: string, userMessage: string, intent: string): Promise<{
