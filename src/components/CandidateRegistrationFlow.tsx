@@ -58,6 +58,30 @@ export default function CandidateRegistrationFlow({
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [consultancyReferral, setConsultancyReferral] = useState<{ id: string; name: string } | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const consultancyId = params.get("consultancyId") || params.get("consultancy") || "";
+    if (!consultancyId) return;
+
+    fetch(`/api/consultancy/referral/${encodeURIComponent(consultancyId)}`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Referral not found");
+        return response.json();
+      })
+      .then((data) => {
+        if (data?.success && data.consultancy?.id && data.consultancy?.name) {
+          setConsultancyReferral({
+            id: String(data.consultancy.id),
+            name: String(data.consultancy.name),
+          });
+        }
+      })
+      .catch(() => {
+        setConsultancyReferral(null);
+      });
+  }, []);
 
   useEffect(() => {
     trackCandidateRegistrationStarted(attribution.gclid ? "google_ads" : "candidate_register");
@@ -68,6 +92,8 @@ export default function CandidateRegistrationFlow({
     const normalizedEmail = (fbUser.email || email).trim().toLowerCase();
     const normalizedMobile = normalizePhone(phone || fbUser.phoneNumber || "");
     const now = new Date().toISOString();
+    const referredConsultancyId = consultancyReferral?.id || null;
+    const referredConsultancyName = consultancyReferral?.name || null;
 
     const existingUser = await getDoc(doc(db, "users", fbUser.uid)).catch(() => null);
     const existingRole = existingUser?.exists() ? String(existingUser.data()?.role || "").toLowerCase() : "";
@@ -112,8 +138,16 @@ export default function CandidateRegistrationFlow({
       utm_campaign: attribution.utm_campaign || null,
       utm_content: attribution.utm_content || null,
       utm_term: attribution.utm_term || null,
-      acquisitionSource: attribution.gclid ? "google_ads" : attribution.utm_source || "organic",
+      acquisitionSource: referredConsultancyId
+        ? "consultancy_referral"
+        : attribution.gclid ? "google_ads" : attribution.utm_source || "organic",
       registrationMethod: method,
+      consultancyId: referredConsultancyId,
+      consultancyName: referredConsultancyName,
+      referredByType: referredConsultancyId ? "consultancy" : null,
+      referredById: referredConsultancyId,
+      referredByName: referredConsultancyName,
+      registrationSource: referredConsultancyId ? "Consultancy Referral" : "Direct Website",
       createdAt: existingUser?.exists() ? existingUser.data()?.createdAt || now : now,
       updatedAt: now,
       lastLogin: now,
@@ -144,6 +178,7 @@ export default function CandidateRegistrationFlow({
       email: normalizedEmail,
       phone: normalizedMobile,
       role: "candidate",
+      consultancyId: referredConsultancyId || undefined,
       createdAt: String(userData.createdAt),
       lastLogin: now,
       status: "active",
@@ -266,6 +301,11 @@ export default function CandidateRegistrationFlow({
             <div className="mx-auto max-w-xl">
               <h2 className="text-2xl font-black">Register as Candidate</h2>
               <p className="mt-1 text-sm text-slate-500">Use Google for the fastest signup, or create an account with email.</p>
+              {consultancyReferral && (
+                <div className="mt-4 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-800">
+                  <span className="font-bold">Registration through:</span> {consultancyReferral.name}
+                </div>
+              )}
 
               {error && (
                 <div className="mt-5 flex gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
