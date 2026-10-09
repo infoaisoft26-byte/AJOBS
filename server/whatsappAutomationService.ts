@@ -108,7 +108,7 @@ async function buildAutoReply(db: any, from: string, text: string) {
     return "Namaste! Welcome to AIJOBS WhatsApp Assistant.\n\nReply with:\n• JOBS — latest approved openings\n• A job title or skill — search openings\n• REGISTER — candidate registration help\n• APPLY — how to apply\n• STATUS — check application/interview updates\n• RECRUITER — employer/recruiter help\n• STOP — stop WhatsApp replies\n\nCandidate applications on AIJOBS are free. " + SITE_URL;
   }
 
-  if (/\b(job|jobs|opening|openings|vacancy|vacancies|hiring|career|developer|engineer|designer|sales|hr|recruiter|marketing|accountant|internship|remote)\b/i.test(message)) {
+  if (/\b(job|jobs|opening|openings|vacancy|vacancies|hiring|career|developer|engineer|designer|accountant|internship|remote)\b/i.test(message)) {
     try {
       const jobs = await getPublicJobs(db, message);
       if (!jobs.length) return "I couldn't find a matching approved/live opening right now. Try another job title or skill, or browse " + SITE_URL + ". Candidate applications are free.";
