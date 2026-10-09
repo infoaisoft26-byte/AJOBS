@@ -186,6 +186,11 @@ export async function handleUpdateTenant(req: Request, res: Response) {
 
   const patch: Record<string, unknown> = { updatedAt: new Date().toISOString() };
   const body = req.body || {};
+  let rotatedTenantApiKey: string | undefined;
+  if (body.rotateApiKey === true) {
+    rotatedTenantApiKey = "wa_live_" + crypto.randomBytes(32).toString("hex");
+    patch.apiKeyHash = hashKey(rotatedTenantApiKey);
+  }
   if (body.tenantName !== undefined) {
     const value = String(body.tenantName).trim();
     if (!value) return res.status(400).json({ success: false, error: "INVALID_TENANT_NAME" });
@@ -205,7 +210,11 @@ export async function handleUpdateTenant(req: Request, res: Response) {
 
   await ref.update(patch);
   const updated = await ref.get();
-  return res.json({ success: true, tenant: publicTenant(updated.data() as Tenant) });
+  return res.json({
+    success: true,
+    tenant: publicTenant(updated.data() as Tenant),
+    ...(rotatedTenantApiKey ? { tenantApiKey: rotatedTenantApiKey, warning: "Copy the rotated tenantApiKey now. It cannot be retrieved later." } : {}),
+  });
 }
 
 export async function handleTenantConsent(req: Request, res: Response) {
@@ -364,11 +373,18 @@ export async function receiveMultiTenantWhatsAppWebhook(req: Request, res: Respo
         count++;
       }
       for (const status of Array.isArray(value.statuses) ? value.statuses : []) {
+        const messageId = String(status?.id || "");
         batch.set(events.doc(), {
-          tenantId, type: "status", phoneNumberId, recipientId: status?.recipient_id || "", messageId: status?.id || "",
+          tenantId, type: "status", phoneNumberId, recipientId: status?.recipient_id || "", messageId,
           status: status?.status || "", timestamp: status?.timestamp || "", receivedAt: new Date().toISOString(),
         });
         count++;
+        if (messageId) {
+          const sentMessage = await db.collection("whatsappMessages").where("providerMessageId", "==", messageId).limit(1).get();
+          if (!sentMessage.empty && sentMessage.docs[0].data()?.tenantId === tenantId) {
+            batch.update(sentMessage.docs[0].ref, { status: String(status?.status || "unknown"), lastStatusAt: new Date().toISOString() });
+          }
+        }
       }
     }
   }
