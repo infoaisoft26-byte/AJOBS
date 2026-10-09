@@ -48,8 +48,7 @@ import { extractResumeText, parseResumeWithAI, syncParsedResumeToFirestore, extr
 import { handlePaymentCheckoutRoute } from "./server/paymentCheckoutRoute.js";
 import { handleCloudinarySignatureRoute } from "./server/cloudinarySignatureRoute.js";
 import { handleAgreementOtpRoute } from "./server/agreementOtpRoute.js";
-import { verifyWhatsAppWebhook, handleWhatsAppSendRoute } from "./server/whatsappAutomationService.js";
-import { receiveMultiTenantWhatsAppWebhook, handleCreateTenant, handleListTenants, handleUpdateTenant, handleTenantConsent, handleTenantSend } from "./server/whatsappMultiTenantService.js";
+import { verifyWhatsAppWebhook, receiveWhatsAppWebhook, handleWhatsAppSendRoute } from "./server/whatsappAutomationService.js";
 
 dotenv.config();
 
@@ -86,7 +85,7 @@ app.use((req, res, next) => {
 // -------------------- WHATSAPP CLOUD API WEBHOOK --------------------
 // Keep the webhook before express.json so Meta signature verification can use the raw body.
 app.get("/api/whatsapp/webhook", verifyWhatsAppWebhook);
-app.post("/api/whatsapp/webhook", express.raw({ type: "application/json", limit: "2mb" }), receiveMultiTenantWhatsAppWebhook);
+app.post("/api/whatsapp/webhook", express.raw({ type: "application/json", limit: "2mb" }), receiveWhatsAppWebhook);
 app.post("/api/whatsapp/send", handleWhatsAppSendRoute);
 
 app.use(express.json({ limit: "50mb" }));
@@ -145,14 +144,6 @@ app.use("/api/", apiRateLimiter);
 app.use("/api/", csrfMitigator);
 
 // Log before every API response
-// -------------------- MULTI-TENANT WHATSAPP AUTOMATION API --------------------
-// Platform administration is protected separately from each tenant's isolated API key.
-app.post("/api/whatsapp/platform/tenants", (req, res, next) => { handleCreateTenant(req, res).catch(next); });
-app.get("/api/whatsapp/platform/tenants", (req, res, next) => { handleListTenants(req, res).catch(next); });
-app.patch("/api/whatsapp/platform/tenants/:tenantId", (req, res, next) => { handleUpdateTenant(req, res).catch(next); });
-app.post("/api/whatsapp/platform/contacts/consent", (req, res, next) => { handleTenantConsent(req, res).catch(next); });
-app.post("/api/whatsapp/platform/send", (req, res, next) => { handleTenantSend(req, res).catch(next); });
-
 app.use("/api/", (req: any, res: any, next: any) => {
   const originalJson = res.json;
   res.json = function (body: any) {
