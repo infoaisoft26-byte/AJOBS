@@ -4,7 +4,7 @@ import { getFirestoreDb } from "./firestoreHelper.js";
 
 const GRAPH_VERSION = process.env.WHATSAPP_GRAPH_API_VERSION || "v23.0";
 const APP_SECRET = process.env.WHATSAPP_APP_SECRET || "";
-const PLATFORM_ADMIN_KEY = process.env.WHATSAPP_PLATFORM_ADMIN_KEY || "";
+const PLATFORM_ADMIN_KEY = process.env.WHATSAPP_PLATFORM_ADMIN_KEY || process.env.WHATSAPP_AUTOMATION_API_KEY || "";
 const ENCRYPTION_KEY_HEX = process.env.WHATSAPP_TENANT_ENCRYPTION_KEY || "";
 
 type Tenant = {
