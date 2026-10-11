@@ -69,9 +69,14 @@ async function persistWhatsAppLead(db: any, from: string, message: string, messa
     leadType,
     candidateId: "",
     candidateName: nameMatch ? nameMatch[1].trim() : (previous.name || "WhatsApp Lead"),
+    fullName: nameMatch ? nameMatch[1].trim() : (previous.name || "WhatsApp Lead"),
     name: nameMatch ? nameMatch[1].trim() : (previous.name || "WhatsApp Lead"),
     email: emailMatch ? emailMatch[0].toLowerCase() : (previous.email || ""),
+    candidateEmail: emailMatch ? emailMatch[0].toLowerCase() : (previous.email || ""),
     phone,
+    mobile: phone,
+    candidatePhone: phone,
+    role: leadType === "candidate" ? "Candidate" : leadType === "recruiter_employer" ? "Recruiter/Employer" : leadType === "consultancy" ? "Consultancy" : "Unclassified",
     company: companyMatch ? companyMatch[1].trim() : (previous.businessName || ""),
     businessName: companyMatch ? companyMatch[1].trim() : (previous.businessName || ""),
     jobTitle: leadType === "candidate" ? String(message || "").slice(0, 160) : (previous.jobTitle || "WhatsApp enquiry"),
@@ -167,6 +172,19 @@ async function buildAutoReply(db: any, from: string, text: string) {
     return "Welcome back to AIJOBS WhatsApp Assistant! Reply JOBS, a job title/skill, APPLY, REGISTER, STATUS, or HELP.";
   }
   if (contact.optedOut) return "";
+
+  if (/^(1|candidate|job seeker|jobseeker)$/i.test(message)) {
+    await contactRef.set({ leadType: "candidate", updatedAt: new Date().toISOString() }, { merge: true });
+    return "Thanks for contacting AIJOBS as a candidate. Please send your name, city, and the job title or skill you are looking for. Example: NAME: Rahul; CITY: Mumbai; SKILL: Sales. You can browse approved openings at " + SITE_URL + ". Candidate applications are free.";
+  }
+  if (/^(2|recruiter|employer|hiring)$/i.test(message)) {
+    await contactRef.set({ leadType: "recruiter_employer", updatedAt: new Date().toISOString() }, { merge: true });
+    return "Thanks for contacting AIJOBS for hiring. Please send your name, company name, hiring role, and location. Example: NAME: Rahul; COMPANY: ABC Ltd; ROLE: Sales Manager; CITY: Mumbai. Our team can follow up on your enquiry. Visit " + SITE_URL + "/hire.";
+  }
+  if (/^(3|consultancy|agency|recruitment agency)$/i.test(message)) {
+    await contactRef.set({ leadType: "consultancy", updatedAt: new Date().toISOString() }, { merge: true });
+    return "Thanks for contacting AIJOBS as a recruitment consultancy. Please send your name, agency name, hiring specialties, and city. Example: NAME: Rahul; COMPANY: ABC Consultancy; ROLE: IT hiring; CITY: Mumbai. Our team can follow up on your enquiry. Visit " + SITE_URL + "/hire.";
+  }
 
   if (/^(hi|hello|hey|namaste|menu|help|start)$/i.test(message)) {
     return "Namaste! Welcome to AIJOBS WhatsApp Assistant.\n\nPlease choose your enquiry:\n1 — Candidate / looking for a job\n2 — Recruiter / Employer / hiring\n3 — Consultancy / recruitment agency\n\nYou can also type JOBS, a job title or skill, REGISTER, APPLY, STATUS, or HELP.\nReply STOP to stop WhatsApp replies.\n\nCandidate applications on AIJOBS are free. " + SITE_URL;
