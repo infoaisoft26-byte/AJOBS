@@ -247,6 +247,7 @@ export default function LiveLeadsCRM() {
             <option value="instagram">Instagram</option>
             <option value="direct">Direct Traffic</option>
             <option value="referral">Referral Program</option>
+            <option value="whatsapp">WhatsApp</option>
           </select>
 
           <select
@@ -256,6 +257,9 @@ export default function LiveLeadsCRM() {
           >
             <option value="all">All Roles</option>
             <option value="candidate">Candidates</option>
+            <option value="recruiter/employer">Recruiter / Employer</option>
+            <option value="consultancy">Consultancy</option>
+            <option value="unclassified">Unclassified</option>
             <option value="consultancy">Consultancies</option>
             <option value="recruiter">Recruiters</option>
           </select>
