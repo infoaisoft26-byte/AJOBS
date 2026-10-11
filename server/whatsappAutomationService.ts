@@ -35,22 +35,34 @@ function inferWhatsAppLeadType(message: string, previousType = "") {
 async function persistWhatsAppLead(db: any, from: string, message: string, messageId: string) {
   const phone = normalizePhone(from);
   if (!phone) return;
-  const lower = String(message || "").trim().toLowerCase();
+  let flowData: Record<string, any> = {};
+  try {
+    const parsed = JSON.parse(String(message || ""));
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) flowData = parsed;
+  } catch {}
+  const structuredText = Object.entries(flowData)
+    .map(([key, value]) => key + ": " + (Array.isArray(value) ? value.join(", ") : String(value ?? "")))
+    .filter((item) => !/:\s*$/.test(item))
+    .join("; ");
+  const humanMessage = structuredText || String(message || "");
+  const lower = humanMessage.trim().toLowerCase();
   const contactRef = db.collection("whatsappAutomationContacts").doc(stableId(phone));
   const contactSnap = await contactRef.get();
   const previous = contactSnap.exists ? contactSnap.data() || {} : {};
   if (/^(stop|unsubscribe|cancel|opt out)$/i.test(lower)) return;
   if (previous.optedOut && !/^(start|unstop)$/i.test(lower)) return;
 
-  const leadType = inferWhatsAppLeadType(message, previous.leadType);
-  const emailMatch = String(message || "").match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
-  const nameMatch = String(message || "").match(/(?:my name is|name\s*:)\s*([^\n,;]{2,80})/i);
-  const companyMatch = String(message || "").match(/(?:company|business)\s*:\s*([^\n,;]{2,100})/i);
+  const roleValue = [flowData.leadType, flowData.lead_type, flowData.userType, flowData.user_type, flowData.role, flowData.enquiry_type].filter(Boolean).join(" ");
+  const leadType = inferWhatsAppLeadType(roleValue + " " + humanMessage, previous.leadType);
+  const emailMatch = String(flowData.email || flowData.email_address || humanMessage).match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  const nameMatch = String(flowData.full_name || flowData.fullName || flowData.name || humanMessage).match(/(?:my name is|name\s*:)\s*([^\n,;]{2,80})/i) || (flowData.full_name || flowData.fullName || flowData.name ? [String(flowData.full_name || flowData.fullName || flowData.name), String(flowData.full_name || flowData.fullName || flowData.name)] as any : null);
+  const companyMatch = String(flowData.company_name || flowData.company || flowData.business_name || humanMessage).match(/(?:company|business|agency|consultancy)\s*:\s*([^\n,;]{2,100})/i) || (flowData.company_name || flowData.company || flowData.business_name ? [String(flowData.company_name || flowData.company || flowData.business_name), String(flowData.company_name || flowData.company || flowData.business_name)] as any : null);
+  const cityValue = flowData.city || flowData.location || flowData.town || "";
   const now = new Date().toISOString();
   const contactPatch: any = {
     phone,
     leadType,
-    lastMessage: String(message || "").slice(0, 1000),
+    lastMessage: humanMessage.slice(0, 1000),
     lastMessageId: messageId,
     lastSeenAt: now,
     updatedAt: now,
@@ -85,11 +97,12 @@ async function persistWhatsAppLead(db: any, from: string, message: string, messa
     role: leadType === "candidate" ? "Candidate" : leadType === "recruiter_employer" ? "Recruiter/Employer" : leadType === "consultancy" ? "Consultancy" : "Unclassified",
     company: resolvedCompany,
     businessName: resolvedCompany,
+    city: String(cityValue || existingLead.city || previous.city || "").slice(0, 120),
     jobTitle: leadType === "candidate" ? String(message || "").slice(0, 160) : (existingLead.jobTitle || "WhatsApp enquiry"),
     currentStatus: preservedStatus,
     status: preservedStatus,
     pipelineStage: preservedStatus,
-    latestMessage: String(message || "").slice(0, 1000),
+    latestMessage: humanMessage.slice(0, 1000),
     lastMessageId: messageId,
     createdAt: existingLead.createdAt || now,
     updatedAt: now,
@@ -169,6 +182,18 @@ async function buildAutoReply(db: any, from: string, text: string) {
   const contactRef = db.collection("whatsappAutomationContacts").doc(stableId(normalizePhone(from)));
   const contactSnap = await contactRef.get();
   const contact = contactSnap.exists ? contactSnap.data() || {} : {};
+
+  try {
+    const flowData = JSON.parse(message);
+    if (flowData && typeof flowData === "object" && !Array.isArray(flowData)) {
+      const role = String(flowData.leadType || flowData.lead_type || flowData.userType || flowData.user_type || flowData.role || flowData.enquiry_type || "").toLowerCase();
+      const isEnquiry = Object.keys(flowData).length > 0;
+      if (isEnquiry) {
+        const roleLabel = role.includes("consult") || role.includes("agency") ? "consultancy" : role.includes("recruit") || role.includes("employer") || role.includes("hir") ? "recruiter/employer" : "candidate";
+        return "Thank you for submitting your AIJOBS " + roleLabel + " enquiry. Your details have been received. Our team can follow up if contact details were provided. Visit " + SITE_URL + ".";
+      }
+    }
+  } catch {}
 
   if (/^(stop|unsubscribe|cancel|opt out)$/i.test(message)) {
     await contactRef.set({ phone: normalizePhone(from), optedOut: true, optedOutAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, { merge: true });
@@ -271,11 +296,13 @@ export async function receiveWhatsAppWebhook(req: Request, res: Response) {
         const item = {
           type: "message", phoneNumberId, from: String(message?.from || ""),
           messageId: String(message?.id || ""), messageType: String(message?.type || ""),
-          timestamp: String(message?.timestamp || ""), text: String(message?.text?.body || ""),
+          timestamp: String(message?.timestamp || ""),
+          text: String(message?.text?.body || message?.interactive?.nfm_reply?.response_json || ""),
           receivedAt: new Date().toISOString()
         };
         eventEntries.push(item);
-        if (item.from && item.messageId && item.messageType === "text" && item.text) incomingMessages.push(item);
+        const isFlowReply = item.messageType === "interactive" && String(message?.interactive?.type || "") === "nfm_reply";
+        if (item.from && item.messageId && item.text && (item.messageType === "text" || isFlowReply)) incomingMessages.push(item);
       }
       for (const status of Array.isArray(value.statuses) ? value.statuses : []) {
         eventEntries.push({
