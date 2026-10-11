@@ -62,33 +62,40 @@ async function persistWhatsAppLead(db: any, from: string, message: string, messa
   await contactRef.set(contactPatch, { merge: true });
 
   const leadRef = db.collection("leads").doc("wa_" + stableId(phone));
+  const existingLeadSnap = await leadRef.get();
+  const existingLead = existingLeadSnap.exists ? existingLeadSnap.data() || {} : {};
+  const resolvedName = nameMatch ? nameMatch[1].trim() : (previous.name || existingLead.candidateName || existingLead.fullName || "WhatsApp Lead");
+  const resolvedEmail = emailMatch ? emailMatch[0].toLowerCase() : (previous.email || existingLead.email || "");
+  const resolvedCompany = companyMatch ? companyMatch[1].trim() : (previous.businessName || existingLead.company || "");
+  const preservedStatus = existingLead.status || existingLead.currentStatus || existingLead.pipelineStage || "New";
   const leadPatch: any = {
     source: "WhatsApp",
     sourceType: "whatsapp",
     sourceChannel: "WhatsApp",
     leadType,
     candidateId: "",
-    candidateName: nameMatch ? nameMatch[1].trim() : (previous.name || "WhatsApp Lead"),
-    fullName: nameMatch ? nameMatch[1].trim() : (previous.name || "WhatsApp Lead"),
-    name: nameMatch ? nameMatch[1].trim() : (previous.name || "WhatsApp Lead"),
-    email: emailMatch ? emailMatch[0].toLowerCase() : (previous.email || ""),
-    candidateEmail: emailMatch ? emailMatch[0].toLowerCase() : (previous.email || ""),
+    candidateName: resolvedName,
+    fullName: resolvedName,
+    name: resolvedName,
+    email: resolvedEmail,
+    candidateEmail: resolvedEmail,
     phone,
     mobile: phone,
     candidatePhone: phone,
     role: leadType === "candidate" ? "Candidate" : leadType === "recruiter_employer" ? "Recruiter/Employer" : leadType === "consultancy" ? "Consultancy" : "Unclassified",
-    company: companyMatch ? companyMatch[1].trim() : (previous.businessName || ""),
-    businessName: companyMatch ? companyMatch[1].trim() : (previous.businessName || ""),
-    jobTitle: leadType === "candidate" ? String(message || "").slice(0, 160) : (previous.jobTitle || "WhatsApp enquiry"),
-    currentStatus: previous.leadStatus || "New",
-    status: previous.leadStatus || "New",
-    pipelineStage: previous.leadStatus || "New",
+    company: resolvedCompany,
+    businessName: resolvedCompany,
+    jobTitle: leadType === "candidate" ? String(message || "").slice(0, 160) : (existingLead.jobTitle || "WhatsApp enquiry"),
+    currentStatus: preservedStatus,
+    status: preservedStatus,
+    pipelineStage: preservedStatus,
     latestMessage: String(message || "").slice(0, 1000),
     lastMessageId: messageId,
-    createdAt: previous.createdAt || now,
+    createdAt: existingLead.createdAt || now,
     updatedAt: now,
-    recruiter: "Direct",
-    consultancy: "Direct"
+    recruiter: existingLead.recruiter || "Direct",
+    consultancy: existingLead.consultancy || "Direct",
+    assignedTo: existingLead.assignedTo || ""
   };
   await leadRef.set(leadPatch, { merge: true });
 }
