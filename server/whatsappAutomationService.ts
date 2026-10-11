@@ -24,6 +24,70 @@ function normalizePhone(value: string) {
   return String(value || "").replace(/\D/g, "");
 }
 
+function inferWhatsAppLeadType(message: string, previousType = "") {
+  const value = String(message || "").trim().toLowerCase();
+  if (/^(1|candidate|job seeker|jobseeker|looking for job|i need a job)$/.test(value) || /\b(candidate|job seeker|looking for a job)\b/.test(value)) return "candidate";
+  if (/^(2|recruiter|employer|company|hiring)$/.test(value) || /\b(recruiter|employer|hiring team|post a job|company hiring)\b/.test(value)) return "recruiter_employer";
+  if (/^(3|consultancy|agency|recruitment agency)$/.test(value) || /\b(consultancy|recruitment agency|staffing agency)\b/.test(value)) return "consultancy";
+  return previousType || "unclassified";
+}
+
+async function persistWhatsAppLead(db: any, from: string, message: string, messageId: string) {
+  const phone = normalizePhone(from);
+  if (!phone) return;
+  const lower = String(message || "").trim().toLowerCase();
+  const contactRef = db.collection("whatsappAutomationContacts").doc(stableId(phone));
+  const contactSnap = await contactRef.get();
+  const previous = contactSnap.exists ? contactSnap.data() || {} : {};
+  if (/^(stop|unsubscribe|cancel|opt out)$/i.test(lower)) return;
+  if (previous.optedOut && !/^(start|unstop)$/i.test(lower)) return;
+
+  const leadType = inferWhatsAppLeadType(message, previous.leadType);
+  const emailMatch = String(message || "").match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  const nameMatch = String(message || "").match(/(?:my name is|name\s*:)\s*([^\n,;]{2,80})/i);
+  const companyMatch = String(message || "").match(/(?:company|business)\s*:\s*([^\n,;]{2,100})/i);
+  const now = new Date().toISOString();
+  const contactPatch: any = {
+    phone,
+    leadType,
+    lastMessage: String(message || "").slice(0, 1000),
+    lastMessageId: messageId,
+    lastSeenAt: now,
+    updatedAt: now,
+    source: "WhatsApp"
+  };
+  if (emailMatch) contactPatch.email = emailMatch[0].toLowerCase();
+  if (nameMatch) contactPatch.name = nameMatch[1].trim();
+  if (companyMatch) contactPatch.businessName = companyMatch[1].trim();
+  await contactRef.set(contactPatch, { merge: true });
+
+  const leadRef = db.collection("leads").doc("wa_" + stableId(phone));
+  const leadPatch: any = {
+    source: "WhatsApp",
+    sourceType: "whatsapp",
+    sourceChannel: "WhatsApp",
+    leadType,
+    candidateId: "",
+    candidateName: nameMatch ? nameMatch[1].trim() : (previous.name || "WhatsApp Lead"),
+    name: nameMatch ? nameMatch[1].trim() : (previous.name || "WhatsApp Lead"),
+    email: emailMatch ? emailMatch[0].toLowerCase() : (previous.email || ""),
+    phone,
+    company: companyMatch ? companyMatch[1].trim() : (previous.businessName || ""),
+    businessName: companyMatch ? companyMatch[1].trim() : (previous.businessName || ""),
+    jobTitle: leadType === "candidate" ? String(message || "").slice(0, 160) : (previous.jobTitle || "WhatsApp enquiry"),
+    currentStatus: previous.leadStatus || "New",
+    status: previous.leadStatus || "New",
+    pipelineStage: previous.leadStatus || "New",
+    latestMessage: String(message || "").slice(0, 1000),
+    lastMessageId: messageId,
+    createdAt: previous.createdAt || now,
+    updatedAt: now,
+    recruiter: "Direct",
+    consultancy: "Direct"
+  };
+  await leadRef.set(leadPatch, { merge: true });
+}
+
 export function verifyWhatsAppWebhook(req: Request, res: Response) {
   const mode = String(req.query["hub.mode"] || "");
   const token = String(req.query["hub.verify_token"] || "");
@@ -105,7 +169,7 @@ async function buildAutoReply(db: any, from: string, text: string) {
   if (contact.optedOut) return "";
 
   if (/^(hi|hello|hey|namaste|menu|help|start)$/i.test(message)) {
-    return "Namaste! Welcome to AIJOBS WhatsApp Assistant.\n\nReply with:\n• JOBS — latest approved openings\n• A job title or skill — search openings\n• REGISTER — candidate registration help\n• APPLY — how to apply\n• STATUS — check application/interview updates\n• RECRUITER — employer/recruiter help\n• STOP — stop WhatsApp replies\n\nCandidate applications on AIJOBS are free. " + SITE_URL;
+    return "Namaste! Welcome to AIJOBS WhatsApp Assistant.\n\nPlease choose your enquiry:\n1 — Candidate / looking for a job\n2 — Recruiter / Employer / hiring\n3 — Consultancy / recruitment agency\n\nYou can also type JOBS, a job title or skill, REGISTER, APPLY, STATUS, or HELP.\nReply STOP to stop WhatsApp replies.\n\nCandidate applications on AIJOBS are free. " + SITE_URL;
   }
 
   if (/\b(job|jobs|opening|openings|vacancy|vacancies|hiring|career|developer|engineer|designer|accountant|internship|remote)\b/i.test(message)) {
@@ -223,6 +287,7 @@ export async function receiveWhatsAppWebhook(req: Request, res: Response) {
     if (!shouldProcess) continue;
 
     try {
+      await persistWhatsAppLead(db, message.from, message.text, message.messageId);
       const reply = await buildAutoReply(db, message.from, message.text);
       if (reply) await sendWhatsAppText(message.from, reply);
       await processedRef.set({ state: "sent", updatedAtMs: Date.now(), repliedAt: new Date().toISOString() }, { merge: true });
