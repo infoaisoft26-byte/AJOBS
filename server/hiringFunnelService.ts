@@ -359,14 +359,68 @@ export async function handleHiringFunnelApi(req: Request, res: Response): Promis
       const jobId = `job_${crypto.randomBytes(6).toString("hex")}`;
       const job = publicJobPayload(jobId, req.body || {}, { ...profile, uid: decoded.uid }, role);
       const creditRef = db.collection("jobCredits").doc(decoded.uid);
+      const subscriptionRef = db.collection("subscriptions").doc(`sub_${decoded.uid}`);
       const jobRef = db.collection("jobs").doc(jobId);
+      const requiresPaidPlan = role === "recruiter" || role === "consultancy";
       await db.runTransaction(async (tx: any) => {
-        const creditSnap = await tx.get(creditRef);
+        const [creditSnap, subscriptionSnap] = await Promise.all([
+          tx.get(creditRef),
+          requiresPaidPlan ? tx.get(subscriptionRef) : Promise.resolve(null as any)
+        ]);
         const credits: any = creditSnap.data() || {};
+        const nowIso = new Date().toISOString();
+
+        if (requiresPaidPlan) {
+          const subscription: any = subscriptionSnap?.data?.() || {};
+          const status = text(subscription.status, 30).toLowerCase();
+          const paymentStatus = text(subscription.paymentStatus, 30).toLowerCase();
+          const expiresAt = text(subscription.expiresAt, 64);
+          const expired = expiresAt ? new Date(expiresAt).getTime() <= Date.now() : false;
+          if (!subscriptionSnap?.exists || status !== "active" || paymentStatus !== "paid" || expired) {
+            throw Object.assign(new Error("An active paid Recruiter/Consultancy plan is required before posting jobs."), {
+              status: 402,
+              code: "ACTIVE_PAID_PLAN_REQUIRED"
+            });
+          }
+
+          const jobPostLimit = Math.max(0, number(subscription.jobPostLimit, 0));
+          const jobPostsUsed = Math.max(0, number(subscription.jobPostsUsed, 0));
+          if (jobPostLimit > 0 && jobPostsUsed >= jobPostLimit) {
+            throw Object.assign(new Error("Your plan job-posting limit has been reached. Please renew or upgrade your plan."), {
+              status: 402,
+              code: "JOB_POST_LIMIT_REACHED"
+            });
+          }
+
+          Object.assign(job, {
+            planAccessVerified: true,
+            subscriptionId: text(subscription.subscriptionId || `sub_${decoded.uid}`, 120),
+            planId: text(subscription.planId, 120),
+            planName: text(subscription.planName, 180),
+            paymentStatus: "paid",
+            subscriptionStatus: "active",
+            planVerifiedAt: nowIso
+          });
+
+          tx.set(jobRef, job);
+          tx.set(subscriptionRef, {
+            jobPostsUsed: jobPostsUsed + 1,
+            updatedAt: nowIso
+          }, { merge: true });
+          tx.set(creditRef, {
+            paidCredits: jobPostLimit,
+            usedCredits: jobPostsUsed + 1,
+            plan: text(subscription.planName || subscription.planId || "PAID", 180),
+            subscriptionId: text(subscription.subscriptionId || `sub_${decoded.uid}`, 120),
+            updatedAt: nowIso
+          }, { merge: true });
+          return;
+        }
+
         const available = number(credits.freeCredits) + number(credits.paidCredits) - number(credits.usedCredits);
         if (!creditSnap.exists || available < 1) throw Object.assign(new Error("No job posting credits available."), { status: 402 });
         tx.set(jobRef, job);
-        tx.set(creditRef, { usedCredits: number(credits.usedCredits) + 1, updatedAt: new Date().toISOString() }, { merge: true });
+        tx.set(creditRef, { usedCredits: number(credits.usedCredits) + 1, updatedAt: nowIso }, { merge: true });
       });
       await Promise.all([
         writeEvent(db, decoded.uid, "job_submitted", { jobId, role, dedupeKey: `job_submitted:${jobId}` }),
