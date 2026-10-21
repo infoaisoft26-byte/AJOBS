@@ -240,6 +240,24 @@ export default function RecruiterDashboard({
     loadAccountCenter();
   }, [userId]);
 
+  // Refresh canonical KYC/billing state after Super Admin changes without
+  // requiring the recruiter to sign out or hard-refresh the page.
+  useEffect(() => {
+    if (!userId) return;
+    const refresh = () => { void loadAccountCenter(); };
+    const intervalId = window.setInterval(refresh, 15000);
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [userId]);
+
   // Handle URL sync and cleanly remove callback query parameters
   useEffect(() => {
     if (typeof window !== "undefined") {
