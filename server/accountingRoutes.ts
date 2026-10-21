@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getFirestoreDb } from "./firestoreHelper.js";
+import { getFirestoreDb, getFirebaseAuth } from "./firestoreHelper.js";
 import {
   CHART_OF_ACCOUNTS,
   initializeChartOfAccounts,
@@ -15,15 +15,40 @@ import { syncPaidPaymentOrdersToAccounting } from "./paymentFinanceSync.js";
 const router = Router();
 
 // Middleware: Verify Admin Access
-function requireAdmin(req: any, res: any, next: any) {
-  const role = (req.headers["x-user-role"] || req.query.role || req.body?.role || "admin").toString().toLowerCase();
-  if (role !== "admin" && role !== "super_admin") {
-    return res.status(403).json({
-      success: false,
-      error: "Access Denied: Production Accounting and Finance module is strictly restricted to Admin and Super Admin roles."
-    });
+async function requireAdmin(req: any, res: any, next: any) {
+  const authHeader = String(req.headers.authorization || "").trim();
+  if (!authHeader.toLowerCase().startsWith("bearer ")) {
+    return res.status(401).json({ success: false, error: "UNAUTHORIZED", message: "Verified Admin login is required." });
   }
-  next();
+
+  try {
+    const auth = getFirebaseAuth();
+    const decoded = await auth.verifyIdToken(authHeader.slice(7).trim(), true);
+    const db = getFirestoreDb();
+    const [userSnap, adminSnap] = await Promise.all([
+      db.collection("users").doc(decoded.uid).get(),
+      db.collection("admins").doc(decoded.uid).get()
+    ]);
+    const userData = userSnap.exists ? (userSnap.data() || {}) : {};
+    const adminData = adminSnap.exists ? (adminSnap.data() || {}) : {};
+    const role = String(adminData.role || userData.role || (decoded as any).role || "").trim().toLowerCase().replace(/[\\s-]+/g, "_");
+    const status = String(adminData.status || userData.status || userData.accountStatus || "active").trim().toLowerCase();
+    const inactive = userData.isActive === false || adminData.isActive === false ||
+      ["disabled", "suspended", "inactive", "blocked"].includes(status);
+    const isAdmin = ["admin", "superadmin", "super_admin"].includes(role) ||
+      (adminSnap.exists && ["admin", "superadmin", "super_admin"].includes(String(adminData.role || "").toLowerCase().replace(/[\\s-]+/g, "_")));
+
+    if (!isAdmin || inactive) {
+      return res.status(403).json({ success: false, error: "FORBIDDEN", message: "Active Admin access is required." });
+    }
+
+    req.headers["x-user-id"] = decoded.uid;
+    req.headers["x-user-role"] = role;
+    return next();
+  } catch (error: any) {
+    console.warn("[Accounting Routes] Firebase Admin authentication failed:", error?.message || "Invalid token");
+    return res.status(401).json({ success: false, error: "UNAUTHORIZED", message: "Admin session expired. Please sign in again." });
+  }
 }
 
 router.use(requireAdmin);
