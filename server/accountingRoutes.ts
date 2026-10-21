@@ -31,12 +31,12 @@ async function requireAdmin(req: any, res: any, next: any) {
     ]);
     const userData = userSnap.exists ? (userSnap.data() || {}) : {};
     const adminData = adminSnap.exists ? (adminSnap.data() || {}) : {};
-    const role = String(adminData.role || userData.role || (decoded as any).role || "").trim().toLowerCase().replace(/[\\s-]+/g, "_");
+    const role = String(adminData.role || userData.role || (decoded as any).role || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
     const status = String(adminData.status || userData.status || userData.accountStatus || "active").trim().toLowerCase();
     const inactive = userData.isActive === false || adminData.isActive === false ||
       ["disabled", "suspended", "inactive", "blocked"].includes(status);
     const isAdmin = ["admin", "superadmin", "super_admin"].includes(role) ||
-      (adminSnap.exists && ["admin", "superadmin", "super_admin"].includes(String(adminData.role || "").toLowerCase().replace(/[\\s-]+/g, "_")));
+      (adminSnap.exists && ["admin", "superadmin", "super_admin"].includes(String(adminData.role || "").toLowerCase().replace(/[\s-]+/g, "_")));
 
     if (!isAdmin || inactive) {
       return res.status(403).json({ success: false, error: "FORBIDDEN", message: "Active Admin access is required." });
