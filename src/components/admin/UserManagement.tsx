@@ -31,8 +31,11 @@ export default function UserManagement({
     password: ""
   });
 
-  // Filtered users
-  const filteredUsers = users.filter((u) => {
+  // Candidate accounts are managed only in the dedicated Candidate Database.
+  const nonCandidateUsers = users.filter((u) => !["candidate", "jobseeker", "job_seeker"].includes(String(u.role || "").toLowerCase()));
+
+  // Filtered non-candidate workspace users
+  const filteredUsers = nonCandidateUsers.filter((u) => {
     const matchesSearch = 
       (u.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (u.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -40,23 +43,17 @@ export default function UserManagement({
     
     // Simulate active status check since standard user profile might have suspended: true/false
     const userStatus = (u as any).isSuspended ? "suspended" : "active";
-    const isCand = u.role === "candidate";
-    const isVerifiedCand = isCand && ((u as any).emailVerified === true || (u as any).verificationStatus === "verified" || (((u as any).accountStatus === "active" || (u as any).status === "active") && (u as any).emailVerified !== false && (u as any).verificationStatus !== "pending"));
-
     let matchesStatus = true;
     if (selectedStatus === "active") matchesStatus = userStatus === "active";
     else if (selectedStatus === "suspended") matchesStatus = userStatus === "suspended";
-    else if (selectedStatus === "verified_candidates") matchesStatus = isCand && isVerifiedCand;
-    else if (selectedStatus === "unverified_candidates") matchesStatus = isCand && !isVerifiedCand;
 
     const matchesRole = selectedRole === "all" || u.role === selectedRole || (selectedRole === "recruiter" && u.role === "employer");
 
     return matchesSearch && matchesStatus && matchesRole;
   });
   const roleCounts = {
-    candidate: users.filter(u => u.role === "candidate").length,
-    recruiter: users.filter(u => u.role === "recruiter" || u.role === "employer").length,
-    consultancy: users.filter(u => u.role === "consultancy").length
+    recruiter: nonCandidateUsers.filter(u => u.role === "recruiter" || u.role === "employer").length,
+    consultancy: nonCandidateUsers.filter(u => u.role === "consultancy").length
   };
   const isRecentlyOnline = (u: UserProfile) => Date.now() - new Date((u as any).lastActiveAt || 0).getTime() < 120000;
   const formatActivity = (u: UserProfile) => {
@@ -176,7 +173,7 @@ export default function UserManagement({
             <span>System User Matrix</span>
           </h3>
           <p className="text-xs text-gray-400 mt-1">
-            Create and manage recruiter or consultancy workspace accounts without opening Firebase.
+            Manage employer, recruiter, consultancy and other non-candidate accounts. Candidate records are kept in the separate Candidate Database.
           </p>
         </div>
         <button
@@ -219,7 +216,6 @@ export default function UserManagement({
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {([
-          ["candidate", "Candidates", roleCounts.candidate],
           ["recruiter", "Recruiters", roleCounts.recruiter],
           ["consultancy", "Consultancies", roleCounts.consultancy]
         ] as const).map(([role, label, count]) => (
@@ -253,7 +249,6 @@ export default function UserManagement({
             className="w-full bg-neutral-900 border border-white/10 rounded-xl px-3 py-2.5 text-white focus:border-indigo-500 transition-all cursor-pointer"
           >
             <option value="all">All Roles</option>
-            <option value="candidate">Candidates</option>
             <option value="employer">Employers</option>
             <option value="recruiter">Recruiters</option>
             <option value="consultancy">Consultancies</option>
@@ -272,8 +267,6 @@ export default function UserManagement({
             <option value="all">All Statuses</option>
             <option value="active">Active Clearances</option>
             <option value="suspended">Suspended Accounts</option>
-            <option value="verified_candidates">Verified Candidates Only</option>
-            <option value="unverified_candidates">Unverified Candidates Only</option>
           </select>
         </div>
 
@@ -478,7 +471,7 @@ export default function UserManagement({
               </div>
             ) : (
               <div className="text-center py-24 text-[11px] text-gray-500 italic bg-neutral-950/20 border border-white/5 rounded-2xl">
-                Choose a candidate, employer, or coordinator row to inspect core security clearance logs.
+                Choose an employer, recruiter, consultancy, or coordinator row to inspect core security clearance logs.
               </div>
             )}
           </div>
