@@ -98,7 +98,10 @@ export function generateJobPostingSchema(job: JobPosting): Record<string, any> {
     const value: Record<string, number | string> = {};
     if (Number.isFinite(minSalary) && minSalary > 0) value.minValue = minSalary;
     if (Number.isFinite(maxSalary) && maxSalary > 0) value.maxValue = maxSalary;
-    value.unitText = String(job.salaryPeriod || "YEAR").toUpperCase();
+    const rawUnit = String(job.salaryPeriod || "YEAR").trim().toUpperCase().replace(/[\\s-]+/g, "_");
+    const unitAliases: Record<string, string> = { HOURLY: "HOUR", DAILY: "DAY", WEEKLY: "WEEK", MONTHLY: "MONTH", YEARLY: "YEAR", ANNUAL: "YEAR", ANNUALLY: "YEAR", PER_ANNUM: "YEAR" };
+    const normalizedUnit = unitAliases[rawUnit] || rawUnit;
+    value.unitText = ["HOUR", "DAY", "WEEK", "MONTH", "YEAR"].includes(normalizedUnit) ? normalizedUnit : "YEAR";
     schema.baseSalary = {
       "@type": "MonetaryAmount",
       currency: String(job.salaryCurrency || "INR").toUpperCase(),
