@@ -88,7 +88,7 @@ export async function handleSeoJobLandingRoute(req: Request, res: Response): Pro
     const jobs = snap.docs
       .map((doc: any) => ({ id: doc.id, ...doc.data() }))
       .filter(isApprovedPublic)
-      .filter((job: any) => page.kind === "all" || isRemote(job))
+      .filter((job: any) => page.kind === "all" || (page.kind === "wfh" ? isWorkFromHome(job) : isRemote(job)))
       .sort((a: any, b: any) => {
         const da = dateValue(a.approvedAt || a.datePosted || a.createdAt)?.getTime() || 0;
         const db = dateValue(b.approvedAt || b.datePosted || b.createdAt)?.getTime() || 0;
