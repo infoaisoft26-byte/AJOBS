@@ -4,6 +4,7 @@ import { sendWorkspaceRoleEmail, WorkspaceSenderRole } from "../server/workspace
 import { handleHiringFunnelApi } from "../server/hiringFunnelService.js";
 import { handleHiringIndexingRoute } from "../server/hiringIndexingRoute.js";
 import { handleHiringPublicRoute } from "../server/hiringPublicRoutes.js";
+import { handleSeoJobLandingRoute } from "../server/seoJobLandingRoutes.js";
 import { handleHiringAnalyticsRoute } from "../server/hiringAnalyticsRoute.js";
 import { handleHiringLandingRoute } from "../server/hiringLandingRoute.js";
 import { handleHiringWorkspaceRoute } from "../server/hiringWorkspaceRoute.js";
@@ -109,6 +110,10 @@ export default async function handler(req: any, res: any) {
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.setHeader("Cache-Control", "public, max-age=300, s-maxage=300");
     return res.status(200).send(`User-agent: *\nAllow: /\n\n# Private/admin workspaces must never be indexed\nDisallow: /admin\nDisallow: /admin/\nDisallow: /super-admin\nDisallow: /super-admin/\nDisallow: /internal/\nDisallow: /candidate/dashboard\nDisallow: /candidate/dashboard/\nDisallow: /recruiter/dashboard\nDisallow: /recruiter/dashboard/\nDisallow: /consultancy/dashboard\nDisallow: /consultancy/dashboard/\nDisallow: /employer/dashboard\nDisallow: /employer/dashboard/\nDisallow: /hire/workspace\nDisallow: /api/\n\nSitemap: https://aijobs1.in/sitemap.xml\nSitemap: https://aijobs1.in/job-sitemap.xml\n`);
+  }
+  if (["/jobs-in-india", "/remote-jobs-india", "/work-from-home-jobs-india"].includes(path)) {
+    const handled = await handleSeoJobLandingRoute(req, res);
+    if (handled || res.headersSent) return;
   }
   if (path === "/sitemap.xml" || path === "/job-sitemap.xml" || path.startsWith("/jobs/")) {
     const handled = await handleHiringPublicRoute(req, res);
