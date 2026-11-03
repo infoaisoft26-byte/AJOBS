@@ -1,169 +1,140 @@
-import React from "react";
-import { View } from "lucide-react";
 import { JobPosting } from "../types";
 import { getPublicJobUrl } from "../config/site";
 
+function toDate(value: any): Date | undefined {
+  if (!value) return undefined;
+  const raw = typeof value?.toDate === "function" ? value.toDate() : value;
+  const parsed = raw instanceof Date ? raw : new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
+function isHttpUrl(value: any): boolean {
+  try {
+    const url = new URL(String(value || ""));
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+function normalizeEmploymentType(value: any): string | undefined {
+  const raw = String(value || "").trim().toUpperCase().replace(/[\s-]+/g, "_");
+  if (!raw) return undefined;
+  const aliases: Record<string, string> = {
+    CONTRACT: "CONTRACTOR",
+    CONTRACTUAL: "CONTRACTOR",
+    FULLTIME: "FULL_TIME",
+    PARTTIME: "PART_TIME",
+    FREELANCE: "OTHER"
+  };
+  const normalized = aliases[raw] || raw;
+  return ["FULL_TIME", "PART_TIME", "CONTRACTOR", "TEMPORARY", "INTERN", "VOLUNTEER", "PER_DIEM", "OTHER"].includes(normalized)
+    ? normalized
+    : "OTHER";
+}
+
 /**
- * Generates a valid Schema.org JobPosting JSON-LD schema object for Google Jobs search indexing.
+ * Build JobPosting JSON-LD only from facts actually stored on the job.
+ * Missing salary, expiry, employer URLs and location fields are deliberately omitted.
  */
 export function generateJobPostingSchema(job: JobPosting): Record<string, any> {
-  const publishDate = job.datePosted 
-    ? new Date(job.datePosted).toISOString().split("T")[0]
-    : job.createdAt 
-      ? new Date(job.createdAt).toISOString().split("T")[0] 
-      : new Date().toISOString().split("T")[0];
-
-  const expiryDate = job.validThrough 
-    ? new Date(job.validThrough).toISOString().split("T")[0]
-    : job.expiryDate 
-      ? new Date(job.expiryDate).toISOString().split("T")[0] 
-      : new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]; // default 60 days
-
-  // Parse employment types to standard Schema.org values
-  let standardEmploymentType = "FULL_TIME";
-  const rawType = (job.employmentType || job.type || "").toUpperCase();
-  if (rawType.includes("PART")) {
-    standardEmploymentType = "PART_TIME";
-  } else if (rawType.includes("CONTRACT") || rawType.includes("TEMP")) {
-    standardEmploymentType = "CONTRACTOR";
-  } else if (rawType.includes("INTERN")) {
-    standardEmploymentType = "INTERN";
-  } else if (rawType.includes("FREE")) {
-    standardEmploymentType = "FREELANCE";
-  }
-
-  // Parse salary values
-  const minSalary = job.minimumSalary || 300000;
-  const maxSalary = job.maximumSalary || 1200000;
-  const currency = job.salaryCurrency || "INR";
-  let salaryPeriod = (job.salaryPeriod || "YEAR").toUpperCase();
-  if (salaryPeriod === "MONTHLY") salaryPeriod = "MONTH";
-  if (salaryPeriod === "YEARLY") salaryPeriod = "YEAR";
-  if (salaryPeriod === "HOURLY") salaryPeriod = "HOUR";
-
-  // Actual Hiring Organization (Client / Employer)
-  const hiringName = job.hiringOrganizationName || job.companyName || "AIJobs Client";
-  let companyWebsite = job.companyWebsite;
-  if (!companyWebsite || companyWebsite.includes("vercel.app")) {
-    companyWebsite = `https://${hiringName.toLowerCase().replace(/[^a-z0-9]/g, "")}.com`;
-  }
-
+  const title = String(job.title || "").trim();
+  const description = String(job.description || "").trim();
+  const hiringName = String(job.hiringOrganizationName || job.companyName || "").trim();
   const jobUrl = job.canonicalUrl || getPublicJobUrl(job);
+  const postedAt = toDate(job.datePosted || job.approvedAt || job.createdAt);
+  const expiryDate = toDate(job.validThrough || job.expiryDate || job.applyDeadline);
+  const remote = String(job.workMode || "").trim().toLowerCase() === "remote";
+  const employmentType = normalizeEmploymentType(job.employmentType || job.type);
 
-  // Address components
-  let city = job.city || "Bangalore";
-  let state = job.state || "Karnataka";
-  const country = job.country || "IN";
-
-  if (!job.city && job.location) {
-    const parts = job.location.split(",").map(p => p.trim());
-    if (parts.length > 0) city = parts[0];
-    if (parts.length > 1) state = parts[1];
-  }
-
-  const isRemote = job.workMode === "Remote" || (job.location || "").toLowerCase().includes("remote");
-
-  const schemaObj: Record<string, any> = {
+  const schema: Record<string, any> = {
     "@context": "https://schema.org/",
     "@type": "JobPosting",
-    "title": job.title,
-    "url": jobUrl,
-    "description": (job.description || `Apply for ${job.title} at ${hiringName}. View eligibility, key requirements, salary structure, and job specifications.`).trim(),
-    "identifier": {
-      "@type": "PropertyValue",
-      "name": hiringName,
-      "value": job.id || `job_${Date.now()}`
-    },
-    "datePosted": publishDate,
-    "validThrough": expiryDate,
-    "employmentType": standardEmploymentType,
-    "hiringOrganization": {
+    title,
+    description,
+    url: jobUrl,
+    hiringOrganization: {
       "@type": "Organization",
-      "name": hiringName,
-      "sameAs": companyWebsite,
-      "logo": job.companyLogo || undefined
+      name: hiringName
     },
-    "jobLocation": {
-      "@type": "Place",
-      "address": {
-        "@type": "PostalAddress",
-        "streetAddress": job.streetAddress || undefined,
-        "addressLocality": city,
-        "addressRegion": state,
-        "postalCode": job.postalCode || undefined,
-        "addressCountry": country
-      }
-    },
-    "baseSalary": {
-      "@type": "MonetaryAmount",
-      "currency": currency,
-      "value": {
-        "@type": "QuantitativeValue",
-        "minValue": minSalary,
-        "maxValue": maxSalary,
-        "unitText": salaryPeriod
-      }
-    },
-    "directApply": true
+    directApply: true
   };
 
-  if (isRemote) {
-    schemaObj["jobLocationType"] = "TELECOMMUTE";
-    schemaObj["applicantLocationRequirements"] = {
-      "@type": "Country",
-      "name": country
+  if (job.id) {
+    schema.identifier = {
+      "@type": "PropertyValue",
+      name: hiringName || "AIJOBS",
+      value: job.id
+    };
+  }
+  if (postedAt) schema.datePosted = postedAt.toISOString().slice(0, 10);
+  if (expiryDate) schema.validThrough = expiryDate.toISOString();
+  if (employmentType) schema.employmentType = employmentType;
+
+  if (isHttpUrl(job.companyWebsite)) schema.hiringOrganization.sameAs = job.companyWebsite;
+  if (isHttpUrl(job.companyLogo)) schema.hiringOrganization.logo = job.companyLogo;
+
+  if (remote) {
+    const applicantCountry = String(job.country || "").trim();
+    if (applicantCountry) {
+      schema.jobLocationType = "TELECOMMUTE";
+      schema.applicantLocationRequirements = { "@type": "Country", name: applicantCountry };
+    }
+  } else {
+    const city = String(job.city || job.location || "").trim();
+    if (city) {
+      const address: Record<string, string> = { "@type": "PostalAddress", addressLocality: city };
+      if (job.streetAddress) address.streetAddress = job.streetAddress;
+      if (job.state) address.addressRegion = job.state;
+      if (job.postalCode) address.postalCode = job.postalCode;
+      if (job.country) address.addressCountry = job.country;
+      schema.jobLocation = { "@type": "Place", address };
+    }
+  }
+
+  const minSalary = Number(job.minimumSalary);
+  const maxSalary = Number(job.maximumSalary);
+  if ((Number.isFinite(minSalary) && minSalary > 0) || (Number.isFinite(maxSalary) && maxSalary > 0)) {
+    const value: Record<string, number | string> = {};
+    if (Number.isFinite(minSalary) && minSalary > 0) value.minValue = minSalary;
+    if (Number.isFinite(maxSalary) && maxSalary > 0) value.maxValue = maxSalary;
+    const rawUnit = String(job.salaryPeriod || "YEAR").trim().toUpperCase().replace(/[\\s-]+/g, "_");
+    const unitAliases: Record<string, string> = { HOURLY: "HOUR", DAILY: "DAY", WEEKLY: "WEEK", MONTHLY: "MONTH", YEARLY: "YEAR", ANNUAL: "YEAR", ANNUALLY: "YEAR", PER_ANNUM: "YEAR" };
+    const normalizedUnit = unitAliases[rawUnit] || rawUnit;
+    value.unitText = ["HOUR", "DAY", "WEEK", "MONTH", "YEAR"].includes(normalizedUnit) ? normalizedUnit : "YEAR";
+    schema.baseSalary = {
+      "@type": "MonetaryAmount",
+      currency: String(job.salaryCurrency || "INR").toUpperCase(),
+      value: { "@type": "QuantitativeValue", ...value }
     };
   }
 
-  if (job.minimumExperience || job.experience) {
-    const months = job.minimumExperience ? job.minimumExperience * 12 : job.experience?.toLowerCase().includes("senior") ? 60 : job.experience?.toLowerCase().includes("mid") ? 36 : 12;
-    schemaObj["experienceRequirements"] = {
+  if (job.skillsRequired?.length) schema.skills = job.skillsRequired.filter(Boolean).join(", ");
+  if (job.responsibilities) schema.responsibilities = job.responsibilities;
+  if (job.qualification || job.education) schema.educationRequirements = job.qualification || job.education;
+  if (job.minimumExperience !== undefined && job.minimumExperience !== null && Number.isFinite(Number(job.minimumExperience))) {
+    schema.experienceRequirements = {
       "@type": "OccupationalExperienceRequirements",
-      "monthsOfExperience": months
+      monthsOfExperience: Math.max(0, Number(job.minimumExperience) * 12)
     };
   }
 
-  if (job.qualification || job.education) {
-    schemaObj["educationRequirements"] = {
-      "@type": "EducationalOccupationalCredential",
-      "credentialCategory": job.qualification || job.education
-    };
-  }
-
-  if (job.skillsRequired && job.skillsRequired.length > 0) {
-    schemaObj["skills"] = job.skillsRequired.join(", ");
-  }
-
-  if (job.responsibilities) {
-    schemaObj["responsibilities"] = job.responsibilities;
-  }
-
-  return schemaObj;
+  return schema;
 }
 
-/**
- * Generates and returns the script tag string containing the JobPosting JSON-LD.
- */
 export function generateJobPostingSchemaScript(job: JobPosting): string {
-  const schemaObj = generateJobPostingSchema(job);
-  return `<script type="application/ld+json">${JSON.stringify(schemaObj, null, 2)}</script>`;
+  return '<script type="application/ld+json">' +
+    JSON.stringify(generateJobPostingSchema(job)).replace(/</g, "\\u003c") +
+    '</script>';
 }
 
-/**
- * React hook to dynamically inject and clean up JobPosting JSON-LD on a page.
- */
 export function injectJobPostingSchema(job: JobPosting | null): void {
   if (!job) return;
-
   const schemaId = `job-schema-${job.id}`;
-  let existingScript = document.getElementById(schemaId);
-  if (!existingScript) {
-    existingScript = document.createElement("script");
-    existingScript.setAttribute("id", schemaId);
-    existingScript.setAttribute("type", "application/ld+json");
-    document.head.appendChild(existingScript);
-  }
-
-  const schemaObj = generateJobPostingSchema(job);
-  existingScript.textContent = JSON.stringify(schemaObj, null, 2);
+  const existing = document.getElementById(schemaId);
+  const script = existing || document.createElement("script");
+  script.id = schemaId;
+  script.type = "application/ld+json";
+  script.textContent = JSON.stringify(generateJobPostingSchema(job));
+  if (!existing) document.head.appendChild(script);
 }

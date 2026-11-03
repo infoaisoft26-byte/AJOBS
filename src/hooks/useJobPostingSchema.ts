@@ -11,7 +11,7 @@ import { getPublicJobUrl } from "../config/site";
  */
 export function useJobPostingSchema(job: JobPosting | null | undefined): void {
   useEffect(() => {
-    if (!job) return;
+    if (!job || String(job.status || "").trim().toLowerCase() !== "approved") return;
 
     const originalTitle = document.title;
     const metaDescElement = document.querySelector('meta[name="description"]');
