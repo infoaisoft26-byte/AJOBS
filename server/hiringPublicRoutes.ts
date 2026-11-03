@@ -65,7 +65,7 @@ export async function handleHiringPublicRoute(req: Request, res: Response): Prom
   if ((path === "/sitemap.xml" || path === "/job-sitemap.xml") && req.method === "GET") {
     const snap = await db.collection("jobs").get();
     const jobs = snap.docs.map(d => ({ id: d.id, ...d.data() } as any)).filter(isLive);
-    const staticUrls = path === "/job-sitemap.xml" ? [] : ["/", "/jobs", "/hire", "/hire/employer", "/hire/recruiter", "/hire/consultancy"];
+    const staticUrls = path === "/job-sitemap.xml" ? [] : ["/", "/jobs", "/jobs-in-india", "/remote-jobs-india", "/work-from-home-jobs-india", "/hire", "/hire/employer", "/hire/recruiter", "/hire/consultancy"];
     const nodes = [
       ...staticUrls.map(p => `<url><loc>${SITE_URL}${p}</loc><changefreq>daily</changefreq><priority>${p === "/" ? "1.0" : "0.8"}</priority></url>`),
       ...jobs.map(j => `<url><loc>${esc(publicUrl(j, j.id))}</loc><lastmod>${asIsoDate(j.updatedAt || j.approvedAt || j.publishedAt || j.createdAt)}</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>`)
