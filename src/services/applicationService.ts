@@ -138,7 +138,6 @@ export async function applyToJob(
     };
 
     // Lead document for CRM pipeline
-    const leadId = `lead_${Math.random().toString(36).substring(2, 11)}`;
     const newLead = {
       id: leadId,
       candidateId: userId,
