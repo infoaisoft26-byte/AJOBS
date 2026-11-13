@@ -76,7 +76,21 @@ export async function applyToJob(
       if (!candidateSkills.length && Array.isArray(data.skills)) candidateSkills = data.skills.filter((s: any) => typeof s === "string");
       resumeUrl = resumeUrl || data.resumeUrl || data.resumeURL || null;
     }
-    // 3. Stable application key prevents duplicate submissions from rapid taps,
+    // 3. Preserve duplicate protection for legacy random-ID application records
+    // already stored before the stable application key was introduced.
+    const legacyApps = await getDocs(query(
+      collection(db, "applications"),
+      where("jobId", "==", job.id),
+      where("candidateId", "==", userId)
+    ));
+    if (!legacyApps.empty) {
+      return {
+        success: false,
+        message: `You have already applied for the position of "${job.title}" at ${job.companyName}.`
+      };
+    }
+
+    // Stable application key prevents duplicate submissions from rapid taps,
     // multiple tabs, and retries. The transaction below enforces this atomically.
     const appId = `app_${job.id}_${userId}`;
     const nowIso = new Date().toISOString();
