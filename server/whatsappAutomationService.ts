@@ -378,8 +378,11 @@ async function buildAutoReply(db: any, from: string, text: string) {
   if (/\b(register|registration|sign up|signup|create account|candidate account)\b/i.test(lower)) {
     return "To register as a candidate, open " + SITE_URL + " and choose Candidate Registration. Use your own contact details and complete the required fields. AIJOBS does not charge candidates to apply for jobs.";
   }
-  if (/\b(apply|application|apply for|apply job)\b/i.test(lower)) {
-    return "To apply, open " + SITE_URL + ", sign in to your candidate account, find an approved/live job, and use its Apply option. Candidate applications are free. Never share your password or OTP in WhatsApp.";
+  if (/^apply$/i.test(message)) {
+    return "To apply directly in WhatsApp, first send JOBS or a job title/skill. I will show matching openings. Then reply APPLY followed by the Job ID shown in the message. Candidate applications are free.";
+  }
+  if (/\\b(apply|application|apply for|apply job)\\b/i.test(lower)) {
+    return "To apply directly in WhatsApp, send JOBS or a job title/skill, then reply APPLY followed by the Job ID. You can also open a job link and use Quick Apply without registration. Candidate applications are free.";
   }
   if (/\b(status|interview|shortlist|application status|my application)\b/i.test(lower)) {
     return "For private application or interview status, sign in at " + SITE_URL + " and check your candidate dashboard/notifications. For account privacy, please don't send passwords or OTPs in WhatsApp.";
