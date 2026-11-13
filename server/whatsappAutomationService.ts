@@ -201,7 +201,7 @@ async function handleWhatsAppApplyFlow(db: any, from: string, message: string): 
   const snap = await contactRef.get();
   const contact = snap.exists ? snap.data() || {} : {};
   const draft = contact.applicationDraft || null;
-  const applyMatch = message.match(/^apply\\s+([a-z0-9_-]{4,160})$/i);
+  const applyMatch = message.match(/^apply\s+([a-z0-9_-]{4,160})$/i);
 
   if (applyMatch) {
     const jobId = applyMatch[1];
@@ -214,7 +214,7 @@ async function handleWhatsAppApplyFlow(db: any, from: string, message: string): 
       applicationDraft: { jobId, jobTitle: String(job.title || job.jobTitle || "Job"), companyName: String(job.companyName || job.company || job.hiringOrganizationName || ""), step: "name", startedAt: new Date().toISOString() },
       updatedAt: new Date().toISOString()
     }, { merge: true });
-    return "Let's apply for " + String(job.title || job.jobTitle || "this job") + ".\\n\\nPlease send your full name:";
+    return "Let's apply for " + String(job.title || job.jobTitle || "this job") + ".\n\nPlease send your full name:";
   }
 
   if (!draft || !draft.jobId) return null;
@@ -230,7 +230,7 @@ async function handleWhatsAppApplyFlow(db: any, from: string, message: string): 
     return "Thanks, " + value + ". Now send your email address:";
   }
   if (draft.step === "email") {
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(value)) return "Please send a valid email address, for example name@example.com.";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "Please send a valid email address, for example name@example.com.";
     await contactRef.set({ applicationDraft: { ...draft, email: value.toLowerCase(), step: "location" }, updatedAt: new Date().toISOString() }, { merge: true });
     return "Which city are you currently located in? You can also reply SKIP.";
   }
@@ -370,7 +370,7 @@ async function buildAutoReply(db: any, from: string, text: string) {
         parts.push("View job and quick-apply: " + job.url);
         parts.push("To apply here in WhatsApp, reply: APPLY " + job.id);
         parts.push("Candidate applications are free.");
-        return parts.join("\\n");
+        return parts.join("\n");
       });
     } catch (error: any) {
       console.warn("[WHATSAPP_JOB_SEARCH]", error?.message || error);
@@ -384,7 +384,7 @@ async function buildAutoReply(db: any, from: string, text: string) {
   if (/^apply$/i.test(message)) {
     return "To apply directly in WhatsApp, first send JOBS or a job title/skill. I will show matching openings. Then reply APPLY followed by the Job ID shown in the message. Candidate applications are free.";
   }
-  if (/\\b(apply|application|apply for|apply job)\\b/i.test(lower)) {
+  if (/\b(apply|application|apply for|apply job)\b/i.test(lower)) {
     return "To apply directly in WhatsApp, send JOBS or a job title/skill, then reply APPLY followed by the Job ID. You can also open a job link and use Quick Apply without registration. Candidate applications are free.";
   }
   if (/\b(status|interview|shortlist|application status|my application)\b/i.test(lower)) {
@@ -482,7 +482,10 @@ export async function receiveWhatsAppWebhook(req: Request, res: Response) {
     try {
       await persistWhatsAppLead(db, message.from, message.text, message.messageId);
       const reply = await buildAutoReply(db, message.from, message.text);
-      if (reply) {\n        const replies = Array.isArray(reply) ? reply : [reply];\n        for (const replyMessage of replies.slice(0, 3)) await sendWhatsAppText(message.from, String(replyMessage));\n      }
+      if (reply) {
+        const replies = Array.isArray(reply) ? reply : [reply];
+        for (const replyMessage of replies.slice(0, 3)) await sendWhatsAppText(message.from, String(replyMessage));
+      }
       await processedRef.set({ state: "sent", updatedAtMs: Date.now(), repliedAt: new Date().toISOString() }, { merge: true });
     } catch (error: any) {
       await processedRef.set({ state: "failed", updatedAtMs: Date.now(), error: String(error?.message || "send_failed").slice(0, 300) }, { merge: true });
