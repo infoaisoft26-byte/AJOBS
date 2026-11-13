@@ -178,6 +178,43 @@ export async function handlePublicJobApplyRoute(req: Request, res: Response): Pr
         consentAt: now
       }, { merge: false });
 
+      tx.set(db.collection("company_applications").doc(applicationId), {
+        id: applicationId,
+        jobId,
+        jobTitle: job.title || job.jobTitle || "",
+        candidateId,
+        candidateName: name,
+        candidateEmail: email,
+        candidatePhone: phoneDigits,
+        candidateLocation: location,
+        candidateExperience: experience,
+        candidateSkills: [],
+        companyId: job.companyId || job.employerId || ownerUid || "",
+        companyName: job.companyName || job.hiringOrganizationName || "",
+        recruiterId,
+        employerId,
+        consultancyId,
+        consultancyName: job.consultancyName || job.consultancy || null,
+        resumeUrl: "No Resume Attached",
+        status: "new",
+        source: "public_job_quick_apply",
+        appliedAt: now,
+        updatedAt: now,
+        consentToShareApplication: true,
+        consentAt: now
+      }, { merge: true });
+      tx.set(db.collection("leads").doc(leadId), {
+        id: leadId, candidateId, candidateName: name, name, fullName: name,
+        email, candidateEmail: email, phone: phoneDigits, mobile: phoneDigits,
+        jobId, jobTitle: job.title || job.jobTitle || "",
+        company: job.companyName || job.hiringOrganizationName || "",
+        companyName: job.companyName || job.hiringOrganizationName || "",
+        recruiter: recruiterId || employerId || ownerUid || "Direct Employer",
+        consultancyId: consultancyId || null,
+        consultancy: job.consultancyName || job.consultancy || "Direct",
+        currentStatus: "applied", status: "applied",
+        source: "public_job_quick_apply", createdAt: now, updatedAt: now
+      }, { merge: true });
       tx.set(jobRef, {
         applicationCount: Number(job.applicationCount || job.applicants || 0) + 1,
         lastApplicationAt: now,
