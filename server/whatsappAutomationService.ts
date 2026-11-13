@@ -359,16 +359,20 @@ async function buildAutoReply(db: any, from: string, text: string) {
     try {
       const jobs = await getPublicJobs(db, message);
       if (!jobs.length) return "I couldn't find a matching approved/live opening right now. Try another job title or skill, or browse " + SITE_URL + ". Candidate applications are free.";
-      const lines = jobs.map((job: any, index: number) => {
-        const parts = [String(index + 1) + ". " + (job.title || "Open position") + " (Job ID: " + job.id + ")"];
+      return jobs.map((job: any, index: number) => {
+        const parts = [
+          "AIJOBS Job Match " + String(index + 1) + "/" + String(jobs.length),
+          job.title || "Open position",
+          "Job ID: " + job.id
+        ];
         if (job.company) parts.push("Company: " + job.company);
         if (job.location) parts.push("Location: " + job.location);
         if (job.salary) parts.push("Salary: " + job.salary);
         parts.push("View job and quick-apply: " + job.url);
         parts.push("To apply here in WhatsApp, reply: APPLY " + job.id);
-        return parts.join("\n");
+        parts.push("Candidate applications are free.");
+        return parts.join("\\n");
       });
-      return "AIJOBS approved/live openings matching your message:\n\n" + lines.join("\n\n") + "\n\nYou can apply directly in this chat without creating an account. Candidate applications are free.";
     } catch (error: any) {
       console.warn("[WHATSAPP_JOB_SEARCH]", error?.message || error);
       return "Job search is temporarily unavailable. Please browse current openings at " + SITE_URL + " and try again shortly.";
@@ -479,7 +483,7 @@ export async function receiveWhatsAppWebhook(req: Request, res: Response) {
     try {
       await persistWhatsAppLead(db, message.from, message.text, message.messageId);
       const reply = await buildAutoReply(db, message.from, message.text);
-      if (reply) await sendWhatsAppText(message.from, reply);
+      if (reply) {\n        const replies = Array.isArray(reply) ? reply : [reply];\n        for (const replyMessage of replies.slice(0, 3)) await sendWhatsAppText(message.from, String(replyMessage));\n      }
       await processedRef.set({ state: "sent", updatedAtMs: Date.now(), repliedAt: new Date().toISOString() }, { merge: true });
     } catch (error: any) {
       await processedRef.set({ state: "failed", updatedAtMs: Date.now(), error: String(error?.message || "send_failed").slice(0, 300) }, { merge: true });
