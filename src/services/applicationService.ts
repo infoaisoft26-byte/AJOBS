@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, increment, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where, runTransaction } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { JobPosting, JobApplication } from "../types";
 import { NotificationService } from "./notificationService";
@@ -76,23 +76,9 @@ export async function applyToJob(
       if (!candidateSkills.length && Array.isArray(data.skills)) candidateSkills = data.skills.filter((s: any) => typeof s === "string");
       resumeUrl = resumeUrl || data.resumeUrl || data.resumeURL || null;
     }
-    // 3. Prevent duplicate applications (Section M)
-    const applicationsRef = collection(db, "applications");
-    const q = query(
-      applicationsRef,
-      where("jobId", "==", job.id),
-      where("candidateId", "==", userId)
-    );
-    const existingApps = await getDocs(q);
-    if (!existingApps.empty) {
-      return {
-        success: false,
-        message: `You have already applied for the position of "${job.title}" at ${job.companyName}.`
-      };
-    }
-
-    // Generate ID for application
-    const appId = `app_${Math.random().toString(36).substring(2, 11)}`;
+    // 3. Stable application key prevents duplicate submissions from rapid taps,
+    // multiple tabs, and retries. The transaction below enforces this atomically.
+    const appId = `app_${job.id}_${userId}`;
     const nowIso = new Date().toISOString();
 
     // Standardized single source of truth Application Document
@@ -110,15 +96,20 @@ export async function applyToJob(
       jobTitle: job.title,
       companyId: job.companyId || job.employerId || "",
       companyName: job.companyName,
-      recruiterId: job.recruiterId || job.employerId || null,
-      employerId: job.employerId || null,
-      consultancyId: (job as any).consultancyId || ((job as any).consultancyUserId) || null,
+      recruiterId: job.recruiterId || job.employerId || job.createdBy || null,
+      employerId: job.employerId || job.ownerUid || null,
+      ownerUid: (job as any).ownerUid || (job as any).createdBy || null,
+      createdBy: (job as any).createdBy || (job as any).ownerUid || null,
+      consultancyId: (job as any).consultancyId || (job as any).consultancyUserId || null,
       consultancyName: (job as any).consultancyName || (job as any).consultancy || null,
+      submittedByRole: (job as any).submittedByRole || null,
+      sourcePortal: (job as any).sourcePortal || "AIJOBS",
       assignedRecruiterId: null,
       assignedRecruiterName: null,
       assignedAt: null,
       assignedBy: null,
-      resumeUrl: resumeUrl,
+      resumeUrl: resumeUrl || null,
+      resumeFileName: profile?.resumeFileName || null,
       status: "applied",
       source: "AIJobs",
       appliedAt: nowIso,
@@ -135,9 +126,11 @@ export async function applyToJob(
       candidateName: candidateName,
       candidateEmail: candidateEmail,
       candidatePhone: candidatePhone,
-      consultancyId: (job as any).consultancyId || null,
+      consultancyId: (job as any).consultancyId || (job as any).consultancyUserId || null,
       consultancyName: (job as any).consultancyName || (job as any).consultancy || null,
-      resumeUrl: resumeUrl || "No Resume Attached",
+      recruiterId: job.recruiterId || job.employerId || job.createdBy || null,
+      employerId: job.employerId || job.ownerUid || null,
+      resumeUrl: resumeUrl || null,
       resumeScore: Number(profile?.resumeScore || 0),
       interviewScore: profile?.aiInterviewScore || 0,
       status: "applied",
@@ -156,39 +149,36 @@ export async function applyToJob(
       jobId: job.id,
       jobTitle: job.title,
       company: job.companyName,
-      recruiter: job.employerId || job.createdBy || "Direct Employer",
+      recruiter: job.employerId || job.recruiterId || job.createdBy || job.ownerUid || "Direct Employer",
+      recruiterId: job.recruiterId || job.employerId || job.createdBy || null,
+      employerId: job.employerId || job.ownerUid || null,
+      ownerUid: (job as any).ownerUid || (job as any).createdBy || null,
       consultancyId: (job as any).consultancyId || (job as any).consultancyUserId || null,
-      consultancy: (job as any).consultancyName || job.consultancy || "Direct",
+      consultancy: (job as any).consultancyName || (job as any).consultancy || "Direct",
+      consultancyName: (job as any).consultancyName || (job as any).consultancy || null,
       currentStatus: "applied",
       createdAt: nowIso,
       updatedAt: nowIso
     };
 
-    // Write documents to Firestore
-    await setDoc(doc(db, "applications", appId), newApp);
-    await setDoc(doc(db, "company_applications", appId), newCompanyApp);
-    await setDoc(doc(db, "leads", leadId), newLead);
-
-    // Update job application counts in standard jobs collection safely
-    try {
-      await updateDoc(doc(db, "jobs", job.id), {
-        applicationCount: increment(1),
-        applicantsCount: increment(1),
-        updatedAt: nowIso
-      });
-    } catch (e) {
-      console.debug("Non-fatal job metric update notice:", e);
-    }
-
-    // Update job application counts in company-specific jobs collection safely
-    try {
-      await updateDoc(doc(db, "company_jobs", job.id), {
-        applicationCount: increment(1),
-        applicantsCount: increment(1),
-        updatedAt: nowIso
-      });
-    } catch (e) {
-      // Non-blocking
+    // Atomic primary + compatibility + CRM writes. If an application already
+    // exists for this candidate/job pair, nothing is overwritten or double-counted.
+    const primaryRef = doc(db, "applications", appId);
+    const companyAppRef = doc(db, "company_applications", appId);
+    const leadRef = doc(db, "leads", appId);
+    const created = await runTransaction(db, async (transaction) => {
+      const existing = await transaction.get(primaryRef);
+      if (existing.exists()) return false;
+      transaction.set(primaryRef, newApp);
+      transaction.set(companyAppRef, newCompanyApp);
+      transaction.set(leadRef, { ...newLead, id: appId, applicationId: appId });
+      return true;
+    });
+    if (!created) {
+      return {
+        success: false,
+        message: `You have already applied for the position of "${job.title}" at ${job.companyName}.`
+      };
     }
 
     // Trigger GA4 Telemetry
