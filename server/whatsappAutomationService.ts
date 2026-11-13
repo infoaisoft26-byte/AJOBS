@@ -313,18 +313,21 @@ async function handleWhatsAppApplyFlow(db: any, from: string, message: string): 
         applicationCount: Number(currentJob.applicationCount || currentJob.applicants || 0) + 1,
         lastApplicationAt: now, updatedAt: currentJob.updatedAt || now
       }, { merge: true });
-      if (ownerUid) tx.set(db.collection("notifications").doc("quick_apply_" + applicationId), {
-        userId: ownerUid, title: "New WhatsApp Candidate Application",
+      const recipients = Array.from(new Set([
+        ownerUid, currentJob.recruiterId, currentJob.employerId, currentJob.consultancyId
+      ].filter(Boolean)));
+      recipients.forEach((recipientId: string) => tx.set(db.collection("notifications").doc("quick_apply_" + applicationId + "_" + recipientId), {
+        userId: recipientId, title: "New WhatsApp Candidate Application",
         message: name + " applied for " + String(currentJob.title || currentJob.jobTitle || "your job") + " through WhatsApp.",
         type: "application", read: false, jobId: String(draft.jobId), applicationId,
         candidateLeadId: leadId, source: "WhatsApp", createdAt: now
-      }, { merge: true });
+      }, { merge: true }));
     });
 
     await contactRef.set({ applicationDraft: null, lastAppliedAt: now, lastApplicationId: applicationId, updatedAt: now }, { merge: true });
     return duplicate
       ? "We already received your application for this job. Application ID: " + applicationId
-      : "Your application has been submitted successfully!\\nApplication ID: " + applicationId + "\\nJob: " + String(draft.jobTitle || job.title || "Job") + "\\nThe hiring team will review it. No website registration was required.";
+      : "Your application has been submitted successfully!\nApplication ID: " + applicationId + "\nJob: " + String(draft.jobTitle || job.title || "Job") + "\nThe hiring team will review it. No website registration was required.";
   }
   return "Please follow the requested step or type CANCEL to stop this application.";
 }
