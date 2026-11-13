@@ -998,7 +998,7 @@ Respond with supportive but professional advice. Keep your response around 3-4 c
 `;
 
   try {
-    consolidatedPrompt = "";
+    let consolidatedPrompt = "";
     if (chatHistory && Array.isArray(chatHistory)) {
       chatHistory.forEach(msg => {
         const role = msg.sender === "user" ? "User" : "Career Coach";
@@ -1565,7 +1565,7 @@ When candidates ask about current market conditions, upcoming hiring waves, in-d
 `;
 
     // Construct consolidated chat message history
-    let consolidatedPrompt = "";
+    consolidatedPrompt = "";
     if (chatHistory && Array.isArray(chatHistory)) {
       chatHistory.forEach((msg: any) => {
         const roleName = msg.sender === "user" ? "User" : "Assistant";
