@@ -65,7 +65,7 @@ export default function RoleBasedTopbar({
         if (element) {
           element.scrollIntoView({ behavior: "smooth", block: "start" });
         }
-      }, 100);
+      }, 750);
     } else {
       const element = document.getElementById(id);
       if (element) {
@@ -367,8 +367,7 @@ export default function RoleBasedTopbar({
                   <>
                     <button onClick={() => { setMobileMenuOpen(false); setActiveView("home"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Home</button>
                     <button onClick={() => { setMobileMenuOpen(false); setActiveView("public-jobs"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Jobs</button>
-                    <button onClick={() => { setMobileMenuOpen(false); onOpenCompanyPage?.("career-tools"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Career Tools</button>
-                    <button onClick={() => { setMobileMenuOpen(false); setActiveView("resume-onboarding"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Resume</button>
+                    <button onClick={() => { soundSynth.playClick(); setMobileMenuOpen(false); setActiveView("resume-builder"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Create Resume</button>
                     <button onClick={() => { setMobileMenuOpen(false); onOpenCompanyPage?.("companies"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Companies</button>
                     <button onClick={() => { setMobileMenuOpen(false); onOpenCompanyPage?.("consultancies"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Consultancies</button>
                     <button onClick={() => { setMobileMenuOpen(false); scrollToSection("career-advice"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Career Advice</button>
@@ -389,6 +388,8 @@ export default function RoleBasedTopbar({
                     <button onClick={() => { soundSynth.playClick(); setActiveView("dashboard"); window.dispatchEvent(new CustomEvent("candidate-nav", { detail: "jobs" })); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">
                       Find Jobs
                     </button>
+                    <button onClick={() => { soundSynth.playClick(); scrollToSection("career-advice"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Career Advice</button>
+                    <button onClick={() => { soundSynth.playClick(); setActiveView("resume-builder"); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Create Resume</button>
                     <button onClick={() => { soundSynth.playClick(); setActiveView("dashboard"); window.dispatchEvent(new CustomEvent("candidate-nav", { detail: "resume" })); setMobileMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">
                       Resume & ATS
                     </button>
