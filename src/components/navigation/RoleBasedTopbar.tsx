@@ -107,7 +107,7 @@ export default function RoleBasedTopbar({
             <>
               <button onClick={() => { soundSynth.playClick(); setActiveView("public-jobs"); }} className="hover:text-cyan-400 transition-colors cursor-pointer">Jobs</button>
               <button onClick={() => { soundSynth.playClick(); onOpenCompanyPage?.("companies"); }} className="hover:text-cyan-400 transition-colors cursor-pointer">Companies</button>
-              <button onClick={() => { soundSynth.playClick(); onOpenCompanyPage?.("career-guidance"); }} className="hover:text-cyan-400 transition-colors cursor-pointer">Career Advice</button>
+              <button onClick={() => { soundSynth.playClick(); scrollToSection("career-advice"); }} className="hover:text-cyan-400 transition-colors cursor-pointer">Career Advice</button>
               <button onClick={() => { soundSynth.playClick(); onOpenCompanyPage?.("employers"); }} className="hover:text-cyan-400 transition-colors cursor-pointer">For Employers</button>
             </>
           )}
@@ -127,6 +127,12 @@ export default function RoleBasedTopbar({
                 className="hover:text-blue-400 transition-colors cursor-pointer"
               >
                 Find Jobs
+              </button>
+              <button
+                onClick={() => scrollToSection("career-advice")}
+                className="hover:text-blue-400 transition-colors cursor-pointer"
+              >
+                Career Advice
               </button>
               <button 
                 onClick={() => { soundSynth.playClick(); setActiveView("dashboard"); window.dispatchEvent(new CustomEvent("candidate-nav", { detail: "resume" })); }} 
@@ -364,7 +370,7 @@ export default function RoleBasedTopbar({
                     <button onClick={() => { setMobileMenuOpen(false); setActiveView("resume-onboarding"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Resume</button>
                     <button onClick={() => { setMobileMenuOpen(false); onOpenCompanyPage?.("companies"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Companies</button>
                     <button onClick={() => { setMobileMenuOpen(false); onOpenCompanyPage?.("consultancies"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Consultancies</button>
-                    <button onClick={() => { setMobileMenuOpen(false); onOpenCompanyPage?.("career-guidance"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Career Guidance</button>
+                    <button onClick={() => { setMobileMenuOpen(false); scrollToSection("career-advice"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">Career Advice</button>
                     <button onClick={() => { setMobileMenuOpen(false); onOpenCompanyPage?.("employers"); }} className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer">For Employers</button>
                     <div className="pt-2 border-t border-white/10 space-y-2">
                       <button onClick={() => { setMobileMenuOpen(false); onShowAuth("signin"); }} className="w-full py-2.5 rounded-xl bg-white/10 text-center text-xs font-bold text-white hover:bg-white/20 cursor-pointer">Login</button>
