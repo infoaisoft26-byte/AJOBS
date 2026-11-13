@@ -138,7 +138,7 @@ async function sendWhatsAppText(to: string, body: string) {
         recipient_type: "individual",
         to: normalizePhone(to),
         type: "text",
-        text: { preview_url: false, body: String(body || "").slice(0, 4000) }
+        text: { preview_url: true, body: String(body || "").slice(0, 4000) }
       })
     }
   );
@@ -171,9 +171,138 @@ async function getPublicJobs(db: any, query: string) {
     const searchable = [title, company, location, salary, ...(Array.isArray(job.skills) ? job.skills : [])].join(" ").toLowerCase();
     let score = terms.length ? 0 : 1;
     for (const term of terms) if (searchable.includes(term)) score += title.toLowerCase().includes(term) ? 5 : 1;
-    if (!terms.length || score > 0) matches.push({ id: doc.id, title, company, location, salary, score });
+    if (!terms.length || score > 0) {
+      const slug = String(job.slug || "").trim();
+      const generatedSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const url = String(job.canonicalUrl || "").startsWith(SITE_URL + "/jobs/")
+        ? String(job.canonicalUrl)
+        : slug ? SITE_URL + "/jobs/" + encodeURIComponent(slug)
+        : SITE_URL + "/jobs/" + encodeURIComponent(generatedSlug + "-" + doc.id);
+      matches.push({ id: doc.id, title, company, location, salary, url, score });
+    }
   });
   return matches.sort((a, b) => b.score - a.score).slice(0, 3);
+}
+
+
+function isWhatsAppJobOpen(job: any) {
+  const state = String(job.status || "").trim().toLowerCase();
+  if (!["approved", "published", "live", "open", "active"].includes(state) || job.approved === false) return false;
+  const expiry = job.validThrough || job.expiryDate || job.applyDeadline;
+  if (expiry) {
+    const date = typeof expiry?.toDate === "function" ? expiry.toDate() : new Date(expiry);
+    if (!Number.isNaN(date.getTime()) && date.getTime() < Date.now()) return false;
+  }
+  return true;
+}
+
+async function handleWhatsAppApplyFlow(db: any, from: string, message: string): Promise<string | null> {
+  const phone = normalizePhone(from);
+  const contactRef = db.collection("whatsappAutomationContacts").doc(stableId(phone));
+  const snap = await contactRef.get();
+  const contact = snap.exists ? snap.data() || {} : {};
+  const draft = contact.applicationDraft || null;
+  const applyMatch = message.match(/^apply\\s+([a-z0-9_-]{4,160})$/i);
+
+  if (applyMatch) {
+    const jobId = applyMatch[1];
+    const jobSnap = await db.collection("jobs").doc(jobId).get();
+    if (!jobSnap.exists || !isWhatsAppJobOpen(jobSnap.data() || {})) {
+      return "That job is unavailable or no longer accepting applications. Send JOBS to find current openings.";
+    }
+    const job = jobSnap.data() || {};
+    await contactRef.set({
+      applicationDraft: { jobId, jobTitle: String(job.title || job.jobTitle || "Job"), companyName: String(job.companyName || job.company || job.hiringOrganizationName || ""), step: "name", startedAt: new Date().toISOString() },
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+    return "Let's apply for " + String(job.title || job.jobTitle || "this job") + ".\\n\\nPlease send your full name:";
+  }
+
+  if (!draft || !draft.jobId) return null;
+  const value = String(message || "").trim();
+  if (/^(cancel|stop apply)$/i.test(value)) {
+    await contactRef.set({ applicationDraft: null, updatedAt: new Date().toISOString() }, { merge: true });
+    return "Your WhatsApp application draft was cancelled. You can start again by sending APPLY followed by the job ID.";
+  }
+
+  if (draft.step === "name") {
+    if (value.length < 2 || value.length > 120) return "Please send your full name (2–120 characters), or type CANCEL.";
+    await contactRef.set({ applicationDraft: { ...draft, name: value, step: "email" }, updatedAt: new Date().toISOString() }, { merge: true });
+    return "Thanks, " + value + ". Now send your email address:";
+  }
+  if (draft.step === "email") {
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(value)) return "Please send a valid email address, for example name@example.com.";
+    await contactRef.set({ applicationDraft: { ...draft, email: value.toLowerCase(), step: "location" }, updatedAt: new Date().toISOString() }, { merge: true });
+    return "Which city are you currently located in? You can also reply SKIP.";
+  }
+  if (draft.step === "location") {
+    await contactRef.set({ applicationDraft: { ...draft, location: /^skip$/i.test(value) ? "" : value.slice(0, 120), step: "consent" }, updatedAt: new Date().toISOString() }, { merge: true });
+    return "Please confirm: may AIJOBS share your name, WhatsApp number, email and location with the hiring team for this job? Reply YES to submit or CANCEL to stop.";
+  }
+  if (draft.step === "consent") {
+    if (!/^yes$/i.test(value)) return "To submit, reply YES to agree to share your application with this job's hiring team, or CANCEL.";
+    const jobRef = db.collection("jobs").doc(String(draft.jobId));
+    const jobSnap = await jobRef.get();
+    if (!jobSnap.exists || !isWhatsAppJobOpen(jobSnap.data() || {})) {
+      await contactRef.set({ applicationDraft: null, updatedAt: new Date().toISOString() }, { merge: true });
+      return "Sorry, this job is no longer accepting applications. Send JOBS to see current openings.";
+    }
+    const job: any = jobSnap.data() || {};
+    const email = String(draft.email || "").toLowerCase();
+    const name = String(draft.name || "").trim();
+    const phoneDigits = phone;
+    const leadId = "lead_" + stableId(email + "|" + phoneDigits).slice(0, 28);
+    const applicationId = "qapp_" + stableId(String(draft.jobId) + "|" + email + "|" + phoneDigits).slice(0, 28);
+    const now = new Date().toISOString();
+    const ownerUid = String(job.ownerUid || job.createdBy || job.postedBy || job.recruiterId || job.employerId || job.consultancyId || "");
+    const appRef = db.collection("applications").doc(applicationId);
+    const leadRef = db.collection("candidate_leads").doc(leadId);
+    let duplicate = false;
+
+    await db.runTransaction(async (tx: any) => {
+      const [freshJob, existingApp] = await Promise.all([tx.get(jobRef), tx.get(appRef)]);
+      if (!freshJob.exists || !isWhatsAppJobOpen(freshJob.data() || {})) throw new Error("JOB_CLOSED");
+      if (existingApp.exists) { duplicate = true; return; }
+      const currentJob: any = freshJob.data() || {};
+      tx.set(leadRef, {
+        id: leadId, name, fullName: name, candidateName: name, email, candidateEmail: email,
+        phone: phoneDigits, mobile: phoneDigits, candidatePhone: phoneDigits,
+        location: String(draft.location || ""), role: "candidate_lead", source: "whatsapp_job_apply",
+        sourceType: "whatsapp", sourceChannel: "WhatsApp", sourceJobId: String(draft.jobId),
+        sourceJobTitle: String(draft.jobTitle || currentJob.title || currentJob.jobTitle || ""),
+        status: "new", consentToShareApplication: true, consentAt: now, firstCapturedAt: now, updatedAt: now
+      }, { merge: true });
+      tx.set(appRef, {
+        id: applicationId, applicationId, jobId: String(draft.jobId),
+        jobTitle: String(currentJob.title || currentJob.jobTitle || draft.jobTitle || ""),
+        companyName: String(currentJob.companyName || currentJob.hiringOrganizationName || draft.companyName || ""),
+        candidateId: null, candidateLeadId: leadId, candidateName: name, name, email, candidateEmail: email,
+        phone: phoneDigits, candidatePhone: phoneDigits, location: String(draft.location || ""),
+        status: "applied", applicationStatus: "Applied", source: "whatsapp_job_apply",
+        registrationRequired: false, candidateAccountExists: false, jobOwnerUid: ownerUid || null,
+        ownerUid: ownerUid || null, recruiterId: currentJob.recruiterId || null,
+        employerId: currentJob.employerId || null, consultancyId: currentJob.consultancyId || null,
+        appliedAt: now, createdAt: now, updatedAt: now,
+        consentToShareApplication: true, consentAt: now
+      }, { merge: false });
+      tx.set(jobRef, {
+        applicationCount: Number(currentJob.applicationCount || currentJob.applicants || 0) + 1,
+        lastApplicationAt: now, updatedAt: currentJob.updatedAt || now
+      }, { merge: true });
+      if (ownerUid) tx.set(db.collection("notifications").doc("quick_apply_" + applicationId), {
+        userId: ownerUid, title: "New WhatsApp Candidate Application",
+        message: name + " applied for " + String(currentJob.title || currentJob.jobTitle || "your job") + " through WhatsApp.",
+        type: "application", read: false, jobId: String(draft.jobId), applicationId,
+        candidateLeadId: leadId, source: "WhatsApp", createdAt: now
+      }, { merge: true });
+    });
+
+    await contactRef.set({ applicationDraft: null, lastAppliedAt: now, lastApplicationId: applicationId, updatedAt: now }, { merge: true });
+    return duplicate
+      ? "We already received your application for this job. Application ID: " + applicationId
+      : "Your application has been submitted successfully!\\nApplication ID: " + applicationId + "\\nJob: " + String(draft.jobTitle || job.title || "Job") + "\\nThe hiring team will review it. No website registration was required.";
+  }
+  return "Please follow the requested step or type CANCEL to stop this application.";
 }
 
 async function buildAutoReply(db: any, from: string, text: string) {
@@ -205,6 +334,10 @@ async function buildAutoReply(db: any, from: string, text: string) {
   }
   if (contact.optedOut) return "";
 
+  const applyFlowReply = await handleWhatsAppApplyFlow(db, from, message);
+  if (applyFlowReply) return applyFlowReply;
+
+
   if (/^(1|candidate|job seeker|jobseeker)$/i.test(message)) {
     await contactRef.set({ leadType: "candidate", updatedAt: new Date().toISOString() }, { merge: true });
     return "Thanks for contacting AIJOBS as a candidate. Please send your name, city, and the job title or skill you are looking for. Example: NAME: Rahul; CITY: Mumbai; SKILL: Sales. You can browse approved openings at " + SITE_URL + ". Candidate applications are free.";
@@ -227,13 +360,15 @@ async function buildAutoReply(db: any, from: string, text: string) {
       const jobs = await getPublicJobs(db, message);
       if (!jobs.length) return "I couldn't find a matching approved/live opening right now. Try another job title or skill, or browse " + SITE_URL + ". Candidate applications are free.";
       const lines = jobs.map((job: any, index: number) => {
-        const parts = [String(index + 1) + ". " + (job.title || "Open position")];
+        const parts = [String(index + 1) + ". " + (job.title || "Open position") + " (Job ID: " + job.id + ")"];
         if (job.company) parts.push("Company: " + job.company);
         if (job.location) parts.push("Location: " + job.location);
         if (job.salary) parts.push("Salary: " + job.salary);
+        parts.push("View job and quick-apply: " + job.url);
+        parts.push("To apply here in WhatsApp, reply: APPLY " + job.id);
         return parts.join("\n");
       });
-      return "AIJOBS approved/live openings matching your message:\n\n" + lines.join("\n\n") + "\n\nOpen " + SITE_URL + " to view details and apply. Candidate applications are free.";
+      return "AIJOBS approved/live openings matching your message:\n\n" + lines.join("\n\n") + "\n\nYou can apply directly in this chat without creating an account. Candidate applications are free.";
     } catch (error: any) {
       console.warn("[WHATSAPP_JOB_SEARCH]", error?.message || error);
       return "Job search is temporarily unavailable. Please browse current openings at " + SITE_URL + " and try again shortly.";
