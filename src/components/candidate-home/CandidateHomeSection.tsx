@@ -107,6 +107,10 @@ export default function CandidateHomeSection({
             ))}
           </div>
           <p className="mt-6 text-center text-xs text-slate-500">Tip: Set one weekly career goal and track your progress. Small consistent steps create momentum.</p>
+          <div className="mt-8 flex flex-col items-center gap-3 rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50 via-white to-orange-50 p-5 text-center sm:flex-row sm:justify-between sm:text-left">
+            <div><h3 className="text-lg font-extrabold text-slate-950">Need a professional resume?</h3><p className="mt-1 text-sm text-slate-600">Create one for free, preview it live and save it as a PDF.</p></div>
+            <button onClick={() => setActiveView("resume-builder")} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-violet-600 px-5 py-3 text-sm font-extrabold text-white shadow-lg shadow-violet-200 transition hover:bg-violet-700"><span>Create My Resume</span><span aria-hidden="true">→</span></button>
+          </div>
         </div>
       </section>
 
