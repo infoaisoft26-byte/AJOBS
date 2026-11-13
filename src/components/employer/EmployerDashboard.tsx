@@ -133,30 +133,10 @@ export default function EmployerDashboard({
       const jobList: CompanyJob[] = [];
       jobsSnap.forEach((d) => {
         const jd = d.data() as CompanyJob;
-        if (!userId || jd.employerId === userId || jd.userId === userId || jd.companyId === userId || !jd.employerId) {
-          jobList.push({ id: d.id, ...jd });
-        }
+        const owned = [jd.ownerUid, jd.createdBy, jd.postedBy, jd.employerId, jd.userId, jd.companyId]
+          .some((owner) => Boolean(userId) && owner === userId);
+        if (owned) jobList.push({ id: d.id, ...jd });
       });
-
-      // If user has no jobs yet, provide default verified template job
-      if (jobList.length === 0) {
-        jobList.push({
-          id: "job_sample_1",
-          employerId: userId,
-          title: "Senior Full Stack Engineer (React & Node.js)",
-          companyName: companyName,
-          location: "Bengaluru, Karnataka (Hybrid)",
-          department: "Engineering",
-          employmentType: "Full-time",
-          experience: "3-5 Years",
-          salary: "18,00,000 - 26,00,000",
-          openings: 2,
-          skillsRequired: ["React", "TypeScript", "Node.js", "PostgreSQL", "AWS"],
-          status: "active",
-          approved: true,
-          createdAt: new Date().toISOString()
-        });
-      }
       setJobs(jobList);
 
       // 3. Applications
@@ -164,70 +144,22 @@ export default function EmployerDashboard({
       const appList: CompanyApplication[] = [];
       appsSnap.forEach((d) => {
         const ad = d.data() as CompanyApplication;
-        if (jobList.some(j => j.id === ad.jobId) || ad.jobId === userId || !ad.jobId) {
+        if (jobList.some(j => j.id === ad.jobId)) {
           appList.push({ id: d.id, ...ad });
         }
       });
-
-      if (appList.length === 0) {
-        appList.push(
-          {
-            id: "app_sample_1",
-            jobId: jobList[0]?.id || "job_sample_1",
-            jobTitle: jobList[0]?.title || "Senior Full Stack Engineer",
-            candidateId: "cand_aarav",
-            candidateName: "Aarav Sharma",
-            candidateEmail: "aarav.sharma@domain.in",
-            candidatePhone: "+91 98765 43210",
-            location: "Bengaluru, Karnataka",
-            experience: "5.5 Years",
-            status: "new",
-            aiScore: 96,
-            skills: ["React", "TypeScript", "Node.js", "AWS"],
-            appliedAt: new Date(Date.now() - 3600000 * 3).toISOString()
-          },
-          {
-            id: "app_sample_2",
-            jobId: jobList[0]?.id || "job_sample_1",
-            jobTitle: jobList[0]?.title || "Senior Full Stack Engineer",
-            candidateId: "cand_sneha",
-            candidateName: "Sneha Deshmukh",
-            candidateEmail: "sneha.d@domain.in",
-            candidatePhone: "+91 98123 45678",
-            location: "Pune, Maharashtra",
-            experience: "4.2 Years",
-            status: "shortlisted",
-            aiScore: 94,
-            skills: ["React", "Next.js", "Tailwind CSS"],
-            appliedAt: new Date(Date.now() - 86400000).toISOString()
-          }
-        );
-      }
       setApplications(appList);
 
       // 4. Interviews
       const intSnap = await getDocs(collection(db, "company_interviews"));
       const intList: CompanyInterview[] = [];
+      const ownedJobIds = new Set(jobList.map((job) => job.id));
       intSnap.forEach((d) => {
         const idat = d.data() as CompanyInterview;
-        intList.push({ id: d.id, ...idat });
+        if (ownedJobIds.has(idat.jobId) || idat.employerId === userId || idat.ownerUid === userId) {
+          intList.push({ id: d.id, ...idat });
+        }
       });
-
-      if (intList.length === 0) {
-        intList.push({
-          id: "int_sample_1",
-          jobId: jobList[0]?.id || "job_sample_1",
-          jobTitle: jobList[0]?.title || "Senior Full Stack Engineer",
-          candidateId: "cand_aarav",
-          candidateName: "Aarav Sharma",
-          candidateEmail: "aarav.sharma@domain.in",
-          dateTime: new Date(Date.now() + 86400000 * 2).toISOString(),
-          roundName: "Technical Deep Dive & Architecture",
-          interviewer: "Hiring Manager",
-          meetLink: "https://meet.google.com/aij-interview-01",
-          status: "scheduled"
-        });
-      }
       setInterviews(intList);
 
     } catch (err) {
@@ -314,13 +246,22 @@ export default function EmployerDashboard({
 
   // Application status update
   const handleUpdateApplicationStatus = async (appId: string, newStatus: string, note?: string) => {
+    const patch = {
+      status: newStatus,
+      applicationStatus: newStatus,
+      updatedAt: new Date().toISOString(),
+      ...(note ? { notes: note } : {})
+    };
     try {
-      await updateDoc(doc(db, "company_applications", appId), {
-        status: newStatus,
-        ...(note ? { notes: note } : {})
-      });
-    } catch (e) {}
-    setApplications(applications.map(a => a.id === appId ? { ...a, status: newStatus, ...(note ? { notes: note } : {}) } : a));
+      await Promise.all([
+        setDoc(doc(db, "applications", appId), patch, { merge: true }),
+        setDoc(doc(db, "company_applications", appId), patch, { merge: true })
+      ]);
+      setApplications(current => current.map(a => a.id === appId ? { ...a, ...patch } : a));
+    } catch (error) {
+      console.error("Application status sync failed:", error);
+      throw error;
+    }
   };
 
   // Select Option from Post Job Menu
