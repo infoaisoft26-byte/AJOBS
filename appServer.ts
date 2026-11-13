@@ -998,7 +998,7 @@ Respond with supportive but professional advice. Keep your response around 3-4 c
 `;
 
   try {
-    let consolidatedPrompt = "";
+    consolidatedPrompt = "";
     if (chatHistory && Array.isArray(chatHistory)) {
       chatHistory.forEach(msg => {
         const role = msg.sender === "user" ? "User" : "Career Coach";
@@ -1471,11 +1471,15 @@ Your message contains prohibited payment or fee request keywords.
     return res.end();
   }
 
+  // Keep fallback context outside the try block so the catch handler can reuse it.
+  let userContext: any = null;
+  let systemInstruction = "";
+  let consolidatedPrompt = "";
+
   try {
     const db = getFirestoreDb();
     
     // Resolve user context from Firestore if logged in
-    let userContext: any = null;
     if (activeUserId !== "anonymous") {
       try {
         const userDoc = await db.collection("users").doc(activeUserId).get();
@@ -1534,7 +1538,7 @@ Your message contains prohibited payment or fee request keywords.
       }
     }
 
-    const systemInstruction = `
+    systemInstruction = `
 You are "AIJobs Career Assistant", an elite, encouragement-driven floating career companion on the premium recruitment portal AIJobs.
 You are powered by Google Search API grounding to provide candidates with real-time, live insights on emerging job market trends, industry-specific hiring cycles, hot tech stacks, salary benchmarks, hiring waves, campus placement calendars, and corporate budget expansions across India and global tech hubs.
 ${userContext ? `
@@ -4296,7 +4300,7 @@ app.post("/api/twilio/account-activation", async (req, res) => {
 
 // 8b. Smart AI Resume Onboarding Auto-Login & Profile Seeding API
 app.post("/api/auth/smart-onboard", async (req, res) => {
-  const { name, email, phone, skills, experience, education, city, resumeURL, resumeFileName, resumeText, scores } = req.body;
+  const { name, email, phone, skills, experience, education, city, resumeURL, resumeFileName, resumeText, scores, summary } = req.body;
   
   if (!email) {
     return res.status(400).json({ success: false, error: "Missing email address for onboarding." });
@@ -4541,7 +4545,7 @@ app.post("/api/auth/smart-onboard", async (req, res) => {
 async function callGeminiWithModelFallback(aiClient: any, payload: { contents: any; config?: any }) {
   const primaryModel = process.env.GEMINI_MODEL || "gemini-3.6-flash";
   const envFallback = process.env.GEMINI_FALLBACK_MODEL || "gemini-3.5-flash-lite";
-  const modelsToTry = Array.from(new Set([primaryModel, envFallback, ...MODEL_FALLBACKS].filter(Boolean)));
+  const modelsToTry = Array.from(new Set([primaryModel, envFallback].filter(Boolean)));
   
   const cleanConfig = { ...payload.config };
   delete cleanConfig.temperature;
