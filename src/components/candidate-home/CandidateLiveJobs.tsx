@@ -13,13 +13,11 @@ import {
 } from "lucide-react";
 import { JobPosting, UserProfile } from "../../types";
 import { getLiveJobs } from "../../services/jobService";
-import CandidateRegistrationCTA from "./CandidateRegistrationCTA";
 
 interface Props {
   setActiveView: (view: string) => void;
   onSelectJob?: (jobId: string) => void;
   onApplyJob?: (job: JobPosting) => void;
-  onGetStarted: () => void;
   user?: UserProfile | null;
 }
 
@@ -27,7 +25,6 @@ export default function CandidateLiveJobs({
   setActiveView,
   onSelectJob,
   onApplyJob,
-  onGetStarted,
   user,
 }: Props) {
   const [jobs, setJobs] = useState<JobPosting[]>([]);
@@ -94,21 +91,21 @@ export default function CandidateLiveJobs({
   };
 
   return (
-    <section className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+    <section className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
       {/* Section Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 sm:mb-10">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-400/30 text-cyan-300 text-xs font-bold mb-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold mb-3">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Verified Openings</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+          <h2 className="font-heading text-4xl sm:text-5xl font-extrabold text-slate-950 tracking-tight tracking-tight">
             Live Job{" "}
-            <span className="bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-orange-500 via-rose-500 to-violet-600 bg-clip-text text-transparent">
               Opportunities
             </span>
           </h2>
-          <p className="mt-2 text-sm sm:text-base text-slate-400">
+          <p className="mt-2 text-base sm:text-lg text-slate-500">
             Explore the latest openings from real companies
           </p>
         </div>
@@ -116,34 +113,32 @@ export default function CandidateLiveJobs({
         <button
           type="button"
           onClick={() => setActiveView("public-jobs")}
-          className="inline-flex items-center gap-2 text-sm font-bold text-cyan-400 hover:text-cyan-300 transition-colors group cursor-pointer"
+          className="inline-flex items-center gap-2 text-sm font-bold text-violet-700 hover:text-rose-600 transition-colors group cursor-pointer"
         >
           <span>View All Jobs</span>
           <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
         </button>
       </div>
 
-      {/* Main Grid: Live Jobs on Left / Registration CTA on Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        {/* Jobs Column (2 cols on large screens) */}
-        <div className="lg:col-span-2 space-y-4">
+      {/* Live jobs take the full section width: apply directly from each job card. */}
+      <div className="grid grid-cols-1 gap-6">
           {loading ? (
             /* Skeleton State */
             <div className="grid sm:grid-cols-2 gap-4">
               {[1, 2, 3, 4].map((n) => (
                 <div
                   key={n}
-                  className="rounded-2xl bg-white/5 border border-white/10 p-5 animate-pulse space-y-3"
+                  className="rounded-2xl bg-white border border-violet-100 p-5 shadow-sm animate-pulse space-y-3"
                 >
                   <div className="flex items-center justify-between">
-                    <div className="w-10 h-10 rounded-xl bg-white/10" />
-                    <div className="w-20 h-5 rounded-full bg-white/10" />
+                    <div className="w-10 h-10 rounded-xl bg-violet-100" />
+                    <div className="w-20 h-5 rounded-full bg-rose-100" />
                   </div>
-                  <div className="w-3/4 h-5 rounded bg-white/10" />
-                  <div className="w-1/2 h-4 rounded bg-white/10" />
+                  <div className="w-3/4 h-5 rounded bg-slate-200" />
+                  <div className="w-1/2 h-4 rounded bg-slate-100" />
                   <div className="flex gap-2 pt-2">
-                    <div className="w-16 h-6 rounded-lg bg-white/10" />
-                    <div className="w-16 h-6 rounded-lg bg-white/10" />
+                    <div className="w-16 h-6 rounded-lg bg-violet-100" />
+                    <div className="w-16 h-6 rounded-lg bg-violet-100" />
                   </div>
                 </div>
               ))}
@@ -179,7 +174,7 @@ export default function CandidateLiveJobs({
                   <div
                     key={job.id}
                     onClick={() => handleCardClick(job)}
-                    className="group relative rounded-2xl bg-white p-5 shadow-[0_10px_30px_rgba(0,10,30,0.35)] border border-slate-100 hover:shadow-[0_16px_40px_rgba(0,102,255,0.2)] hover:border-blue-300 transition-all cursor-pointer flex flex-col justify-between"
+                    className="group relative rounded-2xl bg-white p-6 shadow-[0_18px_50px_rgba(76,29,149,0.09)] border border-violet-100 hover:shadow-[0_26px_60px_rgba(225,29,72,0.14)] hover:border-rose-200 transition-all cursor-pointer flex flex-col justify-between"
                   >
                     <div>
                       {/* Card Header: Company Icon + Type Badge + Bookmark */}
@@ -267,22 +262,20 @@ export default function CandidateLiveJobs({
                       <span className="text-[11px] text-slate-400 font-medium">
                         100% Verified
                       </span>
-                      <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 group-hover:translate-x-0.5 transition-transform">
-                        <span>Apply Now</span>
+                      <button
+                        type="button"
+                        onClick={(event) => { event.stopPropagation(); onApplyJob?.(job); }}
+                        className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 via-rose-500 to-violet-600 px-4 py-2 text-xs font-extrabold text-white shadow-md shadow-rose-500/15 transition hover:-translate-y-0.5 hover:shadow-lg"
+                      >
+                        <span>Quick Apply</span>
                         <ArrowRight className="w-3.5 h-3.5" />
-                      </span>
+                      </button>
                     </div>
                   </div>
                 );
               })}
             </div>
           )}
-        </div>
-
-        {/* Right Side: Registration Promo Card */}
-        <div className="lg:col-span-1">
-          <CandidateRegistrationCTA onGetStarted={onGetStarted} />
-        </div>
       </div>
     </section>
   );

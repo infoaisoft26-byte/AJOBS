@@ -43,7 +43,7 @@ export default function CandidateHero({ onGetStarted, setActiveView, user }: Pro
   };
 
   return (
-    <section className="relative pt-6 pb-12 sm:pt-10 sm:pb-16 lg:pt-14 lg:pb-20 overflow-hidden">
+    <section className="relative pt-8 pb-14 sm:pt-12 sm:pb-20 lg:pt-16 lg:pb-24 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-[1.1fr_0.9fr] items-center gap-10 lg:gap-8">
           
@@ -55,33 +55,33 @@ export default function CandidateHero({ onGetStarted, setActiveView, user }: Pro
             className="relative z-10"
           >
             {/* Trust Badge */}
-            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-[#08152e]/90 border border-cyan-400/30 text-cyan-200 text-xs sm:text-sm font-semibold shadow-[0_0_20px_rgba(6,182,212,0.15)] backdrop-blur-md mb-6">
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">
+            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/90 border border-violet-200 text-violet-700 text-xs sm:text-sm font-semibold shadow-[0_0_20px_rgba(6,182,212,0.15)] backdrop-blur-md mb-6">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
                 <ShieldCheck className="w-3.5 h-3.5" />
               </span>
               <span>India's Trusted AI Job Platform</span>
             </div>
 
             {/* Main Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.12]">
+            <h1 className="font-heading text-[clamp(2.9rem,5.5vw,5.4rem)] font-extrabold tracking-[-0.055em] text-slate-950 leading-[0.98]">
               A Better Career{" "}
-              <span className="block mt-1 sm:mt-2 bg-gradient-to-r from-[#38bdf8] via-[#818cf8] to-[#c084fc] bg-clip-text text-transparent drop-shadow-[0_0_35px_rgba(99,102,241,0.35)]">
+              <span className="block mt-1 sm:mt-2 bg-gradient-to-r from-[#f97316] via-[#e11d48] to-[#7c3aed] bg-clip-text text-transparent drop-shadow-[0_10px_22px_rgba(225,29,72,0.14)]">
                 Starts Here
               </span>
             </h1>
 
             {/* Subheadings */}
-            <p className="mt-5 text-base sm:text-lg lg:text-xl font-medium text-slate-200 leading-relaxed">
+            <p className="mt-5 text-lg sm:text-xl lg:text-2xl font-semibold text-slate-700 leading-relaxed">
               Discover verified jobs. Build your future. No charges. No scams.
             </p>
-            <p className="mt-1 text-sm sm:text-base text-slate-400 leading-normal">
+            <p className="mt-1 text-base sm:text-lg text-slate-500 leading-relaxed">
               Just real opportunities with trusted employers.
             </p>
 
             {/* JOB SEARCH BAR */}
             <form
               onSubmit={handleSearch}
-              className="mt-8 rounded-2xl sm:rounded-3xl bg-white p-2.5 sm:p-3 shadow-[0_20px_60px_rgba(0,12,40,0.5)] border border-slate-100"
+              className="mt-8 rounded-2xl sm:rounded-3xl bg-white p-2.5 sm:p-3 shadow-[0_24px_70px_rgba(81,56,140,0.16)] border border-violet-100"
             >
               <div className="grid grid-cols-1 sm:grid-cols-[1.2fr_1fr_1.1fr_auto] items-center gap-2 divide-y sm:divide-y-0 sm:divide-x divide-slate-150">
                 
@@ -154,7 +154,7 @@ export default function CandidateHero({ onGetStarted, setActiveView, user }: Pro
                 <div className="pt-2 sm:pt-0 sm:pl-2">
                   <button
                     type="submit"
-                    className="w-full sm:w-auto h-12 px-7 rounded-xl bg-[#0066FF] hover:bg-[#0052cc] text-white font-bold text-sm shadow-[0_8px_20px_rgba(0,102,255,0.35)] transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                    className="w-full sm:w-auto h-12 px-7 rounded-xl bg-gradient-to-r from-orange-500 via-rose-500 to-violet-600 hover:brightness-105 text-white font-bold text-sm shadow-[0_8px_20px_rgba(0,102,255,0.35)] transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                   >
                     <Search className="w-4 h-4 text-white" />
                     <span>Search Jobs</span>
@@ -168,7 +168,7 @@ export default function CandidateHero({ onGetStarted, setActiveView, user }: Pro
               <button
                 type="button"
                 onClick={onGetStarted}
-                className="h-13 px-8 rounded-2xl bg-gradient-to-r from-[#0066FF] via-[#4f46e5] to-[#7c3aed] hover:from-[#0052cc] hover:to-[#6d28d9] text-white font-bold text-sm sm:text-base shadow-[0_10px_25px_rgba(79,70,229,0.4)] transition-all flex items-center gap-3 cursor-pointer group active:scale-98"
+                className="h-13 px-8 rounded-2xl bg-gradient-to-r from-orange-500 via-rose-500 to-violet-600 hover:brightness-105 text-white font-bold text-sm sm:text-base shadow-[0_10px_25px_rgba(79,70,229,0.4)] transition-all flex items-center gap-3 cursor-pointer group active:scale-98"
               >
                 <UserPlus className="w-5 h-5 text-cyan-200" />
                 <span>Create Free Profile</span>
@@ -178,7 +178,7 @@ export default function CandidateHero({ onGetStarted, setActiveView, user }: Pro
               <button
                 type="button"
                 onClick={() => setActiveView("public-jobs")}
-                className="h-13 px-7 rounded-2xl bg-white/5 hover:bg-white/10 text-white font-bold text-sm sm:text-base border border-white/20 hover:border-white/30 backdrop-blur-md transition-all flex items-center gap-3 cursor-pointer group active:scale-98"
+                className="h-13 px-7 rounded-2xl bg-white hover:bg-violet-50 text-slate-800 font-bold text-sm sm:text-base border border-violet-200 hover:border-violet-300 backdrop-blur-md transition-all flex items-center gap-3 cursor-pointer group active:scale-98"
               >
                 <Briefcase className="w-5 h-5 text-slate-300" />
                 <span>Apply to Jobs</span>
@@ -192,7 +192,7 @@ export default function CandidateHero({ onGetStarted, setActiveView, user }: Pro
             initial={reduceMotion ? false : { opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.7, delay: 0.1, ease: "easeOut" }}
-            className="relative lg:h-[580px] flex items-center justify-center"
+            className="relative lg:h-[600px] flex items-center justify-center [perspective:1400px]"
           >
             {/* Top Right India Workforce Brand Message */}
             <div className="absolute top-0 right-2 sm:right-6 z-20 flex items-start gap-2.5 bg-black/40 backdrop-blur-md border border-white/10 px-3.5 py-2 rounded-xl text-right">
@@ -210,7 +210,7 @@ export default function CandidateHero({ onGetStarted, setActiveView, user }: Pro
             </div>
 
             {/* Main Visual Container */}
-            <div className="relative w-full max-w-[560px] aspect-[16/11] sm:aspect-[16/10] lg:h-full rounded-3xl overflow-hidden border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.8)] bg-[#050b1c]">
+            <div className="ai-8d-card relative w-full max-w-[560px] aspect-[16/11] sm:aspect-[16/10] lg:h-full rounded-[2rem] overflow-hidden border-[5px] border-white shadow-[0_35px_90px_rgba(67,40,110,0.28)] bg-[#050b1c] rotate-0 lg:rotate-[1.5deg]">
               <img
                 src="/assets/candidate-home/candidate-hero.webp"
                 alt="Confident Indian corporate professionals building careers with AIJobs"

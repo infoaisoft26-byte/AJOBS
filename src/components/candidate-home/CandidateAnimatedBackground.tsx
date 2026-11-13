@@ -24,14 +24,14 @@ export default function CandidateAnimatedBackground({ className = "", showSkylin
   return (
     <div
       aria-hidden="true"
-      className={`pointer-events-none absolute inset-0 overflow-hidden select-none -z-10 bg-[#030712] ${className}`}
+      className={`pointer-events-none absolute inset-0 overflow-hidden select-none -z-10 bg-[#f8f7ff] ${className}`}
     >
-      {/* Deep Midnight Navy Base Gradient */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(14,35,80,0.85),rgba(3,7,18,1))]" />
+      {/* Light lavender base so dark hero typography remains readable */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_85%_70%_at_50%_0%,rgba(255,237,213,0.72),rgba(245,243,255,0.96)_48%,rgba(248,247,255,1)_100%)]" />
 
       {/* Luminous Glow Blobs: Electric Blue, Cyan, Purple */}
       <motion.div
-        className="absolute -top-32 left-[10%] h-[480px] w-[480px] rounded-full bg-blue-600/20 blur-[130px]"
+        className="absolute -top-32 left-[10%] h-[480px] w-[480px] rounded-full bg-orange-300/25 blur-[130px]"
         animate={reduceMotion ? undefined : {
           x: [0, 20, 0],
           y: [0, -15, 0],
@@ -40,7 +40,7 @@ export default function CandidateAnimatedBackground({ className = "", showSkylin
         transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="absolute top-20 right-[5%] h-[520px] w-[520px] rounded-full bg-indigo-600/20 blur-[140px]"
+        className="absolute top-20 right-[5%] h-[520px] w-[520px] rounded-full bg-violet-300/20 blur-[140px]"
         animate={reduceMotion ? undefined : {
           x: [0, -25, 0],
           y: [0, 20, 0],
@@ -49,7 +49,7 @@ export default function CandidateAnimatedBackground({ className = "", showSkylin
         transition={{ duration: 11, repeat: Infinity, ease: "easeInOut", delay: 1 }}
       />
       <motion.div
-        className="absolute top-[45%] left-[25%] h-[380px] w-[380px] rounded-full bg-cyan-500/15 blur-[120px]"
+        className="absolute top-[45%] left-[25%] h-[380px] w-[380px] rounded-full bg-rose-300/20 blur-[120px]"
         animate={reduceMotion ? undefined : {
           scale: [1, 1.08, 1],
           opacity: [0.2, 0.38, 0.2]
@@ -57,7 +57,7 @@ export default function CandidateAnimatedBackground({ className = "", showSkylin
         transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 2 }}
       />
       <motion.div
-        className="absolute bottom-10 right-[20%] h-[420px] w-[420px] rounded-full bg-purple-600/18 blur-[130px]"
+        className="absolute bottom-10 right-[20%] h-[420px] w-[420px] rounded-full bg-fuchsia-300/15 blur-[130px]"
         animate={reduceMotion ? undefined : {
           y: [0, -20, 0],
           opacity: [0.25, 0.45, 0.25]
@@ -69,7 +69,7 @@ export default function CandidateAnimatedBackground({ className = "", showSkylin
       <div
         className="absolute inset-0 opacity-[0.035]"
         style={{
-          backgroundImage: `linear-gradient(to right, #38bdf8 1px, transparent 1px), linear-gradient(to bottom, #38bdf8 1px, transparent 1px)`,
+          backgroundImage: `linear-gradient(to right, #8b5cf6 1px, transparent 1px), linear-gradient(to bottom, #8b5cf6 1px, transparent 1px)`,
           backgroundSize: "48px 48px",
           maskImage: "radial-gradient(ellipse 70% 60% at 50% 30%, #000 40%, transparent 100%)",
           WebkitMaskImage: "radial-gradient(ellipse 70% 60% at 50% 30%, #000 40%, transparent 100%)",
@@ -85,7 +85,7 @@ export default function CandidateAnimatedBackground({ className = "", showSkylin
           {particles.map((p) => (
             <motion.span
               key={p.id}
-              className="absolute rounded-full bg-cyan-300 shadow-[0_0_8px_rgba(34,211,238,0.8)]"
+              className="absolute rounded-full bg-rose-400 shadow-[0_0_10px_rgba(244,63,94,0.55)]"
               style={{
                 left: p.left,
                 top: p.top,

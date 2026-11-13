@@ -61,7 +61,7 @@ export default function CandidateHomeSection({
   };
 
   return (
-    <div className="relative min-h-screen bg-[#030712] text-white selection:bg-blue-500 selection:text-white">
+    <div className="aijobs-home relative min-h-screen bg-[#f8f7ff] text-slate-900 selection:bg-rose-200 selection:text-slate-950">
       {/* Cinematic Animated Background with Skyline, Particles, and Glows */}
       <CandidateAnimatedBackground />
 
@@ -75,19 +75,49 @@ export default function CandidateHomeSection({
       {/* 2. TRUST STRIP */}
       <CandidateTrustStrip />
 
-      {/* 3. LIVE JOBS & RIGHT-SIDE REGISTRATION CTA */}
+      {/* 3. LIVE JOBS — candidates can open and apply directly from each listing. */}
       <CandidateLiveJobs
         setActiveView={setActiveView}
         onSelectJob={onSelectJob}
         onApplyJob={handleApplyClick}
-        onGetStarted={onGetStarted}
         user={user}
       />
 
-      {/* 4. HOW IT WORKS */}
+
+      {/* 4. CAREER ADVICE */}
+      <section id="career-advice" className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-14 sm:py-20 scroll-mt-24">
+        <div className="overflow-hidden rounded-[30px] border border-violet-100 bg-white/90 p-6 sm:p-10 shadow-[0_24px_70px_rgba(76,29,149,0.09)] backdrop-blur">
+          <div className="mx-auto mb-9 max-w-2xl text-center">
+            <span className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-bold text-orange-700">✦ Career Advice</span>
+            <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">Build a career with a clear direction</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-600 sm:text-base">Practical guidance to help you prepare, apply confidently and grow professionally.</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { icon: "01", title: "Resume that gets noticed", desc: "Use a clear summary, measurable achievements and skills that match the role." },
+              { icon: "02", title: "Interview preparation", desc: "Practise your introduction, role-specific questions and real examples using STAR." },
+              { icon: "03", title: "Skills & career growth", desc: "Choose one in-demand skill, build a small project and keep your learning consistent." },
+              { icon: "04", title: "Apply safely & smartly", desc: "Tailor each application, research the employer and never pay for a job or interview." },
+            ].map((tip) => (
+              <article key={tip.icon} className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-violet-50/70 p-5 transition hover:-translate-y-1 hover:border-rose-200 hover:shadow-lg">
+                <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-orange-500 to-rose-500 text-sm font-black text-white shadow-md">{tip.icon}</div>
+                <h3 className="mt-4 text-base font-extrabold text-slate-900">{tip.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{tip.desc}</p>
+              </article>
+            ))}
+          </div>
+          <p className="mt-6 text-center text-xs text-slate-500">Tip: Set one weekly career goal and track your progress. Small consistent steps create momentum.</p>
+          <div className="mt-8 flex flex-col items-center gap-3 rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50 via-white to-orange-50 p-5 text-center sm:flex-row sm:justify-between sm:text-left">
+            <div><h3 className="text-lg font-extrabold text-slate-950">Need a professional resume?</h3><p className="mt-1 text-sm text-slate-600">Create one for free, preview it live and save it as a PDF.</p></div>
+            <button onClick={() => setActiveView("resume-builder")} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-violet-600 px-5 py-3 text-sm font-extrabold text-white shadow-lg shadow-violet-200 transition hover:bg-violet-700"><span>Create My Resume</span><span aria-hidden="true">→</span></button>
+          </div>
+        </div>
+      </section>
+
+      {/* 5. HOW IT WORKS */}
       <CandidateHowItWorks />
 
-      {/* 5. FINAL BOTTOM CTA BANNER */}
+      {/* 6. FINAL BOTTOM CTA BANNER */}
       <CandidateFinalCTA onGetStarted={onGetStarted} />
 
       {/* Easy Apply Modal if logged in candidate triggers quick apply */}

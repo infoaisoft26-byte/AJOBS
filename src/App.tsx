@@ -87,6 +87,7 @@ const HrmsCompanyDashboardLazy = safeLazy(() => import("@/components/hrms/HrmsPo
 const EmployerHiringLandingLazy = safeLazy(() => import("@/components/hiring/EmployerHiringLanding"), "EmployerHiringLanding");
 const UnsubscribeViewLazy = safeLazy(() => import("@/components/UnsubscribeView"), "UnsubscribeView");
 const ResumeOnboardingLazy = safeLazy(() => import("@/components/ResumeOnboarding"), "ResumeOnboarding");
+const ResumeBuilderLazy = safeLazy(() => import("@/components/ResumeBuilder"), "ResumeBuilder");
 const AuthModalLazy = safeLazy(() => import("@/components/AuthModal"), "AuthModal");
 const CompanySectionLazy = safeLazy(() => import("@/components/CompanySection"), "CompanySection");
 const ThreeDBackgroundLazy = safeLazy(() => import("@/components/ThreeDBackground"), "ThreeDBackground");
@@ -104,7 +105,6 @@ import { ToastProvider, useToast } from "@/components/GlobalToast";
 import Header from "@/components/Header";
 import LandingPage from "@/components/PremiumCandidateHomepage";
 import LegalModal from "@/components/LegalModal";
-import CandidateConversionDock from "@/components/CandidateConversionDock";
 import OfficialContactDock from "@/components/OfficialContactDock";
 import { type BackgroundMode } from "@/components/ThreeDBackground";
 import { LanguageProvider } from "@/context/LanguageContext";
@@ -925,6 +925,7 @@ function MainAppContent() {
           toggleTheme={toggleTheme}
           threeDMode={threeDMode}
           onThreeDModeChange={handleThreeDModeChange}
+          onOpenCompanyPage={(page) => setActiveCompanyPage(page)}
         />
       )}
 
@@ -1304,6 +1305,10 @@ function MainAppContent() {
                       />
                     </Suspense>
                   </div>
+                ) : activeView === "resume-builder" ? (
+                  <Suspense fallback={<GeneralLoading />}>
+                    <ResumeBuilderLazy onBack={() => setActiveView("home")} />
+                  </Suspense>
                 ) : activeView === "resume-onboarding" ? (
                   <Suspense fallback={<GeneralLoading />}>
                     <ResumeOnboardingLazy
@@ -1391,7 +1396,6 @@ export default function App() {
       <GlobalMarketplaceProvider>
         <ToastProvider>
           <MainAppContent />
-          <CandidateConversionDock />
           <OfficialContactDock />
         </ToastProvider>
       </GlobalMarketplaceProvider>
