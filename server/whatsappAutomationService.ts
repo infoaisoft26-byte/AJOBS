@@ -173,7 +173,6 @@ async function getPublicJobs(db: any, query: string) {
     for (const term of terms) if (searchable.includes(term)) score += title.toLowerCase().includes(term) ? 5 : 1;
     if (!terms.length || score > 0) {
       const slug = String(job.slug || "").trim();
-      const generatedSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
       const url = String(job.canonicalUrl || "").startsWith(SITE_URL + "/jobs/")
         ? String(job.canonicalUrl)
         : slug ? SITE_URL + "/jobs/" + encodeURIComponent(slug)
