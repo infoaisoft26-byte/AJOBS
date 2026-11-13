@@ -87,6 +87,8 @@ export default function PublicJobOpenings({
   const [applyingJob, setApplyingJob] = useState<JobPosting | null>(null);
   const [applyModalOpen, setApplyModalOpen] = useState(false);
   const [isSubmittingApp, setIsSubmittingApp] = useState(false);
+  const [quickApplyingJobId, setQuickApplyingJobId] = useState<string | null>(null);
+  const [quickAppliedJobIds, setQuickAppliedJobIds] = useState<string[]>([]);
   const [appSubmittedSuccess, setAppSubmittedSuccess] = useState<any | null>(null);
   const [candidateProfile, setCandidateProfile] = useState<any | null>(null);
 
@@ -126,7 +128,7 @@ export default function PublicJobOpenings({
             setFormPhone(data.phone || user.profileDetails?.mobileNumber || "");
             setFormLocation(data.location || data.profileDetails?.location || "Bengaluru, India");
             setFormExperience(data.experience || "1-3 Years");
-            setResumeUrl(data.resumeUrl || data.resumeFileName || "");
+            setResumeUrl(data.resumeUrl || data.resumeURL || "");
             setResumeFileName(data.resumeFileName || "Candidate_Resume.pdf");
           } else if (isMounted) {
             setFormName(user.name || "");
@@ -280,6 +282,41 @@ export default function PublicJobOpenings({
     setApplyModalOpen(true);
   };
 
+  // One-tap apply: profile details are resolved from the candidate's saved records
+  // by applicationService. No placeholder resume URL, fake score, or invented profile data.
+  const handleQuickApply = async (e: React.MouseEvent, job: JobPosting) => {
+    e.stopPropagation();
+    if (!user) {
+      showToast("Sign in or create a free candidate account to apply.", "info");
+      onOpenAuth("signin");
+      return;
+    }
+    if (user.role && !["candidate", "jobseeker", "job_seeker"].includes(user.role.toLowerCase())) {
+      showToast("Only candidate accounts can apply for jobs.", "warning");
+      return;
+    }
+    if (quickAppliedJobIds.includes(job.id)) {
+      showToast("You have already applied for this job.", "info");
+      return;
+    }
+    try {
+      setQuickApplyingJobId(job.id);
+      const result = await applyToJob(job, user.uid, candidateProfile || user, candidateProfile?.resumeText || "");
+      if (result.success) {
+        setQuickAppliedJobIds(prev => [...prev, job.id]);
+        showToast("Application submitted successfully!", "success");
+      } else {
+        const duplicate = /already applied/i.test(result.message || "");
+        if (duplicate) setQuickAppliedJobIds(prev => [...prev, job.id]);
+        showToast(result.message || "Could not submit your application.", duplicate ? "info" : "warning");
+      }
+    } catch (error: any) {
+      showToast(error?.message || "Application failed. Please try again.", "error");
+    } finally {
+      setQuickApplyingJobId(null);
+    }
+  };
+
   // Submit Application Handler
   const handleSubmitApplication = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -302,11 +339,11 @@ export default function PublicJobOpenings({
         currentCompany: formCurrentCompany,
         expectedSalary: formExpectedSalary,
         noticePeriod: formNoticePeriod,
-        resumeFileName: resumeFileName || "Candidate_Resume.pdf",
-        resumeUrl: resumeUrl || "gs://aijobs-resumes/resume.pdf",
-        resumeText: candidateProfile?.resumeText || "Verified candidate application details.",
-        resumeScore: candidateProfile?.resumeScore || 85,
-        aiInterviewScore: candidateProfile?.aiInterviewScore || 90
+        resumeFileName: resumeFileName || candidateProfile?.resumeFileName || "",
+        resumeUrl: resumeUrl || candidateProfile?.resumeUrl || null,
+        resumeText: candidateProfile?.resumeText || "",
+        resumeScore: Number(candidateProfile?.resumeScore || 0),
+        aiInterviewScore: Number(candidateProfile?.aiInterviewScore || 0)
       };
 
       const result = await applyToJob(applyingJob, user.uid, profilePayload, profilePayload.resumeText);
@@ -680,10 +717,11 @@ export default function PublicJobOpenings({
                     </button>
 
                     <button
-                      onClick={(e) => handleOpenApplyModal(e, job)}
-                      className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-extrabold rounded-xl shadow-md shadow-blue-500/20 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+                      onClick={(e) => handleQuickApply(e, job)}
+                      disabled={quickApplyingJobId === job.id || quickAppliedJobIds.includes(job.id)}
+                      className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-60 text-white text-xs font-extrabold rounded-xl shadow-md shadow-blue-500/20 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
                     >
-                      <span>Apply Now</span>
+                      <span>{quickAppliedJobIds.includes(job.id) ? "Applied" : quickApplyingJobId === job.id ? "Applying..." : "Quick Apply"}</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   </div>

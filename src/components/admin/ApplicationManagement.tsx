@@ -39,6 +39,10 @@ export interface AdminApplicationRecord {
   jobId: string;
   jobTitle: string;
   companyName: string;
+  consultancyId?: string;
+  consultancyName?: string;
+  recruiterId?: string;
+  employerId?: string;
   candidateId: string;
   candidateName: string;
   candidateEmail?: string;
@@ -77,6 +81,10 @@ const normalizeApplication = (id: string, data: any): AdminApplicationRecord => 
   jobId: String(data.jobId || ""),
   jobTitle: String(data.jobTitle || "Job not provided"),
   companyName: String(data.companyName || data.company || "Company not provided"),
+  consultancyId: String(data.consultancyId || data.consultancyUserId || ""),
+  consultancyName: String(data.consultancyName || data.consultancy || ""),
+  recruiterId: String(data.recruiterId || data.createdBy || ""),
+  employerId: String(data.employerId || data.ownerUid || ""),
   candidateId: String(data.candidateId || data.userId || ""),
   candidateName: String(data.candidateName || data.name || "Candidate"),
   candidateEmail: String(data.candidateEmail || data.email || ""),
@@ -692,6 +700,11 @@ export default function ApplicationManagement({
                           <Building2 className="w-3 h-3 text-gray-500" />
                           <span>{app.companyName}</span>
                         </span>
+                        {app.consultancyName && (
+                          <span className="text-[10px] text-cyan-300 block mt-1">
+                            Posted via: {app.consultancyName}
+                          </span>
+                        )}
                       </td>
 
                       {/* Resume */}
