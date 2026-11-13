@@ -246,13 +246,22 @@ export default function EmployerDashboard({
 
   // Application status update
   const handleUpdateApplicationStatus = async (appId: string, newStatus: string, note?: string) => {
+    const patch = {
+      status: newStatus,
+      applicationStatus: newStatus,
+      updatedAt: new Date().toISOString(),
+      ...(note ? { notes: note } : {})
+    };
     try {
-      await updateDoc(doc(db, "company_applications", appId), {
-        status: newStatus,
-        ...(note ? { notes: note } : {})
-      });
-    } catch (e) {}
-    setApplications(applications.map(a => a.id === appId ? { ...a, status: newStatus, ...(note ? { notes: note } : {}) } : a));
+      await Promise.all([
+        setDoc(doc(db, "applications", appId), patch, { merge: true }),
+        setDoc(doc(db, "company_applications", appId), patch, { merge: true })
+      ]);
+      setApplications(current => current.map(a => a.id === appId ? { ...a, ...patch } : a));
+    } catch (error) {
+      console.error("Application status sync failed:", error);
+      throw error;
+    }
   };
 
   // Select Option from Post Job Menu
