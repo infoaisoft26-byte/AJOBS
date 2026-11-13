@@ -108,6 +108,7 @@ export default function RoleBasedTopbar({
               <button onClick={() => { soundSynth.playClick(); setActiveView("public-jobs"); }} className="hover:text-cyan-400 transition-colors cursor-pointer">Jobs</button>
               <button onClick={() => { soundSynth.playClick(); onOpenCompanyPage?.("companies"); }} className="hover:text-cyan-400 transition-colors cursor-pointer">Companies</button>
               <button onClick={() => { soundSynth.playClick(); scrollToSection("career-advice"); }} className="hover:text-cyan-400 transition-colors cursor-pointer">Career Advice</button>
+              <button onClick={() => { soundSynth.playClick(); setActiveView("resume-builder"); }} className="hover:text-cyan-400 transition-colors cursor-pointer">Create Resume</button>
               <button onClick={() => { soundSynth.playClick(); onOpenCompanyPage?.("employers"); }} className="hover:text-cyan-400 transition-colors cursor-pointer">For Employers</button>
             </>
           )}
