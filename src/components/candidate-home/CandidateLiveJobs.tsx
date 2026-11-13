@@ -128,17 +128,17 @@ export default function CandidateLiveJobs({
               {[1, 2, 3, 4].map((n) => (
                 <div
                   key={n}
-                  className="rounded-2xl bg-white/5 border border-white/10 p-5 animate-pulse space-y-3"
+                  className="rounded-2xl bg-white border border-violet-100 p-5 shadow-sm animate-pulse space-y-3"
                 >
                   <div className="flex items-center justify-between">
-                    <div className="w-10 h-10 rounded-xl bg-white/10" />
-                    <div className="w-20 h-5 rounded-full bg-white/10" />
+                    <div className="w-10 h-10 rounded-xl bg-violet-100" />
+                    <div className="w-20 h-5 rounded-full bg-rose-100" />
                   </div>
-                  <div className="w-3/4 h-5 rounded bg-white/10" />
-                  <div className="w-1/2 h-4 rounded bg-white/10" />
+                  <div className="w-3/4 h-5 rounded bg-slate-200" />
+                  <div className="w-1/2 h-4 rounded bg-slate-100" />
                   <div className="flex gap-2 pt-2">
-                    <div className="w-16 h-6 rounded-lg bg-white/10" />
-                    <div className="w-16 h-6 rounded-lg bg-white/10" />
+                    <div className="w-16 h-6 rounded-lg bg-violet-100" />
+                    <div className="w-16 h-6 rounded-lg bg-violet-100" />
                   </div>
                 </div>
               ))}
