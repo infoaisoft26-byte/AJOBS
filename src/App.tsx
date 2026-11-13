@@ -925,6 +925,7 @@ function MainAppContent() {
           toggleTheme={toggleTheme}
           threeDMode={threeDMode}
           onThreeDModeChange={handleThreeDModeChange}
+          onOpenCompanyPage={(page) => setActiveCompanyPage(page)}
         />
       )}
 
