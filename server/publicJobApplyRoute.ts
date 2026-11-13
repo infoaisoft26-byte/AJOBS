@@ -221,7 +221,7 @@ export async function handlePublicJobApplyRoute(req: Request, res: Response): Pr
         updatedAt: job.updatedAt || now
       }, { merge: true });
 
-      const recipients = Array.from(new Set([ownerUid, recruiterId, employerId, consultancyId].filter(Boolean)));
+      const recipients = Array.from(new Set([ownerUid, recruiterId, employerId, consultancyId].filter((recipient): recipient is string => Boolean(recipient))));
       recipients.forEach((recipientId) => {
         tx.set(db.collection("notifications").doc(`quick_apply_${applicationId}_${recipientId}`), {
           userId: recipientId,
