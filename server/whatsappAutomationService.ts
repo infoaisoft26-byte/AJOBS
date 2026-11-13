@@ -177,7 +177,7 @@ async function getPublicJobs(db: any, query: string) {
       const url = String(job.canonicalUrl || "").startsWith(SITE_URL + "/jobs/")
         ? String(job.canonicalUrl)
         : slug ? SITE_URL + "/jobs/" + encodeURIComponent(slug)
-        : SITE_URL + "/jobs/" + encodeURIComponent(generatedSlug + "-" + doc.id);
+        : SITE_URL + "/jobs/" + encodeURIComponent(doc.id);
       matches.push({ id: doc.id, title, company, location, salary, url, score });
     }
   });
