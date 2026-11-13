@@ -86,6 +86,10 @@ export async function handleHiringPublicRoute(req: Request, res: Response): Prom
       if (direct.exists) jobSnap = direct;
     }
     if (!jobSnap) {
+      const direct = await db.collection("jobs").doc(slug).get();
+      if (direct.exists) jobSnap = direct;
+    }
+    if (!jobSnap) {
       const idGuess = slug.match(/-(job_[a-z0-9_-]+)$/i)?.[1];
       if (idGuess) {
         const direct = await db.collection("jobs").doc(idGuess).get();
