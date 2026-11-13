@@ -1390,7 +1390,6 @@ export default function App() {
       <GlobalMarketplaceProvider>
         <ToastProvider>
           <MainAppContent />
-          <CandidateConversionDock />
           <OfficialContactDock />
         </ToastProvider>
       </GlobalMarketplaceProvider>
