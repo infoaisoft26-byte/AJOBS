@@ -87,6 +87,7 @@ const HrmsCompanyDashboardLazy = safeLazy(() => import("@/components/hrms/HrmsPo
 const EmployerHiringLandingLazy = safeLazy(() => import("@/components/hiring/EmployerHiringLanding"), "EmployerHiringLanding");
 const UnsubscribeViewLazy = safeLazy(() => import("@/components/UnsubscribeView"), "UnsubscribeView");
 const ResumeOnboardingLazy = safeLazy(() => import("@/components/ResumeOnboarding"), "ResumeOnboarding");
+const ResumeBuilderLazy = safeLazy(() => import("@/components/ResumeBuilder"), "ResumeBuilder");
 const AuthModalLazy = safeLazy(() => import("@/components/AuthModal"), "AuthModal");
 const CompanySectionLazy = safeLazy(() => import("@/components/CompanySection"), "CompanySection");
 const ThreeDBackgroundLazy = safeLazy(() => import("@/components/ThreeDBackground"), "ThreeDBackground");
@@ -1303,6 +1304,10 @@ function MainAppContent() {
                       />
                     </Suspense>
                   </div>
+                ) : activeView === "resume-builder" ? (
+                  <Suspense fallback={<GeneralLoading />}>
+                    <ResumeBuilderLazy onBack={() => setActiveView("home")} />
+                  </Suspense>
                 ) : activeView === "resume-onboarding" ? (
                   <Suspense fallback={<GeneralLoading />}>
                     <ResumeOnboardingLazy
