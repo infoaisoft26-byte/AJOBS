@@ -221,9 +221,10 @@ export async function handlePublicJobApplyRoute(req: Request, res: Response): Pr
         updatedAt: job.updatedAt || now
       }, { merge: true });
 
-      if (ownerUid) {
-        tx.set(db.collection("notifications").doc(`quick_apply_${applicationId}`), {
-          userId: ownerUid,
+      const recipients = Array.from(new Set([ownerUid, recruiterId, employerId, consultancyId].filter(Boolean)));
+      recipients.forEach((recipientId) => {
+        tx.set(db.collection("notifications").doc(`quick_apply_${applicationId}_${recipientId}`), {
+          userId: recipientId,
           title: "New Candidate Application",
           message: `${name} applied for ${job.title || job.jobTitle || "your job"}.`,
           type: "application",
@@ -231,9 +232,10 @@ export async function handlePublicJobApplyRoute(req: Request, res: Response): Pr
           jobId,
           applicationId,
           candidateLeadId: leadId,
+          source: "public_job_quick_apply",
           createdAt: now
         }, { merge: true });
-      }
+      });
     });
 
     res.status(duplicate ? 200 : 201).json({
