@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -265,3 +265,10 @@ body {
   .ai-8d-card, .ai-8d-float, .ai-8d-glow::before { animation: none !important; transition: none !important; }
   .ai-8d-card:hover { transform: none !important; }
 }
+
+
+/* AIJOBS public landing refresh — scoped so dashboards/admin retain their typography. */
+.aijobs-home { font-family: 'DM Sans', 'Inter', sans-serif; background: #f8f7ff; color: #17152b; }
+.aijobs-home h1, .aijobs-home h2, .aijobs-home h3 { font-family: 'Outfit', 'DM Sans', sans-serif; }
+.aijobs-home .ai-8d-card { transform-style: preserve-3d; }
+@media (prefers-reduced-motion: reduce) { .aijobs-home *, .aijobs-home *::before, .aijobs-home *::after { scroll-behavior: auto !important; } }
