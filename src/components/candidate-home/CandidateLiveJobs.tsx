@@ -262,18 +262,20 @@ export default function CandidateLiveJobs({
                       <span className="text-[11px] text-slate-400 font-medium">
                         100% Verified
                       </span>
-                      <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 group-hover:translate-x-0.5 transition-transform">
-                        <span>Apply Now</span>
+                      <button
+                        type="button"
+                        onClick={(event) => { event.stopPropagation(); onApplyJob?.(job); }}
+                        className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 via-rose-500 to-violet-600 px-4 py-2 text-xs font-extrabold text-white shadow-md shadow-rose-500/15 transition hover:-translate-y-0.5 hover:shadow-lg"
+                      >
+                        <span>Quick Apply</span>
                         <ArrowRight className="w-3.5 h-3.5" />
-                      </span>
+                      </button>
                     </div>
                   </div>
                 );
               })}
             </div>
           )}
-        </div>
-
       </div>
     </section>
   );
