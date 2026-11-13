@@ -284,6 +284,31 @@ async function handleWhatsAppApplyFlow(db: any, from: string, message: string): 
         appliedAt: now, createdAt: now, updatedAt: now,
         consentToShareApplication: true, consentAt: now
       }, { merge: false });
+      tx.set(db.collection("company_applications").doc(applicationId), {
+        id: applicationId, jobId: String(draft.jobId),
+        jobTitle: String(currentJob.title || currentJob.jobTitle || draft.jobTitle || ""),
+        candidateId: null, candidateName: name, candidateEmail: email,
+        candidatePhone: phoneDigits, candidateLocation: String(draft.location || ""),
+        candidateExperience: "", candidateSkills: [],
+        companyId: currentJob.companyId || currentJob.employerId || ownerUid || "",
+        companyName: String(currentJob.companyName || currentJob.hiringOrganizationName || ""),
+        recruiterId: currentJob.recruiterId || null, employerId: currentJob.employerId || null,
+        consultancyId: currentJob.consultancyId || null,
+        consultancyName: currentJob.consultancyName || currentJob.consultancy || null,
+        resumeUrl: "No Resume Attached", status: "new", source: "whatsapp_job_apply",
+        appliedAt: now, updatedAt: now, consentToShareApplication: true, consentAt: now
+      }, { merge: true });
+      tx.set(db.collection("leads").doc(leadId), {
+        id: leadId, candidateId: null, candidateName: name, name, fullName: name,
+        email, candidateEmail: email, phone: phoneDigits, mobile: phoneDigits,
+        jobId: String(draft.jobId), jobTitle: String(currentJob.title || currentJob.jobTitle || ""),
+        company: String(currentJob.companyName || currentJob.hiringOrganizationName || ""),
+        recruiter: currentJob.recruiterId || currentJob.employerId || ownerUid || "Direct Employer",
+        consultancyId: currentJob.consultancyId || null,
+        consultancy: currentJob.consultancyName || currentJob.consultancy || "Direct",
+        currentStatus: "applied", status: "applied", source: "whatsapp_job_apply",
+        createdAt: now, updatedAt: now
+      }, { merge: true });
       tx.set(jobRef, {
         applicationCount: Number(currentJob.applicationCount || currentJob.applicants || 0) + 1,
         lastApplicationAt: now, updatedAt: currentJob.updatedAt || now
