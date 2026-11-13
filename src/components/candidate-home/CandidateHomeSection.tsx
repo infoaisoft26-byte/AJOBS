@@ -61,7 +61,7 @@ export default function CandidateHomeSection({
   };
 
   return (
-    <div className="relative min-h-screen bg-[#030712] text-white selection:bg-blue-500 selection:text-white">
+    <div className="aijobs-home relative min-h-screen bg-[#f8f7ff] text-slate-900 selection:bg-rose-200 selection:text-slate-950">
       {/* Cinematic Animated Background with Skyline, Particles, and Glows */}
       <CandidateAnimatedBackground />
 
@@ -75,12 +75,11 @@ export default function CandidateHomeSection({
       {/* 2. TRUST STRIP */}
       <CandidateTrustStrip />
 
-      {/* 3. LIVE JOBS & RIGHT-SIDE REGISTRATION CTA */}
+      {/* 3. LIVE JOBS — candidates can open and apply directly from each listing. */}
       <CandidateLiveJobs
         setActiveView={setActiveView}
         onSelectJob={onSelectJob}
         onApplyJob={handleApplyClick}
-        onGetStarted={onGetStarted}
         user={user}
       />
 
