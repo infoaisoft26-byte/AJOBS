@@ -26,8 +26,8 @@ export default function CandidateAnimatedBackground({ className = "", showSkylin
       aria-hidden="true"
       className={`pointer-events-none absolute inset-0 overflow-hidden select-none -z-10 bg-[#f8f7ff] ${className}`}
     >
-      {/* Deep Midnight Navy Base Gradient */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(14,35,80,0.85),rgba(3,7,18,1))]" />
+      {/* Light lavender base so dark hero typography remains readable */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_85%_70%_at_50%_0%,rgba(255,237,213,0.72),rgba(245,243,255,0.96)_48%,rgba(248,247,255,1)_100%)]" />
 
       {/* Luminous Glow Blobs: Electric Blue, Cyan, Purple */}
       <motion.div
