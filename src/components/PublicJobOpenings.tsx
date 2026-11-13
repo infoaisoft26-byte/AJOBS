@@ -128,7 +128,7 @@ export default function PublicJobOpenings({
             setFormPhone(data.phone || user.profileDetails?.mobileNumber || "");
             setFormLocation(data.location || data.profileDetails?.location || "Bengaluru, India");
             setFormExperience(data.experience || "1-3 Years");
-            setResumeUrl(data.resumeUrl || data.resumeFileName || "");
+            setResumeUrl(data.resumeUrl || data.resumeURL || "");
             setResumeFileName(data.resumeFileName || "Candidate_Resume.pdf");
           } else if (isMounted) {
             setFormName(user.name || "");
