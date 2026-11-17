@@ -24,7 +24,7 @@ import {
   WalletCards
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { collection, getDocs, doc, getDoc, query, where } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, query, where, updateDoc } from "firebase/firestore";
 import { db, auth } from "../../firebase";
 import AIJobsLogo from "../AIJobsLogo";
 import RecruiterOverview from "./RecruiterOverview";
@@ -117,10 +117,7 @@ export default function RecruiterDashboard({
           if (jobSnap.exists()) jobDocs.set(jobId, { id: jobSnap.id, ...jobSnap.data() });
         }
         const job = jobDocs.get(jobId);
-        if (job && (job.recruiterId === userId || job.assignedRecruiterId === userId)) {
-          const jobApps = await getDocs(query(collection(db, "applications"), where("jobId", "==", jobId)));
-          jobApps.docs.forEach((snap) => appDocs.set(snap.id, { id: snap.id, ...snap.data() }));
-        }
+        // Candidate visibility is driven by explicit application assignment; never pull every applicant for a job.
       }
       const jobs = Array.from(jobDocs.values()).filter((job: any) => job && job.id && !["closed", "expired", "rejected", "deleted"].includes(String(job.status || "").toLowerCase()));
       const jobsById = new Map(jobs.map((job: any) => [job.id, job]));
