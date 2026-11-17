@@ -401,7 +401,7 @@ ${selectedCandidate.screeningResult.concerns.map(c => `• ${c}`).join("\n")}
           >
             <Sparkles className="w-4 h-4 animate-spin text-cyan-400 shrink-0" />
             <div className="flex-1">
-              <span className="font-bold block text-white">Gemini 3.8 Flash AI Screening In Progress</span>
+              <span className="font-bold block text-white">AI screening in progress</span>
               <span className="text-[11px] text-cyan-400/90">{parsingStep || "Evaluating candidate answers against role benchmark..."}</span>
             </div>
           </motion.div>
@@ -662,7 +662,7 @@ ${selectedCandidate.screeningResult.concerns.map(c => `• ${c}`).join("\n")}
                           <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5" />
                           <div>
                             <span className="text-[10px] font-bold text-cyan-300 uppercase block font-mono">
-                              Gemini 3.8 Evaluation • {qb.rating}
+                              AI evaluation • {qb.rating}
                             </span>
                             <p className="text-slate-300 text-xs leading-relaxed mt-0.5">{qb.analysis}</p>
                           </div>
