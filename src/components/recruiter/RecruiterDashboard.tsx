@@ -34,6 +34,7 @@ import RecruiterFindCandidates from "./RecruiterFindCandidates";
 import RecruiterLeads from "./RecruiterLeads";
 import RecruiterEarnings from "./RecruiterEarnings";
 import RecruiterAccountCenter from "./RecruiterAccountCenter";
+import AgreementAndCheckoutModal from "../AgreementAndCheckoutModal";
 import EmployerInterviews from "../employer/EmployerInterviews";
 import EmployerMessages from "../employer/EmployerMessages";
 import EmployerAiShortlist from "../employer/EmployerAiShortlist";
@@ -67,6 +68,7 @@ export default function RecruiterDashboard({
   const [accountCenterData, setAccountCenterData] = useState<any>(null);
   const [accountCenterLoading, setAccountCenterLoading] = useState<boolean>(true);
   const [accountCenterError, setAccountCenterError] = useState<string>("");
+  const [showPlanPurchase, setShowPlanPurchase] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
 
   // Recruiter Data Stores
@@ -660,6 +662,7 @@ export default function RecruiterDashboard({
                   loading={accountCenterLoading}
                   error={accountCenterError}
                   onRefresh={loadAccountCenter}
+                  onPurchasePlan={() => setShowPlanPurchase(true)}
                 />
               )}
 
@@ -683,6 +686,21 @@ export default function RecruiterDashboard({
           )}
         </main>
       </div>
+      <AgreementAndCheckoutModal
+        isOpen={showPlanPurchase}
+        onClose={() => setShowPlanPurchase(false)}
+        user={{
+          ...(auth.currentUser || {}),
+          uid: userId,
+          role: userRole || "recruiter",
+          name: userName || auth.currentUser?.displayName || "",
+          email: auth.currentUser?.email || "",
+          companyName: accountCenterData?.profile?.companyName || "",
+          paymentStatus: accountCenterData?.payment?.status || "",
+          subscriptionStatus: accountCenterData?.subscription?.status || ""
+        }}
+        onSuccess={() => { setShowPlanPurchase(false); loadAccountCenter(); }}
+      />
     </div>
   );
 }
