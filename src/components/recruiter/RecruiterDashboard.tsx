@@ -102,17 +102,29 @@ export default function RecruiterDashboard({
     if (!userId) { setAssignedJobs([]); setPipelineCandidates([]); setIsLoadingRecruiterData(false); return; }
     setIsLoadingRecruiterData(true);
     try {
-      const [assignedAppsSnap, assignedLeadsSnap, recruiterJobsSnap, explicitlyAssignedJobsSnap] = await Promise.all([
+      const [assignedAppsSnap, recruiterJobsSnap, explicitlyAssignedJobsSnap] = await Promise.all([
         getDocs(query(collection(db, "applications"), where("assignedRecruiterId", "==", userId))),
-        getDocs(query(collection(db, "candidate_leads"), where("assignedRecruiterId", "==", userId))),
         getDocs(query(collection(db, "jobs"), where("recruiterId", "==", userId))),
         getDocs(query(collection(db, "jobs"), where("assignedRecruiterId", "==", userId)))
       ]);
+      let assignedLeads: any[] = [];
+      try {
+        const token = await auth.currentUser?.getIdToken(true);
+        if (token) {
+          const leadsResponse = await fetch("/api/recruiter/live-leads", { headers: { Authorization: "Bearer " + token }, cache: "no-store" });
+          const leadsData = await leadsResponse.json().catch(() => ({}));
+          if (leadsResponse.ok && leadsData.success && Array.isArray(leadsData.leads)) {
+            assignedLeads = leadsData.leads.filter((lead: any) => lead.sourceType === "candidate_lead" && (lead.recruiterId === userId || lead.assignedRecruiterId === userId));
+          }
+        }
+      } catch (leadError) {
+        console.warn("[RecruiterDashboard] Assigned sourced leads could not be loaded:", leadError);
+      }
       const jobDocs = new Map<string, any>();
       [...recruiterJobsSnap.docs, ...explicitlyAssignedJobsSnap.docs].forEach((snap) => jobDocs.set(snap.id, { id: snap.id, ...snap.data() }));
       const appDocs = new Map<string, any>();
       assignedAppsSnap.docs.forEach((snap) => appDocs.set(snap.id, { id: snap.id, sourceType: "application", ...snap.data() }));
-      assignedLeadsSnap.docs.forEach((snap) => appDocs.set(snap.id, { id: snap.id, sourceType: "candidate_lead", ...snap.data() }));
+      assignedLeads.forEach((lead) => appDocs.set(lead.sourceRefId || lead.id, { ...lead, id: lead.sourceRefId || lead.id, sourceType: "candidate_lead", jobId: lead.jobId || lead.sourceJobId }));
       for (const jobId of Array.from(new Set([...Array.from(jobDocs.keys()), ...Array.from(appDocs.values()).map((app: any) => String(app.jobId || app.sourceJobId || "")).filter(Boolean)]))) {
         if (!jobDocs.has(jobId)) {
           const jobSnap = await getDoc(doc(db, "jobs", jobId));
