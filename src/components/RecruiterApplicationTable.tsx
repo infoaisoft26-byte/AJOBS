@@ -44,7 +44,7 @@ export default function RecruiterApplicationTable({
   className = ""
 }: RecruiterApplicationTableProps) {
   const currentUserId = recruiterId || auth.currentUser?.uid || "recruiter_default";
-  const currentUserName = recruiterName || auth.currentUser?.displayName || "Recruiter Desk";
+  const currentUserName = recruiterName || auth.currentUser?.displayName || "Recruiter";
 
   // Data state
   const [applications, setApplications] = useState<ApplicationRecord[]>([]);
