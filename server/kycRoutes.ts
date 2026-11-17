@@ -604,6 +604,7 @@ router.post("/review-decision", async (req, res) => {
       : ["consultancy", "agency"].includes(role) ? "consultancies"
       : "";
     const roleRef = roleCollection ? db.collection(roleCollection).doc(String(userId)) : null;
+    const recruiterProfileRef = role === "recruiter" ? db.collection("recruiter_profiles").doc(String(userId)) : null;
     const nowIso = new Date().toISOString();
     const uppercaseDecision = String(decision).trim().toUpperCase();
     const approved = uppercaseDecision === "APPROVED" || uppercaseDecision === "APPROVE";
@@ -632,6 +633,7 @@ router.post("/review-decision", async (req, res) => {
     const batch = db.batch();
     batch.set(userRef, userPatch, { merge: true });
     if (roleRef) batch.set(roleRef, { ...userPatch, userId: String(userId), uid: String(userId) }, { merge: true });
+    if (recruiterProfileRef) batch.set(recruiterProfileRef, { ...userPatch, userId: String(userId), uid: String(userId) }, { merge: true });
     batch.set(db.collection("kyc_profiles").doc(String(userId)), {
       userId: String(userId),
       role,
