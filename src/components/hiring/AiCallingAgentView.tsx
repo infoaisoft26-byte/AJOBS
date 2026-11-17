@@ -35,52 +35,7 @@ export default function AiCallingAgentView({
   const [newCandPhone, setNewCandPhone] = useState("");
   const [newJobTitle, setNewJobTitle] = useState(jobs[0]?.title || "Senior React Engineer");
 
-  const [calls, setCalls] = useState<CallingLog[]>([
-    {
-      id: "call_1",
-      candidateName: "Aarav Sharma",
-      candidatePhone: "+91 98765 43210",
-      jobTitle: "Senior React & TypeScript Engineer",
-      callStatus: "completed",
-      aiFit: "strong_match",
-      screeningSummary: "Confirmed 5.5 yrs total exp, 4 yrs in React/Next.js. Current CTC ₹18 LPA, Expected ₹24 LPA. Notice period 15 days. Expressed strong interest in micro-frontends.",
-      duration: "4m 12s",
-      timestamp: "Today, 11:30 AM"
-    },
-    {
-      id: "call_2",
-      candidateName: "Sneha Deshmukh",
-      candidatePhone: "+91 98123 45678",
-      jobTitle: "Senior Frontend Engineer",
-      callStatus: "completed",
-      aiFit: "strong_match",
-      screeningSummary: "Demonstrated thorough knowledge of React performance optimization. Available to join immediately. Comfortable with hybrid Bengaluru schedule.",
-      duration: "3m 45s",
-      timestamp: "Today, 10:15 AM"
-    },
-    {
-      id: "call_3",
-      candidateName: "Aditya Verma",
-      candidatePhone: "+91 97654 32109",
-      jobTitle: "Backend Node.js Engineer",
-      callStatus: "scheduled",
-      aiFit: "potential",
-      screeningSummary: "Automated AI screening call scheduled for today at 3:00 PM IST.",
-      duration: "--",
-      timestamp: "Today, 03:00 PM"
-    },
-    {
-      id: "call_4",
-      candidateName: "Karan Johar",
-      candidatePhone: "+91 91234 56789",
-      jobTitle: "DevOps & Cloud Engineer",
-      callStatus: "unreachable",
-      aiFit: "potential",
-      screeningSummary: "Candidate phone was busy on first two attempts. AI calling agent has scheduled automated retry in 2 hours.",
-      duration: "--",
-      timestamp: "Yesterday, 04:20 PM"
-    }
-  ]);
+  const [calls, setCalls] = useState<CallingLog[]>([]);
 
   const handleAddNewCall = (e: React.FormEvent) => {
     e.preventDefault();
