@@ -188,6 +188,73 @@ export async function handleRecruiterLiveLeadsRoute(req: Request, res: Response)
       return res.json({ success: true, leads, count: leads.length, refreshedAt: new Date().toISOString() }), true;
     }
 
+    if (req.method === "POST") {
+      const body: any = req.body || {};
+      const candidateId = clean(body.candidateId, 180);
+      const jobId = clean(body.jobId, 180);
+      if (!candidateId || !jobId) {
+        res.status(400).json({ success: false, error: "CANDIDATE_AND_JOB_REQUIRED", message: "Choose a real candidate and an assigned job posting." });
+        return true;
+      }
+      const jobSnap = await db.collection("jobs").doc(jobId).get();
+      if (!jobSnap.exists) {
+        res.status(404).json({ success: false, error: "JOB_NOT_FOUND", message: "The selected job posting no longer exists." });
+        return true;
+      }
+      const job: any = jobSnap.data() || {};
+      const canAssign = [job.recruiterId, job.assignedRecruiterId, job.ownerUid, job.createdBy, job.postedBy, job.consultancyId].filter(Boolean).includes(uid);
+      if (!canAssign) {
+        res.status(403).json({ success: false, error: "JOB_NOT_ASSIGNED", message: "You can only source candidates for jobs assigned to your recruiter workspace." });
+        return true;
+      }
+      let candidate: any = null;
+      for (const collectionName of ["candidateProfiles", "candidate_profiles", "candidates", "users"]) {
+        const snap = await db.collection(collectionName).doc(candidateId).get().catch(() => null);
+        if (snap?.exists) { candidate = snap.data() || {}; break; }
+      }
+      if (!candidate) {
+        res.status(404).json({ success: false, error: "CANDIDATE_NOT_FOUND", message: "Candidate profile was not found in the database." });
+        return true;
+      }
+      const duplicate = await db.collection("candidate_leads")
+        .where("candidateId", "==", candidateId)
+        .where("sourceJobId", "==", jobId)
+        .limit(1).get().catch(() => null);
+      if (duplicate && !duplicate.empty) {
+        res.status(409).json({ success: false, error: "ALREADY_ASSIGNED", message: "This candidate is already assigned to this job." });
+        return true;
+      }
+      const now = new Date().toISOString();
+      const lead = {
+        candidateId,
+        candidateName: candidate.fullName || candidate.name || candidate.displayName || "Candidate",
+        email: candidate.email || candidate.candidateEmail || "",
+        phone: candidate.phone || candidate.mobileNumber || candidate.phoneNumber || "",
+        location: candidate.location || candidate.currentLocation || "",
+        experience: candidate.experience || candidate.totalExperience || candidate.experienceYears || "",
+        qualification: candidate.education || candidate.qualification || "",
+        skills: Array.isArray(candidate.skills) ? candidate.skills : Array.isArray(candidate.technicalSkills) ? candidate.technicalSkills : [],
+        resumeUrl: candidate.resumeUrl || candidate.resumeURL || "",
+        sourceJobId: jobId,
+        sourceJobTitle: job.title || "Job",
+        jobId,
+        jobTitle: job.title || "Job",
+        companyName: job.companyName || job.company || "",
+        recruiterId: uid,
+        assignedRecruiterId: uid,
+        assignedBy: uid,
+        assignedByName: identity.user.name || identity.user.fullName || identity.user.displayName || "Recruiter",
+        source: "Recruiter Sourced Candidate",
+        status: "new",
+        currentStatus: "new",
+        createdAt: now,
+        assignedAt: now,
+        updatedAt: now
+      };
+      const created = await db.collection("candidate_leads").add(lead);
+      return res.status(201).json({ success: true, leadId: created.id, lead, message: "Candidate assigned to the selected job posting." }), true;
+    }
+
     if (req.method === "PATCH") {
       const body: any = req.body || {};
       const leadId = clean(body.leadId, 180);
@@ -226,7 +293,7 @@ export async function handleRecruiterLiveLeadsRoute(req: Request, res: Response)
       return true;
     }
 
-    res.setHeader("Allow", "GET, PATCH");
+    res.setHeader("Allow", "GET, POST, PATCH");
     res.status(405).json({ success: false, error: "METHOD_NOT_ALLOWED" });
     return true;
   } catch (err: any) {
