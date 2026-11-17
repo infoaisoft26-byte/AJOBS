@@ -209,9 +209,21 @@ export default function RecruiterDashboard({
     const statusMap: Record<PipelineCandidate["stage"], any> = { new_lead: "applied", contacted: "under_review", screened: "under_review", shortlisted: "shortlisted", interview: "interview", selected: "selected", rejected: "rejected" };
     try {
       const candidate = pipelineCandidates.find(item => item.id === applicationId);
-      const collectionName = candidate?.sourceType === "candidate_lead" ? "candidate_leads" : "applications";
-      await updateDoc(doc(db, collectionName, applicationId), { status: statusMap[newStage], currentStatus: statusMap[newStage], updatedAt: new Date().toISOString() });
-      if (collectionName === "applications") await updateDoc(doc(db, "company_applications", applicationId), { status: statusMap[newStage], updatedAt: new Date().toISOString() }).catch(() => undefined);
+      if (candidate?.sourceType === "candidate_lead") {
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) throw new Error("Please sign in again.");
+        const leadStatus: Record<PipelineCandidate["stage"], string> = { new_lead: "uncontacted", contacted: "in_discussion", screened: "in_discussion", shortlisted: "interested", interview: "interested", selected: "converted", rejected: "uncontacted" };
+        const response = await fetch("/api/recruiter/live-leads", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+          body: JSON.stringify({ leadId: applicationId, sourceType: "candidate_lead", status: leadStatus[newStage] })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) throw new Error(data.message || data.error || "Candidate lead update failed.");
+      } else {
+        await updateDoc(doc(db, "applications", applicationId), { status: statusMap[newStage], updatedAt: new Date().toISOString() });
+        await updateDoc(doc(db, "company_applications", applicationId), { status: statusMap[newStage], updatedAt: new Date().toISOString() }).catch(() => undefined);
+      }
       setPipelineCandidates(prev => prev.map(c => c.id === applicationId ? { ...c, stage: newStage } : c));
     } catch (error) { console.error("[RecruiterDashboard] Candidate stage update failed:", error); }
   };
