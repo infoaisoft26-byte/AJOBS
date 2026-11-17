@@ -159,7 +159,6 @@ app.use("/api/auth/candidate", candidateAuthRoutes);
 app.use("/api/auth", candidateAuthRoutes);
 app.use("/api/candidate-auth", candidateAuthRoutes);
 app.use("/api/email", emailRoutes);
-app.use("/api/kyc", kycRoutes);
 app.use("/api/leads", leadRoutes);
 app.use("/api/lead", leadRoutes);
 app.use("/api/applications", applicationRoutes);
@@ -193,6 +192,8 @@ app.use(async (req: any, res: any, next: any) => {
   next();
 });
 
+// Mount KYC only after the global Admin API gateway has authenticated the request.
+app.use("/api/kyc", kycRoutes);
 app.use("/api/plans", subscriptionRoutes);
 app.use("/api/plan", subscriptionRoutes);
 app.use("/api/agreements", subscriptionRoutes);
