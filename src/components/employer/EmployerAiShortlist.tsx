@@ -27,66 +27,8 @@ export default function EmployerAiShortlist({
   // Filter top matches (>=85% or top shortlisted)
   const aiMatches = applications.filter(a => (a.aiMatchScore || 85) >= 85 || a.status === "shortlisted");
 
-  // Fallback high-compatibility recommendations
-  const recommendedCandidates = aiMatches.length > 0 ? aiMatches : [
-    {
-      id: "ai_short_1",
-      jobId: "job_1",
-      jobTitle: "Senior React & TypeScript Engineer",
-      candidateId: "cand_1",
-      candidateName: "Aarav Sharma",
-      candidateEmail: "aarav.sharma@example.com",
-      candidateExperience: "4.5 Years",
-      candidateSkills: ["React", "TypeScript", "Next.js", "Node.js", "Tailwind CSS", "Redux"],
-      status: "shortlisted",
-      aiMatchScore: 96,
-      appliedAt: new Date().toISOString(),
-      matchBreakdown: {
-        skillsMatch: 98,
-        experienceMatch: 95,
-        locationMatch: 94,
-        cultureFit: 96
-      }
-    },
-    {
-      id: "ai_short_2",
-      jobId: "job_2",
-      jobTitle: "Full Stack Node.js Developer",
-      candidateId: "cand_2",
-      candidateName: "Pooja Patel",
-      candidateEmail: "pooja.patel@example.com",
-      candidateExperience: "3.2 Years",
-      candidateSkills: ["Node.js", "PostgreSQL", "Express", "Docker", "Redis"],
-      status: "new",
-      aiMatchScore: 92,
-      appliedAt: new Date().toISOString(),
-      matchBreakdown: {
-        skillsMatch: 92,
-        experienceMatch: 90,
-        locationMatch: 100,
-        cultureFit: 88
-      }
-    },
-    {
-      id: "ai_short_3",
-      jobId: "job_3",
-      jobTitle: "AI Prompt & ML Engineer",
-      candidateId: "cand_4",
-      candidateName: "Ananya Iyer",
-      candidateEmail: "ananya.iyer@example.com",
-      candidateExperience: "2.8 Years",
-      candidateSkills: ["Python", "PyTorch", "Gemini API", "FastAPI", "Vector DB"],
-      status: "reviewed",
-      aiMatchScore: 94,
-      appliedAt: new Date().toISOString(),
-      matchBreakdown: {
-        skillsMatch: 96,
-        experienceMatch: 91,
-        locationMatch: 95,
-        cultureFit: 94
-      }
-    }
-  ];
+  // Only show candidate applications that actually exist in the database.
+  const recommendedCandidates = aiMatches;
 
   return (
     <div className="space-y-6" id="employer-ai-shortlist-page">
