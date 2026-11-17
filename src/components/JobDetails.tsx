@@ -312,6 +312,7 @@ export default function JobDetails({
       {viewPerspective === "recruiter" && (
         <AiScreeningSummarySection
           jobId={job.id}
+          recruiterId={userId}
           jobTitle={job.title}
           companyName={job.companyName}
           jobDescription={job.description}
