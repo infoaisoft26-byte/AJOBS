@@ -46,142 +46,16 @@ export default function EmployerOverview({
   onViewCandidate,
   onOpenLiveChat
 }: EmployerOverviewProps) {
-  const [showSampleData, setShowSampleData] = useState(false);
 
   // Compute live stats
-  const activeJobsCount = jobs.filter(j => j.status === "active" || j.status === "open").length || (jobs.length > 0 ? jobs.length : 0);
+  const activeJobsCount = jobs.filter(j => ["approved", "active", "open", "published"].includes(String(j.status || "").toLowerCase()) && j.approved !== false).length;
   const totalAppsCount = applications.length;
   const shortlistedCount = applications.filter(a => a.status === "shortlisted" || a.status === "interview").length;
   const interviewsThisWeekCount = interviews.length;
 
-  // Realistic sample data if database is fresh
-  const sampleApplications: CompanyApplication[] = [
-    {
-      id: "samp_app_1",
-      jobId: "job_1",
-      jobTitle: "Senior React & TypeScript Engineer",
-      candidateId: "cand_1",
-      candidateName: "Aarav Sharma",
-      candidateEmail: "aarav.sharma@example.com",
-      candidatePhone: "+91 98765 43210",
-      candidateExperience: "4.5 Years",
-      candidateSkills: ["React", "TypeScript", "Next.js", "Node.js", "Tailwind CSS"],
-      status: "shortlisted",
-      aiMatchScore: 96,
-      appliedAt: new Date(Date.now() - 3600000 * 5).toISOString(),
-      matchBreakdown: {
-        skillsMatch: 98,
-        experienceMatch: 95,
-        locationMatch: 94,
-        cultureFit: 96
-      }
-    },
-    {
-      id: "samp_app_2",
-      jobId: "job_2",
-      jobTitle: "Full Stack Node.js Developer",
-      candidateId: "cand_2",
-      candidateName: "Pooja Patel",
-      candidateEmail: "pooja.patel@example.com",
-      candidatePhone: "+91 91234 56789",
-      candidateExperience: "3.2 Years",
-      candidateSkills: ["Node.js", "PostgreSQL", "Express", "Docker", "Redis"],
-      status: "new",
-      aiMatchScore: 92,
-      appliedAt: new Date(Date.now() - 3600000 * 18).toISOString(),
-      matchBreakdown: {
-        skillsMatch: 92,
-        experienceMatch: 90,
-        locationMatch: 100,
-        cultureFit: 88
-      }
-    },
-    {
-      id: "samp_app_3",
-      jobId: "job_1",
-      jobTitle: "Senior React & TypeScript Engineer",
-      candidateId: "cand_3",
-      candidateName: "Vikram Malhotra",
-      candidateEmail: "vikram.m@example.com",
-      candidatePhone: "+91 99887 76655",
-      candidateExperience: "5.0 Years",
-      candidateSkills: ["React Native", "TypeScript", "Redux", "GraphQL"],
-      status: "interview",
-      aiMatchScore: 89,
-      appliedAt: new Date(Date.now() - 3600000 * 30).toISOString(),
-      matchBreakdown: {
-        skillsMatch: 88,
-        experienceMatch: 92,
-        locationMatch: 85,
-        cultureFit: 90
-      }
-    },
-    {
-      id: "samp_app_4",
-      jobId: "job_3",
-      jobTitle: "AI Prompt & ML Engineer",
-      candidateId: "cand_4",
-      candidateName: "Ananya Iyer",
-      candidateEmail: "ananya.iyer@example.com",
-      candidatePhone: "+91 97766 55443",
-      candidateExperience: "2.8 Years",
-      candidateSkills: ["Python", "PyTorch", "Gemini API", "FastAPI", "Vector DB"],
-      status: "reviewed",
-      aiMatchScore: 94,
-      appliedAt: new Date(Date.now() - 3600000 * 48).toISOString(),
-      matchBreakdown: {
-        skillsMatch: 96,
-        experienceMatch: 91,
-        locationMatch: 95,
-        cultureFit: 94
-      }
-    }
-  ];
-
-  const displayApplications = applications.length > 0 ? applications : (showSampleData ? sampleApplications : []);
-  const topAiMatches = [
-    {
-      id: "top_match_1",
-      name: "Rohan Mukherjee",
-      role: "Lead Full Stack Architect",
-      skills: ["React", "TypeScript", "System Design", "AWS", "Kafka"],
-      score: 97,
-      exp: "6+ Years",
-      location: "Bengaluru (Hybrid)",
-      availableIn: "15 Days"
-    },
-    {
-      id: "top_match_2",
-      name: "Sneha Deshmukh",
-      role: "Senior Frontend Engineer",
-      skills: ["React", "Next.js", "Tailwind", "Design Systems"],
-      score: 93,
-      exp: "4 Years",
-      location: "Pune / Remote",
-      availableIn: "Immediate"
-    },
-    {
-      id: "top_match_3",
-      name: "Aditya Verma",
-      role: "Backend & Cloud Engineer",
-      skills: ["Node.js", "Golang", "Kubernetes", "PostgreSQL"],
-      score: 89,
-      exp: "3.5 Years",
-      location: "Hyderabad",
-      availableIn: "30 Days"
-    }
-  ];
-
-  // 7-day trend mock data
-  const trendDays = [
-    { day: "Mon", count: 12, height: "45%" },
-    { day: "Tue", count: 19, height: "70%" },
-    { day: "Wed", count: 15, height: "55%" },
-    { day: "Thu", count: 26, height: "92%" },
-    { day: "Fri", count: 22, height: "80%" },
-    { day: "Sat", count: 8, height: "30%" },
-    { day: "Sun", count: 14, height: "50%" },
-  ];
+  // Production dashboards must display verified Firestore records only.
+  const displayApplications = applications;
+  // No synthetic candidate profiles or fabricated analytics in production.
 
   return (
     <div className="space-y-6" id="employer-overview-page">
@@ -243,7 +117,7 @@ export default function EmployerOverview({
         <EmployerStatCard
           id="stat-card-total-apps"
           title="Total Applications"
-          value={totalAppsCount || (showSampleData ? 24 : 0)}
+          value={totalAppsCount}
           icon={Users}
           trendText="AI Scored & Filtered"
           trendType="highlight"
@@ -254,7 +128,7 @@ export default function EmployerOverview({
         <EmployerStatCard
           id="stat-card-shortlisted"
           title="Shortlisted Candidates"
-          value={shortlistedCount || (showSampleData ? 8 : 0)}
+          value={shortlistedCount}
           icon={UserCheck}
           trendText="85%+ AI Match Score"
           trendType="positive"
@@ -265,7 +139,7 @@ export default function EmployerOverview({
         <EmployerStatCard
           id="stat-card-interviews"
           title="Interviews This Week"
-          value={interviewsThisWeekCount || (showSampleData ? 5 : 0)}
+          value={interviewsThisWeekCount}
           icon={Calendar}
           trendText="Scheduled rounds"
           trendType="positive"
@@ -288,13 +162,13 @@ export default function EmployerOverview({
               <p className="text-xs text-slate-400">Incoming candidate applications over the last 7 days</p>
             </div>
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[11px] font-mono text-blue-300">
-              <span>+34% vs last week</span>
+              <span>Live application data</span>
             </div>
           </div>
 
           {/* Visual 7-day Bar Trend */}
           <div className="h-44 pt-4 flex items-end justify-between gap-3 px-2 border-b border-purple-500/10">
-            {trendDays.map((item) => (
+            {[].map((item) => (
               <div key={item.day} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
                 <div className="text-[10px] font-mono text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
                   {item.count}
@@ -415,7 +289,7 @@ export default function EmployerOverview({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {topAiMatches.map((cand) => (
+          {[].map((cand) => (
             <div 
               key={cand.id}
               className="p-4 rounded-2xl bg-[#392742]/30 hover:bg-[#392742]/60 border border-purple-500/30 transition-all space-y-3 relative group"
@@ -490,14 +364,6 @@ export default function EmployerOverview({
           </div>
 
           <div className="flex items-center gap-2">
-            {applications.length === 0 && (
-              <button
-                onClick={() => setShowSampleData(!showSampleData)}
-                className="text-xs px-2.5 py-1 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-300 font-semibold cursor-pointer hover:bg-purple-500/20 transition-all"
-              >
-                {showSampleData ? "Hide Sample Data" : "Preview Sample Applicants"}
-              </button>
-            )}
             <button 
               onClick={() => onNavigateTab("applications")}
               className="text-xs font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1 cursor-pointer"
