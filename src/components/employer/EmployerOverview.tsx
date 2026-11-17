@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { 
   Briefcase, 
   Users, 
@@ -275,7 +275,7 @@ export default function EmployerOverview({
           <div>
             <h3 className="text-base font-extrabold text-white flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-cyan-400" />
-              <span>Top AI Recommended Candidates (85%–98% Compatibility)</span>
+              <span>AI Candidate Recommendations</span>
             </h3>
             <p className="text-xs text-slate-400">Pre-screened against your active job technical requirements</p>
           </div>
