@@ -2,7 +2,9 @@ import type { Request, Response } from "express";
 import { neon } from "@neondatabase/serverless";
 import { getFirebaseAuth, getFirestoreDb } from "./firestoreHelper.js";
 
-const reportRequestLimits = new Map<string, { count: number; resetAt: number }>();\n\nfunction clean(value: unknown, max = 160) { return String(value ?? "").trim().slice(0, max); }
+const reportRequestLimits = new Map<string, { count: number; resetAt: number }>();
+
+function clean(value: unknown, max = 160) { return String(value ?? "").trim().slice(0, max); }
 function roleOf(value: unknown) { return clean(value, 60).toLowerCase().replace(/[\\s-]+/g, "_"); }
 function iso(value: any): string | null {
   if (!value) return null;
