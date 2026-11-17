@@ -1,7 +1,7 @@
 import React, { FormEvent, useState } from "react";
 import { doc, setDoc } from "firebase/firestore";
 import { Award, CheckCircle, DollarSign, Download, FileText, Package, Plus, Send, Target, Vault, View, X, XCircle } from "lucide-react";
-import { db } from "../../firebase";
+import { auth, db } from "../../firebase";
 
 import { NotificationService } from "../../services/notificationService";
 
@@ -34,7 +34,7 @@ export default function OfferManagement({
   const handleOpenForm = () => {
     setTargetAppId("");
     setJoiningDate(new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]);
-    setSalaryPackage("₹18,50,000 PA");
+    setSalaryPackage("");
     setOfferLetterText("");
     setIsFormOpen(true);
   };
@@ -45,17 +45,17 @@ export default function OfferManagement({
 
     const text = `DEAR ${selectedApp.candidateName.toUpperCase()},
 
-ACME GLOBAL TECH is thrilled to offer you the position of "${selectedApp.jobTitle.toUpperCase()}" in our Core Division.
+${companyName} is pleased to offer you the position of "${selectedApp.jobTitle.toUpperCase()}".
 
 POSITION SPECIFICS:
 - Title: ${selectedApp.jobTitle}
 - Target Compensation Package: ${salaryPackage} (payable monthly)
 - Targeted Date of Joining: ${new Date(joiningDate).toLocaleDateString()}
-- Corporate HQ Branch: Bengaluru (Hybrid)
+- Work location: To be confirmed with the candidate
 
 ADDITIONAL COMPLIANCES:
 - Direct reporting alignment under Department Senior Leads.
-- Complete comprehensive workspace hardware provisioning and medical coverage benefits (Self + Family coverage up to ₹8L).
+- Additional benefits and terms: As specified in the final signed employment agreement.
 
 Please confirm your acceptance of this contract terms on or before ${new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}.
 
@@ -97,15 +97,16 @@ ${companyName}`;
       // 1. Write to offers
       await setDoc(doc(db, "offers", offerId), newOffer);
 
-      // 2. Advance application stage in company_applications to "Offer"
-      await setDoc(doc(db, "company_applications", selectedApp.id), {
-        status: "Offer"
-      }, { merge: true });
-
-      // Sync to standard application
-      await setDoc(doc(db, "applications", selectedApp.id), {
-        status: "offered"
-      }, { merge: true });
+      // Synchronize offer status for recruiter, employer and candidate without admin forwarding.
+      const token = await auth.currentUser?.getIdToken(true);
+      if (!token) throw new Error("Please sign in again to release this offer.");
+      const statusResponse = await fetch("/api/hire/workspace/applications/" + encodeURIComponent(selectedApp.id) + "/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+        body: JSON.stringify({ status: "offer", remarks: "Offer letter released.", interviewData: { offerId, offerDetails: { salaryPackage, joiningDate } } })
+      });
+      const statusResult = await statusResponse.json().catch(() => ({}));
+      if (!statusResponse.ok || !statusResult.success) throw new Error(statusResult.error || "Offer status could not be synchronized.");
 
       // Log activity
       const activityId = "clog_" + Math.random().toString(36).substr(2, 9);
