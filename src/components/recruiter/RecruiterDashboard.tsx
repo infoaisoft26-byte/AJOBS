@@ -160,6 +160,12 @@ export default function RecruiterDashboard({
 
   useEffect(() => {
     if (!userId) return;
+    loadAccountCenter();
+    loadData();
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
     const fields = ["recruiterId", "assignedRecruiterId", "employerId", "ownerUid", "jobOwnerUid"];
     const unsubs = fields.map(field => onSnapshot(
       query(collection(db, "applications"), where(field, "==", userId)),
