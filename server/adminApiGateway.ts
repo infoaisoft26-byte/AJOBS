@@ -11,6 +11,7 @@ const SUPERADMIN_ONLY = new Set([
 
 const ADMIN_PROTECTED = new Set([
   "/api/admin/create-workspace-user",
+  "/api/subscriptions/approve",
   "/api/admin/approve-account",
   "/api/admin/onboarding-list",
   "/api/admin/fraud-action",
