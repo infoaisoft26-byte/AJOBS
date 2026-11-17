@@ -313,7 +313,7 @@ export default function RecruiterOverview({
               </div>
             ))}
             {pipelineCandidates.length === 0 && <p className="text-xs text-slate-500 p-3">No recruiter-assigned candidate activity yet.</p>}
-          </div></div>
+          </div>
         </div>
       </div>
     </div>
