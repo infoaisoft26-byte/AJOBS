@@ -176,7 +176,7 @@ export async function applyToJob(
     // Mirror the committed application into Neon using the verified Firebase identity.
     // This is non-blocking: candidate application success must not depend on database sync latency.
     try {
-      const token = await auth.currentUser.getIdToken();
+      const token = await auth.currentUser!.getIdToken();
       const syncResponse = await fetch("/api/neon/application-sync", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -323,6 +323,10 @@ export async function updateApplicationStatus(
 
     // Update primary applications doc
     await updateDoc(appRef, updatePayload);
+    try {
+      const token = await auth.currentUser!.getIdToken();
+      await fetch("/api/neon/application-sync", { method:"POST", headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` }, body:JSON.stringify({applicationId}) });
+    } catch (syncError) { console.warn("[Application status] Neon sync deferred:", syncError); }
 
     // Sync company_applications doc if exists
     try {
@@ -557,6 +561,10 @@ export async function scheduleApplicationInterview(
     };
 
     await setDoc(doc(db, "interviews", interviewId), interviewDoc);
+    try {
+      const token = await auth.currentUser!.getIdToken();
+      await fetch("/api/neon/interview-sync", { method:"POST", headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` }, body:JSON.stringify({interviewId}) });
+    } catch (syncError) { console.warn("[Interview] Neon sync deferred:", syncError); }
     await setDoc(doc(db, "company_interviews", interviewId), interviewDoc);
     await setDoc(doc(db, "interviews_scheduled", interviewId), interviewDoc);
 
