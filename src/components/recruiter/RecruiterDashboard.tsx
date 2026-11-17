@@ -24,7 +24,7 @@ import {
   WalletCards
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { collection, getDocs, doc, getDoc, updateDoc } from "firebase/firestore";
+import { collection, doc, getDoc, onSnapshot, query, where } from "firebase/firestore";
 import { db, auth } from "../../firebase";
 import AIJobsLogo from "../AIJobsLogo";
 import RecruiterOverview from "./RecruiterOverview";
@@ -49,7 +49,7 @@ interface RecruiterDashboardProps {
 
 export default function RecruiterDashboard({
   userId,
-  userName = "Pro Recruiter",
+  userName = "",
   userRole = "recruiter",
   onLogout
 }: RecruiterDashboardProps) {
@@ -67,49 +67,10 @@ export default function RecruiterDashboard({
   const [accountCenterData, setAccountCenterData] = useState<any>(null);
   const [accountCenterLoading, setAccountCenterLoading] = useState<boolean>(true);
   const [accountCenterError, setAccountCenterError] = useState<string>("");
+  const [notifications, setNotifications] = useState<any[]>([]);
 
   // Recruiter Data Stores
-  const [assignedJobs, setAssignedJobs] = useState<RecruiterJob[]>([
-    {
-      id: "mandate_1",
-      title: "Lead Full Stack Architect",
-      companyName: "HyperCloud SaaS",
-      location: "Bengaluru (Hybrid)",
-      salary: "₹25 - 32 LPA",
-      openings: 2,
-      deadline: "Aug 30, 2026",
-      skillsRequired: ["React", "TypeScript", "Node.js", "AWS", "System Design"],
-      status: "active",
-      assignedAt: "Aug 10, 2026",
-      payoutPerHire: "₹45,000"
-    },
-    {
-      id: "mandate_2",
-      title: "Senior Frontend Engineer (Design Systems)",
-      companyName: "FinTech Prime",
-      location: "Pune (Remote)",
-      salary: "₹18 - 24 LPA",
-      openings: 3,
-      deadline: "Sep 15, 2026",
-      skillsRequired: ["React", "Next.js", "TypeScript", "Tailwind CSS"],
-      status: "urgent",
-      assignedAt: "Aug 12, 2026",
-      payoutPerHire: "₹35,000"
-    },
-    {
-      id: "mandate_3",
-      title: "AI / ML Solutions Engineer",
-      companyName: "Nexus AI Labs",
-      location: "Delhi NCR",
-      salary: "₹20 - 28 LPA",
-      openings: 1,
-      deadline: "Aug 28, 2026",
-      skillsRequired: ["Python", "PyTorch", "Gemini API", "FastAPI"],
-      status: "active",
-      assignedAt: "Aug 14, 2026",
-      payoutPerHire: "₹50,000"
-    }
-  ]);
+  const [assignedJobs, setAssignedJobs] = useState<RecruiterJob[]>([]);
 
   const [pipelineCandidates, setPipelineCandidates] = useState<PipelineCandidate[]>([]);
 
@@ -138,42 +99,62 @@ export default function RecruiterDashboard({
     }
   };
 
-  // Sync Data
+  // Load only records returned by the authenticated hiring workspace.
+  const toStage = (status: unknown): PipelineCandidate["stage"] => {
+    const value = String(status || "applied").toLowerCase().replace(/[ -]+/g, "_");
+    if (["shortlisted", "interview", "interview_scheduled", "selected", "rejected"].includes(value)) return value === "interview_scheduled" ? "interview" : value as PipelineCandidate["stage"];
+    if (["under_review", "screening", "contacted", "screened", "viewed"].includes(value)) return "contacted";
+    if (["offer", "joined", "hired"].includes(value)) return "selected";
+    return "new_lead";
+  };
+  const mapCandidate = (id: string, ad: any): PipelineCandidate => ({
+    id,
+    name: ad.candidateName || ad.name || "",
+    email: ad.candidateEmail || ad.email || "",
+    phone: ad.candidatePhone || ad.phone || "",
+    role: ad.jobTitle || "",
+    jobId: ad.jobId || "",
+    jobTitle: ad.jobTitle || "",
+    companyName: ad.companyName || "",
+    experience: ad.candidateExperience || ad.experience || "",
+    location: ad.candidateLocation || ad.location || "",
+    skills: Array.isArray(ad.candidateSkills) ? ad.candidateSkills : (Array.isArray(ad.skills) ? ad.skills : []),
+    aiScore: Number(ad.aiMatchScore || ad.resumeScore || 0),
+    stage: toStage(ad.status),
+    lastActivity: ad.updatedAt || ad.appliedAt || ad.createdAt || ""
+  });
+
   const loadData = async () => {
     try {
-      const appsSnap = await getDocs(collection(db, "company_applications"));
-      const loaded: PipelineCandidate[] = [];
-      appsSnap.forEach((d) => {
-        const ad = d.data();
-        loaded.push({
-          id: d.id,
-          name: ad.candidateName || "Candidate",
-          email: ad.candidateEmail,
-          phone: ad.candidatePhone,
-          role: ad.jobTitle || "Engineer",
-          jobId: ad.jobId || "mandate_1",
-          jobTitle: ad.jobTitle || "Engineer",
-          companyName: ad.companyName || "AIJOBS Partner",
-          experience: ad.candidateExperience || "3+ Yrs",
-          location: ad.candidateLocation || "India",
-          skills: ad.candidateSkills || ["React", "TypeScript"],
-          aiScore: ad.aiMatchScore || 88,
-          stage: (ad.status as any) || "shortlisted",
-          lastActivity: "Application updated"
-        });
-      });
-      if (loaded.length > 0) {
-        setPipelineCandidates(loaded);
-      }
-
-      // Account/KYC/billing status is loaded through the canonical authenticated account-center API.
-    } catch (e) {}
+      const token = await auth.currentUser?.getIdToken(true);
+      if (!token) throw new Error("Your login session expired. Please sign in again.");
+      const response = await fetch("/api/hire/workspace", { headers: { Authorization: "Bearer " + token } });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) throw new Error(data.error || "Could not load hiring workspace.");
+      const jobs = Array.isArray(data.jobs) ? data.jobs : [];
+      setAssignedJobs(jobs.map((job: any) => ({
+        id: job.id,
+        title: job.title || job.jobTitle || "",
+        companyName: job.companyName || "",
+        companyId: job.companyId || job.employerId || "",
+        location: job.location || job.jobLocation || "",
+        workMode: job.workMode || job.remoteType || "",
+        salary: job.salaryRange || job.salary || "",
+        openings: Number(job.openings || job.vacancies || 0),
+        deadline: job.applyDeadline || job.validThrough || "",
+        candidateCount: Number(job.applicationCount || job.applicantsCount || 0),
+        skillsRequired: Array.isArray(job.skillsRequired) ? job.skillsRequired : [],
+        status: String(job.status || "pending"),
+        assignedAt: job.assignedAt || job.createdAt || ""
+      })));
+      const apps = Array.isArray(data.applications) ? data.applications : [];
+      setPipelineCandidates(apps.map((app: any) => mapCandidate(app.id, app)));
+    } catch (e) {
+      console.error("Recruiter workspace load failed:", e);
+      setAssignedJobs([]);
+      setPipelineCandidates([]);
+    }
   };
-
-  useEffect(() => {
-    loadData();
-    loadAccountCenter();
-  }, [userId]);
 
   // Handle URL sync and cleanly remove callback query parameters
   useEffect(() => {
@@ -204,8 +185,8 @@ export default function RecruiterDashboard({
     { id: "pipeline", label: "Candidate Pipeline", icon: Users, count: pipelineCandidates.length, highlight: true },
     { id: "find-candidates", label: "Find Candidates", icon: Search },
     { id: "ai-matching", label: "AI Matching", icon: Sparkles },
-    { id: "interviews", label: "Interviews", icon: Calendar, count: 2 },
-    { id: "leads", label: "Admin Leads", icon: Layers, count: 2 },
+    { id: "interviews", label: "Interviews", icon: Calendar },
+    { id: "leads", label: "Leads", icon: Layers },
     { id: "messages", label: "Messages", icon: MessageSquare },
     { id: "earnings", label: "Referral & Earnings", icon: IndianRupee },
     { id: "account", label: "Profile, KYC & Billing", icon: WalletCards },
@@ -290,7 +271,7 @@ export default function RecruiterDashboard({
                 className="p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all cursor-pointer relative"
               >
                 <Bell className="w-4 h-4" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-cyan-400 ring-2 ring-[#17111F] animate-pulse" />
+                {notifications.some(n => !n.read) && <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-cyan-400 ring-2 ring-[#17111F] animate-pulse" />}
               </button>
 
               {showNotifications && (
@@ -301,12 +282,14 @@ export default function RecruiterDashboard({
                       ✕
                     </button>
                   </div>
-                  <div className="space-y-2 text-xs text-slate-300">
-                    <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20">
-                      <span className="font-bold text-white block">New Mandate Assigned</span>
-                      <span className="text-[11px] text-slate-400">AI / ML Solutions Engineer position assigned to your queue.</span>
-                    </div>
-                  </div>
+                  <div className="space-y-2 text-xs text-slate-300 max-h-72 overflow-y-auto">
+                    {notifications.length ? notifications.slice(0,12).map((item: any) => (
+                      <div key={item.id} className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                        <span className="font-bold text-white block">{item.title || "Notification"}</span>
+                        <span className="text-[11px] text-slate-400">{item.message || ""}</span>
+                      </div>
+                    )) : <p className="text-[11px] text-slate-500">No new notifications.</p>}
+                  </div>/div>
                 </div>
               )}
             </div>
