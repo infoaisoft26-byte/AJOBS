@@ -3,7 +3,7 @@ import { getFirebaseAuth, getFirestoreDb } from "./firestoreHelper.js";
 
 const HIRING_ROLES = new Set(["employer", "recruiter", "consultancy"]);
 const ADMIN_ROLES = new Set(["admin", "superadmin", "super_admin"]);
-const PIPELINE = new Set(["applied","viewed","under_review","screening","contacted","screened","shortlisted","interview","interview_scheduled","interview_completed","hr_round","final_round","selected","offer","joined","rejected","hired"]);
+const PIPELINE = new Set(["applied","new_lead","viewed","under_review","screening","contacted","screened","shortlisted","interview","interview_scheduled","interview_completed","hr_round","final_round","selected","offer","joined","rejected","hired"]);
 function clean(v:any,max=300){return String(v??"").trim().slice(0,max)}
 function norm(v:any){return clean(v,60).toLowerCase().replace(/[\s-]+/g,"_")}
 async function ctx(req:Request){const h=String(req.headers.authorization||"");if(!h.startsWith("Bearer "))throw Object.assign(new Error("Authentication required."),{status:401});const decoded=await getFirebaseAuth().verifyIdToken(h.slice(7),true);const db=getFirestoreDb();const us=await db.collection("users").doc(decoded.uid).get();if(!us.exists)throw Object.assign(new Error("Hiring profile not found."),{status:403});let profile:any=us.data()||{};const role=norm(profile.role);if(!HIRING_ROLES.has(role)&&!ADMIN_ROLES.has(role))throw Object.assign(new Error("Hiring workspace access denied."),{status:403});if(role==="recruiter"){const [rp,rr]=await Promise.all([db.collection("recruiter_profiles").doc(decoded.uid).get(),db.collection("recruiters").doc(decoded.uid).get()]);profile={...((rr.data()||{})),...((rp.data()||{})),...profile};}return{decoded,db,profile,role}}
