@@ -21,6 +21,7 @@ import { handleAdminOnboardingApprovalRoute } from "../server/adminOnboardingApp
 import { verifyAndInjectAbacIdentity } from "../server/authenticatedAbacGateway.js";
 import { verifyAndInjectAdminIdentity } from "../server/adminApiGateway.js";
 import { handleAdminReportingRoute } from "../server/adminReportingRoute.js";
+import { handleNeonIngestionRoute } from "../server/neonIngestionRoutes.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function clean(value: unknown, max: number): string { return String(value ?? "").trim().slice(0, max); }
@@ -134,5 +135,7 @@ export default async function handler(req: any, res: any) {
   if (path === "/api/contact/inquiry" || path === "/contact/inquiry") return handleWebsiteInquiry(req, res);
   const reportsHandled = await handleAdminReportingRoute(req, res);
   if (reportsHandled || res.headersSent) return;
+  const neonHandled = await handleNeonIngestionRoute(req, res);
+  if (neonHandled || res.headersSent) return;
   return app(req, res);
 }
