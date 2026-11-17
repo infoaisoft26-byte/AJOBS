@@ -22,7 +22,7 @@ function isJobOpen(job: any) {
   const id = String(job.id || "").toLowerCase();
   const title = String(job.title || job.jobTitle || "").trim().toLowerCase();
   const company = String(job.companyName || job.hiringOrganizationName || "").trim().toLowerCase();
-  if (job.isDemo === true || job.isSample === true || job.isMock === true || job.seeded === true || /^(demo_|job_demo_|sample_|mock_)/.test(id) || /^(demo|sample|mock)\\b/.test(title) || /^(demo|sample|mock)\\b/.test(company) || /^(techcorp|example company|demo company|test company)$/.test(company)) return false;
+  if (job.isDemo === true || job.isSample === true || job.isMock === true || job.seeded === true || /^(demo_|job_demo_|sample_|mock_)/.test(id) || /^(demo|sample|mock)\b/.test(title) || /^(demo|sample|mock)\b/.test(company) || /^(techcorp|example company|demo company|test company)$/.test(company)) return false;
   const expiryRaw = job.validThrough || job.expiryDate || job.applyDeadline;
   if (expiryRaw) {
     const d = typeof expiryRaw?.toDate === "function" ? expiryRaw.toDate() : new Date(expiryRaw);
