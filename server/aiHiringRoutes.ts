@@ -875,7 +875,15 @@ router.post("/screening-summary", async (req, res) => {
     const verifiedCandidateName = String(applicationData.candidateName || candidateName || "Candidate");
     const verifiedCandidateExperience = applicationData.candidateExperience ?? applicationData.experience ?? candidateExperience ?? "";
     const verifiedCandidateSkills = Array.isArray(applicationData.candidateSkills) ? applicationData.candidateSkills : Array.isArray(applicationData.skills) ? applicationData.skills : [];
-    const verifiedResponses = applicationData.screeningResponses || applicationData.screeningAnswers || applicationData.responses || [];
+    const savedQuestionItems = Array.isArray(actualJob.screeningQuestions) ? actualJob.screeningQuestions : [];
+    const allowedQuestionMap = new Map(savedQuestionItems.filter((item:any)=>item?.question).map((item:any)=>[String(item.question).trim().toLowerCase(), item]));
+    const submittedResponses = applicationData.screeningResponses || applicationData.screeningAnswers || applicationData.responses || [];
+    const verifiedResponses = Array.isArray(submittedResponses) ? submittedResponses.flatMap((item:any) => {
+      const matched:any = item && allowedQuestionMap.get(String(item.question || "").trim().toLowerCase());
+      return matched && typeof item.answer === "string" && item.answer.trim()
+        ? [{ question:String(matched.question), category:String(matched.category || item.category || "Job Fit"), answer:item.answer.trim().slice(0,3000) }]
+        : [];
+    }) : [];
     if (!Array.isArray(verifiedResponses) || !verifiedResponses.some((item: any) => item && typeof item.question === "string" && typeof item.answer === "string" && item.answer.trim())) {
       return res.status(400).json({ success: false, error: "This applicant has not submitted screening answers. No AI score or summary can be generated." });
     }
