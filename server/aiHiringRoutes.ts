@@ -1,10 +1,30 @@
 import express from "express";
-import { getFirestoreDb } from "./firestoreHelper.js";
+import { getFirestoreDb, getFirebaseAuth } from "./firestoreHelper.js";
+import { neon } from "@neondatabase/serverless";
 import { GoogleGenAI } from "@google/genai";
 import mammoth from "mammoth";
 import { dispatchEmail } from "./emailService.js";
 
 const router = express.Router();
+
+router.get("/health", (_req, res) => {
+  const configured = Boolean(process.env.GEMINI_API_KEY && ai);
+  res.status(configured ? 200 : 503).json({ success: configured, provider: "Google Gemini", model: AI_MODEL, configured, engine: configured ? "active" : "missing_api_key" });
+});
+
+async function recordAiEngineRun(input: { id: string; task: string; userId?: string; jobId?: string; applicationId?: string; status: string; durationMs?: number; result?: any; errorCode?: string }) {
+  if (!process.env.DATABASE_URL) return;
+  try {
+    const sql = neon(process.env.DATABASE_URL);
+    await sql`INSERT INTO ai_engine_runs (id,provider,model,task,user_id,job_id,application_id,status,duration_ms,result,error_code)
+      VALUES (${input.id},'google-gemini',${AI_MODEL},${input.task},${input.userId || null},${input.jobId || null},${input.applicationId || null},${input.status},${input.durationMs || null},${JSON.stringify(input.result || {})}::jsonb,${input.errorCode || null})
+      ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status,duration_ms=EXCLUDED.duration_ms,result=EXCLUDED.result,error_code=EXCLUDED.error_code`;
+  } catch (error: any) {
+    console.warn("[AI Engine] Neon run logging deferred:", error?.message || error);
+  }
+}
+
+const AI_MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 
 const ai = process.env.GEMINI_API_KEY
   ? new GoogleGenAI({
@@ -156,7 +176,7 @@ Extract and return strictly JSON object with these keys:
 }
 `;
         const response = await ai.models.generateContent({
-          model: "gemini-3.8-flash",
+          model: AI_MODEL,
           contents: prompt
         });
         const textResp = response.text || "";
@@ -571,7 +591,7 @@ You are an autonomous Senior AI Hiring Agent. Produce a concise 2-sentence execu
 Top Candidates: ${JSON.stringify(scoredCandidates.slice(0, 3).map(c => ({ name: c.name, score: c.overallScore, bucket: c.bucket, exp: c.totalExperience })))}
 `;
         const resp = await ai.models.generateContent({
-          model: "gemini-3.8-flash",
+          model: AI_MODEL,
           contents: prompt
         });
         executiveSummary = resp.text?.trim() || "";
@@ -762,7 +782,7 @@ EDUCATION / TRADE: ${job.education || job.qualification || job.trade || "Not spe
 Return strictly valid JSON only:
 {"categories":[{"category":"Eligibility","question":"..."},{"category":"Role Knowledge","question":"..."},{"category":"Practical Scenario","question":"..."},{"category":"Safety / Quality","question":"..."},{"category":"Availability","question":"..."}]}
 `;
-    const response = await ai.models.generateContent({ model: "gemini-3.8-flash", contents: prompt });
+    const response = await ai.models.generateContent({ model: AI_MODEL, contents: prompt });
     const cleaned = (response.text || "").replace(/```json/gi, "").replace(/```/g, "").trim();
     const parsed = JSON.parse(cleaned);
     if (!Array.isArray(parsed.categories) || parsed.categories.length !== 5 || parsed.categories.some((item: any) => !item?.question || !item?.category)) {
@@ -787,6 +807,9 @@ Return strictly valid JSON only:
  */
 router.post("/screening-summary", async (req, res) => {
   try {
+    const authHeader = String(req.headers.authorization || "");
+    if (!authHeader.startsWith("Bearer ")) return res.status(401).json({ success:false,error:"AUTH_REQUIRED" });
+    const decoded: any = await getFirebaseAuth().verifyIdToken(authHeader.slice(7).trim(), true);
     const {
       jobId,
       jobTitle = "Software Engineer",
@@ -827,6 +850,11 @@ router.post("/screening-summary", async (req, res) => {
       return res.status(404).json({ success: false, error: "The actual job posting for this application no longer exists." });
     }
     const actualJob: any = jobSnap.data() || {};
+    const adminSnap = await db.collection("admins").doc(decoded.uid).get();
+    const adminRecord = adminSnap.data() || {};
+    const isAdmin = adminSnap.exists && adminRecord.isActive !== false && !["disabled","suspended","blocked","inactive"].includes(String(adminRecord.status || "").toLowerCase());
+    const authorizedIds = [candidateId, applicationData.recruiterId, applicationData.assignedRecruiterId, applicationData.employerId, applicationData.companyId, actualJob.ownerUid, actualJob.createdBy, actualJob.postedBy].map(value => String(value || ""));
+    if (!isAdmin && !authorizedIds.includes(decoded.uid)) return res.status(403).json({ success:false,error:"SCREENING_ACCESS_DENIED" });
     const verifiedJobTitle = String(actualJob.title || "").trim();
     const verifiedCompanyName = String(actualJob.companyName || actualJob.company || "").trim();
     const verifiedJobDescription = String(actualJob.description || actualJob.jobDescription || "").trim();
@@ -932,7 +960,7 @@ CRITICAL: Return STRICTLY a valid JSON object without markdown formatting or cod
 `;
 
         const resp = await ai.models.generateContent({
-          model: "gemini-3.8-flash",
+          model: AI_MODEL,
           contents: prompt,
         });
 
@@ -943,7 +971,7 @@ CRITICAL: Return STRICTLY a valid JSON object without markdown formatting or cod
           .trim();
 
         parsedResult = JSON.parse(cleanJson);
-        parsedResult.modelUsed = "gemini-3.8-flash";
+        parsedResult.modelUsed = AI_MODEL;
         parsedResult.evaluatedAt = new Date().toISOString();
       } catch (geminiErr: any) {
         console.warn("[Screening Summary] Gemini evaluation failed:", geminiErr?.message);
@@ -993,6 +1021,15 @@ CRITICAL: Return STRICTLY a valid JSON object without markdown formatting or cod
           console.warn("[Screening Summary] Legacy application mirror sync skipped:", appErr?.message);
         }
 
+        await recordAiEngineRun({
+          id: "screening:" + applicationSnap.docs[0].id + ":" + Date.now(),
+          task: "candidate_screening",
+          userId: candidateId,
+          jobId,
+          applicationId: applicationSnap.docs[0].id,
+          status: "succeeded",
+          result: { fitScore: parsedResult.fitScore, fitLevel: parsedResult.fitLevel, recommendation: parsedResult.recommendation }
+        });
         await recordHiringAuditLog({
           action: "AI_SCREENING_PARSED",
           performedBy: "AI Screening Evaluator",
