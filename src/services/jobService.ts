@@ -102,7 +102,9 @@ export async function getLiveJobs(): Promise<JobPosting[]> {
     });
   } catch (error) {
     console.error("Error fetching live jobs:", error);
-    return [];
+    // Let the homepage show a real fetch error instead of silently presenting
+    // a successful-looking empty jobs section.
+    throw error;
   }
 }
 
