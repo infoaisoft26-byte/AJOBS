@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import CandidateScreeningQuestions, { CandidateScreeningResponse } from "./CandidateScreeningQuestions";
+import CandidateScreeningQuestions from "./CandidateScreeningQuestions";
 import { X, CheckCircle2, FileText, Upload, ShieldCheck, ArrowRight, AlertCircle, Building2, MapPin, DollarSign, Check, Edit3 } from "lucide-react";
 import { JobPosting, JobApplication } from "../types";
 import { applyToJob } from "../services/applicationService";
@@ -38,7 +38,7 @@ export default function EasyApplyModal({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [screeningResponses, setScreeningResponses] = useState<CandidateScreeningResponse[]>([]);
+  const [screeningResponses, setScreeningResponses] = useState<Array<{ question:string; answer:string; category:string }>>([]);
   const fastApplyKey = `aijobs_fast_apply_${userId}`;
   const [fastApplyEnabled, setFastApplyEnabled] = useState(() => localStorage.getItem(fastApplyKey) === "true");
   const [hasReviewedDetails, setHasReviewedDetails] = useState(() => localStorage.getItem(fastApplyKey) === "true");
