@@ -4,6 +4,12 @@ import { getFirebaseAuth, getFirestoreDb } from "./firestoreHelper.js";
 
 const reportRequestLimits = new Map<string, { count: number; resetAt: number }>();
 
+function safePayload(value: any) {
+  return JSON.parse(JSON.stringify(value ?? {}, (key, item) => {
+    if (/password|otp|token|secret|private.?key|credential/i.test(key)) return undefined;
+    return item;
+  }));
+}
 function clean(value: unknown, max = 160) { return String(value ?? "").trim().slice(0, max); }
 function roleOf(value: unknown) { return clean(value, 60).toLowerCase().replace(/[\s-]+/g, "_"); }
 function iso(value: any): string | null {
@@ -129,7 +135,7 @@ export async function handleAdminReportingRoute(req: Request, res: Response): Pr
     if (dbUrl) {
       try {
         const sql = neon(dbUrl);
-        const toPayload = (row:any) => JSON.stringify(row);
+        const toPayload = (row:any) => JSON.stringify(safePayload(row));
         const userRows = users.map((u:any)=>({id:clean(u.uid || u.id,180),email:clean(u.email,180),display_name:clean(u.name || u.displayName || u.fullName,180),role:u.role || "candidate",status:clean(u.status || u.accountStatus || "active",60),source_ref:clean(u.id || u.uid,180),profile:toPayload(u),created_at:iso(u.createdAt)})).filter((x:any)=>x.id);
         const jobRows = jobs.map((j:any)=>({id:clean(j.id,180),owner_uid:clean(j.ownerUid || j.createdBy || j.postedBy,180),recruiter_id:clean(j.recruiterId,180),employer_id:clean(j.employerId || j.companyId,180),consultancy_id:clean(j.consultancyId,180),title:clean(j.title,240),company_name:clean(j.companyName,240),status:clean(j.status || "draft",60),location:clean(j.location,240),created_at:iso(j.createdAt),source_ref:clean(j.id,180),payload:toPayload(j)})).filter((x:any)=>x.id);
         const appRows = allApps.map((a:any)=>({id:clean(a.id,180),job_id:clean(a.jobId,180),candidate_id:clean(a.candidateId || a.userId,180),recruiter_id:clean(a.recruiterId || a.assignedRecruiterId,180),employer_id:clean(a.employerId || a.companyId,180),consultancy_id:clean(a.consultancyId,180),status:statusOf(a),applied_at:iso(a.appliedAt || a.createdAt),source_ref:clean(a.id,180),payload:toPayload(a)})).filter((x:any)=>x.id);
