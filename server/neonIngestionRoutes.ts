@@ -40,7 +40,14 @@ export async function handleNeonIngestionRoute(req: Request, res: Response): Pro
 
   if (path === "/api/neon/health") {
     if (req.method !== "GET") { res.status(405).json({ success:false,error:"Method not allowed" }); return true; }
-    res.json({ success: Boolean(process.env.DATABASE_URL), provider: "neon-postgresql", mode: "firebase-authenticated-dual-write" });
+    try {
+      const sql = sqlClient();
+      await sql`SELECT 1 AS connected`;
+      res.json({ success:true, connected:true, provider:"neon-postgresql", mode:"firebase-authenticated-dual-write" });
+    } catch (error:any) {
+      console.error("[Neon health] Connection check failed:", error?.message || error);
+      res.status(503).json({ success:false, connected:false, provider:"neon-postgresql", error:"DATABASE_CONNECTION_FAILED" });
+    }
     return true;
   }
 
@@ -88,8 +95,9 @@ export async function handleNeonIngestionRoute(req: Request, res: Response): Pro
       const displayName = clean(profile.fullName || profile.name || decoded.name, 180);
       const createdAt = asIso(user.createdAt || candidate.createdAt || submitted.createdAt) || new Date().toISOString();
       const updatedAt = asIso(user.updatedAt || candidate.updatedAt) || new Date().toISOString();
-      const whatsappConsent = profile.whatsappMarketingConsent === true || profile.whatsappOptIn === true;
-      const emailConsent = profile.emailMarketingConsent === true;
+      // Support the exact consent field names emitted by both registration UIs.
+      const whatsappConsent = profile.whatsappMarketingConsent === true || profile.whatsappOptIn === true || profile.whatsappConsent === true;
+      const emailConsent = profile.emailMarketingConsent === true || profile.emailOptIn === true || profile.emailConsent === true;
       const attribution = safeJson({
         acquisitionSource: user.acquisitionSource || candidate.acquisitionSource || user.source || "organic",
         registrationSource: user.registrationSource || candidate.registrationSource || "Direct Website",
