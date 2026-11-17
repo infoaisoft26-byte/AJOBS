@@ -43,14 +43,12 @@ export default function CandidateScreeningQuestions({ jobId, onChange }: Props) 
     };
     void load();
     return () => { active = false; };
-  }, [jobId]);
+  }, [jobId, onChange]);
 
   const updateAnswer = (question: { category: string; question: string }, answer: string) => {
-    setAnswers(previous => {
-      const next = { ...previous, [question.question]: answer };
-      onChange(questions.map(item => ({ ...item, answer: next[item.question] || "" })).filter(item => item.answer.trim()));
-      return next;
-    });
+    const next = { ...answers, [question.question]: answer };
+    setAnswers(next);
+    onChange(questions.map(item => ({ ...item, answer: next[item.question] || "" })).filter(item => item.answer.trim()));
   };
 
   return <section className="rounded-2xl border border-cyan-500/25 bg-slate-950/70 p-4 space-y-3">
