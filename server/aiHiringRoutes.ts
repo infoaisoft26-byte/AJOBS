@@ -957,16 +957,21 @@ CRITICAL: Return STRICTLY a valid JSON object without markdown formatting or cod
           updatedAt: new Date().toISOString()
         };
         await db.collection("candidate_screenings").doc(`${jobId}_${candidateId}`).set(payloadToSave, { merge: true });
-
-        // Also update company_applications if exists
+        const applicationUpdate = {
+          screeningFitScore: parsedResult.fitScore,
+          screeningFitLevel: parsedResult.fitLevel,
+          screeningSummaryText: parsedResult.summary,
+          screeningEvaluatedAt: parsedResult.evaluatedAt || new Date().toISOString(),
+          screeningResult: parsedResult,
+          updatedAt: new Date().toISOString()
+        };
+        // Update the exact application document located by both jobId and candidateId.
+        await applicationSnap.docs[0].ref.set(applicationUpdate, { merge: true });
         try {
-          await db.collection("company_applications").doc(candidateId).set({
-            screeningFitScore: parsedResult.fitScore,
-            screeningFitLevel: parsedResult.fitLevel,
-            screeningSummaryText: parsedResult.summary,
-            screeningEvaluatedAt: parsedResult.evaluatedAt || new Date().toISOString()
-          }, { merge: true });
-        } catch (appErr) {}
+          await db.collection("company_applications").doc(applicationSnap.docs[0].id).set(applicationUpdate, { merge: true });
+        } catch (appErr) {
+          console.warn("[Screening Summary] Legacy application mirror sync skipped:", appErr?.message);
+        }
 
         await recordHiringAuditLog({
           action: "AI_SCREENING_PARSED",
