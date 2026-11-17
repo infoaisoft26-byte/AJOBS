@@ -5,7 +5,27 @@ import { JobPosting } from "../types";
 import { generateJobSlug, getPublicJobUrl } from "../config/site";
 
 const JOBS_COLLECTION = "jobs";
-const PUBLIC_JOB_STATUSES = ["approved", "Approved", "Published", "Live", "open", "Open"];
+const PUBLIC_JOB_STATUSES = ["approved", "Approved", "Published", "Live", "open", "Open", "active", "Active", "published", "live"];
+
+function isPublicJob(data: any): boolean {
+  const status = String(data.status || "").trim().toLowerCase();
+  const allowed = ["approved", "active", "published", "live", "open"];
+  const expiryValue = data.validThrough || data.expiryDate || data.applyDeadline;
+  const expiryDate = expiryValue && typeof expiryValue.toDate === "function"
+    ? expiryValue.toDate()
+    : expiryValue ? new Date(expiryValue) : null;
+  const expired = Boolean(expiryDate && !Number.isNaN(expiryDate.getTime()) && expiryDate.getTime() < Date.now());
+  const id = String(data.id || "").toLowerCase();
+  const title = String(data.title || data.jobTitle || "").trim().toLowerCase();
+  const company = String(data.companyName || data.hiringOrganizationName || "").trim().toLowerCase();
+  const demo = data.isDemo === true || data.isSample === true || data.isMock === true || data.seeded === true ||
+    /^(demo_|job_demo_|sample_|mock_)/.test(id) ||
+    /^(demo|sample|mock)\b/.test(title) ||
+    /^(demo|sample|mock)\b/.test(company) ||
+    /^(techcorp|example company|demo company|test company)$/.test(company);
+  return allowed.includes(status) && data.approved !== false && !expired && !demo &&
+    data.isPublic !== false && data.publicVisibility !== false && data.visibility !== "private";
+}
 
 /**
  * Checks if a job listing appears to be a duplicate based on title, company, and location.
@@ -65,15 +85,10 @@ export async function getLiveJobs(): Promise<JobPosting[]> {
     );
     const querySnapshot = await getDocs(publicJobsQuery);
     const jobsList: JobPosting[] = [];
-    const currentDate = new Date();
 
     querySnapshot.forEach((doc) => {
       const data = doc.data();
-      const status = (data.status || "").toLowerCase();
-      const expiry = data.validThrough || data.expiryDate || data.applyDeadline;
-      const isExpired = expiry ? new Date(expiry) < currentDate : false;
-
-      if (["live", "open", "published", "approved"].includes(status) && !isExpired) {
+      if (isPublicJob({ ...data, id: doc.id })) {
         const slug = data.slug || generateJobSlug(data.title, data.location, doc.id);
         const canonicalUrl = data.canonicalUrl || getPublicJobUrl({ title: data.title, location: data.location, id: doc.id, slug });
         jobsList.push({ id: doc.id, slug, canonicalUrl, ...data } as JobPosting);
@@ -263,15 +278,10 @@ export async function fetchPaginatedLiveJobs(
     );
     const querySnapshot = await getDocs(publicJobsQuery);
     const jobsList: JobPosting[] = [];
-    const currentDate = new Date();
 
     querySnapshot.forEach((doc) => {
       const data = doc.data();
-      const status = (data.status || "").toLowerCase();
-      const expiry = data.validThrough || data.expiryDate || data.applyDeadline;
-      const isExpired = expiry ? new Date(expiry) < currentDate : false;
-
-      if (["live", "open", "published", "approved"].includes(status) && !isExpired) {
+      if (isPublicJob({ ...data, id: doc.id })) {
         const slug = data.slug || generateJobSlug(data.title, data.location, doc.id);
         const canonicalUrl = data.canonicalUrl || getPublicJobUrl({ title: data.title, location: data.location, id: doc.id, slug });
         jobsList.push({ id: doc.id, slug, canonicalUrl, ...data } as JobPosting);

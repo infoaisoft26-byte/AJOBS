@@ -32,7 +32,10 @@ service cloud.firestore {
     function ownsJob(data) {
       return isSignedIn() && (
         data.ownerUid == request.auth.uid || data.createdBy == request.auth.uid || data.postedBy == request.auth.uid ||
-        data.recruiterId == request.auth.uid || data.employerId == request.auth.uid || data.consultancyId == request.auth.uid
+        data.recruiterId == request.auth.uid || data.employerId == request.auth.uid || data.consultancyId == request.auth.uid ||
+        data.jobOwnerUid == request.auth.uid || data.assignedRecruiterId == request.auth.uid ||
+        (('recruiterIds' in data) && data.recruiterIds is list && data.recruiterIds.hasAny([request.auth.uid])) ||
+        (('assignedRecruiterIds' in data) && data.assignedRecruiterIds is list && data.assignedRecruiterIds.hasAny([request.auth.uid]))
       );
     }
     function ownsApplication(data) {
@@ -96,7 +99,7 @@ service cloud.firestore {
     }
 
     match /jobs/{jobId} {
-      allow read: if resource.data.status in ['approved','Approved','Published','Live','open','Open'] ||
+      allow read: if resource.data.status in ['approved','Approved','Published','published','Live','live','active','Active','open','Open'] ||
         isAdmin() || isJobReviewer() || ownsJob(resource.data);
       allow create: if isAdmin() || (
         isSignedIn() && isHiringRole() &&

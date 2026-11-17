@@ -1432,6 +1432,9 @@ app.post(["/api/ai/chatbot", "/api/ai-assistant-chat-stream"], async (req, res) 
 
   const activeSessionId = sessionId || `session_${Math.random().toString(36).substr(2, 9)}`;
   const activeUserId = userId || "anonymous";
+  let userContext: any = null;
+  let systemInstruction = "";
+  let consolidatedPrompt = "";
 
   // 1. Payment & Fee Threat Detection Middleware check
   const threatCheck = parsePaymentThreat(userMessage);
@@ -1475,7 +1478,6 @@ Your message contains prohibited payment or fee request keywords.
     const db = getFirestoreDb();
     
     // Resolve user context from Firestore if logged in
-    let userContext: any = null;
     if (activeUserId !== "anonymous") {
       try {
         const userDoc = await db.collection("users").doc(activeUserId).get();
@@ -1534,7 +1536,7 @@ Your message contains prohibited payment or fee request keywords.
       }
     }
 
-    const systemInstruction = `
+    systemInstruction = `
 You are "AIJobs Career Assistant", an elite, encouragement-driven floating career companion on the premium recruitment portal AIJobs.
 You are powered by Google Search API grounding to provide candidates with real-time, live insights on emerging job market trends, industry-specific hiring cycles, hot tech stacks, salary benchmarks, hiring waves, campus placement calendars, and corporate budget expansions across India and global tech hubs.
 ${userContext ? `
@@ -1561,7 +1563,7 @@ When candidates ask about current market conditions, upcoming hiring waves, in-d
 `;
 
     // Construct consolidated chat message history
-    let consolidatedPrompt = "";
+    consolidatedPrompt = "";
     if (chatHistory && Array.isArray(chatHistory)) {
       chatHistory.forEach((msg: any) => {
         const roleName = msg.sender === "user" ? "User" : "Assistant";
@@ -4391,7 +4393,7 @@ app.post("/api/auth/smart-onboard", async (req, res) => {
             experience: experience || "",
             aiInterviewScore: 0,
             resumeText: resumeText || "",
-            summary: summary || "",
+            summary: "",
             careerCoachChat: [
               { id: "init_coach", sender: "ai", text: `Hi ${finalName}! I'm your AI Career Coach. Let's optimize your technical journey and interview pipeline today!`, timestamp: isoDate }
             ]
@@ -4541,7 +4543,7 @@ app.post("/api/auth/smart-onboard", async (req, res) => {
 async function callGeminiWithModelFallback(aiClient: any, payload: { contents: any; config?: any }) {
   const primaryModel = process.env.GEMINI_MODEL || "gemini-3.6-flash";
   const envFallback = process.env.GEMINI_FALLBACK_MODEL || "gemini-3.5-flash-lite";
-  const modelsToTry = Array.from(new Set([primaryModel, envFallback, ...MODEL_FALLBACKS].filter(Boolean)));
+  const modelsToTry = Array.from(new Set([primaryModel, envFallback].filter(Boolean)));
   
   const cleanConfig = { ...payload.config };
   delete cleanConfig.temperature;

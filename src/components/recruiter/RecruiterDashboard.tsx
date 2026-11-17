@@ -24,7 +24,7 @@ import {
   WalletCards
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { collection, getDocs, doc, getDoc, query, where, updateDoc } from "firebase/firestore";
+import { collection, doc, getDoc, onSnapshot, query, where } from "firebase/firestore";
 import { db, auth } from "../../firebase";
 import AIJobsLogo from "../AIJobsLogo";
 import RecruiterOverview from "./RecruiterOverview";
@@ -49,7 +49,7 @@ interface RecruiterDashboardProps {
 
 export default function RecruiterDashboard({
   userId,
-  userName = "Pro Recruiter",
+  userName = "",
   userRole = "recruiter",
   onLogout
 }: RecruiterDashboardProps) {
@@ -67,11 +67,13 @@ export default function RecruiterDashboard({
   const [accountCenterData, setAccountCenterData] = useState<any>(null);
   const [accountCenterLoading, setAccountCenterLoading] = useState<boolean>(true);
   const [accountCenterError, setAccountCenterError] = useState<string>("");
+  const [notifications, setNotifications] = useState<any[]>([]);
 
-  // Recruiter workspace is populated only from persisted job postings and assigned applications.
+  // Recruiter Data Stores
   const [assignedJobs, setAssignedJobs] = useState<RecruiterJob[]>([]);
+
   const [pipelineCandidates, setPipelineCandidates] = useState<PipelineCandidate[]>([]);
-  const [isLoadingRecruiterData, setIsLoadingRecruiterData] = useState<boolean>(true);
+
   const loadAccountCenter = async () => {
     if (!userId) return;
     setAccountCenterLoading(true);
@@ -97,100 +99,101 @@ export default function RecruiterDashboard({
     }
   };
 
-  // Sync only real applications assigned to this recruiter and their real job postings.
+  // Load only records returned by the authenticated hiring workspace.
+  const toStage = (status: unknown): PipelineCandidate["stage"] => {
+    const value = String(status || "applied").toLowerCase().replace(/[ -]+/g, "_");
+    if (["shortlisted", "interview", "interview_scheduled", "selected", "rejected"].includes(value)) return value === "interview_scheduled" ? "interview" : value as PipelineCandidate["stage"];
+    if (["under_review", "screening", "contacted", "screened", "viewed"].includes(value)) return "contacted";
+    if (["offer", "joined", "hired"].includes(value)) return "selected";
+    return "new_lead";
+  };
+  const mapCandidate = (id: string, ad: any): PipelineCandidate => ({
+    id,
+    name: ad.candidateName || ad.name || "",
+    email: ad.candidateEmail || ad.email || "",
+    phone: ad.candidatePhone || ad.phone || "",
+    role: ad.jobTitle || "",
+    jobId: ad.jobId || "",
+    jobTitle: ad.jobTitle || "",
+    companyName: ad.companyName || "",
+    experience: ad.candidateExperience || ad.experience || "",
+    location: ad.candidateLocation || ad.location || "",
+    skills: Array.isArray(ad.candidateSkills) ? ad.candidateSkills : (Array.isArray(ad.skills) ? ad.skills : []),
+    aiScore: Number(ad.aiMatchScore || ad.resumeScore || 0),
+    stage: toStage(ad.status),
+    lastActivity: ad.updatedAt || ad.appliedAt || ad.createdAt || ""
+  });
+
   const loadData = async () => {
-    if (!userId) { setAssignedJobs([]); setPipelineCandidates([]); setIsLoadingRecruiterData(false); return; }
-    setIsLoadingRecruiterData(true);
     try {
-      const [assignedAppsSnap, recruiterJobsSnap, explicitlyAssignedJobsSnap] = await Promise.all([
-        getDocs(query(collection(db, "applications"), where("assignedRecruiterId", "==", userId))),
-        getDocs(query(collection(db, "jobs"), where("recruiterId", "==", userId))),
-        getDocs(query(collection(db, "jobs"), where("assignedRecruiterId", "==", userId)))
-      ]);
-      let assignedLeads: any[] = [];
-      try {
-        const token = await auth.currentUser?.getIdToken(true);
-        if (token) {
-          const leadsResponse = await fetch("/api/recruiter/live-leads", { headers: { Authorization: "Bearer " + token }, cache: "no-store" });
-          const leadsData = await leadsResponse.json().catch(() => ({}));
-          if (leadsResponse.ok && leadsData.success && Array.isArray(leadsData.leads)) {
-            assignedLeads = leadsData.leads.filter((lead: any) => lead.sourceType === "candidate_lead" && (lead.recruiterId === userId || lead.assignedRecruiterId === userId));
-          }
-        }
-      } catch (leadError) {
-        console.warn("[RecruiterDashboard] Assigned sourced leads could not be loaded:", leadError);
-      }
-      const jobDocs = new Map<string, any>();
-      [...recruiterJobsSnap.docs, ...explicitlyAssignedJobsSnap.docs].forEach((snap) => jobDocs.set(snap.id, { id: snap.id, ...snap.data() }));
-      const appDocs = new Map<string, any>();
-      assignedAppsSnap.docs.forEach((snap) => appDocs.set(snap.id, { id: snap.id, sourceType: "application", ...snap.data() }));
-      assignedLeads.forEach((lead) => appDocs.set(lead.sourceRefId || lead.id, { ...lead, id: lead.sourceRefId || lead.id, sourceType: "candidate_lead", assignedRecruiterId: lead.recruiterId || userId, jobId: lead.jobId || lead.sourceJobId }));
-      for (const jobId of Array.from(new Set([...Array.from(jobDocs.keys()), ...Array.from(appDocs.values()).map((app: any) => String(app.jobId || app.sourceJobId || "")).filter(Boolean)]))) {
-        if (!jobDocs.has(jobId)) {
-          const jobSnap = await getDoc(doc(db, "jobs", jobId));
-          if (jobSnap.exists()) jobDocs.set(jobId, { id: jobSnap.id, ...jobSnap.data() });
-        }
-        const job = jobDocs.get(jobId);
-        // Candidate visibility is driven by explicit application assignment; never pull every applicant for a job.
-      }
-      const jobs = Array.from(jobDocs.values()).filter((job: any) => job && job.id && ["published", "approved", "live", "open", "active"].includes(String(job.status || "").toLowerCase()));
-      const jobsById = new Map(jobs.map((job: any) => [job.id, job]));
-      const applications = Array.from(appDocs.values()).filter((app: any) => {
-        const job = jobsById.get(String(app.jobId || ""));
-        return app.assignedRecruiterId === userId || (job && (job.recruiterId === userId || job.assignedRecruiterId === userId));
-      });
-      const mapped: PipelineCandidate[] = await Promise.all(applications.map(async (app: any) => {
-        const job: any = jobsById.get(String(app.jobId || app.sourceJobId || "")) || {};
-        const candidateId = String(app.candidateId || app.userId || "");
-        let profile: any = {};
-        if (candidateId) {
-          const profileSnaps = await Promise.all([
-            getDoc(doc(db, "candidateProfiles", candidateId)).catch(() => null),
-            getDoc(doc(db, "candidate_profiles", candidateId)).catch(() => null),
-            getDoc(doc(db, "candidates", candidateId)).catch(() => null),
-            getDoc(doc(db, "users", candidateId)).catch(() => null)
-          ]);
-          profile = profileSnaps.reduce((acc: any, snap: any) => snap?.exists() ? { ...acc, ...snap.data() } : acc, {});
-        }
-        const rawStatus = String(app.status || "applied").toLowerCase();
-        const stageMap: Record<string, PipelineCandidate["stage"]> = { applied: "new_lead", new: "new_lead", under_review: "contacted", contacted: "contacted", screened: "screened", shortlisted: "shortlisted", interview: "interview", selected: "selected", offer: "selected", joined: "selected", rejected: "rejected" };
-        const experience = app.candidateExperience ?? app.experience ?? profile.experience ?? profile.totalExperience ?? profile.experienceYears ?? "Not provided";
-        const skills = app.candidateSkills ?? app.skills ?? profile.skills ?? profile.technicalSkills ?? [];
-        const matchScore = app.screeningFitScore ?? app.aiMatchScore ?? null;
-        return {
-          id: app.id, sourceType: app.sourceType || "application", candidateId, name: app.candidateName || profile.fullName || profile.name || profile.displayName || "Candidate",
-          email: app.candidateEmail || profile.email || "", phone: app.candidatePhone || profile.phone || profile.mobileNumber || "",
-          role: profile.currentTitle || profile.targetRole || profile.designation || job.title || app.jobTitle || "Candidate",
-          jobId: String(app.jobId || app.sourceJobId || ""), jobTitle: job.title || app.sourceJobTitle || app.jobTitle || "Job posting unavailable",
-          companyName: job.companyName || app.companyName || app.company || "Company not provided",
-          experience: typeof experience === "number" ? String(experience) + " Years" : String(experience),
-          location: app.candidateLocation || profile.location || profile.currentLocation || job.location || "Not provided",
-          skills: Array.isArray(skills) ? skills.filter((v: any) => typeof v === "string") : [],
-          aiScore: typeof matchScore === "number" ? matchScore : undefined,
-          stage: stageMap[rawStatus] || "new_lead", lastActivity: app.updatedAt || app.appliedAt || "Application received",
-          resumeUrl: app.resumeUrl || profile.resumeUrl || ""
-        } as PipelineCandidate;
-      }));
+      const token = await auth.currentUser?.getIdToken(true);
+      if (!token) throw new Error("Your login session expired. Please sign in again.");
+      const response = await fetch("/api/hire/workspace", { headers: { Authorization: "Bearer " + token } });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) throw new Error(data.error || "Could not load hiring workspace.");
+      const jobs = Array.isArray(data.jobs) ? data.jobs : [];
       setAssignedJobs(jobs.map((job: any) => ({
-        id: job.id, title: job.title || "Untitled job", companyName: job.companyName || job.company || "Company not provided",
-        companyId: job.employerId || job.companyId || "", location: job.location || "Not provided", workMode: job.workMode || "",
-        salary: job.salaryRange || job.salary || job.compensation || "Not disclosed",
-        openings: Number(job.openings || job.vacancies || job.numberOfOpenings || 1),
-        deadline: job.applyDeadline || job.validThrough || job.expiryDate || "",
-        candidateCount: applications.filter((app: any) => app.jobId === job.id).length,
-        skillsRequired: Array.isArray(job.skillsRequired) ? job.skillsRequired : Array.isArray(job.skills) ? job.skills : [],
-        status: job.status || "Published", assignedAt: job.assignedAt || ""
-      } as RecruiterJob)));
-      setPipelineCandidates(mapped);
+        id: job.id,
+        title: job.title || job.jobTitle || "",
+        companyName: job.companyName || "",
+        companyId: job.companyId || job.employerId || "",
+        location: job.location || job.jobLocation || "",
+        workMode: job.workMode || job.remoteType || "",
+        salary: job.salaryRange || job.salary || "",
+        openings: Number(job.openings || job.vacancies || 0),
+        deadline: job.applyDeadline || job.validThrough || "",
+        candidateCount: Number(job.applicationCount || job.applicantsCount || 0),
+        skillsRequired: Array.isArray(job.skillsRequired) ? job.skillsRequired : [],
+        status: String(job.status || "pending"),
+        assignedAt: job.assignedAt || job.createdAt || ""
+      })));
+      const apps = Array.isArray(data.applications) ? data.applications : [];
+      setPipelineCandidates(apps.map((app: any) => mapCandidate(app.id, app)));
     } catch (e) {
-      console.error("[RecruiterDashboard] Failed to load assigned real jobs/applications:", e);
-      setAssignedJobs([]); setPipelineCandidates([]);
-    } finally { setIsLoadingRecruiterData(false); }
+      console.error("Recruiter workspace load failed:", e);
+      setAssignedJobs([]);
+      setPipelineCandidates([]);
+    }
   };
 
   useEffect(() => {
-    loadData();
-    loadAccountCenter();
+    if (!userId) return;
+    const fields = ["recruiterId", "assignedRecruiterId", "employerId", "ownerUid", "jobOwnerUid"];
+    const unsubs = fields.map(field => onSnapshot(
+      query(collection(db, "applications"), where(field, "==", userId)),
+      snapshot => {
+        setPipelineCandidates(previous => {
+          const merged = new Map(previous.map(item => [item.id, item]));
+          snapshot.docs.forEach(item => merged.set(item.id, mapCandidate(item.id, item.data())));
+          return Array.from(merged.values());
+        });
+      },
+      error => console.warn("Recruiter live application listener:", error.message)
+    ));
+    let linkedConsultancyUnsub: (() => void) | null = null;
+    let active = true;
+    Promise.all([
+      getDoc(doc(db, "recruiter_profiles", userId)),
+      getDoc(doc(db, "recruiters", userId)),
+      getDoc(doc(db, "users", userId))
+    ]).then(([profileSnap, recruiterSnap, userSnap]) => {
+      if (!active) return;
+      const profile: any = { ...(recruiterSnap.exists() ? recruiterSnap.data() : {}), ...(profileSnap.exists() ? profileSnap.data() : {}), ...(userSnap.exists() ? userSnap.data() : {}) };
+      const consultancyId = profile.consultancyId || profile.assignedConsultancyId || profile.parentConsultancyId;
+      if (consultancyId) {
+        linkedConsultancyUnsub = onSnapshot(query(collection(db, "applications"), where("consultancyId", "==", consultancyId)), snapshot => {
+          setPipelineCandidates(previous => {
+            const merged = new Map(previous.map(item => [item.id, item]));
+            snapshot.docs.forEach(item => merged.set(item.id, mapCandidate(item.id, item.data())));
+            return Array.from(merged.values());
+          });
+        }, error => console.warn("Recruiter consultancy application stream:", error.message));
+      }
+    }).catch(error => console.warn("Recruiter consultancy profile lookup:", error));
+    const notifUnsub = onSnapshot(query(collection(db, "notifications"), where("userId", "==", userId)), snapshot => {
+      setNotifications(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a: any, b: any) => String(b.createdAt || "").localeCompare(String(a.createdAt || ""))));
+    }, error => console.warn("Recruiter live notifications listener:", error.message));
+    return () => { active = false; unsubs.forEach(unsubscribe => unsubscribe()); notifUnsub(); linkedConsultancyUnsub?.(); };
   }, [userId]);
 
   // Handle URL sync and cleanly remove callback query parameters
@@ -205,27 +208,8 @@ export default function RecruiterDashboard({
     }
   }, []);
 
-  const handleUpdateStage = async (applicationId: string, newStage: PipelineCandidate["stage"]) => {
-    const statusMap: Record<PipelineCandidate["stage"], any> = { new_lead: "applied", contacted: "under_review", screened: "under_review", shortlisted: "shortlisted", interview: "interview", selected: "selected", rejected: "rejected" };
-    try {
-      const candidate = pipelineCandidates.find(item => item.id === applicationId);
-      if (candidate?.sourceType === "candidate_lead") {
-        const token = await auth.currentUser?.getIdToken();
-        if (!token) throw new Error("Please sign in again.");
-        const leadStatus: Record<PipelineCandidate["stage"], string> = { new_lead: "uncontacted", contacted: "in_discussion", screened: "in_discussion", shortlisted: "interested", interview: "interested", selected: "converted", rejected: "uncontacted" };
-        const response = await fetch("/api/recruiter/live-leads", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-          body: JSON.stringify({ leadId: applicationId, sourceType: "candidate_lead", status: leadStatus[newStage] })
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok || !data.success) throw new Error(data.message || data.error || "Candidate lead update failed.");
-      } else {
-        await updateDoc(doc(db, "applications", applicationId), { status: statusMap[newStage], updatedAt: new Date().toISOString() });
-        await updateDoc(doc(db, "company_applications", applicationId), { status: statusMap[newStage], updatedAt: new Date().toISOString() }).catch(() => undefined);
-      }
-      setPipelineCandidates(prev => prev.map(c => c.id === applicationId ? { ...c, stage: newStage } : c));
-    } catch (error) { console.error("[RecruiterDashboard] Candidate stage update failed:", error); }
+  const handleUpdateStage = (candidateId: string, newStage: PipelineCandidate["stage"]) => {
+    setPipelineCandidates(prev => prev.map(c => c.id === candidateId ? { ...c, stage: newStage } : c));
   };
 
   const handleOpenLiveChat = (recipientId?: string, recipientName?: string) => {
@@ -242,7 +226,7 @@ export default function RecruiterDashboard({
     { id: "find-candidates", label: "Find Candidates", icon: Search },
     { id: "ai-matching", label: "AI Matching", icon: Sparkles },
     { id: "interviews", label: "Interviews", icon: Calendar },
-    { id: "leads", label: "Admin Leads", icon: Layers },
+    { id: "leads", label: "Leads", icon: Layers },
     { id: "messages", label: "Messages", icon: MessageSquare },
     { id: "earnings", label: "Referral & Earnings", icon: IndianRupee },
     { id: "account", label: "Profile, KYC & Billing", icon: WalletCards },
@@ -327,7 +311,7 @@ export default function RecruiterDashboard({
                 className="p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all cursor-pointer relative"
               >
                 <Bell className="w-4 h-4" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-cyan-400 ring-2 ring-[#17111F] animate-pulse" />
+                {notifications.some(n => !n.read) && <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-cyan-400 ring-2 ring-[#17111F] animate-pulse" />}
               </button>
 
               {showNotifications && (
@@ -338,11 +322,13 @@ export default function RecruiterDashboard({
                       ✕
                     </button>
                   </div>
-                  <div className="space-y-2 text-xs text-slate-300">
-                    <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20">
-                      <span className="font-bold text-white block">New Mandate Assigned</span>
-                      <span className="text-[11px] text-slate-400">AI / ML Solutions Engineer position assigned to your queue.</span>
-                    </div>
+                  <div className="space-y-2 text-xs text-slate-300 max-h-72 overflow-y-auto">
+                    {notifications.length ? notifications.slice(0,12).map((item: any) => (
+                      <div key={item.id} className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                        <span className="font-bold text-white block">{item.title || "Notification"}</span>
+                        <span className="text-[11px] text-slate-400">{item.message || ""}</span>
+                      </div>
+                    )) : <p className="text-[11px] text-slate-500">No new notifications.</p>}
                   </div>
                 </div>
               )}
@@ -359,7 +345,7 @@ export default function RecruiterDashboard({
                 </div>
                 <div className="hidden sm:block text-left">
                   <div className="text-xs font-bold text-white truncate max-w-[120px]">{userName}</div>
-                  <div className="text-[10px] text-slate-400 truncate">Pro Recruiter</div>
+                  <div className="text-[10px] text-slate-400 truncate">Recruiter Workspace</div>
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
               </button>
@@ -630,9 +616,6 @@ export default function RecruiterDashboard({
 
               {activeTab === "find-candidates" && (
                 <RecruiterFindCandidates
-                  userId={userId}
-                  assignedJobs={assignedJobs}
-                  onAssigned={() => loadData()}
                   onOpenLiveChat={handleOpenLiveChat}
                 />
               )}

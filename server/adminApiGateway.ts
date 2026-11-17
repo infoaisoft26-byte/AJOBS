@@ -11,6 +11,7 @@ const SUPERADMIN_ONLY = new Set([
 
 const ADMIN_PROTECTED = new Set([
   "/api/admin/create-workspace-user",
+  "/api/subscriptions/approve",
   "/api/admin/approve-account",
   "/api/admin/onboarding-list",
   "/api/admin/fraud-action",
@@ -21,6 +22,11 @@ const ADMIN_PROTECTED = new Set([
   "/api/admin/get-twilio-settings",
   "/api/admin/sms-logs",
   "/api/verification/review",
+  "/api/kyc/review",
+  "/api/kyc/document-url",
+  "/api/kyc/delete",
+  "/api/kyc/admin-pending-list",
+  "/api/kyc/review-decision",
   "/api/kyc/send-link",
   "/api/kyc/send-reminder",
   "/api/indexing/publish",
