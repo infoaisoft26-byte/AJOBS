@@ -416,40 +416,57 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
       registrationsToday: todayRegsCount
     });
 
+    if (syncErrorsList.length > 0) {
+      const coreFailures = syncErrorsList.filter(name => ["users", "jobs"].includes(name));
+      setError(coreFailures.length
+        ? `Admin data could not be loaded from Firestore (${coreFailures.join(", ")}). Check the signed-in admin role and Firestore permissions, then retry.`
+        : `Some admin sections could not be synced: ${syncErrorsList.join(", ")}. Other loaded data is still available.`);
+    }
     setLoading(false);
   };
 
   const syncAdminRoleFromFirestore = async () => {
     try {
-      const adminSnap = await getDoc(doc(db, "admins", currentUserId));
-      if (adminSnap.exists()) {
-        const data = adminSnap.data();
-        const level = data.level || "Standard Admin";
-        const status = data.status || "active";
-        setAdminProfile({ level, status });
-        
-        if (status === "inactive") {
-          setActiveRole("Read Only");
-        } else if (level === "Super Admin") {
-          setActiveRole("Super Admin");
-        } else if (level === "Auditor") {
-          setActiveRole("Read Only");
-        } else {
-          setActiveRole("Moderator");
-        }
-      } else {
-        const defaultAdmin = {
+      // Never promote a signed-in user to Super Admin from the browser.
+      // Existing admin registry records or an explicitly assigned users.role are required.
+      const [adminSnap, userSnap] = await Promise.all([
+        getDoc(doc(db, "admins", currentUserId)),
+        getDoc(doc(db, "users", currentUserId))
+      ]);
+      const userData = userSnap.exists() ? userSnap.data() : {};
+      const assignedRole = normalizeRole(userData.role || userData.userType || "");
+      const hasAssignedAdminRole = ["admin", "superadmin", "super_admin"].includes(assignedRole);
+
+      if (!adminSnap.exists() && !hasAssignedAdminRole) {
+        setAdminProfile({ level: "Standard Admin", status: "inactive" });
+        setActiveRole("Read Only");
+        setError("Admin access is not provisioned for this account. Ask the existing Super Admin to assign your role; no data has been changed.");
+        return;
+      }
+
+      const data = adminSnap.exists() ? adminSnap.data() : {};
+      const level = data.level || (assignedRole === "superadmin" || assignedRole === "super_admin" ? "Super Admin" : "Standard Admin");
+      const status = data.status || userData.status || "active";
+
+      // Repair a missing registry document only when the users record already
+      // grants admin rights, so Firestore rules authorize this write.
+      if (!adminSnap.exists() && hasAssignedAdminRole) {
+        await setDoc(doc(db, "admins", currentUserId), {
           uid: currentUserId,
           name: currentUserName,
-          level: "Super Admin",
-          status: "active"
-        };
-        await setDoc(doc(db, "admins", currentUserId), defaultAdmin);
-        setAdminProfile({ level: "Super Admin", status: "active" });
-        setActiveRole("Super Admin");
+          level,
+          status
+        });
       }
-    } catch (err) {
+
+      setAdminProfile({ level, status });
+      if (status === "inactive") setActiveRole("Read Only");
+      else if (level === "Super Admin") setActiveRole("Super Admin");
+      else if (level === "Auditor") setActiveRole("Read Only");
+      else setActiveRole("Moderator");
+    } catch (err: any) {
       console.error("Error reading admin attributes:", err);
+      setError(err?.message || "Unable to verify Admin access. Please refresh and try again.");
     }
   };
 
@@ -914,6 +931,12 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
             <div className="p-4 bg-emerald-500/15 border border-emerald-500/30 rounded-2xl text-xs text-emerald-300 flex items-center space-x-2 animate-in fade-in duration-300">
               <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
               <span className="font-bold">{successMessage}</span>
+            </div>
+          )}
+          {error && (
+            <div role="alert" className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-xs text-rose-200 flex items-center justify-between gap-3">
+              <span>{error}</span>
+              <button onClick={fetchWorkspaceData} className="shrink-0 rounded-lg border border-rose-300/30 px-3 py-1.5 font-bold hover:bg-rose-500/10">Retry data sync</button>
             </div>
           )}
 
