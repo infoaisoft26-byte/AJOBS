@@ -46,6 +46,15 @@ export function generateJobPostingSchema(job: JobPosting): Record<string, any> {
   const expiryDate = toDate(job.validThrough || job.expiryDate || job.applyDeadline);
   const remote = String(job.workMode || "").trim().toLowerCase() === "remote";
   const employmentType = normalizeEmploymentType(job.employmentType || job.type);
+  const applicantCountry = String(job.country || "").trim();
+  const city = String(job.city || job.location || "").trim();
+
+  // Google requires a real title, full description, publication date,
+  // hiring organization, and physical or eligible remote location.
+  // Skip JobPosting markup rather than publishing incomplete or guessed facts.
+  if (!title || !description || !hiringName || !postedAt || (remote ? !applicantCountry : (!city || !job.country))) {
+    return {};
+  }
 
   const schema: Record<string, any> = {
     "@context": "https://schema.org/",

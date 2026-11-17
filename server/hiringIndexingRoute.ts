@@ -45,8 +45,16 @@ function getSeoProblems(job: any) {
   if (!String(job?.title || job?.jobTitle || "").trim()) problems.push("missing title");
   if (!String(job?.companyName || job?.hiringOrganizationName || "").trim()) problems.push("missing company");
   if (!String(job?.description || job?.jobDescription || "").trim()) problems.push("missing description");
+  const postedAt = job?.datePosted || job?.approvedAt || job?.publishedAt || job?.createdAt;
+  if (!postedAt || !Number.isFinite(new Date(typeof postedAt?.toDate === "function" ? postedAt.toDate() : postedAt).getTime())) {
+    problems.push("missing valid publication date");
+  }
   const isRemote = normalizeRole(job?.workMode) === "remote" || normalizeRole(job?.jobLocationType) === "telecommute";
-  if (!isRemote && !String(job?.location || job?.jobLocation || job?.city || "").trim()) problems.push("missing location");
+  if (isRemote) {
+    if (!String(job?.country || job?.applicantLocationCountry || "").trim()) problems.push("missing remote applicant country");
+  } else if (!String(job?.location || job?.jobLocation || job?.city || "").trim()) {
+    problems.push("missing location");
+  }
   return problems;
 }
 
@@ -58,7 +66,8 @@ async function backfillPublicSeo(jobRef: any, jobId: string, job: any) {
   if (!job.slug) patch.slug = slug;
   if (!job.canonicalUrl) patch.canonicalUrl = canonicalUrl;
   if (!job.publicUrl) patch.publicUrl = canonicalUrl;
-  if (!job.publishedAt) patch.publishedAt = job.approvedAt || job.updatedAt || new Date().toISOString();
+  const publicationDate = job.datePosted || job.approvedAt || job.publishedAt || job.createdAt;
+  if (!job.publishedAt && publicationDate) patch.publishedAt = publicationDate;
   if (Object.keys(patch).length) {
     patch.updatedAt = new Date().toISOString();
     await jobRef.set(patch, { merge: true });

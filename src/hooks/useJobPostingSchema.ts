@@ -94,17 +94,19 @@ export function useJobPostingSchema(job: JobPosting | null | undefined): void {
     });
 
     const schemaId = `job-schema-${job.id}`;
-    let schemaScript = document.getElementById(schemaId) as HTMLScriptElement;
-    if (!schemaScript) {
-      schemaScript = document.createElement("script");
-      schemaScript.setAttribute("id", schemaId);
-      schemaScript.setAttribute("type", "application/ld+json");
-      document.head.appendChild(schemaScript);
-    }
 
     try {
       const schemaObj = generateJobPostingSchema(job);
-      schemaScript.textContent = JSON.stringify(schemaObj, null, 2);
+      const existingSchema = document.getElementById(schemaId) as HTMLScriptElement | null;
+      if (Object.keys(schemaObj).length > 0) {
+        const schemaScript = existingSchema || document.createElement("script");
+        schemaScript.setAttribute("id", schemaId);
+        schemaScript.setAttribute("type", "application/ld+json");
+        schemaScript.textContent = JSON.stringify(schemaObj, null, 2);
+        if (!existingSchema) document.head.appendChild(schemaScript);
+      } else {
+        existingSchema?.remove();
+      }
     } catch (err) {
       console.error("Failed to generate dynamic JSON-LD schema:", err);
     }
