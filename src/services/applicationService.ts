@@ -429,8 +429,12 @@ export async function scheduleApplicationInterview(
       updatedAt: nowIso
     };
 
-    // 1. Update applications doc
-    await updateDoc(appRef, interviewPayload);
+    // 1. Update application status through the server-side ownership check.
+    const statusResult = await updateApplicationStatus(applicationId, "interview", {
+      remarks: details.notes || "Interview scheduled.",
+      interviewData: interviewPayload
+    });
+    if (!statusResult.success) return statusResult;
 
     // 2. Create interview document in interviews collection
     const interviewId = `int_${Math.random().toString(36).substr(2, 9)}`;
