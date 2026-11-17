@@ -124,7 +124,7 @@ export default function RecruiterDashboard({
       [...recruiterJobsSnap.docs, ...explicitlyAssignedJobsSnap.docs].forEach((snap) => jobDocs.set(snap.id, { id: snap.id, ...snap.data() }));
       const appDocs = new Map<string, any>();
       assignedAppsSnap.docs.forEach((snap) => appDocs.set(snap.id, { id: snap.id, sourceType: "application", ...snap.data() }));
-      assignedLeads.forEach((lead) => appDocs.set(lead.sourceRefId || lead.id, { ...lead, id: lead.sourceRefId || lead.id, sourceType: "candidate_lead", jobId: lead.jobId || lead.sourceJobId }));
+      assignedLeads.forEach((lead) => appDocs.set(lead.sourceRefId || lead.id, { ...lead, id: lead.sourceRefId || lead.id, sourceType: "candidate_lead", assignedRecruiterId: lead.recruiterId || userId, jobId: lead.jobId || lead.sourceJobId }));
       for (const jobId of Array.from(new Set([...Array.from(jobDocs.keys()), ...Array.from(appDocs.values()).map((app: any) => String(app.jobId || app.sourceJobId || "")).filter(Boolean)]))) {
         if (!jobDocs.has(jobId)) {
           const jobSnap = await getDoc(doc(db, "jobs", jobId));
