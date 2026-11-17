@@ -29,8 +29,7 @@ export default function PlanPurchaseView({
   userId,
   userEmail,
   userName,
-  credits,
-  onAddCredits
+  credits
 }: PlanPurchaseViewProps) {
   const [activeTab, setActiveTab] = useState<"job_credits" | "database" | "enterprise" | "unlimited">("job_credits");
   const [billingPeriod, setBillingPeriod] = useState<"quarterly" | "annual">("annual");
