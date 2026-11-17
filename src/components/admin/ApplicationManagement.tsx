@@ -485,11 +485,11 @@ export default function ApplicationManagement({
               <FileText className="w-5 h-5" />
             </span>
             <h2 className="text-lg font-bold text-white tracking-tight">
-              Candidate → Admin → Recruiter Pipeline
+              Live Candidate Application Oversight
             </h2>
           </div>
           <p className="text-xs text-gray-400 mt-1">
-            Centrally evaluate candidates, inspect resumes, assign authorized recruiters, and schedule interviews with real-time candidate synchronization.
+            Candidate applications route directly to the job owner and assigned recruiter. Admin can monitor, audit, and assist without blocking the hiring workflow.
           </p>
         </div>
 
