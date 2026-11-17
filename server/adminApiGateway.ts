@@ -21,6 +21,7 @@ const ADMIN_PROTECTED = new Set([
   "/api/admin/get-twilio-settings",
   "/api/admin/sms-logs",
   "/api/verification/review",
+  "/api/kyc/review-decision",
   "/api/kyc/send-link",
   "/api/kyc/send-reminder",
   "/api/indexing/publish",
