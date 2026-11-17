@@ -4,7 +4,7 @@ import { getFirestoreDb } from "./firestoreHelper.js";
 const SITE_URL = "https://aijobs1.in";
 const SOCIAL_IMAGE = `${SITE_URL}/images/aijobs-ai-logo.png`;
 const BLOCKED = new Set(["draft", "pending", "pending_approval", "pending_review", "pending_admin_verification", "changes_requested", "rejected", "expired", "closed", "deleted"]);
-const PUBLIC_STATES = new Set(["approved"]);
+const PUBLIC_STATES = new Set(["approved", "active", "published", "live", "open"]);
 
 function esc(v: any) {
   return String(v ?? "")
@@ -31,7 +31,7 @@ function isLive(job: any) {
     /^(demo_|job_demo_|sample_|mock_)/.test(id) ||
     /^(demo|sample|mock)\b/.test(title) || /^(demo|sample|mock)\b/.test(company) ||
     /^(techcorp|example company|demo company|test company)$/.test(company);
-  if (markedDemo || !PUBLIC_STATES.has(normalized) || BLOCKED.has(normalized) || job.approved === false) return false;
+  if (markedDemo || !PUBLIC_STATES.has(normalized) || BLOCKED.has(normalized) || (job.approved !== true && normalized !== "approved")) return false;
   const expiry = asDate(job.validThrough || job.expiryDate || job.applyDeadline);
   if (expiry && expiry.getTime() < Date.now()) return false;
   return job.isPublic !== false && job.publicVisibility !== false && job.visibility !== "private";
