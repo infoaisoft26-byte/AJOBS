@@ -104,10 +104,11 @@ export default function AiScreeningSummarySection({
   // Evaluate candidate responses automatically using the Gemini API endpoint
   const parseCandidateScreening = async (candidate: CandidateScreeningProfile, force = false) => {
     if (!candidate) return;
+    if (!candidate.responses.some(x => x.question?.trim() && x.answer?.trim())) return;
     if (candidate.screeningResult && !force) return;
 
     setIsParsing(true);
-    setParsingStep("Analyzing screening responses with Gemini 3.8 Flash...");
+    setParsingStep("Analyzing saved candidate responses...");
 
     try {
       const payload = {
@@ -161,12 +162,37 @@ export default function AiScreeningSummarySection({
     }
   };
 
-  // Automatically parse first candidate on mount if not parsed yet
   useEffect(() => {
-    if (selectedCandidate && !selectedCandidate.screeningResult) {
-      parseCandidateScreening(selectedCandidate, false);
-    }
-  }, [selectedCandidateId]);
+    let active = true;
+    const loadApplicants = async () => {
+      setIsLoadingCandidates(true);
+      try {
+        const appQuery = query(collection(db, "applications"), where("jobId", "==", jobId));
+        const screeningQuery = query(collection(db, "candidate_screenings"), where("jobId", "==", jobId));
+        const results = await Promise.all([getDocs(appQuery), getDocs(screeningQuery)]);
+        const saved = new Map<string, AiScreeningResult>();
+        results[1].forEach((snap) => { const item = snap.data() as any; if (item.candidateId && typeof item.fitScore === "number") saved.set(item.candidateId, item); });
+        const real = results[0].docs.map((snap) => {
+          const item = snap.data() as any;
+          const candidateId = String(item.candidateId || item.userId || "");
+          const raw = item.screeningResponses || item.screeningAnswers || item.responses || [];
+          const responses = Array.isArray(raw) ? raw.filter((x: any) => x && typeof x.question === "string" && typeof x.answer === "string") : [];
+          const exp = item.candidateExperience || item.experience || "Not provided";
+          return { id: candidateId || snap.id, name: item.candidateName || item.name || "Candidate", role: item.currentTitle || item.candidateTitle || jobTitle, experience: typeof exp === "number" ? String(exp) + " Years" : String(exp), skills: Array.isArray(item.candidateSkills) ? item.candidateSkills : (Array.isArray(item.skills) ? item.skills : []), stage: item.status || "applied", responses, screeningResult: item.screeningResult || saved.get(candidateId) } as CandidateScreeningProfile;
+        }).filter((x) => x.id);
+        if (!active) return;
+        setCandidates(real);
+        setSelectedCandidateId((current) => real.some(x => x.id === current) ? current : (real[0]?.id || ""));
+      } catch (error) { console.error("[AI screening] Real applicant fetch failed:", error); if (active) setCandidates([]); }
+      finally { if (active) setIsLoadingCandidates(false); }
+    };
+    if (jobId) loadApplicants(); else { setCandidates([]); setIsLoadingCandidates(false); }
+    return () => { active = false; };
+  }, [jobId, jobTitle]);
+
+  useEffect(() => {
+    if (selectedCandidate?.responses?.some(x => x.question?.trim() && x.answer?.trim()) && !selectedCandidate.screeningResult) parseCandidateScreening(selectedCandidate, false);
+  }, [selectedCandidateId, candidates.length]);
 
   const handleCopySummary = () => {
     if (!selectedCandidate?.screeningResult) return;
@@ -268,7 +294,7 @@ ${selectedCandidate.screeningResult.concerns.map(c => `• ${c}`).join("\n")}
 
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 flex items-center gap-1">
               <Sparkles className="w-3 h-3 text-cyan-400" />
-              <span>Gemini 3.8 Flash</span>
+              <span>AI screening</span>
             </span>
 
             <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">
@@ -543,7 +569,7 @@ ${selectedCandidate.screeningResult.concerns.map(c => `• ${c}`).join("\n")}
                   AI SCREENING OVERVIEW
                 </span>
                 <p className="text-xs text-slate-200 leading-relaxed bg-[#17111F]/70 p-4 rounded-2xl border border-purple-500/20">
-                  {result?.summary || `Candidate ${selectedCandidate.name} shows a strong fit for the ${jobTitle} mandate at ${companyName}. Their responses reflect deep hands-on familiarity with core scalable architecture, concrete performance tuning metrics, and clear cross-functional communication principles.`}
+                  {result?.summary || "No AI summary available until this candidate submits real screening answers."}
                 </p>
               </div>
 
