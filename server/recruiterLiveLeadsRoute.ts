@@ -202,7 +202,7 @@ export async function handleRecruiterLiveLeadsRoute(req: Request, res: Response)
         return true;
       }
       const job: any = jobSnap.data() || {};
-      if (["closed", "expired", "rejected", "deleted", "draft"].includes(norm(job.status))) {
+      if (!["published", "approved", "live", "open", "active"].includes(norm(job.status))) {
         res.status(409).json({ success: false, error: "JOB_NOT_ACTIVE", message: "Candidates can only be assigned to an active job posting." });
         return true;
       }
