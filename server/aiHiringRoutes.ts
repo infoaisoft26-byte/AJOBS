@@ -916,6 +916,24 @@ router.post("/screening-summary", async (req, res) => {
     }
 
     const db = getFirestoreDb();
+    if (!db || !db.collection || !jobId || !candidateId) {
+      return res.status(503).json({ success: false, error: "Screening requires a valid job, candidate, and database connection." });
+    }
+    const applicationSnap = await db.collection("applications")
+      .where("jobId", "==", jobId)
+      .where("candidateId", "==", candidateId)
+      .limit(1).get();
+    if (applicationSnap.empty) {
+      return res.status(404).json({ success: false, error: "No matching real application was found for this job and candidate." });
+    }
+    const applicationData = applicationSnap.docs[0].data() || {};
+    const verifiedResponses = applicationData.screeningResponses || applicationData.screeningAnswers || applicationData.responses || [];
+    if (!Array.isArray(verifiedResponses) || !verifiedResponses.some((item: any) => item && typeof item.question === "string" && typeof item.answer === "string" && item.answer.trim())) {
+      return res.status(400).json({ success: false, error: "This applicant has not submitted screening answers. No AI score or summary can be generated." });
+    }
+    if (!ai) {
+      return res.status(503).json({ success: false, error: "AI screening is not configured. No fallback score will be generated." });
+    }
 
     // Check Firestore cache if not forcing refresh
     if (!forceRefresh && candidateId && jobId && db && db.collection) {
@@ -940,7 +958,7 @@ router.post("/screening-summary", async (req, res) => {
 
     if (ai) {
       try {
-        const formattedQnA = responses.map((r: any, idx: number) => {
+        const formattedQnA = verifiedResponses.map((r: any, idx: number) => {
           return `Question ${idx + 1} (${r.category || "General"}): "${r.question}"\nCandidate Response: "${r.answer || "(No answer provided)"}"`;
         }).join("\n\n");
 
@@ -1019,21 +1037,12 @@ CRITICAL: Return STRICTLY a valid JSON object without markdown formatting or cod
         parsedResult.modelUsed = "gemini-3.8-flash";
         parsedResult.evaluatedAt = new Date().toISOString();
       } catch (geminiErr: any) {
-        console.warn("[Screening Summary] Gemini call failed, utilizing heuristic fallback:", geminiErr?.message);
+        console.warn("[Screening Summary] Gemini evaluation failed:", geminiErr?.message);
       }
     }
 
-    // Heuristic Fallback if Gemini unavailable or returned invalid schema
     if (!parsedResult || typeof parsedResult.fitScore !== "number") {
-      parsedResult = generateHeuristicScreeningSummary({
-        jobTitle,
-        companyName,
-        skillsRequired,
-        candidateName,
-        candidateExperience,
-        candidateSkills,
-        responses
-      });
+      return res.status(502).json({ success: false, error: "AI screening failed. No estimated or placeholder score was saved." });
     }
 
     // Ensure fitLevel corresponds properly to fitScore
