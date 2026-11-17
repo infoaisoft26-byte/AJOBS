@@ -36,7 +36,7 @@ async function isAdmin(uid: string) {
 
 export async function handleNeonIngestionRoute(req: Request, res: Response): Promise<boolean> {
   const path = String(req.url || "").split("?")[0].replace(/\/+$/, "") || "/";
-  if (!["/api/neon/candidate-sync", "/api/neon/application-sync", "/api/neon/health"].includes(path)) return false;
+  if (!["/api/neon/candidate-sync", "/api/neon/application-sync", "/api/neon/interview-sync", "/api/neon/health"].includes(path)) return false;
 
   if (path === "/api/neon/health") {
     if (req.method !== "GET") { res.status(405).json({ success:false,error:"Method not allowed" }); return true; }
@@ -137,13 +137,34 @@ export async function handleNeonIngestionRoute(req: Request, res: Response): Pro
       return true;
     }
 
+    if (path === "/api/neon/interview-sync") {
+      const interviewId = clean(req.body?.interviewId, 180);
+      if (!interviewId) { res.status(400).json({ success:false,error:"INTERVIEW_ID_REQUIRED" }); return true; }
+      const interviewSnap = await db.collection("interviews").doc(interviewId).get();
+      if (!interviewSnap.exists) { res.status(404).json({ success:false,error:"INTERVIEW_NOT_FOUND" }); return true; }
+      const interview = interviewSnap.data() || {};
+      const applicationId = clean(interview.applicationId,180);
+      const applicationSnap = applicationId ? await db.collection("applications").doc(applicationId).get() : null;
+      const application = applicationSnap?.exists ? applicationSnap.data() || {} : {};
+      const allowedIds = [application.candidateId,application.userId,application.recruiterId,application.assignedRecruiterId,application.employerId,application.companyId,interview.candidateId,interview.recruiterId,interview.employerId].map(v=>clean(v,180));
+      if (!allowedIds.includes(decoded.uid) && !(await isAdmin(decoded.uid))) {
+        res.status(403).json({ success:false,error:"INTERVIEW_ACCESS_DENIED" }); return true;
+      }
+      await sql`INSERT INTO interviews (id,application_id,job_id,candidate_id,recruiter_id,employer_id,status,scheduled_at,source_ref,payload,synced_at)
+        VALUES (${interviewId},${applicationId || null},${clean(interview.jobId || application.jobId,180)},${clean(interview.candidateId || application.candidateId,180)},${clean(interview.recruiterId || interview.assignedRecruiterId || application.assignedRecruiterId,180)},${clean(interview.employerId || application.employerId,180)},${clean(interview.status || "scheduled",80)},${asIso(interview.scheduledAt || interview.interviewDate)}::timestamptz,${interviewId},${JSON.stringify(safeJson(interview))}::jsonb,now())
+        ON CONFLICT (id) DO UPDATE SET application_id=EXCLUDED.application_id,job_id=EXCLUDED.job_id,candidate_id=EXCLUDED.candidate_id,recruiter_id=EXCLUDED.recruiter_id,employer_id=EXCLUDED.employer_id,status=EXCLUDED.status,scheduled_at=EXCLUDED.scheduled_at,payload=EXCLUDED.payload,updated_at=now(),synced_at=now()`;
+      res.json({success:true,synced:true,interviewId});
+      return true;
+    }
+
     const applicationId = clean(req.body?.applicationId, 180);
     if (!applicationId) { res.status(400).json({ success:false,error:"APPLICATION_ID_REQUIRED" }); return true; }
     const applicationSnap = await db.collection("applications").doc(applicationId).get();
     if (!applicationSnap.exists) { res.status(404).json({ success:false,error:"APPLICATION_NOT_FOUND" }); return true; }
     const application = applicationSnap.data() || {};
     const owner = clean(application.candidateId || application.userId, 180);
-    if (owner !== decoded.uid && !(await isAdmin(decoded.uid))) {
+    const allowedIds = [owner,application.recruiterId,application.assignedRecruiterId,application.employerId,application.companyId,application.consultancyId].map(v=>clean(v,180));
+    if (!allowedIds.includes(decoded.uid) && !(await isAdmin(decoded.uid))) {
       res.status(403).json({ success:false,error:"APPLICATION_ACCESS_DENIED" }); return true;
     }
     const payload = safeJson({ ...application, id:applicationId });
