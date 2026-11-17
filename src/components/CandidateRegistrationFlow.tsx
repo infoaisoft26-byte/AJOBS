@@ -117,7 +117,7 @@ export default function CandidateRegistrationFlow({
       mobileNumber: normalizedMobile,
       role: "candidate",
       emailVerified: fbUser.emailVerified === true,
-      verificationStatus: "verified",
+      verificationStatus: fbUser.emailVerified ? "verified" : "pending",
       approvalStatus: "approved",
       status: "active",
       accountStatus: "active",
@@ -191,6 +191,20 @@ export default function CandidateRegistrationFlow({
       profileImage: fbUser.photoURL || undefined,
       photoURL: fbUser.photoURL || undefined,
     };
+
+    // Best-effort server-verified Neon sync. Firebase Auth + Firestore remain the
+    // registration source of truth, so a temporary Neon outage never blocks sign-up.
+    try {
+      const token = await fbUser.getIdToken();
+      const syncResponse = await fetch("/api/neon/candidate-sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({})
+      });
+      if (!syncResponse.ok) console.warn("[CandidateRegistration] Neon sync will retry later:", syncResponse.status);
+    } catch (syncError) {
+      console.warn("[CandidateRegistration] Neon sync deferred:", syncError);
+    }
 
     trackCandidateRegistrationComplete({
       method,
