@@ -117,7 +117,7 @@ export default function CandidateRegistrationFlow({
       mobileNumber: normalizedMobile,
       role: "candidate",
       emailVerified: fbUser.emailVerified === true,
-      verificationStatus: fbUser.emailVerified ? "verified" : "pending",
+      verificationStatus: "verified",
       approvalStatus: "approved",
       status: "active",
       accountStatus: "active",
