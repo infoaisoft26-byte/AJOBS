@@ -33,40 +33,13 @@ export default function EmployerInterviews({
 }: EmployerInterviewsProps) {
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [candidateName, setCandidateName] = useState("");
-  const [jobTitle, setJobTitle] = useState(jobs[0]?.title || "Senior React Engineer");
+  const [jobTitle, setJobTitle] = useState(jobs[0]?.title || "");
   const [dateTime, setDateTime] = useState("");
   const [roundName, setRoundName] = useState("Technical Screening");
   const [meetLink, setMeetLink] = useState("https://meet.google.com/aijobs-interview");
   const [interviewer, setInterviewer] = useState("Lead Engineering Manager");
 
-  const displayInterviews: CompanyInterview[] = interviews.length > 0 ? interviews : [
-    {
-      id: "int_scheduled_1",
-      jobId: "job_1",
-      jobTitle: "Senior React & TypeScript Engineer",
-      candidateId: "cand_1",
-      candidateName: "Aarav Sharma",
-      candidateEmail: "aarav.sharma@example.com",
-      dateTime: new Date(Date.now() + 86400000 * 2).toISOString(),
-      roundName: "Technical Deep Dive & System Design",
-      interviewer: "Hiring Manager (Engineering)",
-      meetLink: "https://meet.google.com/aij-tech-01",
-      status: "scheduled"
-    },
-    {
-      id: "int_scheduled_2",
-      jobId: "job_2",
-      jobTitle: "Full Stack Node.js Developer",
-      candidateId: "cand_2",
-      candidateName: "Vikram Malhotra",
-      candidateEmail: "vikram.m@example.com",
-      dateTime: new Date(Date.now() + 86400000 * 4).toISOString(),
-      roundName: "Architecture Round",
-      interviewer: "VP of Engineering",
-      meetLink: "https://meet.google.com/aij-arch-02",
-      status: "scheduled"
-    }
-  ];
+  const displayInterviews: CompanyInterview[] = interviews;
 
   const handleSchedule = async (e: React.FormEvent) => {
     e.preventDefault();

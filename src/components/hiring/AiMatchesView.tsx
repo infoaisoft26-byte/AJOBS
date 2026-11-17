@@ -35,56 +35,7 @@ export default function AiMatchesView({
   const activeJob = jobs.find(j => j.id === selectedJobId) || jobs[0];
 
   // AI matched candidates based on skills & role requirements
-  const matchedCandidates = [
-    {
-      id: "match_c1",
-      name: "Rohan Mukherjee",
-      role: "Lead Full Stack Architect",
-      experience: "6.2 Years",
-      location: "Bengaluru (Hybrid)",
-      score: 97,
-      fitReason: "Direct mastery in React, TypeScript, and AWS cloud architecture with 6+ years hands-on micro-frontend production scaling.",
-      matchingSkills: ["React", "TypeScript", "Node.js", "AWS", "System Design"],
-      expectedSalary: "₹28,00,000",
-      noticePeriod: "15 Days"
-    },
-    {
-      id: "match_c2",
-      name: "Sneha Deshmukh",
-      role: "Senior Frontend Engineer",
-      experience: "4.5 Years",
-      location: "Pune / Remote",
-      score: 94,
-      fitReason: "Outstanding design systems experience with React, Next.js, and Tailwind CSS. Top 5% performance benchmark score.",
-      matchingSkills: ["React", "Next.js", "TypeScript", "Tailwind CSS"],
-      expectedSalary: "₹18,00,000",
-      noticePeriod: "Immediate"
-    },
-    {
-      id: "match_c3",
-      name: "Aditya Verma",
-      role: "Backend & Cloud Engineer",
-      experience: "4.0 Years",
-      location: "Hyderabad",
-      score: 91,
-      fitReason: "Strong distributed systems background with Node.js, PostgreSQL, and high-concurrency payment APIs.",
-      matchingSkills: ["Node.js", "PostgreSQL", "Docker", "RESTful APIs"],
-      expectedSalary: "₹17,00,000",
-      noticePeriod: "30 Days"
-    },
-    {
-      id: "match_c4",
-      name: "Tanvi Saxena",
-      role: "AI / ML Solutions Engineer",
-      experience: "3.5 Years",
-      location: "Delhi NCR",
-      score: 95,
-      fitReason: "Hands-on implementation of Google Gemini models, agentic workflows, and semantic RAG indexing.",
-      matchingSkills: ["Python", "FastAPI", "Gemini API", "Vector Databases"],
-      expectedSalary: "₹20,00,000",
-      noticePeriod: "15 Days"
-    }
-  ];
+  const matchedCandidates = [];
 
   return (
     <div className="space-y-6" id="ai-matches-view">
