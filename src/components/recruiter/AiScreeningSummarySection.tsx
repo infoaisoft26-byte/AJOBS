@@ -57,6 +57,7 @@ export interface AiScreeningResult {
 
 export interface CandidateScreeningProfile {
   id: string;
+  candidateId?: string;
   name: string;
   role: string;
   experience: string;
@@ -69,6 +70,7 @@ export interface CandidateScreeningProfile {
 
 interface AiScreeningSummarySectionProps {
   jobId: string;
+  recruiterId?: string;
   jobTitle: string;
   companyName: string;
   jobDescription?: string;
@@ -81,6 +83,7 @@ interface AiScreeningSummarySectionProps {
 
 export default function AiScreeningSummarySection({
   jobId,
+  recruiterId,
   jobTitle,
   companyName,
   jobDescription = "",
@@ -118,7 +121,7 @@ export default function AiScreeningSummarySection({
         jobDescription,
         requirements,
         skillsRequired,
-        candidateId: candidate.id,
+        candidateId: candidate.candidateId || candidate.id,
         candidateName: candidate.name,
         candidateExperience: candidate.experience,
         candidateSkills: candidate.skills,
@@ -167,19 +170,32 @@ export default function AiScreeningSummarySection({
     const loadApplicants = async () => {
       setIsLoadingCandidates(true);
       try {
-        const appQuery = query(collection(db, "applications"), where("jobId", "==", jobId));
+        if (!recruiterId) { setCandidates([]); setSelectedCandidateId(""); return; }
+        const assignedAppsQuery = query(collection(db, "applications"), where("assignedRecruiterId", "==", recruiterId));
         const screeningQuery = query(collection(db, "candidate_screenings"), where("jobId", "==", jobId));
-        const results = await Promise.all([getDocs(appQuery), getDocs(screeningQuery)]);
+        const results = await Promise.all([getDocs(assignedAppsQuery), getDocs(screeningQuery)]);
         const saved = new Map<string, AiScreeningResult>();
         results[1].forEach((snap) => { const item = snap.data() as any; if (item.candidateId && typeof item.fitScore === "number") saved.set(item.candidateId, item); });
-        const real = results[0].docs.map((snap) => {
+        const assignedForJob = results[0].docs.filter(snap => String(snap.data().jobId || "") === jobId);
+        const real = await Promise.all(assignedForJob.map(async (snap) => {
           const item = snap.data() as any;
           const candidateId = String(item.candidateId || item.userId || "");
+          let profile: any = {};
+          if (candidateId) {
+            const profileSnaps = await Promise.all([
+              getDoc(doc(db, "candidateProfiles", candidateId)).catch(() => null),
+              getDoc(doc(db, "candidate_profiles", candidateId)).catch(() => null),
+              getDoc(doc(db, "candidates", candidateId)).catch(() => null),
+              getDoc(doc(db, "users", candidateId)).catch(() => null)
+            ]);
+            profile = profileSnaps.reduce((acc: any, value: any) => value?.exists() ? { ...acc, ...value.data() } : acc, {});
+          }
           const raw = item.screeningResponses || item.screeningAnswers || item.responses || [];
           const responses = Array.isArray(raw) ? raw.filter((x: any) => x && typeof x.question === "string" && typeof x.answer === "string") : [];
-          const exp = item.candidateExperience || item.experience || "Not provided";
-          return { id: candidateId || snap.id, name: item.candidateName || item.name || "Candidate", role: item.currentTitle || item.candidateTitle || jobTitle, experience: typeof exp === "number" ? String(exp) + " Years" : String(exp), skills: Array.isArray(item.candidateSkills) ? item.candidateSkills : (Array.isArray(item.skills) ? item.skills : []), stage: item.status || "applied", responses, screeningResult: item.screeningResult || saved.get(candidateId) } as CandidateScreeningProfile;
-        }).filter((x) => x.id);
+          const exp = item.candidateExperience ?? item.experience ?? profile.experience ?? profile.totalExperience ?? "Not provided";
+          const skills = item.candidateSkills ?? item.skills ?? profile.skills ?? profile.technicalSkills ?? [];
+          return { id: snap.id, candidateId, name: item.candidateName || profile.fullName || profile.name || profile.displayName || "Candidate", role: profile.currentTitle || profile.targetRole || profile.designation || jobTitle, experience: typeof exp === "number" ? String(exp) + " Years" : String(exp), skills: Array.isArray(skills) ? skills.filter((x: any) => typeof x === "string") : [], stage: item.status || "applied", responses, screeningResult: item.screeningResult || saved.get(candidateId) } as CandidateScreeningProfile;
+        })).filter((x) => x.id);
         if (!active) return;
         setCandidates(real);
         setSelectedCandidateId((current) => real.some(x => x.id === current) ? current : (real[0]?.id || ""));
@@ -188,7 +204,7 @@ export default function AiScreeningSummarySection({
     };
     if (jobId) loadApplicants(); else { setCandidates([]); setIsLoadingCandidates(false); }
     return () => { active = false; };
-  }, [jobId, jobTitle]);
+  }, [jobId, jobTitle, recruiterId]);
 
   useEffect(() => {
     if (selectedCandidate?.responses?.some(x => x.question?.trim() && x.answer?.trim()) && !selectedCandidate.screeningResult) parseCandidateScreening(selectedCandidate, false);
