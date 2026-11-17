@@ -21,6 +21,11 @@ function stableId(value: string) {
   return crypto.createHash("sha256").update(value).digest("hex");
 }
 
+function redactWhatsAppText(value: unknown) {
+  return String(value || "").slice(0,4000)
+    .replace(/\b(otp|one[- ]time password|verification code|passcode|password)\b([\s:=#-]*)([a-z0-9-]{4,})/gi, "$1$2[REDACTED]");
+}
+
 function normalizePhone(value: string) {
   return String(value || "").replace(/\D/g, "");
 }
@@ -34,13 +39,13 @@ async function mirrorWhatsAppLeadToNeon(input: { phone: string; contactId: strin
     const contact = input.contact || {};
     const lead = input.lead || {};
     await sql`INSERT INTO whatsapp_contacts (id,phone,name,email,lead_type,business_name,city,opted_in,opted_out,consent_source,last_message_at,last_message_preview,lead_id,payload,updated_at)
-      VALUES (${input.contactId},${phone},${String(contact.name || lead.name || "WhatsApp Lead").slice(0,180)},${String(contact.email || lead.email || "").slice(0,254) || null},${String(contact.leadType || lead.leadType || "unclassified").slice(0,80)},${String(contact.businessName || lead.company || "").slice(0,180) || null},${String(contact.city || lead.city || "").slice(0,120) || null},${contact.optedIn === true},${contact.optedOut === true},${contact.consentSource || null},${now}::timestamptz,${String(input.message || contact.lastMessage || "").slice(0,500)},${input.leadId},${JSON.stringify({contact,lead})}::jsonb,${now}::timestamptz)
+      VALUES (${input.contactId},${phone},${String(contact.name || lead.name || "WhatsApp Lead").slice(0,180)},${String(contact.email || lead.email || "").slice(0,254) || null},${String(contact.leadType || lead.leadType || "unclassified").slice(0,80)},${String(contact.businessName || lead.company || "").slice(0,180) || null},${String(contact.city || lead.city || "").slice(0,120) || null},${contact.optedIn === true},${contact.optedOut === true},${contact.consentSource || null},${now}::timestamptz,${redactWhatsAppText(input.message || contact.lastMessage).slice(0,500)},${input.leadId},${JSON.stringify({contact,lead})}::jsonb,${now}::timestamptz)
       ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,email=COALESCE(EXCLUDED.email,whatsapp_contacts.email),lead_type=EXCLUDED.lead_type,business_name=COALESCE(EXCLUDED.business_name,whatsapp_contacts.business_name),city=COALESCE(EXCLUDED.city,whatsapp_contacts.city),opted_in=EXCLUDED.opted_in,opted_out=EXCLUDED.opted_out,consent_source=COALESCE(EXCLUDED.consent_source,whatsapp_contacts.consent_source),last_message_at=EXCLUDED.last_message_at,last_message_preview=EXCLUDED.last_message_preview,lead_id=EXCLUDED.lead_id,payload=EXCLUDED.payload,updated_at=now()`;
     await sql`INSERT INTO crm_leads (id,source,source_ref,lead_type,name,email,phone,company,city,status,assigned_to,last_activity_at,payload,updated_at)
       VALUES (${input.leadId},'WhatsApp',${input.messageId || input.contactId},${String(lead.leadType || contact.leadType || "unclassified")},${String(lead.candidateName || lead.name || contact.name || "WhatsApp Lead").slice(0,180)},${String(lead.email || contact.email || "").slice(0,254) || null},${phone},${String(lead.company || contact.businessName || "").slice(0,180) || null},${String(lead.city || contact.city || "").slice(0,120) || null},${String(lead.status || "New").slice(0,80)},${String(lead.assignedTo || "").slice(0,180) || null},${now}::timestamptz,${JSON.stringify(lead)}::jsonb,${now}::timestamptz)
       ON CONFLICT (id) DO UPDATE SET lead_type=EXCLUDED.lead_type,name=EXCLUDED.name,email=COALESCE(EXCLUDED.email,crm_leads.email),company=COALESCE(EXCLUDED.company,crm_leads.company),city=COALESCE(EXCLUDED.city,crm_leads.city),status=EXCLUDED.status,assigned_to=EXCLUDED.assigned_to,last_activity_at=EXCLUDED.last_activity_at,payload=EXCLUDED.payload,updated_at=now()`;
     if (input.messageId) await sql`INSERT INTO whatsapp_messages (id,contact_id,direction,message_type,body,phone_number_id,occurred_at,payload)
-      VALUES (${input.messageId},${input.contactId},'inbound','text',${String(input.message || "").slice(0,4000)},${input.phoneNumberId || null},${now}::timestamptz,${JSON.stringify({source:"meta_webhook"})}::jsonb)
+      VALUES (${input.messageId},${input.contactId},'inbound','text',${redactWhatsAppText(input.message)},${input.phoneNumberId || null},${now}::timestamptz,${JSON.stringify({source:"meta_webhook"})}::jsonb)
       ON CONFLICT (id) DO NOTHING`;
   } catch (error: any) {
     console.error("[WhatsApp Neon sync] Lead mirror deferred:", error?.message || error);
@@ -418,7 +423,7 @@ export async function receiveWhatsAppWebhook(req: Request, res: Response) {
           ? new Date(Number(event.timestamp) * 1000).toISOString()
           : event.receivedAt || new Date().toISOString();
         await sql`INSERT INTO whatsapp_webhook_events (id,event_type,message_id,event_status,phone_number_id,occurred_at,payload)
-          VALUES (${eventKey},${String(event.type)},${String(event.messageId || "") || null},${String(event.status || "") || null},${String(event.phoneNumberId || "") || null},${occurredAt}::timestamptz,${JSON.stringify(event)}::jsonb)
+          VALUES (${eventKey},${String(event.type)},${String(event.messageId || "") || null},${String(event.status || "") || null},${String(event.phoneNumberId || "") || null},${occurredAt}::timestamptz,${JSON.stringify({ ...event, text:redactWhatsAppText(event.text), body:redactWhatsAppText(event.body) })}::jsonb)
           ON CONFLICT (id) DO UPDATE SET event_status=EXCLUDED.event_status,payload=EXCLUDED.payload`;
         if (event.type === "status" && event.messageId) {
           await sql`UPDATE whatsapp_messages SET meta_status=${String(event.status || "")} WHERE id=${String(event.messageId)}`;
@@ -461,10 +466,10 @@ export async function receiveWhatsAppWebhook(req: Request, res: Response) {
           const contact = contactSnap.exists ? contactSnap.data() || {} : {};
           const now = new Date().toISOString();
           await sql`INSERT INTO whatsapp_contacts (id,phone,name,email,lead_type,opted_in,opted_out,consent_source,last_message_at,last_message_preview,payload,updated_at)
-            VALUES (${contactId},${phone},${String(contact.name || "WhatsApp Lead").slice(0,180)},${String(contact.email || "").slice(0,254) || null},${String(contact.leadType || "unclassified")},${contact.optedIn === true},${contact.optedOut === true},${contact.consentSource || null},${now}::timestamptz,${String(message.text || "").slice(0,500)},${JSON.stringify(contact)}::jsonb,${now}::timestamptz)
+            VALUES (${contactId},${phone},${String(contact.name || "WhatsApp Lead").slice(0,180)},${String(contact.email || "").slice(0,254) || null},${String(contact.leadType || "unclassified")},${contact.optedIn === true},${contact.optedOut === true},${contact.consentSource || null},${now}::timestamptz,${redactWhatsAppText(message.text).slice(0,500)},${JSON.stringify(contact)}::jsonb,${now}::timestamptz)
             ON CONFLICT (id) DO UPDATE SET name=COALESCE(EXCLUDED.name,whatsapp_contacts.name),email=COALESCE(EXCLUDED.email,whatsapp_contacts.email),lead_type=EXCLUDED.lead_type,opted_in=EXCLUDED.opted_in,opted_out=EXCLUDED.opted_out,consent_source=COALESCE(EXCLUDED.consent_source,whatsapp_contacts.consent_source),last_message_at=EXCLUDED.last_message_at,last_message_preview=EXCLUDED.last_message_preview,payload=EXCLUDED.payload,updated_at=now()`;
           await sql`INSERT INTO whatsapp_messages (id,contact_id,direction,message_type,body,phone_number_id,occurred_at,payload)
-            VALUES (${message.messageId},${contactId},'inbound',${message.messageType || "text"},${String(message.text || "").slice(0,4000)},${message.phoneNumberId || null},${now}::timestamptz,${JSON.stringify({messageId:message.messageId,metaTimestamp:message.timestamp})}::jsonb)
+            VALUES (${message.messageId},${contactId},'inbound',${message.messageType || "text"},${redactWhatsAppText(message.text)},${message.phoneNumberId || null},${now}::timestamptz,${JSON.stringify({messageId:message.messageId,metaTimestamp:message.timestamp})}::jsonb)
             ON CONFLICT (id) DO NOTHING`;
         } catch (syncError: any) {
           console.error("[WhatsApp Neon sync] Inbound message mirror deferred:", syncError?.message || syncError);
