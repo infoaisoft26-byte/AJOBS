@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import CandidateScreeningQuestions, { CandidateScreeningResponse } from "./CandidateScreeningQuestions";
 import { X, CheckCircle2, FileText, Upload, ShieldCheck, ArrowRight, AlertCircle, Building2, MapPin, DollarSign, Check, Edit3 } from "lucide-react";
 import { JobPosting, JobApplication } from "../types";
 import { applyToJob } from "../services/applicationService";
@@ -37,6 +38,7 @@ export default function EasyApplyModal({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [screeningResponses, setScreeningResponses] = useState<CandidateScreeningResponse[]>([]);
   const fastApplyKey = `aijobs_fast_apply_${userId}`;
   const [fastApplyEnabled, setFastApplyEnabled] = useState(() => localStorage.getItem(fastApplyKey) === "true");
   const [hasReviewedDetails, setHasReviewedDetails] = useState(() => localStorage.getItem(fastApplyKey) === "true");
@@ -78,7 +80,7 @@ export default function EasyApplyModal({
       setErrorMessage(null);
 
       const activeResumeText = resumeText || profile?.resumeText || "Resume Attached";
-      const result = await applyToJob(job, userId, profile, activeResumeText);
+      const result = await applyToJob(job, userId, profile, activeResumeText, screeningResponses);
 
       if (result.success) {
         const appId = result.applicationId || `app_${Math.random().toString(36).substring(2, 11)}`;
@@ -110,7 +112,7 @@ export default function EasyApplyModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200" id="easy-apply-modal-backdrop">
-      <div className="bg-[rgba(4,12,35,0.95)] backdrop-blur-2xl rounded-3xl border border-[rgba(37,99,235,0.45)] shadow-[0_16px_48px_rgba(0,0,0,0.8)] max-w-lg w-full p-6 space-y-5 relative text-white">
+      <div className="bg-[rgba(4,12,35,0.95)] backdrop-blur-2xl rounded-3xl border border-[rgba(37,99,235,0.45)] shadow-[0_16px_48px_rgba(0,0,0,0.8)] max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 space-y-5 relative text-white">
         
         {/* Close Button */}
         <button
@@ -206,6 +208,8 @@ export default function EasyApplyModal({
                 </div>
               </div>
             </div>
+
+            <CandidateScreeningQuestions jobId={job.id} onChange={setScreeningResponses} />
 
             {/* Mandatory Review Checkbox to prevent accidental clicks */}
             <label className="flex items-start gap-2.5 p-3 rounded-xl border border-blue-500/25 bg-slate-950/50 hover:bg-slate-900/60 transition-all cursor-pointer select-none">
