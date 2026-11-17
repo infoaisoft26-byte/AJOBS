@@ -109,6 +109,7 @@ export default function EmployerDashboard({
       if (!workspaceResponse.ok || workspaceData.success !== true) {
         throw new Error(workspaceData.error || "Unable to load your hiring workspace.");
       }
+      setCredits(prev => ({ ...prev, jobCredits: Number(workspaceData.stats?.availableJobCredits || 0) }));
       const jobList: CompanyJob[] = Array.isArray(workspaceData.jobs) ? workspaceData.jobs : [];
       setJobs(jobList);
       const appList: CompanyApplication[] = Array.isArray(workspaceData.applications)
