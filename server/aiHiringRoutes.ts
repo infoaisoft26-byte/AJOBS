@@ -980,7 +980,9 @@ CRITICAL: Return STRICTLY a valid JSON object without markdown formatting or cod
           screeningFitLevel: parsedResult.fitLevel,
           screeningSummaryText: parsedResult.summary,
           screeningEvaluatedAt: parsedResult.evaluatedAt || new Date().toISOString(),
-          screeningResult: parsedResult,
+          screeningResult: { ...parsedResult, applicationId: applicationSnap.docs[0].id, sourceResponsesFingerprint: JSON.stringify(verifiedResponses.map((item: any) => ({ question: item.question, answer: item.answer, category: item.category || "" }))) },
+          screeningApplicationId: applicationSnap.docs[0].id,
+          screeningResponsesFingerprint: JSON.stringify(verifiedResponses.map((item: any) => ({ question: item.question, answer: item.answer, category: item.category || "" }))),
           updatedAt: new Date().toISOString()
         };
         // Update the exact application document located by both jobId and candidateId.
