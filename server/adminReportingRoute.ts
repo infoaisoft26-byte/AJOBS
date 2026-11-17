@@ -23,7 +23,7 @@ function csvCell(value: any) {
   const text = String(value ?? "");
   return '"' + text.replace(/"/g, '""') + '"';
 }
-async function mirrorToNeon(sql: ReturnType<typeof neon>, users: any[], jobs: any[], applications: any[], interviews: any[], audits: any[]) {
+async function mirrorToNeon(sql: any, users: any[], jobs: any[], applications: any[], interviews: any[], audits: any[]) {
   const json = (rows: any[]) => JSON.stringify(rows);
   if (users.length) await sql`INSERT INTO app_users (id,email,display_name,role,status,source_ref,profile,created_at,updated_at,synced_at)
     SELECT x.id,x.email,x.display_name,x.role,x.status,x.source_ref,x.profile::jsonb,x.created_at::timestamptz,now(),now()
@@ -87,8 +87,8 @@ export async function handleAdminReportingRoute(req: Request, res: Response): Pr
     const inRangeApps = allApps.filter((a:any)=>isInRange(a.appliedAt || a.createdAt || a.updatedAt,start,end));
     const filteredApps = inRangeApps.filter((a:any)=>(!jobId || clean(a.jobId)===jobId) && (!recruiterId || clean(a.recruiterId || a.assignedRecruiterId)===recruiterId) && (!employerId || clean(a.employerId || a.companyId)===employerId));
     const filteredInterviews = interviews.filter((i:any)=>isInRange(i.scheduledAt || i.createdAt,start,end) && (!jobId || clean(i.jobId)===jobId) && (!recruiterId || clean(i.recruiterId)===recruiterId) && (!employerId || clean(i.employerId)===employerId));
-    const auditRaw = [...hiringAuditRaw,...activityRaw,...auditRaw];
-    const auditEvents = auditRaw.filter((a:any)=>isInRange(a.timestamp || a.createdAt || a.occurredAt,start,end)).map((a:any)=>({
+    const combinedAuditRows = [...hiringAuditRaw,...activityRaw,...auditRaw];
+    const auditEvents = combinedAuditRows.filter((a:any)=>isInRange(a.timestamp || a.createdAt || a.occurredAt,start,end)).map((a:any)=>({
       id:clean(a.id || a.auditId,180), action:clean(a.action || a.eventName,120), actorUid:clean(a.performedBy || a.userId || a.actorUid,180),
       actorEmail:clean(a.performedByEmail || a.email || a.actorEmail,180), actorRole:clean(a.role || a.actorRole,60),
       entityType:clean(a.entityType || a.category,80), entityId:clean(a.entityId || a.jobId || a.applicationId,180),
