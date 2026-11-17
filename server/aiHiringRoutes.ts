@@ -849,7 +849,8 @@ router.post("/screening-summary", async (req, res) => {
         const cachedDoc = await db.collection("candidate_screenings").doc(`${jobId}_${candidateId}`).get();
         if (cachedDoc.exists) {
           const cachedData = cachedDoc.data();
-          if (cachedData && typeof cachedData.fitScore === "number") {
+          const responseFingerprint = JSON.stringify(verifiedResponses.map((item: any) => ({ question: item.question, answer: item.answer, category: item.category || "" })));
+          if (cachedData && typeof cachedData.fitScore === "number" && cachedData.applicationId === applicationSnap.docs[0].id && cachedData.sourceResponsesFingerprint === responseFingerprint) {
             return res.json({
               success: true,
               screening: cachedData,
@@ -875,8 +876,8 @@ You are an expert technical recruiter and talent assessment evaluator for the AI
 Evaluate this candidate's responses to job screening questions for the position of "${verifiedJobTitle}" at "${verifiedCompanyName}".
 
 ROLE CONTEXT:
-- Job Title: ${jobTitle}
-- Company: ${companyName}
+- Job Title: ${verifiedJobTitle}
+- Company: ${verifiedCompanyName}
 - Required Skills: ${verifiedSkillsRequired.join(", ") || "Not specified in the job posting"}
 - Requirements/Description: ${verifiedRequirements || verifiedJobDescription || "Not specified in the job posting"}
 
@@ -890,8 +891,8 @@ CANDIDATE SCREENING RESPONSES:
 ${formattedQnA}
 
 EVALUATION INSTRUCTIONS:
-1. Assess technical accuracy, depth, architectural maturity, and hands-on realism for each response.
-2. Calculate an overall "fitScore" (0 to 100):
+1. Evaluate only against the actual job description, mandatory requirements and required skills. Do not invent candidate experience or credit unrelated technologies.
+2. Account for the actual seniority and eligibility rules in the job posting. If fresher candidates are accepted, do not penalize low experience. Do not use a generic software-engineering rubric. Calculate an overall "fitScore" (0 to 100):
    - 85-100: Exceptional / Strong Fit (exceeds role requirements, articulate, deep practical knowledge)
    - 70-84: Good Fit (solid competence, meets all baseline requirements with minor gaps)
    - 50-69: Moderate Fit (partial match, needs interviewer verification on key skills)
@@ -964,8 +965,12 @@ CRITICAL: Return STRICTLY a valid JSON object without markdown formatting or cod
       try {
         const payloadToSave = {
           jobId,
+          jobTitle: verifiedJobTitle,
+          companyName: verifiedCompanyName,
           candidateId,
-          candidateName,
+          candidateName: verifiedCandidateName,
+          applicationId: applicationSnap.docs[0].id,
+          sourceResponsesFingerprint: JSON.stringify(verifiedResponses.map((item: any) => ({ question: item.question, answer: item.answer, category: item.category || "" }))),
           ...parsedResult,
           updatedAt: new Date().toISOString()
         };
