@@ -180,7 +180,7 @@ export default function RecruiterPipeline({
                           </div>
 
                           <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[10px] font-mono font-bold">
-                            {cand.aiScore}%
+                            {typeof cand.aiScore === "number" ? `${cand.aiScore}% Match` : "Not evaluated"}
                           </span>
                         </div>
 
@@ -223,7 +223,7 @@ export default function RecruiterPipeline({
                           </select>
 
                           <button
-                            onClick={() => onOpenLiveChat && onOpenLiveChat(cand.id, cand.name || "Candidate")}
+                            onClick={() => onOpenLiveChat && onOpenLiveChat(cand.candidateId || cand.id, cand.name || "Candidate")}
                             className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all cursor-pointer"
                             title="Message Candidate"
                           >
