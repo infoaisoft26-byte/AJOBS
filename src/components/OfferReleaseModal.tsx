@@ -1,7 +1,7 @@
 import React, { Dispatch, FormEvent, useState } from "react";
 import { doc, setDoc } from "firebase/firestore";
 import { Award, Key, Network, Package, Save, Send, Signature, Table, Text, Type, X } from "lucide-react";
-import { db } from "../firebase";
+import { auth, db } from "../firebase";
 
 import { NotificationService } from "../services/notificationService";
 
@@ -25,18 +25,18 @@ export default function OfferReleaseModal({
   isOpen,
   onClose,
   application,
-  recruiterName = "Hiring Director",
+  recruiterName = "Hiring Team",
   onSuccess
 }: OfferReleaseModalProps) {
   const [formData, setFormData] = useState({
-    designation: application?.jobTitle || "Senior Software Engineer",
-    companyName: application?.companyName || "AIJobs Partner Network",
-    annualCtc: "$145,000 / annum",
+    designation: application?.jobTitle || "",
+    companyName: application?.companyName || "",
+    annualCtc: "",
     joiningDate: new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0],
     offerValidUntil: new Date(Date.now() + 5 * 86400000).toISOString().split("T")[0],
-    location: "Bengaluru, India (Hybrid)",
-    probationPeriod: "3 Months",
-    specialTerms: "Includes stock options, comprehensive health insurance for family, and yearly learning allowance."
+    location: "",
+    probationPeriod: "",
+    specialTerms: ""
   });
 
   const [loading, setLoading] = useState(false);
@@ -189,7 +189,7 @@ export default function OfferReleaseModal({
         jobTitle: application.jobTitle,
         candidateId: application.candidateId,
         candidateName: application.candidateName,
-        candidateEmail: application.candidateEmail || `${application.candidateId}@aijobs.global`,
+        candidateEmail: application.candidateEmail || "",
         companyName: formData.companyName,
         designation: formData.designation,
         annualCtc: formData.annualCtc,
@@ -207,17 +207,16 @@ export default function OfferReleaseModal({
         // 1. Save offer record
         await setDoc(doc(db, "offers", offerId), offerRecord);
 
-        // 2. Update application status
-        await setDoc(doc(db, "applications", application.id), {
-          status: "Offer Released",
-          offerId,
-          offerDetails: {
-            annualCtc: formData.annualCtc,
-            joiningDate: formData.joiningDate,
-            location: formData.location
-          },
-          updatedAt: nowIso
-        }, { merge: true });
+        // Synchronize candidate and hiring workspace status through the authenticated API.
+        const token = await auth.currentUser?.getIdToken(true);
+        if (!token) throw new Error("Please sign in again to release this offer.");
+        const statusResponse = await fetch("/api/hire/workspace/applications/" + encodeURIComponent(application.id) + "/status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+          body: JSON.stringify({ status: "offer", remarks: "Offer letter released.", interviewData: { offerId, offerDetails: { annualCtc: formData.annualCtc, joiningDate: formData.joiningDate, location: formData.location } } })
+        });
+        const statusResult = await statusResponse.json().catch(() => ({}));
+        if (!statusResponse.ok || !statusResult.success) throw new Error(statusResult.error || "Offer status could not be synchronized.");
 
         // 3. Dispatch Candidate Notification
         await NotificationService.createNotification({
@@ -236,7 +235,7 @@ export default function OfferReleaseModal({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              to: application.candidateEmail || `${application.candidateId}@aijobs.global`,
+              to: application.candidateEmail || "",
               subject: `🎉 Official Employment Offer Letter: ${formData.designation} at ${formData.companyName}`,
               body: `Dear ${application.candidateName},\n\nWe are excited to present your official Offer Letter for the position of ${formData.designation} at ${formData.companyName}.\n\nOffer Overview:\n- Annual Package: ${formData.annualCtc}\n- Joining Date: ${formData.joiningDate}\n- Location: ${formData.location}\n\nYou can view, download, and accept your formal offer letter directly in your AIJobs candidate portal.\n\nWarm regards,\n${recruiterName}\n${formData.companyName}`
             })
