@@ -66,7 +66,8 @@ async function backfillPublicSeo(jobRef: any, jobId: string, job: any) {
   if (!job.slug) patch.slug = slug;
   if (!job.canonicalUrl) patch.canonicalUrl = canonicalUrl;
   if (!job.publicUrl) patch.publicUrl = canonicalUrl;
-  const publicationDate = job.datePosted || job.approvedAt || job.publishedAt || job.createdAt;\n  if (!job.publishedAt && publicationDate) patch.publishedAt = publicationDate;
+  const publicationDate = job.datePosted || job.approvedAt || job.publishedAt || job.createdAt;
+  if (!job.publishedAt && publicationDate) patch.publishedAt = publicationDate;
   if (Object.keys(patch).length) {
     patch.updatedAt = new Date().toISOString();
     await jobRef.set(patch, { merge: true });
