@@ -908,55 +908,79 @@ router.post("/payments/webhook", async (req, res) => {
 router.post("/subscriptions/approve", async (req, res) => {
   try {
     const db = getFirestoreDb();
-    const { userId, adminUserId } = req.body;
+    const { userId, adminUserId } = req.body || {};
+    if (!userId) return res.status(400).json({ success: false, error: "Missing userId" });
 
-    if (!userId) {
-      return res.status(400).json({ success: false, error: "Missing userId" });
+    const userRef = db.collection("users").doc(String(userId));
+    const [userSnap, kycSnap, verificationSnap, paymentSnap, paymentOrderSnap, agreementSnap] = await Promise.all([
+      userRef.get(),
+      db.collection("kyc_profiles").doc(String(userId)).get(),
+      db.collection("verification_requests").where("userId", "==", String(userId)).get(),
+      db.collection("payments").where("userId", "==", String(userId)).get(),
+      db.collection("payment_orders").where("userId", "==", String(userId)).get(),
+      db.collection("agreements").where("userId", "==", String(userId)).get()
+    ]);
+    if (!userSnap.exists) return res.status(404).json({ success: false, error: "User profile not found" });
+
+    const userData: any = userSnap.data() || {};
+    const kycData: any = kycSnap.data() || {};
+    const verificationRows = verificationSnap.docs.map((d: any) => d.data());
+    const paymentRows = paymentSnap.docs.map((d: any) => d.data());
+    const paymentOrderRows = paymentOrderSnap.docs.map((d: any) => d.data());
+    const agreementRows = agreementSnap.docs.map((d: any) => d.data());
+    const latest = (rows: any[]) => rows.sort((a, b) =>
+      String(b.updatedAt || b.createdAt || b.submittedAt || "").localeCompare(String(a.updatedAt || a.createdAt || a.submittedAt || ""))
+    )[0];
+
+    const norm = (v: any) => String(v || "").trim().toLowerCase();
+    const kycStatus = norm(userData.kycStatus || userData.verificationStatus || kycData.kycStatus || latest(verificationRows)?.kycStatus);
+    const kycApproved = ["verified", "approved", "kyc_approved"].includes(kycStatus);
+    const paymentData = latest([
+      ...paymentRows.filter((p: any) => ["paid", "success", "verified"].includes(norm(p.status))),
+      ...paymentOrderRows.filter((p: any) => ["paid", "success", "verified"].includes(norm(p.status)))
+    ]);
+    const agreementData: any = latest(agreementRows);
+    const agreementStatus = norm(agreementData?.status);
+    const agreementSigned = ["accepted", "signed", "payment_completed", "completed"].includes(agreementStatus) ||
+      Boolean(agreementData?.acceptedAt || agreementData?.signedAt || agreementData?.completedAt);
+
+    const prerequisites = {
+      kycApproved,
+      agreementSigned,
+      paymentVerified: Boolean(paymentData)
+    };
+    if (!prerequisites.kycApproved || !prerequisites.agreementSigned || !prerequisites.paymentVerified) {
+      return res.status(409).json({
+        success: false,
+        error: "PREREQUISITES_MISSING",
+        message: "Account cannot be activated until KYC is approved, the agreement is signed, and payment is verified.",
+        prerequisites,
+        resolvedStatus: {
+          kyc: kycStatus || "pending",
+          agreement: agreementData?.status || "pending",
+          payment: paymentData?.status || "pending"
+        }
+      });
     }
-
-    const userRef = db.collection("users").doc(userId);
-    const userSnap = await userRef.get();
-
-    if (!userSnap.exists) {
-      return res.status(404).json({ success: false, error: "User profile not found" });
-    }
-
-    const userData = userSnap.data() || {};
-
-    // Find latest paid payment and agreement
-    const paySnap = await db.collection("payments")
-      .where("userId", "==", userId)
-      .where("status", "==", "paid")
-      .orderBy("createdAt", "desc")
-      .limit(1)
-      .get();
-
-    const paymentData = !paySnap.empty ? paySnap.docs[0].data() : null;
-
-    const agrSnap = await db.collection("agreements")
-      .where("userId", "==", userId)
-      .orderBy("createdAt", "desc")
-      .limit(1)
-      .get();
-
-    const agreementData = !agrSnap.empty ? agrSnap.docs[0].data() : null;
 
     const now = new Date();
-    const validityDays = agreementData?.planSummary?.validityDays || 30;
+    const nowIso = now.toISOString();
+    const validityDays = Number(agreementData?.planSummary?.validityDays || 30);
     const expiresAt = new Date(now.getTime() + validityDays * 24 * 60 * 60 * 1000).toISOString();
-
+    const role = norm(userData.role);
+    const roleCollection = role === "recruiter" ? "recruiters"
+      : role === "employer" ? "employers"
+      : ["consultancy", "agency"].includes(role) ? "consultancies"
+      : "";
     const subscriptionId = `sub_${userId}`;
     const subscriptionDoc = {
-      subscriptionId,
-      userId,
-      consultancyId: userData.consultancyId || userId,
+      subscriptionId, userId: String(userId),
+      consultancyId: userData.consultancyId || (role === "consultancy" ? String(userId) : null),
       role: userData.role || "consultancy",
       planId: agreementData?.planId || "plan_default_499",
-      agreementId: agreementData?.agreementId || "",
-      paymentId: paymentData?.paymentId || "",
-      status: "active", // active, expired, suspended
-      startsAt: now.toISOString(),
-      expiresAt,
+      agreementId: agreementData?.agreementId || agreementData?.id || "",
+      paymentId: paymentData?.paymentId || paymentData?.orderId || paymentData?.id || "",
+      status: "active", startsAt: nowIso, expiresAt,
       candidateViewsLimit: agreementData?.planSummary?.candidateViewLimit || 500,
       candidateViewsUsed: 0,
       resumeDownloadsLimit: agreementData?.planSummary?.resumeDownloadLimit || 50,
@@ -968,56 +992,56 @@ router.post("/subscriptions/approve", async (req, res) => {
       recruiterSeatsLimit: agreementData?.planSummary?.recruiterSeatLimit || 3,
       recruiterSeatsUsed: 0,
       approvedBy: adminUserId || "admin",
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString()
+      createdAt: nowIso, updatedAt: nowIso
     };
 
-    await db.collection("subscriptions").doc(subscriptionId).set(subscriptionDoc, { merge: true });
-
-    // Update user status to active & verified
-    await userRef.update({
-      isApproved: true,
-      status: "active",
-      accountStatus: "active",
-      kycStatus: "verified",
-      subscriptionStatus: "active",
-      approvedAt: now.toISOString()
+    const userPatch = {
+      isApproved: true, isActive: true, status: "active", accountStatus: "active",
+      kycStatus: "verified", verificationStatus: "approved", approvalStatus: "approved",
+      subscriptionStatus: "active", approvedAt: nowIso,
+      approvedBy: adminUserId || "admin", updatedAt: nowIso
+    };
+    const batch = db.batch();
+    batch.set(db.collection("subscriptions").doc(subscriptionId), subscriptionDoc, { merge: true });
+    batch.set(userRef, userPatch, { merge: true });
+    if (roleCollection) {
+      batch.set(db.collection(roleCollection).doc(String(userId)), { ...userPatch, uid: String(userId), userId: String(userId) }, { merge: true });
+    }
+    if (role === "recruiter") {
+      batch.set(db.collection("recruiter_profiles").doc(String(userId)), { ...userPatch, uid: String(userId), userId: String(userId) }, { merge: true });
+    }
+    batch.set(db.collection("onboarding_timelines").doc(`tl_${userId}_${Date.now()}`), {
+      userId: String(userId), stage: "ACCOUNT_ACTIVATED",
+      title: "Account Activated",
+      description: "KYC, signed agreement and verified payment prerequisites were confirmed.",
+      timestamp: nowIso, actor: adminUserId || "admin"
     });
+    batch.set(db.collection("audit_logs").doc(`subscription_approve_${userId}_${Date.now()}`), {
+      action: "SUBSCRIPTION_APPROVED", targetUserId: String(userId),
+      performedBy: adminUserId || "admin", timestamp: nowIso,
+      paymentId: subscriptionDoc.paymentId, agreementId: subscriptionDoc.agreementId
+    });
+    await batch.commit();
 
-    // Send Activation Email
     try {
       if (userData.email) {
         await db.collection("mail").add({
           to: [userData.email],
           message: {
-            subject: `Account Approved & Database Subscription Activated! — AIJOBS`,
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #0b0f19; color: #ffffff; border-radius: 12px;">
-                <h2 style="color: #10b981; margin-bottom: 10px;">Welcome to AIJOBS Candidate Database!</h2>
-                <p>Hello <strong>${userData.name || "Subscriber"}</strong>,</p>
-                <p>Your account KYC and Database Subscription have been formally reviewed and <strong>APPROVED</strong> by AIJOBS Compliance.</p>
-                
-                <div style="background-color: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); padding: 15px; border-radius: 8px; margin: 20px 0;">
-                  <p style="margin: 0; font-size: 13px;"><strong>Plan:</strong> ${agreementData?.planSummary?.planName || "Database Access Plan"}</p>
-                  <p style="margin: 5px 0 0 0; font-size: 13px;"><strong>Validity:</strong> Valid until ${new Date(expiresAt).toLocaleDateString()}</p>
-                  <p style="margin: 5px 0 0 0; font-size: 13px;"><strong>Candidate Profile Quota:</strong> ${subscriptionDoc.candidateViewsLimit} Views</p>
-                  <p style="margin: 5px 0 0 0; font-size: 13px;"><strong>Resume Download Quota:</strong> ${subscriptionDoc.resumeDownloadsLimit} Downloads</p>
-                </div>
-
-                <p style="font-size: 13px; color: #cbd5e1;">You can now log into your dashboard and access candidate search, resumes, and interview scorecards.</p>
-              </div>
-            `
+            subject: "Account Approved & Database Subscription Activated — AIJOBS",
+            html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto"><h2>AIJOBS account activated</h2><p>Hello <strong>${userData.name || userData.displayName || "Partner"}</strong>,</p><p>Your KYC, signed agreement and verified payment have been approved. Your subscription is now active until ${new Date(expiresAt).toLocaleDateString()}.</p></div>`
           },
-          createdAt: now.toISOString()
+          createdAt: nowIso
         });
       }
-    } catch (e) {
-      console.warn("Failed to dispatch subscription activation email:", e);
+    } catch (emailError) {
+      console.warn("Subscription activation email could not be queued:", emailError);
     }
 
     return res.json({
       success: true,
-      message: "User account approved and database subscription activated.",
+      message: "KYC, agreement and payment verified. Account and role workspace activated.",
+      prerequisites,
       subscription: subscriptionDoc
     });
   } catch (err: any) {
