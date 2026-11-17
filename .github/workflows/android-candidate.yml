@@ -29,6 +29,8 @@ jobs:
           java-version: "21"
           cache: gradle
       - run: npm install --no-audit --no-fund
+      - name: Verify web and API production build
+        run: npm run build
       - run: chmod +x android/gradlew
       - run: npm run android:debug
       - uses: actions/upload-artifact@v4
