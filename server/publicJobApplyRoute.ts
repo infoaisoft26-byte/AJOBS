@@ -156,6 +156,7 @@ export async function handlePublicJobApplyRoute(req: Request, res: Response): Pr
         jobTitle: job.title || job.jobTitle || "",
         companyName: job.companyName || job.hiringOrganizationName || "",
         candidateId,
+        userId: candidateId,
         candidateLeadId: leadId,
         candidateName: name,
         name,
@@ -171,7 +172,6 @@ export async function handlePublicJobApplyRoute(req: Request, res: Response): Pr
         source: "public_job_quick_apply",
         registrationRequired: false,
         candidateAccountExists: Boolean(candidateId),
-        jobOwnerUid: ownerUid,
         ownerUid,
         jobOwnerUid: ownerUid,
         companyId: clean(job.companyId || job.employerId, 160) || null,
@@ -226,7 +226,7 @@ export async function handlePublicJobApplyRoute(req: Request, res: Response): Pr
         updatedAt: job.updatedAt || now
       }, { merge: true });
 
-      const recipients = Array.from(new Set([ownerUid, recruiterId, employerId, consultancyId].filter(Boolean)));
+      const recipients = Array.from(new Set([ownerUid, job.assignedRecruiterId, recruiterId, employerId, consultancyId].filter(Boolean)));
       for (const recipientId of recipients) {
         tx.set(db.collection("notifications").doc(`quick_apply_${applicationId}_${recipientId}`), {
           userId: recipientId,
