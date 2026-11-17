@@ -300,33 +300,18 @@ export default function RecruiterOverview({
           </div>
 
           <div className="space-y-3 text-xs">
-            <div className="flex items-start gap-3 p-3 rounded-2xl bg-white/5 border border-white/5">
-              <div className="w-2 h-2 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
-              <div>
-                <p className="text-white font-bold">Aarav Sharma moved to Interview Round</p>
-                <p className="text-[11px] text-slate-400">Scheduled Technical Screening with hiring lead for Thursday.</p>
-                <span className="text-[10px] text-slate-500 font-mono">10 minutes ago</span>
+            {pipelineCandidates.slice(0, 5).map((cand) => (
+              <div key={cand.id} className="flex items-start gap-3 p-3 rounded-2xl bg-white/5 border border-white/5">
+                <div className="w-2 h-2 rounded-full bg-blue-400 mt-1.5 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-white font-bold">{cand.name} · {cand.stage.replace("_", " ")}</p>
+                  <p className="text-[11px] text-slate-400">{cand.jobTitle} · {cand.companyName}</p>
+                  <span className="text-[10px] text-slate-500 font-mono">{cand.lastActivity}</span>
+                </div>
               </div>
-            </div>
-
-            <div className="flex items-start gap-3 p-3 rounded-2xl bg-white/5 border border-white/5">
-              <div className="w-2 h-2 rounded-full bg-blue-400 mt-1.5 shrink-0" />
-              <div>
-                <p className="text-white font-bold">New Lead Assigned by Admin</p>
-                <p className="text-[11px] text-slate-400">Sneha Deshmukh assigned for Senior Frontend Engineer mandate.</p>
-                <span className="text-[10px] text-slate-500 font-mono">2 hours ago</span>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3 p-3 rounded-2xl bg-white/5 border border-white/5">
-              <div className="w-2 h-2 rounded-full bg-purple-400 mt-1.5 shrink-0" />
-              <div>
-                <p className="text-white font-bold">Placement Commission Approved</p>
-                <p className="text-[11px] text-slate-400">₹45,000 commission credited for Full Stack Architect hire.</p>
-                <span className="text-[10px] text-slate-500 font-mono">Yesterday</span>
-              </div>
-            </div>
-          </div>
+            ))}
+            {pipelineCandidates.length === 0 && <p className="text-xs text-slate-500 p-3">No recruiter-assigned candidate activity yet.</p>}
+          </div></div>
         </div>
       </div>
     </div>
