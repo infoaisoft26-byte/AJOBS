@@ -1,4 +1,5 @@
-import { db } from "../firebase";
+import { auth, db } from "../firebase";
+import { syncCandidateProfileToNeon } from "../services/neonSyncService";
 import React, { ChangeEvent, HTMLInputElement, useEffect, useRef, useState } from "react";
 import { doc, setDoc, updateDoc } from "firebase/firestore";
 import { ref } from "firebase/storage";
@@ -133,6 +134,7 @@ export default function CandidateProfileSection({
         setDoc(userDocRef, { uid: userId, ...updatedData, updatedAt: new Date().toISOString() }, { merge: true }),
         setDoc(profileDocRef, { uid: userId, ...updatedData, updatedAt: new Date().toISOString() }, { merge: true })
       ]);
+      if (auth.currentUser?.uid === userId) void syncCandidateProfileToNeon().catch(err => console.warn("[CandidateProfile] Neon sync deferred:", err));
       
       // Record in general activity logs
       try {
