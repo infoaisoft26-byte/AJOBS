@@ -377,7 +377,7 @@ export async function receiveWhatsAppWebhook(req: Request, res: Response) {
     if (process.env.DATABASE_URL) {
       try {
         const sql = neon(process.env.DATABASE_URL);
-        const occurredAt = event.timestamp && /^\\d+$/.test(String(event.timestamp))
+        const occurredAt = event.timestamp && /^\d+$/.test(String(event.timestamp))
           ? new Date(Number(event.timestamp) * 1000).toISOString()
           : event.receivedAt || new Date().toISOString();
         await sql`INSERT INTO whatsapp_webhook_events (id,event_type,message_id,event_status,phone_number_id,occurred_at,payload)
