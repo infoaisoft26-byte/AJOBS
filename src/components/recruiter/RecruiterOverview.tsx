@@ -253,7 +253,7 @@ export default function RecruiterOverview({
           </div>
 
           <p className="text-xs text-slate-300 leading-relaxed">
-            These candidates have 90%+ compatibility with your priority assigned roles and indicate immediate availability:
+            Verified candidate recommendations will appear here when real matching profiles are available.
           </p>
 
           <div className="space-y-2.5">
