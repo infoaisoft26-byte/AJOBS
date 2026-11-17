@@ -25,7 +25,16 @@ export default function EmployerAiShortlist({
   onOpenLiveChat
 }: EmployerAiShortlistProps) {
   // Show only real applications with a persisted numeric match evaluation.
-  const recommendedCandidates = applications.filter(a => typeof a.aiMatchScore === "number" && a.aiMatchScore >= 85);
+  const recommendedCandidates = applications.filter(a => {
+    const score = a.aiMatchScore ?? (a as any).screeningFitScore ?? (a as any).aiScore;
+    return typeof score === "number" && score >= 85;
+  }).map(a => ({
+    ...a,
+    aiMatchScore: a.aiMatchScore ?? (a as any).screeningFitScore ?? (a as any).aiScore,
+    candidateName: a.candidateName || (a as any).name,
+    candidateSkills: a.candidateSkills || (a as any).skills,
+    candidateExperience: a.candidateExperience || (a as any).experience
+  }));
 
   return (
     <div className="space-y-6" id="employer-ai-shortlist-page">
@@ -68,7 +77,7 @@ export default function EmployerAiShortlist({
                   {cand.candidateName || "Candidate"}
                 </h3>
                 <p className="text-xs text-slate-400 font-medium">{cand.jobTitle}</p>
-                <span className="text-[11px] text-blue-300 font-mono">{cand.candidateExperience || "3+ Yrs Exp"}</span>
+                <span className="text-[11px] text-blue-300 font-mono">{cand.candidateExperience || "Experience not provided"}</span>
               </div>
 
               {/* Match breakdown chips */}
