@@ -822,6 +822,19 @@ router.post("/screening-summary", async (req, res) => {
       return res.status(404).json({ success: false, error: "No matching real application was found for this job and candidate." });
     }
     const applicationData = applicationSnap.docs[0].data() || {};
+    const jobSnap = await db.collection("jobs").doc(jobId).get();
+    if (!jobSnap.exists) {
+      return res.status(404).json({ success: false, error: "The actual job posting for this application no longer exists." });
+    }
+    const actualJob: any = jobSnap.data() || {};
+    const verifiedJobTitle = String(actualJob.title || "").trim();
+    const verifiedCompanyName = String(actualJob.companyName || actualJob.company || "").trim();
+    const verifiedJobDescription = String(actualJob.description || actualJob.jobDescription || "").trim();
+    const verifiedRequirements = String(actualJob.requirements || actualJob.qualification || "").trim();
+    const verifiedSkillsRequired = Array.isArray(actualJob.skillsRequired) ? actualJob.skillsRequired : Array.isArray(actualJob.skills) ? actualJob.skills : [];
+    const verifiedCandidateName = String(applicationData.candidateName || candidateName || "Candidate");
+    const verifiedCandidateExperience = applicationData.candidateExperience ?? applicationData.experience ?? candidateExperience ?? "";
+    const verifiedCandidateSkills = Array.isArray(applicationData.candidateSkills) ? applicationData.candidateSkills : Array.isArray(applicationData.skills) ? applicationData.skills : [];
     const verifiedResponses = applicationData.screeningResponses || applicationData.screeningAnswers || applicationData.responses || [];
     if (!Array.isArray(verifiedResponses) || !verifiedResponses.some((item: any) => item && typeof item.question === "string" && typeof item.answer === "string" && item.answer.trim())) {
       return res.status(400).json({ success: false, error: "This applicant has not submitted screening answers. No AI score or summary can be generated." });
@@ -859,18 +872,18 @@ router.post("/screening-summary", async (req, res) => {
 
         const prompt = `
 You are an expert technical recruiter and talent assessment evaluator for the AIJOBS recruitment platform.
-Evaluate this candidate's responses to job screening questions for the position of "${jobTitle}" at "${companyName}".
+Evaluate this candidate's responses to job screening questions for the position of "${verifiedJobTitle}" at "${verifiedCompanyName}".
 
 ROLE CONTEXT:
 - Job Title: ${jobTitle}
 - Company: ${companyName}
-- Required Skills: ${(skillsRequired || []).join(", ") || "Full Stack engineering competencies"}
-- Requirements/Description: ${requirements || jobDescription || "High-scale engineering and team collaboration"}
+- Required Skills: ${verifiedSkillsRequired.join(", ") || "Not specified in the job posting"}
+- Requirements/Description: ${verifiedRequirements || verifiedJobDescription || "Not specified in the job posting"}
 
 CANDIDATE PROFILE:
-- Name: ${candidateName}
-- Experience: ${candidateExperience || "Relevant industry experience"}
-- Skills: ${(candidateSkills || []).join(", ")}
+- Name: ${verifiedCandidateName}
+- Experience: ${verifiedCandidateExperience || "Not provided in candidate profile"}
+- Skills: ${verifiedCandidateSkills.join(", ") || "Not provided in candidate profile"}
 ${candidateResumeSnippet ? `- Resume Highlights: ${candidateResumeSnippet}` : ""}
 
 CANDIDATE SCREENING RESPONSES:
@@ -978,7 +991,7 @@ CRITICAL: Return STRICTLY a valid JSON object without markdown formatting or cod
           performedBy: "AI Screening Evaluator",
           jobId,
           candidateId,
-          details: `Screening parsed with Fit Score of ${parsedResult.fitScore}% (${parsedResult.fitLevel}) for ${candidateName}`
+          details: `Screening parsed with Fit Score of ${parsedResult.fitScore}% (${parsedResult.fitLevel}) for ${verifiedCandidateName}`
         });
       } catch (saveErr: any) {
         console.warn("[Screening Summary] Firestore write failed:", saveErr?.message);
