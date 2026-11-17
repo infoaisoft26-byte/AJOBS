@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, increment, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, increment, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { JobPosting, JobApplication } from "../types";
 import { NotificationService } from "./notificationService";
@@ -110,8 +110,11 @@ export async function applyToJob(
       jobTitle: job.title,
       companyId: job.companyId || job.employerId || "",
       companyName: job.companyName,
-      recruiterId: job.recruiterId || job.employerId || null,
-      employerId: job.employerId || null,
+      recruiterId: (job as any).assignedRecruiterId || job.recruiterId || job.createdBy || job.ownerUid || null,
+      employerId: job.employerId || job.companyId || job.ownerUid || job.createdBy || null,
+      ownerUid: job.ownerUid || job.createdBy || job.postedBy || job.employerId || job.companyId || null,
+      jobOwnerUid: job.ownerUid || job.createdBy || job.postedBy || job.employerId || job.companyId || null,
+      companyId: job.companyId || job.employerId || null,
       consultancyId: (job as any).consultancyId || ((job as any).consultancyUserId) || null,
       consultancyName: (job as any).consultancyName || (job as any).consultancy || null,
       assignedRecruiterId: null,
@@ -132,12 +135,24 @@ export async function applyToJob(
       jobId: job.id,
       jobTitle: job.title,
       candidateId: userId,
+      userId,
       candidateName: candidateName,
       candidateEmail: candidateEmail,
       candidatePhone: candidatePhone,
-      consultancyId: (job as any).consultancyId || null,
+      candidateLocation,
+      candidateExperience,
+      candidateSkills,
+      companyId: job.companyId || job.employerId || null,
+      companyName: job.companyName,
+      recruiterId: (job as any).assignedRecruiterId || job.recruiterId || job.createdBy || job.ownerUid || null,
+      employerId: job.employerId || job.companyId || job.ownerUid || job.createdBy || null,
+      ownerUid: job.ownerUid || job.createdBy || job.postedBy || job.employerId || job.companyId || null,
+      jobOwnerUid: job.ownerUid || job.createdBy || job.postedBy || job.employerId || job.companyId || null,
+      assignedRecruiterId: (job as any).assignedRecruiterId || null,
+      assignedRecruiterName: (job as any).assignedRecruiterName || null,
+      consultancyId: (job as any).consultancyId || (job as any).consultancyUserId || null,
       consultancyName: (job as any).consultancyName || (job as any).consultancy || null,
-      resumeUrl: resumeUrl || "No Resume Attached",
+      resumeUrl: resumeUrl || null,
       resumeScore: Number(profile?.resumeScore || 0),
       interviewScore: profile?.aiInterviewScore || 0,
       status: "applied",
@@ -164,10 +179,13 @@ export async function applyToJob(
       updatedAt: nowIso
     };
 
-    // Write documents to Firestore
-    await setDoc(doc(db, "applications", appId), newApp);
-    await setDoc(doc(db, "company_applications", appId), newCompanyApp);
-    await setDoc(doc(db, "leads", leadId), newLead);
+    // Atomically publish the same application to candidate, hiring workspace and CRM.
+    // There is no admin forwarding/approval gate for candidate applications.
+    const applicationBatch = writeBatch(db);
+    applicationBatch.set(doc(db, "applications", appId), newApp);
+    applicationBatch.set(doc(db, "company_applications", appId), newCompanyApp);
+    applicationBatch.set(doc(db, "leads", leadId), newLead);
+    await applicationBatch.commit();
 
     // Update job application counts in standard jobs collection safely
     try {
@@ -201,7 +219,7 @@ export async function applyToJob(
       const workspaceRecipients = Array.from(new Set([recruiterId, consultancyId].filter(Boolean)));
       await Promise.all(workspaceRecipients.map(recipientId => NotificationService.triggerEvent({
           userId: recipientId,
-          event: recipientId === consultancyId ? "JOB_APPLICATION_RECEIVED" : "NEW_APPLICATION",
+          event: "NEW_APPLICATION",
           title: "New Candidate Application",
           message: `${candidateName} applied for "${job.title}" at ${job.companyName}. Contact: ${candidatePhone || "not provided"}.`,
           type: "success",
