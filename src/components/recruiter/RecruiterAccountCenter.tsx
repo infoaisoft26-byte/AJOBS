@@ -35,12 +35,14 @@ export default function RecruiterAccountCenter({
   data,
   loading,
   error,
-  onRefresh
+  onRefresh,
+  onPurchasePlan
 }: {
   data: any;
   loading: boolean;
   error: string;
   onRefresh: () => void;
+  onPurchasePlan: () => void;
 }) {
   if (loading) {
     return (
@@ -193,8 +195,9 @@ export default function RecruiterAccountCenter({
           <Usage label="Job Posts" used={null} limit={sub.jobPostLimit} />
           <Usage label="Recruiter Seats" used={null} limit={sub.recruiterSeatLimit} />
         </div>
-        <div className="mt-4 p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/20 text-xs text-slate-300">
-          Existing paid plan details above are read directly from your subscription and payment records. New purchases must use AIJOBS secure checkout.
+        <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-cyan-500/5 border border-cyan-500/20">
+          <div className="text-xs text-slate-300">Review available recruiter plans, compare access limits and complete the agreement before secure payment. No plan is activated by simply opening this screen.</div>
+          <button type="button" onClick={onPurchasePlan} className="shrink-0 px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-black">View Plans & Purchase</button>
         </div>
       </Card>
     </div>
