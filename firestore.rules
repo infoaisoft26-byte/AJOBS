@@ -127,7 +127,9 @@ service cloud.firestore {
     
     // Jobs postings - visible to public/guests, writeable by recruiters/consultancies/admins
     match /jobs/{jobId} {
-      allow read: if resource.data.status in ['approved', 'Approved', 'Live', 'Published'] ||
+      // Keep public reads aligned with jobService.PUBLIC_JOB_STATUSES so Firestore
+      // can prove the homepage's status-filtered query is authorized.
+      allow read: if resource.data.status in ['approved', 'Approved', 'Published', 'Live', 'open', 'Open', 'active', 'Active', 'published', 'live'] ||
         isAdmin() || isJobReviewer() ||
         isOwner(resource.data.ownerUid) || isOwner(resource.data.createdBy) ||
         isOwner(resource.data.recruiterId) || isOwner(resource.data.employerId) ||
