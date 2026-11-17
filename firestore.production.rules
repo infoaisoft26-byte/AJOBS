@@ -32,7 +32,10 @@ service cloud.firestore {
     function ownsJob(data) {
       return isSignedIn() && (
         data.ownerUid == request.auth.uid || data.createdBy == request.auth.uid || data.postedBy == request.auth.uid ||
-        data.recruiterId == request.auth.uid || data.employerId == request.auth.uid || data.consultancyId == request.auth.uid
+        data.recruiterId == request.auth.uid || data.employerId == request.auth.uid || data.consultancyId == request.auth.uid ||
+        data.jobOwnerUid == request.auth.uid || data.assignedRecruiterId == request.auth.uid ||
+        (data.recruiterIds is list && data.recruiterIds.hasAny([request.auth.uid])) ||
+        (data.assignedRecruiterIds is list && data.assignedRecruiterIds.hasAny([request.auth.uid]))
       );
     }
     function ownsApplication(data) {
