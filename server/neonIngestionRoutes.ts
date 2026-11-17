@@ -58,9 +58,29 @@ export async function handleNeonIngestionRoute(req: Request, res: Response): Pro
         db.collection("candidateProfiles").doc(decoded.uid).get(),
         db.collection("candidate_profiles").doc(decoded.uid).get()
       ]);
+      const submitted = safeJson(req.body?.candidate || {});
       const user = userSnap.data() || {};
       const candidate = candidateSnap.data() || {};
-      const profile = { ...legacyProfileSnap.data(), ...candidateProfileSnap.data(), ...candidate, ...user };
+      const profile = { ...submitted, ...legacyProfileSnap.data(), ...candidateProfileSnap.data(), ...candidate, ...user };
+      const resolvedName = clean(user.fullName || user.name || candidate.fullName || candidate.name || submitted.fullName || submitted.name || decoded.name, 180);
+      if (!resolvedName || !clean(decoded.email || user.email || submitted.email, 254)) {
+        res.status(400).json({ success:false,error:"CANDIDATE_PROFILE_INCOMPLETE",message:"Name and verified Firebase email are required to sync a candidate profile." }); return true;
+      }
+      const now = new Date().toISOString();
+      const candidateId = clean(user.candidateId || candidate.candidateId || submitted.candidateId, 100) || "AIJ-CAN-" + decoded.uid.slice(0,8).toUpperCase();
+      const repairedUser = {
+        ...safeJson(submitted), ...safeJson(user), uid:decoded.uid, candidateId,
+        name:resolvedName, fullName:resolvedName, email:clean(decoded.email || user.email || submitted.email,254).toLowerCase(),
+        role:"candidate", emailVerified:decoded.email_verified === true, verificationStatus:decoded.email_verified === true ? "verified" : "pending",
+        status:user.status || "active", accountStatus:user.accountStatus || "active", isActive:user.isActive !== false,
+        createdAt:user.createdAt || candidate.createdAt || now, updatedAt:now
+      };
+      const repairedCandidate = { ...safeJson(submitted), ...safeJson(candidate), ...repairedUser, userId:decoded.uid, skills:candidate.skills || submitted.skills || [], education:candidate.education || submitted.education || [], experience:candidate.experience || submitted.experience || [] };
+      const repairBatch = db.batch();
+      repairBatch.set(db.collection("users").doc(decoded.uid), repairedUser, { merge:true });
+      repairBatch.set(db.collection("candidates").doc(decoded.uid), repairedCandidate, { merge:true });
+      repairBatch.set(db.collection("candidateProfiles").doc(decoded.uid), repairedCandidate, { merge:true });
+      await repairBatch.commit();
       const role = roleOf(user.role || candidate.role || "candidate");
       if (!["candidate","jobseeker","job_seeker"].includes(role)) {
         res.status(403).json({ success:false,error:"CANDIDATE_ROLE_REQUIRED" }); return true;
