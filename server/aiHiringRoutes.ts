@@ -1,6 +1,7 @@
 import express from "express";
 import { getFirestoreDb } from "./firestoreHelper.js";
 import { GoogleGenAI } from "@google/genai";
+import { neon } from "@neondatabase/serverless";
 import mammoth from "mammoth";
 import { dispatchEmail } from "./emailService.js";
 
@@ -12,6 +13,18 @@ router.get("/health", (_req, res) => {
 });
 
 const AI_MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+
+async function recordAiEngineRun(input: { id: string; task: string; userId?: string; jobId?: string; applicationId?: string; status: string; durationMs?: number; result?: any; errorCode?: string }) {
+  if (!process.env.DATABASE_URL) return;
+  try {
+    const sql = neon(process.env.DATABASE_URL);
+    await sql`INSERT INTO ai_engine_runs (id,provider,model,task,user_id,job_id,application_id,status,duration_ms,result,error_code)
+      VALUES (${input.id},'google-gemini',${AI_MODEL},${input.task},${input.userId || null},${input.jobId || null},${input.applicationId || null},${input.status},${input.durationMs || null},${JSON.stringify(input.result || {})}::jsonb,${input.errorCode || null})
+      ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status,duration_ms=EXCLUDED.duration_ms,result=EXCLUDED.result,error_code=EXCLUDED.error_code`;
+  } catch (error: any) {
+    console.warn("[AI Engine] Neon run logging deferred:", error?.message || error);
+  }
+}
 
 const ai = process.env.GEMINI_API_KEY
   ? new GoogleGenAI({
@@ -1000,6 +1013,15 @@ CRITICAL: Return STRICTLY a valid JSON object without markdown formatting or cod
           console.warn("[Screening Summary] Legacy application mirror sync skipped:", appErr?.message);
         }
 
+        await recordAiEngineRun({
+          id: "screening:" + applicationSnap.docs[0].id + ":" + Date.now(),
+          task: "candidate_screening",
+          userId: candidateId,
+          jobId,
+          applicationId: applicationSnap.docs[0].id,
+          status: "succeeded",
+          result: { fitScore: parsedResult.fitScore, fitLevel: parsedResult.fitLevel, recommendation: parsedResult.recommendation }
+        });
         await recordHiringAuditLog({
           action: "AI_SCREENING_PARSED",
           performedBy: "AI Screening Evaluator",
