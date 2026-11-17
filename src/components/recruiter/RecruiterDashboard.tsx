@@ -345,7 +345,7 @@ export default function RecruiterDashboard({
                 </div>
                 <div className="hidden sm:block text-left">
                   <div className="text-xs font-bold text-white truncate max-w-[120px]">{userName}</div>
-                  <div className="text-[10px] text-slate-400 truncate">Pro Recruiter</div>
+                  <div className="text-[10px] text-slate-400 truncate">Recruiter Workspace</div>
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
               </button>
