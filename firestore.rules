@@ -300,14 +300,20 @@ service cloud.firestore {
       allow read, update, delete: if isSignedIn();
     }
     match /support_tickets/{ticketId} {
-      allow read, write: if true;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId);
+      allow delete: if isAdmin();
     }
     match /support/{ticketId} {
-      allow read, write: if true;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId);
+      allow delete: if isAdmin();
     }
     match /settings/{docId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if isAdmin();
     }
     match /system_settings/{docId} {
       allow read: if true;
@@ -332,10 +338,12 @@ service cloud.firestore {
     
     // Payments & Subscriptions
     match /payments/{paymentId} {
-      allow read, write: if isSignedIn();
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create, update, delete: if isAdmin();
     }
     match /subscriptions/{subscriptionId} {
-      allow read, write: if isSignedIn();
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create, update, delete: if isAdmin();
     }
     
     // CMS Contents
@@ -358,7 +366,7 @@ service cloud.firestore {
     // Social links
     match /social_links/{linkId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if isAdmin();
     }
     
     // Clients
@@ -498,15 +506,15 @@ service cloud.firestore {
     }
     match /company_info/{infoId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if isAdmin();
     }
     match /global_config/{configId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if isAdmin();
     }
     match /global_socials/{socialId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if isAdmin();
     }
     match /prompt_templates/{templateId} {
       allow read: if isSignedIn();
@@ -525,8 +533,8 @@ service cloud.firestore {
 
     // Employee Attendance & Payroll System Collections
     match /employees/{employeeId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read: if isAdmin() || isOwner(employeeId) || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow write: if isAdmin();
     }
 
     match /attendance/{attendanceId} {
@@ -649,8 +657,8 @@ service cloud.firestore {
 
     // Invoices collection
     match /invoices/{invoiceId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create, update, delete: if isAdmin();
     }
 
     // Plans collection
