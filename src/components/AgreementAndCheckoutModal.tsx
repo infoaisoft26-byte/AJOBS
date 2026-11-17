@@ -404,6 +404,17 @@ export default function AgreementAndCheckoutModal({
               <span>1. Confirm Corporate & Pricing Breakdown</span>
             </h3>
 
+            {loadingPlan ? (
+              <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300">Loading available plans…</div>
+            ) : plans.filter((p: any) => p.isActive !== false).length > 1 ? (
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-gray-300">Choose a recruiter plan</label>
+                <select value={selectedPlan?.planId || ""} onChange={(e) => { const next = plans.find((p: any) => p.planId === e.target.value && p.isActive !== false); if (next) { setSelectedPlan(next); setAgreement(null); setStep("plan"); setErrorMsg(""); } }} className="w-full rounded-xl border border-indigo-500/30 bg-[#111827] px-3 py-3 text-sm text-white focus:outline-none focus:border-cyan-400">
+                  {plans.filter((p: any) => p.isActive !== false).map((p: any) => <option key={p.planId} value={p.planId}>{p.planName} — ₹{p.totalAmount}</option>)}
+                </select>
+              </div>
+            ) : null}
+
             {/* Plan Card */}
             <div className="p-4 bg-white/5 border border-indigo-500/30 rounded-xl space-y-3">
               <div className="flex justify-between items-start">
