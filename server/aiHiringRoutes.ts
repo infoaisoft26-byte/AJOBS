@@ -751,6 +751,14 @@ router.post("/shortlist", async (req, res) => {
  */
 router.post("/screening-questions", async (req, res) => {
   try {
+    const authHeader = String(req.headers.authorization || "");
+    if (!authHeader.startsWith("Bearer ")) return res.status(401).json({ success:false,error:"AUTH_REQUIRED" });
+    const decoded: any = await getFirebaseAuth().verifyIdToken(authHeader.slice(7).trim(), true);
+    const userSnap = await getFirestoreDb().collection("users").doc(decoded.uid).get();
+    const callerRole = String(userSnap.data()?.role || "").toLowerCase().replace(/[\s-]+/g,"_");
+    if (!["candidate","jobseeker","job_seeker","recruiter","employer","consultancy","admin","superadmin","super_admin"].includes(callerRole)) {
+      return res.status(403).json({ success:false,error:"SCREENING_QUESTIONS_ACCESS_DENIED" });
+    }
     const { jobId } = req.body || {};
     if (!jobId || typeof jobId !== "string") {
       return res.status(400).json({ success: false, error: "A real job posting ID is required." });
@@ -765,6 +773,10 @@ router.post("/screening-questions", async (req, res) => {
     const jobDescription = String(job.description || job.jobDescription || "").trim();
     const requirements = String(job.requirements || job.qualification || "").trim();
     const skillsRequired = Array.isArray(job.skillsRequired) ? job.skillsRequired : Array.isArray(job.skills) ? job.skills : [];
+    const savedQuestions = Array.isArray(job.screeningQuestions) ? job.screeningQuestions.filter((item:any)=>item?.question && item?.category) : [];
+    if (savedQuestions.length === 5) {
+      return res.json({ success:true,questions:savedQuestions,jobId,jobTitle,cached:true });
+    }
     if (!ai) {
       return res.status(503).json({ success: false, error: "AI question generation is not configured. No generic questions will be substituted." });
     }
