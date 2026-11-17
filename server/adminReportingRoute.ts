@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import { neon } from "@neondatabase/serverless";
 import { getFirebaseAuth, getFirestoreDb } from "./firestoreHelper.js";
 
-function clean(value: unknown, max = 160) { return String(value ?? "").trim().slice(0, max); }
+const reportRequestLimits = new Map<string, { count: number; resetAt: number }>();\n\nfunction clean(value: unknown, max = 160) { return String(value ?? "").trim().slice(0, max); }
 function roleOf(value: unknown) { return clean(value, 60).toLowerCase().replace(/[\\s-]+/g, "_"); }
 function iso(value: any): string | null {
   if (!value) return null;
@@ -66,6 +66,14 @@ export async function handleAdminReportingRoute(req: Request, res: Response): Pr
       db.collection("admins").doc(decoded.uid).get()
     ]);
     const user = userSnap.data() || {}, admin = adminSnap.data() || {};
+    const nowMs = Date.now();
+    const limitKey = decoded.uid;
+    const currentLimit = reportRequestLimits.get(limitKey);
+    if (!currentLimit || nowMs > currentLimit.resetAt) reportRequestLimits.set(limitKey, { count: 1, resetAt: nowMs + 60000 });
+    else {
+      currentLimit.count += 1;
+      if (currentLimit.count > 90) { res.status(429).json({ success:false,error:"RATE_LIMITED",message:"Too many report requests. Please wait one minute." }); return true; }
+    }
     const role = roleOf(user.role || decoded.role || admin.role || admin.level || (adminSnap.exists ? "admin" : ""));
     const active = user.isActive !== false && admin.isActive !== false && ![user.status, user.accountStatus, admin.status].some(v => ["disabled","suspended","blocked","inactive"].includes(roleOf(v)));
     if (!["admin","superadmin","super_admin"].includes(role) || !active) {
