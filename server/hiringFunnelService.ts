@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import type { Request, Response } from "express";
 import { getFirebaseAuth, getFirestoreDb } from "./firestoreHelper.js";
+import { sendGoogleIndexingNotification } from "./googleIndexingService.js";
 
 const SITE_URL = "https://aijobs1.in";
 const ALLOWED_ROLES = new Set(["employer", "recruiter", "consultancy"]);
@@ -377,9 +378,26 @@ export async function handleHiringFunnelApi(req: Request, res: Response): Promis
     }
 
     if (req.method === "GET" && path === "/api/hire/jobs") {
-      const { decoded, db } = await requireHiringUser(req);
-      const snap = await db.collection("jobs").where("ownerUid", "==", decoded.uid).get();
-      const jobs = snap.docs.map((d: any) => ({ id: d.id, ...d.data() })).sort((a: any, b: any) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+      const { decoded, profile, db } = await requireHiringUser(req);
+      const linkedConsultancyId = text(profile.consultancyId || profile.assignedConsultancyId || profile.parentConsultancyId, 160);
+      const snap = await db.collection("jobs").get();
+      const jobs = snap.docs
+        .map((d: any) => ({ id: d.id, ...d.data() }))
+        .filter((job: any) => {
+          const directOwners = [
+            job.ownerUid, job.createdBy, job.postedBy, job.employerId,
+            job.recruiterId, job.consultancyId, job.jobOwnerUid,
+            job.assignedRecruiterId
+          ].filter(Boolean);
+          const assignedRecruiters = [
+            ...(Array.isArray(job.recruiterIds) ? job.recruiterIds : []),
+            ...(Array.isArray(job.assignedRecruiterIds) ? job.assignedRecruiterIds : [])
+          ];
+          return directOwners.includes(decoded.uid) ||
+            assignedRecruiters.includes(decoded.uid) ||
+            Boolean(linkedConsultancyId && job.consultancyId === linkedConsultancyId);
+        })
+        .sort((a: any, b: any) => String(b.createdAt || b.submittedAt || "").localeCompare(String(a.createdAt || a.submittedAt || "")));
       return void res.json({ success: true, jobs }) as any;
     }
 
@@ -403,12 +421,68 @@ export async function handleHiringFunnelApi(req: Request, res: Response): Promis
       if (action === "approve") {
         const slug = slugify(job.title || "job", jobId);
         const publicUrl = `${SITE_URL}/jobs/${slug}`;
-        await ref.set({ status: "approved", approvalStatus: "approved", approved: true, reviewedBy: decoded.uid, reviewedAt: now, approvedAt: now, datePosted: now.slice(0,10), slug, canonicalUrl: publicUrl, publicUrl, googleIndexing: { status: "PENDING", submittedAt: now, lastAttemptAt: now, response: null, error: null }, updatedAt: now }, { merge: true });
+        await ref.set({
+          status: "approved", approvalStatus: "approved", approved: true,
+          reviewedBy: decoded.uid, reviewedAt: now, approvedAt: now,
+          publishedAt: now, datePosted: now.slice(0, 10),
+          slug, canonicalUrl: publicUrl, publicUrl,
+          googleIndexing: { status: "PENDING", submittedAt: null, lastAttemptAt: null, response: null, error: null },
+          updatedAt: now
+        }, { merge: true });
         await Promise.all([
-          writeEvent(db, job.ownerUid || job.createdBy || "unknown", "job_approved", { jobId, dedupeKey: `job_approved:${jobId}` }),
-          job.ownerUid ? db.collection("notifications").add(notificationDoc(job.ownerUid, "Job approved", `Your job “${job.title}” is now live on AIJOBS.`, publicUrl)) : Promise.resolve()
+          writeEvent(db, job.ownerUid || job.createdBy || job.postedBy || "unknown", "job_approved", { jobId, dedupeKey: `job_approved:${jobId}` }),
+          (job.ownerUid || job.createdBy || job.postedBy)
+            ? db.collection("notifications").add(notificationDoc(job.ownerUid || job.createdBy || job.postedBy, "Job approved", `Your job “${job.title || job.jobTitle || "job"}” is now live on AIJOBS.`, publicUrl))
+            : Promise.resolve()
         ]);
-        return void res.json({ success: true, status: "approved", publicUrl, indexingQueued: true }) as any;
+
+        const seoProblems: string[] = [];
+        if (!text(job.title || job.jobTitle, 160)) seoProblems.push("missing title");
+        if (!text(job.companyName || job.hiringOrganizationName, 180)) seoProblems.push("missing company");
+        if (!text(job.description || job.jobDescription, 12000)) seoProblems.push("missing description");
+        const isRemote = normalizeRole(job.workMode) === "remote" || normalizeRole(job.jobLocationType) === "telecommute";
+        if (!isRemote && !text(job.location || job.jobLocation || job.city, 180)) seoProblems.push("missing location");
+        if (isRemote && !text(job.country || job.countryCode, 80)) seoProblems.push("missing remote-work country");
+
+        let indexing: any = {
+          success: false,
+          responseCode: 0,
+          message: seoProblems.length
+            ? `Google Jobs requirements incomplete: ${seoProblems.join(", ")}.`
+            : "Google Indexing API request was not completed."
+        };
+        if (!seoProblems.length) {
+          try {
+            indexing = await sendGoogleIndexingNotification(
+              { id: jobId, title: text(job.title || job.jobTitle, 160), slug, canonicalUrl: publicUrl },
+              "URL_UPDATED",
+              decoded.email || decoded.uid
+            );
+          } catch (indexError: any) {
+            indexing = { success: false, responseCode: 500, message: indexError?.message || "Google indexing request failed." };
+          }
+        }
+        const indexingStatus = indexing.success
+          ? "SUCCESS"
+          : (String(indexing.message || "").toLowerCase().includes("credentials missing") ? "SKIPPED_MISSING_CREDENTIALS" : "FAILED");
+        await ref.set({
+          googlePublishingStatus: indexing.success ? "SUBMITTED" : indexingStatus,
+          googleIndexing: {
+            status: indexingStatus,
+            submittedAt: indexing.success ? new Date().toISOString() : null,
+            lastAttemptAt: new Date().toISOString(),
+            response: { code: indexing.responseCode, message: indexing.message, logId: indexing.logId || null },
+            error: indexing.success ? null : indexing.message
+          },
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+        return void res.json({
+          success: true,
+          status: "approved",
+          publicUrl,
+          indexingQueued: false,
+          indexing: { status: indexingStatus, success: Boolean(indexing.success), responseCode: indexing.responseCode, message: indexing.message }
+        }) as any;
       }
       if (action === "reject") {
         const reason = text(req.body?.reason, 2000);
