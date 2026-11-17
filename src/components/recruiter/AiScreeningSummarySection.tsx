@@ -85,7 +85,7 @@ export default function AiScreeningSummarySection({
   companyName,
   jobDescription = "",
   requirements = "",
-  skillsRequired = ["React", "TypeScript", "Node.js", "System Design"],
+  skillsRequired = [],
   screeningQuestions = [],
   onUpdateCandidateStage,
   onOpenLiveChat,
@@ -312,7 +312,7 @@ ${selectedCandidate.screeningResult.concerns.map(c => `• ${c}`).join("\n")}
             onClick={() => parseCandidateScreening(selectedCandidate, true)}
             disabled={isParsing}
             className="px-3.5 py-2 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-xs font-bold text-purple-200 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
-            title="Re-run Gemini evaluation on candidate screening answers"
+            title="Re-run AI evaluation using saved candidate answers"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isParsing ? "animate-spin text-cyan-400" : "text-purple-400"}`} />
             <span>{isParsing ? "Evaluating..." : "Re-Analyze"}</span>
@@ -346,7 +346,7 @@ ${selectedCandidate.screeningResult.concerns.map(c => `• ${c}`).join("\n")}
             <Users className="w-3.5 h-3.5 text-cyan-400" />
             <span>Select Candidate for Mandate Screening:</span>
           </span>
-          <span>{candidates.length} Applicants Evaluated</span>
+          <span>{candidates.length} Real Applicants</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
