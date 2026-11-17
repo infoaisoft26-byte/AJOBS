@@ -24,7 +24,14 @@ function asDate(value: any): Date | null {
 function asIsoDate(value: any, fallback = new Date()) { return (asDate(value) || fallback).toISOString().slice(0, 10); }
 function isLive(job: any) {
   const normalized = status(job.status);
-  if (!PUBLIC_STATES.has(normalized) || BLOCKED.has(normalized) || job.approved === false) return false;
+  const id = String(job.id || "").toLowerCase();
+  const title = String(job.title || job.jobTitle || "").trim().toLowerCase();
+  const company = String(job.companyName || job.hiringOrganizationName || "").trim().toLowerCase();
+  const markedDemo = job.isDemo === true || job.isSample === true || job.isMock === true || job.seeded === true ||
+    /^(demo_|job_demo_|sample_|mock_)/.test(id) ||
+    /^(demo|sample|mock)\b/.test(title) || /^(demo|sample|mock)\b/.test(company) ||
+    /^(techcorp|example company|demo company|test company)$/.test(company);
+  if (markedDemo || !PUBLIC_STATES.has(normalized) || BLOCKED.has(normalized) || job.approved === false) return false;
   const expiry = asDate(job.validThrough || job.expiryDate || job.applyDeadline);
   if (expiry && expiry.getTime() < Date.now()) return false;
   return job.isPublic !== false && job.publicVisibility !== false && job.visibility !== "private";
