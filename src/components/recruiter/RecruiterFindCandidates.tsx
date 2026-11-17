@@ -7,6 +7,7 @@ import { RecruiterJob } from "./RecruiterTypes";
 interface RecruiterFindCandidatesProps {
   userId: string;
   assignedJobs: RecruiterJob[];
+  onAssigned?: () => void;
   onOpenLiveChat?: (id: string, name: string) => void;
 }
 
@@ -22,7 +23,7 @@ interface RealCandidate {
   summary: string;
 }
 
-export default function RecruiterFindCandidates({ userId, assignedJobs, onOpenLiveChat }: RecruiterFindCandidatesProps) {
+export default function RecruiterFindCandidates({ userId, assignedJobs, onAssigned, onOpenLiveChat }: RecruiterFindCandidatesProps) {
   const [search, setSearch] = useState("");
   const [location, setLocation] = useState("all");
   const [selectedJobId, setSelectedJobId] = useState("");
@@ -109,6 +110,7 @@ export default function RecruiterFindCandidates({ userId, assignedJobs, onOpenLi
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.success) throw new Error(data.message || data.error || "Candidate could not be assigned.");
       setAssignedKeys(previous => [...previous, key]);
+      onAssigned?.();
     } catch (err: any) {
       setError(err?.message || "Candidate assignment failed.");
     } finally {
