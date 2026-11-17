@@ -805,6 +805,7 @@ Return strictly valid JSON only:
       screeningQuestionsGeneratedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }, { merge: true });
+    await recordAiEngineRun({ id:"screening-questions:" + jobId + ":" + Date.now(), task:"job_screening_questions", userId:decoded.uid, jobId, status:"succeeded", result:{ questionCount:parsed.categories.length } });
     return res.json({ success: true, questions: parsed.categories, jobId, jobTitle });
   } catch (err: any) {
     console.error("[Screening Questions] Job-specific generation failed:", err?.message || err);
