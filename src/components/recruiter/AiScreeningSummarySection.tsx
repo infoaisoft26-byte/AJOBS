@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { db } from "../../firebase";
 import { 
   Sparkles, 
   Brain, 
@@ -88,134 +90,16 @@ export default function AiScreeningSummarySection({
   onUpdateCandidateStage,
   onOpenLiveChat,
 }: AiScreeningSummarySectionProps) {
-  // Built-in verified candidate pool for this mandate if none loaded from Firestore
-  const defaultQuestions = screeningQuestions && screeningQuestions.length > 0 
-    ? screeningQuestions 
-    : [
-        "How do you manage complex asynchronous state and side effects in React 18 with TypeScript?",
-        "Walk us through your hands-on experience scaling PostgreSQL database queries, connection pooling, and indexing under high concurrent load.",
-        "Describe a time you diagnosed and mitigated an urgent production bottleneck or memory leak in a live system.",
-        "What is your official notice period, current vs expected CTC, and willingness for hybrid work?",
-        "How do you resolve technical disagreements or architecture trade-offs between product managers and engineering teams?"
-      ];
-
-  const initialCandidates: CandidateScreeningProfile[] = [
-    {
-      id: "cand_screen_1",
-      name: "Aarav Sharma",
-      role: "Lead Full Stack Architect",
-      experience: "6.5 Years",
-      skills: ["React", "TypeScript", "Node.js", "PostgreSQL", "AWS", "System Design"],
-      stage: "Shortlisted",
-      responses: [
-        {
-          question: defaultQuestions[0],
-          category: "Technical",
-          answer: "In React 18, I leverage TanStack Query (v5) for server state caching, background invalidation, and optimistic mutations. For client-only complex state, I structure domain slices via Zustand or XState with TypeScript strict mode to enforce predictable action transitions and prevent unmemoized re-renders."
-        },
-        {
-          question: defaultQuestions[1],
-          category: "Experience",
-          answer: "At HyperCloud, I optimized our multi-tenant PostgreSQL instances handling 45,000 req/min. We implemented PgBouncer connection pooling in transaction mode, refactored hot queries using EXPLAIN ANALYZE, added composite B-Tree indexes, and partitioned telemetry tables by month, reducing p99 database latency from 420ms to 24ms."
-        },
-        {
-          question: defaultQuestions[2],
-          category: "Scenario",
-          answer: "During a Black Friday spike, a Node.js microservice suffered heap exhaustion. I captured V8 heap snapshots via Chrome DevTools inspector in a staging mirror, identified uncollected event listener closures in a webhook dispatcher, patched the leak with WeakRefs, and deployed within 40 minutes with zero customer downtime."
-        },
-        {
-          question: defaultQuestions[3],
-          category: "Logistics",
-          answer: "My current notice period is 15 days (buyout option confirmed by current HR). Current CTC is ₹26 LPA, expected is ₹30-32 LPA. I am based in Indiranagar, Bengaluru, and fully committed to a hybrid schedule (3 days on-site)."
-        },
-        {
-          question: defaultQuestions[4],
-          category: "Communication",
-          answer: "I structure technical trade-offs using decision records (ADRs) quantifying cost, velocity, and maintenance debt. Rather than saying 'no', I present 2-3 viable architectural pathways with clear risk matrices, allowing product leadership to make informed timeline versus capability compromises."
-        }
-      ]
-    },
-    {
-      id: "cand_screen_2",
-      name: "Sneha Deshmukh",
-      role: "Senior Frontend Engineer",
-      experience: "4.5 Years",
-      skills: ["React", "Next.js", "TypeScript", "Tailwind CSS", "Web Vitals"],
-      stage: "Screened",
-      responses: [
-        {
-          question: defaultQuestions[0],
-          category: "Technical",
-          answer: "I prefer combining React Context for scoped UI themes with React Server Components in Next.js App Router to push heavy logic to the server. For data fetching, SWR or TanStack Query provides automated cache revalidation and error boundaries."
-        },
-        {
-          question: defaultQuestions[1],
-          category: "Experience",
-          answer: "My backend experience is primarily Node.js Express APIs interacting with PostgreSQL via Prisma ORM. I ensure queries are parameterized and indexes exist on foreign keys, though primary database tuning was handled by our DBA team."
-        },
-        {
-          question: defaultQuestions[2],
-          category: "Scenario",
-          answer: "Identified client-side rendering bottlenecks where heavy bundle chunks were blocking First Contentful Paint. Refactored bloated dynamic import chains, lazy-loaded charts, and compressed SVG assets, elevating Lighthouse score from 48 to 94."
-        },
-        {
-          question: defaultQuestions[3],
-          category: "Logistics",
-          answer: "Notice period is 30 days. Current CTC ₹18 LPA, expected ₹22 LPA. Open to hybrid or remote work with regular visits to the Pune/Bengaluru office."
-        },
-        {
-          question: defaultQuestions[4],
-          category: "Communication",
-          answer: "I hold weekly alignment syncs between designers and engineers with Figma Dev Mode tokens, preventing last-minute UI inconsistencies."
-        }
-      ]
-    },
-    {
-      id: "cand_screen_3",
-      name: "Rohan Verma",
-      role: "Software Developer",
-      experience: "2.5 Years",
-      skills: ["React", "JavaScript", "HTML", "CSS", "Node.js"],
-      stage: "Applied",
-      responses: [
-        {
-          question: defaultQuestions[0],
-          category: "Technical",
-          answer: "I use Redux Toolkit or useState and useEffect to fetch data from APIs and update component state."
-        },
-        {
-          question: defaultQuestions[1],
-          category: "Experience",
-          answer: "I have used PostgreSQL for basic CRUD tables in university and my first junior developer role. I write standard SELECT queries with WHERE clauses."
-        },
-        {
-          question: defaultQuestions[2],
-          category: "Scenario",
-          answer: "When our site crashed once due to an infinite loop in a useEffect hook, I rolled back the Git commit and added a missing dependency."
-        },
-        {
-          question: defaultQuestions[3],
-          category: "Logistics",
-          answer: "Notice period is 60 days standard. Expected CTC is ₹14 LPA. Prefer remote."
-        },
-        {
-          question: defaultQuestions[4],
-          category: "Communication",
-          answer: "I listen to senior engineers and follow sprint tasks assigned in Jira."
-        }
-      ]
-    }
-  ];
-
-  const [candidates, setCandidates] = useState<CandidateScreeningProfile[]>(initialCandidates);
-  const [selectedCandidateId, setSelectedCandidateId] = useState<string>(initialCandidates[0].id);
+  const [candidates, setCandidates] = useState<CandidateScreeningProfile[]>([]);
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string>("");
+  const [isLoadingCandidates, setIsLoadingCandidates] = useState<boolean>(true);
   const [isParsing, setIsParsing] = useState<boolean>(false);
   const [parsingStep, setParsingStep] = useState<string>("");
   const [expandedQuestion, setExpandedQuestion] = useState<number | null>(0);
   const [copiedSummary, setCopiedSummary] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<"overview" | "breakdown" | "responses">("overview");
 
-  const selectedCandidate = candidates.find(c => c.id === selectedCandidateId) || candidates[0];
+  const selectedCandidate = candidates.find(c => c.id === selectedCandidateId);
 
   // Evaluate candidate responses automatically using the Gemini API endpoint
   const parseCandidateScreening = async (candidate: CandidateScreeningProfile, force = false) => {
@@ -358,8 +242,11 @@ ${selectedCandidate.screeningResult.concerns.map(c => `• ${c}`).join("\n")}
     }
   };
 
-  const badgeStyle = getScoreBadgeStyles(result ? result.fitScore : 88);
+  const badgeStyle = getScoreBadgeStyles(result?.fitScore ?? 0);
   const BadgeIcon = badgeStyle.icon;
+
+  if (isLoadingCandidates) return <div className="p-8 text-slate-300">Loading real applicants for this job…</div>;
+  if (!selectedCandidate) return <div className="p-8 text-slate-100">No real applications are recorded for this job yet. Demo candidates and placeholder scores are disabled.</div>;
 
   return (
     <div 
@@ -439,8 +326,8 @@ ${selectedCandidate.screeningResult.concerns.map(c => `• ${c}`).join("\n")}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {candidates.map((cand) => {
             const isSelected = cand.id === selectedCandidateId;
-            const candScore = cand.screeningResult?.fitScore ?? (cand.id === "cand_screen_1" ? 94 : cand.id === "cand_screen_2" ? 84 : 58);
-            const candStyle = getScoreBadgeStyles(candScore);
+            const candScore = cand.screeningResult?.fitScore ?? null;
+            const candStyle = getScoreBadgeStyles(candScore ?? 0);
 
             return (
               <button
@@ -467,7 +354,7 @@ ${selectedCandidate.screeningResult.concerns.map(c => `• ${c}`).join("\n")}
                 {/* Candidate Fit score badge preview */}
                 <div className="shrink-0 text-right">
                   <span className={`px-2 py-0.5 rounded-lg text-[11px] font-mono font-black border ${candStyle.bg} ${candStyle.border} ${candStyle.text}`}>
-                    {candScore}%
+                    {candScore === null ? "Not evaluated" : String(candScore) + "%"}
                   </span>
                   <p className="text-[9px] text-slate-500 font-mono mt-0.5">{cand.stage}</p>
                 </div>
@@ -506,7 +393,7 @@ ${selectedCandidate.screeningResult.concerns.map(c => `• ${c}`).join("\n")}
                 Overall Assessment
               </span>
               <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                ATS VERIFIED
+                {result ? "AI EVALUATED" : "NOT EVALUATED"}
               </span>
             </div>
 
@@ -539,7 +426,7 @@ ${selectedCandidate.screeningResult.concerns.map(c => `• ${c}`).join("\n")}
                   </svg>
                   <div className="text-center">
                     <span className="text-3xl font-black font-mono tracking-tight text-white">
-                      {result ? result.fitScore : 88}%
+                      {result ? String(result.fitScore) + "%" : "—"}
                     </span>
                   </div>
                 </div>
@@ -549,12 +436,12 @@ ${selectedCandidate.screeningResult.concerns.map(c => `• ${c}`).join("\n")}
               <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 border border-white/10 backdrop-blur-md">
                 <BadgeIcon className={`w-3.5 h-3.5 ${badgeStyle.text}`} />
                 <span className={`text-xs font-black tracking-wider uppercase ${badgeStyle.text}`}>
-                  {result ? result.fitLevel : "Strong Fit"}
+                  {result ? result.fitLevel : "Awaiting responses"}
                 </span>
               </div>
 
               <p className="text-[11px] text-slate-300 mt-2 font-mono">
-                {result?.recommendation || "Fast-track to Technical Interview"}
+                {result?.recommendation || "No screening decision recorded"}
               </p>
             </div>
 
