@@ -762,7 +762,7 @@ EDUCATION / TRADE: ${job.education || job.qualification || job.trade || "Not spe
 Return strictly valid JSON only:
 {"categories":[{"category":"Eligibility","question":"..."},{"category":"Role Knowledge","question":"..."},{"category":"Practical Scenario","question":"..."},{"category":"Safety / Quality","question":"..."},{"category":"Availability","question":"..."}]}
 `;
-    const response = await ai.models.generateContent({ model: "gemini-3.6-flash", contents: prompt });
+    const response = await ai.models.generateContent({ model: "gemini-3.8-flash", contents: prompt });
     const cleaned = (response.text || "").replace(/```json/gi, "").replace(/```/g, "").trim();
     const parsed = JSON.parse(cleaned);
     if (!Array.isArray(parsed.categories) || parsed.categories.length !== 5 || parsed.categories.some((item: any) => !item?.question || !item?.category)) {
