@@ -613,7 +613,7 @@ router.post("/review-decision", async (req, res) => {
     }
 
     const kycStatus = approved ? "verified" : isResubmit ? "resubmit_required" : "rejected";
-    const accountStatus = approved ? "active" : isResubmit ? "pending_kyc" : "rejected";
+    const accountStatus = approved ? "pending_activation" : isResubmit ? "pending_kyc" : "rejected";
     const reviewedByValue = reviewedBy || "Super Admin";
     const reason = rejectionReason || (approved ? "" : "Document mismatch or compliance issue.");
     const userPatch = {
@@ -622,7 +622,7 @@ router.post("/review-decision", async (req, res) => {
       kycStatus,
       verificationStatus: approved ? "approved" : kycStatus,
       approvalStatus: approved ? "approved" : kycStatus,
-      isApproved: approved,
+      isApproved: false,
       isActive: approved,
       onboardingCompleted: true,
       ...(approved ? { approvedAt: nowIso, approvedBy: reviewedByValue } : { rejectionReason: reason }),
