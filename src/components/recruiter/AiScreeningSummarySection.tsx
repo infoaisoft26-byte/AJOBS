@@ -146,7 +146,7 @@ export default function AiScreeningSummarySection({
       if (!response.ok) {
         response = await fetch("/api/hiring-agent/screening-summary", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: screeningHeaders,
           body: JSON.stringify(payload)
         });
       }
