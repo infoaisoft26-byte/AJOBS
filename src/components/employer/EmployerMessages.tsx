@@ -19,43 +19,7 @@ export default function EmployerMessages({
   initialRecipientId,
   initialRecipientName
 }: EmployerMessagesProps) {
-  const [conversations, setConversations] = useState([
-    {
-      id: initialRecipientId || "conv_1",
-      name: initialRecipientName || "Aarav Sharma",
-      role: "Senior React & TypeScript Engineer",
-      lastMsg: "Thank you for the update. I am ready for the technical round on Thursday.",
-      time: "10:45 AM",
-      unread: 0,
-      messages: [
-        { sender: "candidate", text: "Hello! Thank you for reviewing my application for the Senior React Engineer position.", time: "10:30 AM" },
-        { sender: "employer", text: "Hi Aarav, we were impressed with your experience with high-throughput UI design systems. We would love to schedule a technical round.", time: "10:40 AM" },
-        { sender: "candidate", text: "Thank you for the update. I am ready for the technical round on Thursday.", time: "10:45 AM" }
-      ]
-    },
-    {
-      id: "conv_2",
-      name: "Pooja Patel",
-      role: "Full Stack Node.js Developer",
-      lastMsg: "I have shared my updated GitHub repo with Docker setup.",
-      time: "Yesterday",
-      unread: 1,
-      messages: [
-        { sender: "candidate", text: "Hi, I have shared my updated GitHub repo with Docker setup.", time: "Yesterday" }
-      ]
-    },
-    {
-      id: "conv_3",
-      name: "Vikram Malhotra",
-      role: "AI / ML Solutions Engineer",
-      lastMsg: "Looking forward to speaking with the VP of Engineering.",
-      time: "Aug 16",
-      unread: 0,
-      messages: [
-        { sender: "candidate", text: "Looking forward to speaking with the VP of Engineering.", time: "Aug 16" }
-      ]
-    }
-  ]);
+  const [conversations, setConversations] = useState([]);
 
   const [activeConvId, setActiveConvId] = useState(conversations[0]?.id || "conv_1");
   const [inputMsg, setInputMsg] = useState("");
