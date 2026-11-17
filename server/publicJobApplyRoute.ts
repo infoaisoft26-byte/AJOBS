@@ -109,6 +109,7 @@ export async function handlePublicJobApplyRoute(req: Request, res: Response): Pr
 
     const leadRef = db.collection("candidate_leads").doc(leadId);
     const appRef = db.collection("applications").doc(applicationId);
+    const companyAppRef = db.collection("company_applications").doc(applicationId);
     let duplicate = false;
 
     await db.runTransaction(async (tx) => {
@@ -172,9 +173,46 @@ export async function handlePublicJobApplyRoute(req: Request, res: Response): Pr
         candidateAccountExists: Boolean(candidateId),
         jobOwnerUid: ownerUid,
         ownerUid,
-        recruiterId,
-        employerId,
+        jobOwnerUid: ownerUid,
+        companyId: clean(job.companyId || job.employerId, 160) || null,
+        recruiterId: clean(job.assignedRecruiterId || recruiterId || ownerUid, 160) || null,
+        employerId: clean(employerId || job.companyId || ownerUid, 160) || null,
+        assignedRecruiterId: clean(job.assignedRecruiterId, 160) || null,
+        assignedRecruiterName: clean(job.assignedRecruiterName, 120) || null,
         consultancyId,
+        appliedAt: now,
+        createdAt: now,
+        updatedAt: now,
+        consentToShareApplication: true,
+        consentAt: now
+      }, { merge: false });
+
+      tx.set(companyAppRef, {
+        id: applicationId,
+        applicationId,
+        jobId,
+        jobTitle: job.title || job.jobTitle || "",
+        companyId: clean(job.companyId || job.employerId, 160) || null,
+        companyName: job.companyName || job.hiringOrganizationName || "",
+        candidateId,
+        candidateLeadId: leadId,
+        candidateName: name,
+        candidateEmail: email,
+        candidatePhone: phoneDigits,
+        candidateLocation: location,
+        candidateExperience: experience,
+        qualification,
+        status: "applied",
+        source: "public_job_quick_apply",
+        ownerUid,
+        jobOwnerUid: ownerUid,
+        recruiterId: clean(job.assignedRecruiterId || recruiterId || ownerUid, 160) || null,
+        employerId: clean(employerId || job.companyId || ownerUid, 160) || null,
+        assignedRecruiterId: clean(job.assignedRecruiterId, 160) || null,
+        assignedRecruiterName: clean(job.assignedRecruiterName, 120) || null,
+        consultancyId,
+        consultancyName: job.consultancyName || null,
+        resumeUrl: null,
         appliedAt: now,
         createdAt: now,
         updatedAt: now,
@@ -188,9 +226,10 @@ export async function handlePublicJobApplyRoute(req: Request, res: Response): Pr
         updatedAt: job.updatedAt || now
       }, { merge: true });
 
-      if (ownerUid) {
-        tx.set(db.collection("notifications").doc(`quick_apply_${applicationId}`), {
-          userId: ownerUid,
+      const recipients = Array.from(new Set([ownerUid, recruiterId, employerId, consultancyId].filter(Boolean)));
+      for (const recipientId of recipients) {
+        tx.set(db.collection("notifications").doc(`quick_apply_${applicationId}_${recipientId}`), {
+          userId: recipientId,
           title: "New Candidate Application",
           message: `${name} applied for ${job.title || job.jobTitle || "your job"}.`,
           type: "application",
@@ -199,6 +238,14 @@ export async function handlePublicJobApplyRoute(req: Request, res: Response): Pr
           applicationId,
           candidateLeadId: leadId,
           createdAt: now
+        }, { merge: true });
+      }
+      if (candidateId) {
+        tx.set(db.collection("notifications").doc(`quick_apply_candidate_${applicationId}`), {
+          userId: candidateId,
+          title: "Application Submitted Successfully",
+          message: `Your application for ${job.title || job.jobTitle || "this job"} was sent to the hiring team.`,
+          type: "application", read: false, jobId, applicationId, createdAt: now
         }, { merge: true });
       }
     });
