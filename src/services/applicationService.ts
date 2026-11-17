@@ -108,7 +108,6 @@ export async function applyToJob(
       candidateSkills: candidateSkills,
       jobId: job.id,
       jobTitle: job.title,
-      companyId: job.companyId || job.employerId || "",
       companyName: job.companyName,
       recruiterId: (job as any).assignedRecruiterId || job.recruiterId || job.createdBy || job.ownerUid || null,
       employerId: job.employerId || job.companyId || job.ownerUid || job.createdBy || null,
@@ -213,10 +212,9 @@ export async function applyToJob(
     trackJobApplicationSubmitted(job.id, job.title, job.companyName);
 
     // 4. Trigger realtime notifications for every responsible workspace.
-    const recruiterId = job.recruiterId || job.employerId || job.createdBy || "";
     const consultancyId = (job as any).consultancyId || (job as any).consultancyUserId || "";
     try {
-      const workspaceRecipients = Array.from(new Set([recruiterId, consultancyId].filter(Boolean)));
+      const workspaceRecipients = Array.from(new Set([newApp.recruiterId, newApp.employerId, newApp.ownerUid, consultancyId].filter(Boolean)));
       await Promise.all(workspaceRecipients.map(recipientId => NotificationService.triggerEvent({
           userId: recipientId,
           event: "NEW_APPLICATION",
