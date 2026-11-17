@@ -184,7 +184,7 @@ export default function AiScreeningSummarySection({
         const saved = new Map<string, AiScreeningResult>();
         results[1]?.forEach((snap) => { const item = snap.data() as any; if (item.candidateId && typeof item.fitScore === "number") saved.set(item.candidateId, item); });
         const assignedForJob = results[0].docs.filter(snap => String(snap.data().jobId || "") === jobId);
-        const real = await Promise.all(assignedForJob.map(async (snap) => {
+        const real = (await Promise.all(assignedForJob.map(async (snap) => {
           const item = snap.data() as any;
           const candidateId = String(item.candidateId || item.userId || "");
           let profile: any = {};
@@ -207,7 +207,7 @@ export default function AiScreeningSummarySection({
           const validNested = nestedResult?.applicationId === snap.id && nestedResult?.sourceResponsesFingerprint === fingerprint ? nestedResult : undefined;
           const validSaved = savedResult?.applicationId === snap.id && savedResult?.sourceResponsesFingerprint === fingerprint ? savedResult : undefined;
           return { id: snap.id, candidateId, name: item.candidateName || profile.fullName || profile.name || profile.displayName || "Candidate", role: profile.currentTitle || profile.targetRole || profile.designation || jobTitle, experience: typeof exp === "number" ? String(exp) + " Years" : String(exp), skills: Array.isArray(skills) ? skills.filter((x: any) => typeof x === "string") : [], stage: item.status || "applied", responses, screeningResult: validNested || validSaved } as CandidateScreeningProfile;
-        })).filter((x) => x.id);
+        }))).filter((x) => x.id);
         if (!active) return;
         setCandidates(real);
         setSelectedCandidateId((current) => real.some(x => x.id === current) ? current : (real[0]?.id || ""));
