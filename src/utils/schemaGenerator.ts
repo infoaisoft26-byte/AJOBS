@@ -120,8 +120,10 @@ export function generateJobPostingSchema(job: JobPosting): Record<string, any> {
   const educationRequirement = String(job.qualification || job.education || "").trim();
   if (educationRequirement) schema.educationRequirements = educationRequirement;
 
-  const minExperience = Number(job.minimumExperience);
-  const maxExperience = Number(job.maximumExperience);
+  const hasMinExperience = job.minimumExperience !== undefined && job.minimumExperience !== null && String(job.minimumExperience).trim() !== "";
+  const hasMaxExperience = job.maximumExperience !== undefined && job.maximumExperience !== null && String(job.maximumExperience).trim() !== "";
+  const minExperience = hasMinExperience ? Number(job.minimumExperience) : Number.NaN;
+  const maxExperience = hasMaxExperience ? Number(job.maximumExperience) : Number.NaN;
   const experienceLabel = String(job.experience || "").trim();
   const experienceText = [
     Number.isFinite(minExperience) && minExperience >= 0 ? `${minExperience} years` : "",
