@@ -76,21 +76,21 @@ export async function handleNeonIngestionRoute(req: Request, res: Response): Pro
         createdAt:user.createdAt || candidate.createdAt || now, updatedAt:now
       };
       const repairedCandidate = { ...safeJson(submitted), ...safeJson(candidate), ...repairedUser, userId:decoded.uid, skills:candidate.skills || submitted.skills || [], education:candidate.education || submitted.education || [], experience:candidate.experience || submitted.experience || [] };
+      const role = roleOf(user.role || candidate.role || submitted.role || "candidate");
+      if (!["candidate","jobseeker","job_seeker"].includes(role)) {
+        res.status(403).json({ success:false,error:"CANDIDATE_ROLE_REQUIRED" }); return true;
+      }
       const repairBatch = db.batch();
       repairBatch.set(db.collection("users").doc(decoded.uid), repairedUser, { merge:true });
       repairBatch.set(db.collection("candidates").doc(decoded.uid), repairedCandidate, { merge:true });
       repairBatch.set(db.collection("candidateProfiles").doc(decoded.uid), repairedCandidate, { merge:true });
       await repairBatch.commit();
-      const role = roleOf(user.role || candidate.role || "candidate");
-      if (!["candidate","jobseeker","job_seeker"].includes(role)) {
-        res.status(403).json({ success:false,error:"CANDIDATE_ROLE_REQUIRED" }); return true;
-      }
-      const email = clean(decoded.email || user.email || candidate.email, 254).toLowerCase();
-      const displayName = clean(user.fullName || user.name || candidate.fullName || candidate.name || decoded.name, 180);
-      const createdAt = asIso(user.createdAt || candidate.createdAt) || new Date().toISOString();
+      const email = clean(decoded.email || user.email || candidate.email || submitted.email, 254).toLowerCase();
+      const displayName = clean(profile.fullName || profile.name || decoded.name, 180);
+      const createdAt = asIso(user.createdAt || candidate.createdAt || submitted.createdAt) || new Date().toISOString();
       const updatedAt = asIso(user.updatedAt || candidate.updatedAt) || new Date().toISOString();
-      const whatsappConsent = user.whatsappMarketingConsent === true || candidate.whatsappMarketingConsent === true || candidate.whatsappOptIn === true;
-      const emailConsent = user.emailMarketingConsent === true || candidate.emailMarketingConsent === true;
+      const whatsappConsent = profile.whatsappMarketingConsent === true || profile.whatsappOptIn === true;
+      const emailConsent = profile.emailMarketingConsent === true;
       const attribution = safeJson({
         acquisitionSource: user.acquisitionSource || candidate.acquisitionSource || user.source || "organic",
         registrationSource: user.registrationSource || candidate.registrationSource || "Direct Website",
