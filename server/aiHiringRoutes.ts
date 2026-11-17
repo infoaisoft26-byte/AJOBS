@@ -6,6 +6,13 @@ import { dispatchEmail } from "./emailService.js";
 
 const router = express.Router();
 
+router.get("/health", (_req, res) => {
+  const configured = Boolean(process.env.GEMINI_API_KEY && ai);
+  res.status(configured ? 200 : 503).json({ success: configured, provider: "Google Gemini", model: AI_MODEL, configured, engine: configured ? "active" : "missing_api_key" });
+});
+
+const AI_MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+
 const ai = process.env.GEMINI_API_KEY
   ? new GoogleGenAI({
       apiKey: process.env.GEMINI_API_KEY,
@@ -762,7 +769,7 @@ EDUCATION / TRADE: ${job.education || job.qualification || job.trade || "Not spe
 Return strictly valid JSON only:
 {"categories":[{"category":"Eligibility","question":"..."},{"category":"Role Knowledge","question":"..."},{"category":"Practical Scenario","question":"..."},{"category":"Safety / Quality","question":"..."},{"category":"Availability","question":"..."}]}
 `;
-    const response = await ai.models.generateContent({ model: "gemini-3.8-flash", contents: prompt });
+    const response = await ai.models.generateContent({ model: AI_MODEL, contents: prompt });
     const cleaned = (response.text || "").replace(/```json/gi, "").replace(/```/g, "").trim();
     const parsed = JSON.parse(cleaned);
     if (!Array.isArray(parsed.categories) || parsed.categories.length !== 5 || parsed.categories.some((item: any) => !item?.question || !item?.category)) {
@@ -932,7 +939,7 @@ CRITICAL: Return STRICTLY a valid JSON object without markdown formatting or cod
 `;
 
         const resp = await ai.models.generateContent({
-          model: "gemini-3.8-flash",
+          model: AI_MODEL,
           contents: prompt,
         });
 
@@ -943,7 +950,7 @@ CRITICAL: Return STRICTLY a valid JSON object without markdown formatting or cod
           .trim();
 
         parsedResult = JSON.parse(cleanJson);
-        parsedResult.modelUsed = "gemini-3.8-flash";
+        parsedResult.modelUsed = AI_MODEL;
         parsedResult.evaluatedAt = new Date().toISOString();
       } catch (geminiErr: any) {
         console.warn("[Screening Summary] Gemini evaluation failed:", geminiErr?.message);
