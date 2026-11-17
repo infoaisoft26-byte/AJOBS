@@ -173,9 +173,9 @@ export default function AiScreeningSummarySection({
         if (!recruiterId) { setCandidates([]); setSelectedCandidateId(""); return; }
         const assignedAppsQuery = query(collection(db, "applications"), where("assignedRecruiterId", "==", recruiterId));
         const screeningQuery = query(collection(db, "candidate_screenings"), where("jobId", "==", jobId));
-        const results = await Promise.all([getDocs(assignedAppsQuery), getDocs(screeningQuery)]);
+        const results = await Promise.all([getDocs(assignedAppsQuery), getDocs(screeningQuery).catch(() => null)]);
         const saved = new Map<string, AiScreeningResult>();
-        results[1].forEach((snap) => { const item = snap.data() as any; if (item.candidateId && typeof item.fitScore === "number") saved.set(item.candidateId, item); });
+        results[1]?.forEach((snap) => { const item = snap.data() as any; if (item.candidateId && typeof item.fitScore === "number") saved.set(item.candidateId, item); });
         const assignedForJob = results[0].docs.filter(snap => String(snap.data().jobId || "") === jobId);
         const real = await Promise.all(assignedForJob.map(async (snap) => {
           const item = snap.data() as any;
@@ -299,7 +299,7 @@ ${selectedCandidate.screeningResult.concerns.map(c => `• ${c}`).join("\n")}
       <div className="absolute -right-20 -top-20 w-72 h-72 bg-purple-600/15 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -left-20 -bottom-20 w-72 h-72 bg-cyan-600/15 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Top Header Bar with Gemini 3.8 badge and Live Controls */}
+      {/* Top Header Bar with live screening controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-purple-500/20 pb-5">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -326,7 +326,7 @@ ${selectedCandidate.screeningResult.concerns.map(c => `• ${c}`).join("\n")}
         <div className="flex items-center gap-2.5 shrink-0">
           <button
             onClick={() => parseCandidateScreening(selectedCandidate, true)}
-            disabled={isParsing}
+            disabled={isParsing || !selectedCandidate.responses.some(item => item.question?.trim() && item.answer?.trim())}
             className="px-3.5 py-2 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-xs font-bold text-purple-200 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
             title="Re-run AI evaluation using saved candidate answers"
           >
@@ -460,7 +460,7 @@ ${selectedCandidate.screeningResult.concerns.map(c => `• ${c}`).join("\n")}
                       stroke={badgeStyle.ring}
                       strokeWidth="6"
                       strokeDasharray={251.2}
-                      strokeDashoffset={251.2 - (251.2 * (result ? result.fitScore : 88)) / 100}
+                      strokeDashoffset={251.2 - (251.2 * (result?.fitScore ?? 0)) / 100}
                       strokeLinecap="round"
                       fill="transparent"
                       className="transition-all duration-1000 ease-out"
