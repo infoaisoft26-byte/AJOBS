@@ -534,7 +534,7 @@ ${selectedCandidate.screeningResult.concerns.map(c => `• ${c}`).join("\n")}
             </div>
             {onOpenLiveChat && (
               <button
-                onClick={() => onOpenLiveChat(selectedCandidate.id, selectedCandidate.name)}
+                onClick={() => onOpenLiveChat(selectedCandidate.candidateId || selectedCandidate.id, selectedCandidate.name)}
                 className="w-full py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-purple-500/30 text-slate-300 hover:text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
               >
                 <Send className="w-3.5 h-3.5 text-cyan-400" />
