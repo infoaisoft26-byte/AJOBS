@@ -318,7 +318,7 @@ export default function JobDetails({
           jobTitle={job.title}
           companyName={job.companyName}
           jobDescription={job.description}
-          requirements={job.requirements}
+          requirements={Array.isArray(job.requirements) ? job.requirements.join(", ") : job.requirements}
           skillsRequired={job.skillsRequired || []}
           screeningQuestions={(job as any).screeningQuestions}
           onUpdateCandidateStage={onUpdateCandidateStage}
