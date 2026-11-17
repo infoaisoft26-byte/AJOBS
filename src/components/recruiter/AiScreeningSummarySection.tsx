@@ -583,11 +583,7 @@ ${selectedCandidate.screeningResult.concerns.map(c => `• ${c}`).join("\n")}
                     <span>Demonstrated Strengths</span>
                   </span>
                   <ul className="space-y-2 text-xs text-slate-300">
-                    {(result?.strengths || [
-                      "Direct experience optimizing high-throughput PostgreSQL queries with PgBouncer and indexing",
-                      "Articulate explanation of React 18 concurrent state management and client-server boundaries",
-                      "Proven incident mitigation under production load with V8 heap analysis"
-                    ]).map((str, idx) => (
+                    {(result?.strengths || []).map((str, idx) => (
                       <li key={idx} className="flex items-start gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 mt-1.5" />
                         <span className="leading-snug">{str}</span>
@@ -603,10 +599,7 @@ ${selectedCandidate.screeningResult.concerns.map(c => `• ${c}`).join("\n")}
                     <span>Interviewer Probe Points</span>
                   </span>
                   <ul className="space-y-2 text-xs text-slate-300">
-                    {(result?.concerns || [
-                      "Validate notice period buyout feasibility with candidate's current employer",
-                      "Probe distributed transaction consistency patterns across microservices during round 2"
-                    ]).map((con, idx) => (
+                    {(result?.concerns || []).map((con, idx) => (
                       <li key={idx} className="flex items-start gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 mt-1.5" />
                         <span className="leading-snug">{con}</span>
@@ -633,14 +626,7 @@ ${selectedCandidate.screeningResult.concerns.map(c => `• ${c}`).join("\n")}
 
           {activeTab === "breakdown" && (
             <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
-              {(result?.questionBreakdown || selectedCandidate.responses.map((r, i) => ({
-                question: r.question,
-                candidateAnswer: r.answer,
-                category: r.category || "Technical",
-                score: i === 0 ? 94 : i === 1 ? 92 : i === 2 ? 96 : 88,
-                rating: "Exceeds Expectations",
-                analysis: "Clear real-world articulation with measurable outcomes and trade-offs."
-              }))).map((qb, idx) => {
+              {(result?.questionBreakdown || []).map((qb, idx) => {
                 const isExpanded = expandedQuestion === idx;
                 return (
                   <div
@@ -715,10 +701,10 @@ ${selectedCandidate.screeningResult.concerns.map(c => `• ${c}`).join("\n")}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-slate-400 font-mono border-t border-purple-500/20 pt-4">
         <div className="flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>Evaluation verified via server-side Gemini 3.8 Flash model with ATS rubric compliance.</span>
+          <span>{result?.modelUsed ? "AI evaluation: " + result.modelUsed : "No AI evaluation recorded."}</span>
         </div>
         <div className="flex items-center gap-3 text-slate-500">
-          <span>Evaluated: {result?.evaluatedAt ? new Date(result.evaluatedAt).toLocaleDateString() : "Just now"}</span>
+          <span>Evaluated: {result?.evaluatedAt ? new Date(result.evaluatedAt).toLocaleDateString() : "Not evaluated"}</span>
           <span>•</span>
           <span className="text-cyan-400 font-bold">AIJOBS Recruiter Suite</span>
         </div>
