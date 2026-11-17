@@ -236,6 +236,7 @@ export default function RecruiterOverview({
                 </div>
               </div>
             ))}
+            {tasks.length === 0 && <p className="text-xs text-slate-500 p-3">No recruiter tasks have been assigned.</p>}
           </div>
         </div>
       </div>
@@ -287,6 +288,7 @@ export default function RecruiterOverview({
                 </div>
               </div>
             ))}
+            {pipelineCandidates.filter(cand => typeof cand.aiScore === "number").length === 0 && <p className="text-xs text-slate-500 p-3">No saved AI match evaluations yet.</p>}
           </div>
         </div>
 
