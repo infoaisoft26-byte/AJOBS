@@ -50,6 +50,7 @@ import { handleCloudinarySignatureRoute } from "./server/cloudinarySignatureRout
 import { handleAgreementOtpRoute } from "./server/agreementOtpRoute.js";
 import { verifyWhatsAppWebhook, receiveWhatsAppWebhook, handleWhatsAppSendRoute } from "./server/whatsappAutomationService.js";
 import { handleAdminReportingRoute } from "./server/adminReportingRoute.js";
+import { handleNeonIngestionRoute } from "./server/neonIngestionRoutes.js";
 
 dotenv.config();
 
@@ -147,7 +148,9 @@ app.use("/api/", csrfMitigator);
 app.use(async (req: any, res: any, next: any) => {
   try {
     const handled = await handleAdminReportingRoute(req, res);
-    if (!handled && !res.headersSent) next();
+    if (handled || res.headersSent) return;
+    const neonHandled = await handleNeonIngestionRoute(req, res);
+    if (!neonHandled && !res.headersSent) next();
   } catch (error) { next(error); }
 });
 
