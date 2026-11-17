@@ -111,72 +111,7 @@ export default function RecruiterDashboard({
     }
   ]);
 
-  const [pipelineCandidates, setPipelineCandidates] = useState<PipelineCandidate[]>([
-    {
-      id: "cand_pipe_1",
-      name: "Aarav Sharma",
-      email: "aarav.sharma@example.com",
-      phone: "+91 98765 43210",
-      role: "Lead Full Stack Architect",
-      jobId: "mandate_1",
-      jobTitle: "Lead Full Stack Architect",
-      companyName: "HyperCloud SaaS",
-      experience: "6.5 Years",
-      location: "Bengaluru",
-      skills: ["React", "TypeScript", "Node.js", "System Design"],
-      aiScore: 96,
-      stage: "interview",
-      lastActivity: "Interview Scheduled for Thursday"
-    },
-    {
-      id: "cand_pipe_2",
-      name: "Sneha Deshmukh",
-      email: "sneha.d@example.com",
-      phone: "+91 91234 56789",
-      role: "Senior Frontend Engineer",
-      jobId: "mandate_2",
-      jobTitle: "Senior Frontend Engineer",
-      companyName: "FinTech Prime",
-      experience: "4.2 Years",
-      location: "Pune",
-      skills: ["React", "Next.js", "TypeScript", "Tailwind CSS"],
-      aiScore: 94,
-      stage: "shortlisted",
-      lastActivity: "Profile shared with hiring manager"
-    },
-    {
-      id: "cand_pipe_3",
-      name: "Vikram Malhotra",
-      email: "vikram.m@example.com",
-      phone: "+91 99887 76655",
-      role: "AI / ML Solutions Engineer",
-      jobId: "mandate_3",
-      jobTitle: "AI / ML Solutions Engineer",
-      companyName: "Nexus AI Labs",
-      experience: "3.5 Years",
-      location: "Delhi NCR",
-      skills: ["Python", "Gemini API", "FastAPI"],
-      aiScore: 92,
-      stage: "screened",
-      lastActivity: "Pre-screen cleared"
-    },
-    {
-      id: "cand_pipe_4",
-      name: "Karthik Ranganathan",
-      email: "karthik.r@example.com",
-      phone: "+91 98450 12345",
-      role: "Senior Frontend Engineer",
-      jobId: "mandate_2",
-      jobTitle: "Senior Frontend Engineer",
-      companyName: "FinTech Prime",
-      experience: "5.0 Years",
-      location: "Chennai",
-      skills: ["React", "TypeScript", "UI/UX"],
-      aiScore: 89,
-      stage: "new_lead",
-      lastActivity: "Lead assigned by admin"
-    }
-  ]);
+  const [pipelineCandidates, setPipelineCandidates] = useState<PipelineCandidate[]>([]);
 
   const loadAccountCenter = async () => {
     if (!userId) return;
