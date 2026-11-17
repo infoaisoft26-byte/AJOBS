@@ -2,8 +2,10 @@ import type { Request, Response } from "express";
 import { neon } from "@neondatabase/serverless";
 import { getFirebaseAuth, getFirestoreDb } from "./firestoreHelper.js";
 
-const reportRequestLimits = new Map<string, { count: number; resetAt: number }>();\n\nfunction clean(value: unknown, max = 160) { return String(value ?? "").trim().slice(0, max); }
-function roleOf(value: unknown) { return clean(value, 60).toLowerCase().replace(/[\\s-]+/g, "_"); }
+const reportRequestLimits = new Map<string, { count: number; resetAt: number }>();
+
+function clean(value: unknown, max = 160) { return String(value ?? "").trim().slice(0, max); }
+function roleOf(value: unknown) { return clean(value, 60).toLowerCase().replace(/[\s-]+/g, "_"); }
 function iso(value: any): string | null {
   if (!value) return null;
   try {
@@ -12,7 +14,7 @@ function iso(value: any): string | null {
   } catch { return null; }
 }
 function asRows(snapshot: any) { return snapshot?.docs?.map((doc: any) => ({ id: doc.id, ...(doc.data() || {}) })) || []; }
-function statusOf(value: any) { return clean(value?.status || value?.applicationStatus || "applied", 80).toLowerCase().replace(/[\\s-]+/g, "_"); }
+function statusOf(value: any) { return clean(value?.status || value?.applicationStatus || "applied", 80).toLowerCase().replace(/[\s-]+/g, "_"); }
 function isInRange(value: any, start: number | null, end: number | null) {
   if (!start && !end) return true;
   const time = iso(value) ? new Date(iso(value)!).getTime() : 0;
@@ -52,7 +54,7 @@ async function mirrorToNeon(sql: any, users: any[], jobs: any[], applications: a
 }
 
 export async function handleAdminReportingRoute(req: Request, res: Response): Promise<boolean> {
-  const path = String(req.url || "").split("?")[0].replace(/\\/+$/, "") || "/";
+  const path = String(req.url || "").split("?")[0].replace(/\/+$/, "") || "/";
   if (path !== "/api/admin/reports") return false;
   if (req.method !== "GET") { res.setHeader("Allow", "GET"); res.status(405).json({ success: false, error: "Method not allowed." }); return true; }
 
@@ -89,9 +91,9 @@ export async function handleAdminReportingRoute(req: Request, res: Response): Pr
     const page = Math.max(1, Math.min(10000, Number(q.page) || 1));
     const pageSize = Math.max(10, Math.min(100, Number(q.pageSize) || 25));
 
-    const names = ["users","jobs","applications","interviews","hiring_audit_logs","activity_logs","audit_logs","screening_evaluations"];
+    const names = ["users","jobs","applications","interviews","hiring_audit_logs","activity_logs","audit_logs","screening_evaluations","candidate_screenings"];
     const snaps = await Promise.all(names.map(name => db.collection(name).limit(name === "users" || name === "applications" ? 10000 : 5000).get().catch(() => null)));
-    const [usersRaw,jobsRaw,appsRaw,interviewsRaw,hiringAuditRaw,activityRaw,auditRaw,screeningRaw] = snaps.map(asRows);
+    const [usersRaw,jobsRaw,appsRaw,interviewsRaw,hiringAuditRaw,activityRaw,auditRaw,screeningRaw,candidateScreeningsRaw] = snaps.map(asRows);
     const users = usersRaw.map((u:any)=>({ ...u, role:roleOf(u.role || u.userType) }));
     const jobs = jobsRaw;
     const allApps = appsRaw;
@@ -118,7 +120,7 @@ export async function handleAdminReportingRoute(req: Request, res: Response): Pr
       if (jid) { const x=jobMap.get(jid)||{id:jid,title:clean(a.jobTitle,180),applications:0,shortlisted:0,interviews:0,hired:0}; x.applications++; const s=statusOf(a); if(s.includes("shortlist"))x.shortlisted++; if(s.includes("interview"))x.interviews++; if(["hired","joined","selected","offer"].includes(s))x.hired++; jobMap.set(jid,x); }
     }
     const interviewStatus = counts(filteredInterviews,(i:any)=>roleOf(i.status)||"scheduled");
-    const screeningResults = [...screeningRaw,...allApps.filter((a:any)=>a.screeningSummary || a.screeningResult || a.aiScreeningSummary).map((a:any)=>({id:a.id,applicationId:a.id,score:a.screeningScore || a.aiScreeningScore || null,outcome:a.screeningOutcome || a.screeningResult?.outcome || "evaluated",evaluatedAt:a.screeningEvaluatedAt || a.updatedAt}))];
+    const screeningResults = [...screeningRaw,...candidateScreeningsRaw,...allApps.filter((a:any)=>a.screeningSummary || a.screeningResult || a.aiScreeningSummary).map((a:any)=>({id:a.id,applicationId:a.id,score:a.screeningScore || a.aiScreeningScore || null,outcome:a.screeningOutcome || a.screeningResult?.outcome || "evaluated",evaluatedAt:a.screeningEvaluatedAt || a.updatedAt}))];
     const pagedApps = filteredApps.slice((page-1)*pageSize,page*pageSize);
     const pagedAudit = auditEvents.slice((page-1)*pageSize,page*pageSize);
 
@@ -132,8 +134,8 @@ export async function handleAdminReportingRoute(req: Request, res: Response): Pr
         const jobRows = jobs.map((j:any)=>({id:clean(j.id,180),owner_uid:clean(j.ownerUid || j.createdBy || j.postedBy,180),recruiter_id:clean(j.recruiterId,180),employer_id:clean(j.employerId || j.companyId,180),consultancy_id:clean(j.consultancyId,180),title:clean(j.title,240),company_name:clean(j.companyName,240),status:clean(j.status || "draft",60),location:clean(j.location,240),created_at:iso(j.createdAt),source_ref:clean(j.id,180),payload:toPayload(j)})).filter((x:any)=>x.id);
         const appRows = allApps.map((a:any)=>({id:clean(a.id,180),job_id:clean(a.jobId,180),candidate_id:clean(a.candidateId || a.userId,180),recruiter_id:clean(a.recruiterId || a.assignedRecruiterId,180),employer_id:clean(a.employerId || a.companyId,180),consultancy_id:clean(a.consultancyId,180),status:statusOf(a),applied_at:iso(a.appliedAt || a.createdAt),source_ref:clean(a.id,180),payload:toPayload(a)})).filter((x:any)=>x.id);
         const interviewRows = interviews.map((i:any)=>({id:clean(i.id,180),application_id:clean(i.applicationId || i.application_id,180),job_id:clean(i.jobId,180),candidate_id:clean(i.candidateId,180),recruiter_id:clean(i.recruiterId,180),employer_id:clean(i.employerId,180),status:clean(i.status || "scheduled",60),scheduled_at:iso(i.scheduledAt || i.interviewDate),source_ref:clean(i.id,180),payload:toPayload(i)})).filter((x:any)=>x.id);
-        const auditRows = auditEvents.slice(0,2000).map((a:any)=>({id:a.id,actor_uid:a.actorUid,actor_email:a.actorEmail,actor_role:a.actorRole,action:a.action,entity_type:a.entityType,entity_id:a.entityId,job_id:"",application_id:"",details:a.details,occurred_at:a.occurredAt,source_ref:a.id,payload:toPayload(a)})).filter((x:any)=>x.id);
-        const screeningRows = [...screeningRaw,...allApps.filter((a:any)=>a.screeningSummary || a.screeningResult || a.aiScreeningSummary)].map((s:any)=>({id:clean(s.id || s.evaluationId,180),application_id:clean(s.applicationId || s.application_id || (s.screeningSummary ? s.id : ""),180),job_id:clean(s.jobId,180),candidate_id:clean(s.candidateId,180),evaluated_by:clean(s.evaluatedBy || s.createdBy,180),score:Number.isFinite(Number(s.score ?? s.screeningScore ?? s.aiScreeningScore)) ? Number(s.score ?? s.screeningScore ?? s.aiScreeningScore) : null,outcome:clean(s.outcome || s.screeningOutcome || s.screeningResult?.outcome || "evaluated",80),evaluated_at:iso(s.evaluatedAt || s.screeningEvaluatedAt || s.updatedAt),payload:toPayload(s),source_ref:clean(s.id,180)})).filter((x:any)=>x.id && x.application_id);
+        const auditRows = auditEvents.slice(0,2000).map((a:any)=>({id:a.id,actor_uid:a.actorUid,actor_email:a.actorEmail,actor_role:a.actorRole,action:a.action,entity_type:a.entityType,entity_id:a.entityId,job_id:"",application_id:"",details:a.details,occurred_at:a.occurredAt || new Date().toISOString(),source_ref:a.id,payload:toPayload(a)})).filter((x:any)=>x.id);
+        const screeningRows = [...screeningRaw,...allApps.filter((a:any)=>a.screeningSummary || a.screeningResult || a.aiScreeningSummary)].map((s:any)=>({id:clean(s.id || s.evaluationId,180),application_id:clean(s.applicationId || s.application_id || (s.screeningSummary ? s.id : ""),180),job_id:clean(s.jobId,180),candidate_id:clean(s.candidateId,180),evaluated_by:clean(s.evaluatedBy || s.createdBy,180),score:Number.isFinite(Number(s.score ?? s.screeningScore ?? s.aiScreeningScore)) ? Number(s.score ?? s.screeningScore ?? s.aiScreeningScore) : null,outcome:clean(s.outcome || s.screeningOutcome || s.screeningResult?.outcome || "evaluated",80),evaluated_at:iso(s.evaluatedAt || s.screeningEvaluatedAt || s.updatedAt) || new Date().toISOString(),payload:toPayload(s),source_ref:clean(s.id,180)})).filter((x:any)=>x.id && x.application_id);
         await mirrorToNeon(sql,userRows,jobRows,appRows,interviewRows,auditRows,screeningRows);
         neonSync = "synced";
       } catch (error:any) { console.error("[AIJOBS reports] Neon mirror failed:",error?.message || error); neonSync="sync_failed"; }
