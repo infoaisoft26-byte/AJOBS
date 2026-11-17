@@ -602,6 +602,8 @@ export default function RecruiterDashboard({
 
               {activeTab === "find-candidates" && (
                 <RecruiterFindCandidates
+                  userId={userId}
+                  assignedJobs={assignedJobs}
                   onOpenLiveChat={handleOpenLiveChat}
                 />
               )}
