@@ -65,7 +65,7 @@ export default function RecruiterOverview({
     {
       title: "Interviews Scheduled",
       value: 0,
-      sub: "No verified interview data loaded",
+      sub: "Live interview records",
       icon: Calendar,
       color: "from-cyan-600/20 to-cyan-500/10",
       border: "border-cyan-500/30",
@@ -74,7 +74,7 @@ export default function RecruiterOverview({
     {
       title: "This Month's Placements",
       value: 0,
-      sub: "Verified placements only",
+      sub: "Verified placement records",
       icon: Trophy,
       color: "from-emerald-600/20 to-emerald-500/10",
       border: "border-emerald-500/30",
