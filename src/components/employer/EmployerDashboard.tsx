@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { collection, getDocs, doc, getDoc, updateDoc, setDoc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, updateDoc, setDoc, deleteDoc, query, where } from "firebase/firestore";
 import { db, auth } from "../../firebase";
 import HiringPanelLayout from "../hiring/HiringPanelLayout";
 import HiringOverview from "../hiring/HiringOverview";
@@ -97,33 +97,27 @@ export default function EmployerDashboard({
         }
       }
 
-      // 2. Jobs
-      const jobsSnap = await getDocs(collection(db, "jobs"));
-      const jobList: CompanyJob[] = [];
-      jobsSnap.forEach((d) => {
-        const jd = d.data() as CompanyJob;
-        if (!userId || jd.employerId === userId || jd.userId === userId || jd.companyId === userId || !jd.employerId) {
-          jobList.push({ id: d.id, ...jd });
-        }
+      // 2. Load the authenticated hiring workspace. The server applies ownership
+      // checks and returns only jobs and applications visible to this employer/recruiter.
+      const token = await auth.currentUser?.getIdToken(true);
+      if (!token) throw new Error("Please sign in again to load your hiring workspace.");
+      const workspaceResponse = await fetch("/api/hire/workspace", {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` }
       });
-
-      // Never fabricate a job when the employer has no published or submitted records.
+      const workspaceData = await workspaceResponse.json().catch(() => ({}));
+      if (!workspaceResponse.ok || workspaceData.success !== true) {
+        throw new Error(workspaceData.error || "Unable to load your hiring workspace.");
+      }
+      const jobList: CompanyJob[] = Array.isArray(workspaceData.jobs) ? workspaceData.jobs : [];
       setJobs(jobList);
-
-      // 3. Applications
-      const appsSnap = await getDocs(collection(db, "company_applications"));
-      const appList: CompanyApplication[] = [];
-      appsSnap.forEach((d) => {
-        const ad = d.data() as CompanyApplication;
-        if (jobList.some(j => j.id === ad.jobId) || ad.jobId === userId || !ad.jobId) {
-          appList.push({ id: d.id, ...ad });
-        }
-      });
-
+      const appList: CompanyApplication[] = Array.isArray(workspaceData.applications)
+        ? workspaceData.applications
+        : [];
       setApplications(appList);
 
       // 4. Interviews
-      const intSnap = await getDocs(collection(db, "company_interviews"));
+      const intSnap = await getDocs(query(collection(db, "company_interviews"), where("companyId", "==", userId)));
       const intList: CompanyInterview[] = [];
       intSnap.forEach((d) => {
         const idat = d.data() as CompanyInterview;
