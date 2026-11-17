@@ -209,6 +209,7 @@ export default function CandidateResumeUploader({
           updatedAt: nowIso
         }, { merge: true })
       ]);
+      if (auth.currentUser?.uid === effectiveUserId) void syncCandidateProfileToNeon().catch(err => console.warn("[ResumeUploader] Neon sync deferred:", err));
 
       trackResumeUploaded(file.type, "candidate_portal");
       trackProfileCompleted();
