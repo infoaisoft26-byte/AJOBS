@@ -109,7 +109,7 @@ export async function applyToJob(
       jobId: job.id,
       jobTitle: job.title,
       companyName: job.companyName,
-      recruiterId: (job as any).assignedRecruiterId || job.recruiterId || job.createdBy || job.ownerUid || null,
+      recruiterId: (job as any).assignedRecruiterId || job.recruiterId || null,
       employerId: job.employerId || job.companyId || job.ownerUid || job.createdBy || null,
       ownerUid: job.ownerUid || job.createdBy || job.postedBy || job.employerId || job.companyId || null,
       jobOwnerUid: job.ownerUid || job.createdBy || job.postedBy || job.employerId || job.companyId || null,
@@ -170,7 +170,7 @@ export async function applyToJob(
       jobId: job.id,
       jobTitle: job.title,
       company: job.companyName,
-      recruiter: job.employerId || job.createdBy || "Direct Employer",
+      recruiter: (job as any).assignedRecruiterId || job.recruiterId || "",
       consultancyId: (job as any).consultancyId || (job as any).consultancyUserId || null,
       consultancy: (job as any).consultancyName || job.consultancy || "Direct",
       currentStatus: "applied",
@@ -301,121 +301,31 @@ export async function updateApplicationStatus(
   }
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const nowIso = new Date().toISOString();
-    const appRef = doc(db, "applications", applicationId);
-    const appSnap = await getDoc(appRef);
-
-    if (!appSnap.exists()) {
-      return { success: false, message: "Application document not found." };
-    }
-
-    const appData = appSnap.data();
-    const updatePayload: Record<string, any> = {
-      status: newStatus,
-      updatedAt: nowIso
-    };
-
-    if (options?.interviewData) {
-      Object.assign(updatePayload, options.interviewData);
-    }
-
-    // Update primary applications doc
-    await updateDoc(appRef, updatePayload);
-
-    // Sync company_applications doc if exists
-    try {
-      await updateDoc(doc(db, "company_applications", applicationId), {
-        status: newStatus,
-        updatedAt: nowIso
-      });
-    } catch (e) {
-      // Non-blocking
-    }
-
-    // Log timeline
-    try {
-      const timelineId = `timeline_${Math.random().toString(36).substr(2, 9)}`;
-      await setDoc(doc(db, "applications", applicationId, "timeline", timelineId), {
-        id: timelineId,
-        applicationId,
-        previousStatus: appData.status || "applied",
-        newStatus,
-        changedBy: options?.actorId || auth.currentUser?.uid || "system",
-        changedByName: options?.actorName || auth.currentUser?.displayName || "Recruitment Team",
-        changedByRole: options?.actorRole || "recruiter",
-        remarks: options?.remarks || "",
-        createdAt: nowIso
-      });
-    } catch (timelineErr) {
-      console.warn("Timeline recording notice:", timelineErr);
-    }
-
-    // Create Candidate In-App Notification & Email Trigger
-    const candidateId = appData.candidateId || appData.userId;
-    const candidateName = appData.candidateName || "Candidate";
-    const candidateEmail = appData.candidateEmail || "";
-    const jobTitle = appData.jobTitle || "Job";
-    const companyName = appData.companyName || "Employer";
-
-    if (candidateId) {
-      let notifTitle = `Application Status Update`;
-      let notifMessage = `Your application for "${jobTitle}" at ${companyName} is now in ${newStatus}.`;
-      let notifType: "info" | "success" | "alert" | "warning" = "info";
-      let eventType: any = "APPLICATION_SUBMITTED";
-
-      if (newStatus === "shortlisted") {
-        notifTitle = "Application Shortlisted 🎉";
-        notifMessage = `Great news! Your profile for "${jobTitle}" at ${companyName} has been shortlisted by the recruiting team.`;
-        notifType = "success";
-        eventType = "NEW_JOB_MATCH";
-      } else if (newStatus === "interview") {
-        notifTitle = "Interview Scheduled 📅";
-        notifMessage = `An interview round has been scheduled for your application for "${jobTitle}" at ${companyName}.`;
-        notifType = "success";
-        eventType = "INTERVIEW_INVITATION";
-      } else if (newStatus === "selected") {
-        notifTitle = "Selected for Position 🌟";
-        notifMessage = `Congratulations! You have been selected for the role of "${jobTitle}" at ${companyName}.`;
-        notifType = "success";
-        eventType = "OFFER_LETTER_RECEIVED";
-      } else if (newStatus === "offer") {
-        notifTitle = "Offer Letter Released 💼";
-        notifMessage = `An official job offer has been released for "${jobTitle}" at ${companyName}! Please review details in your dashboard.`;
-        notifType = "success";
-        eventType = "OFFER_LETTER_RECEIVED";
-      } else if (newStatus === "joined") {
-        notifTitle = "Welcome Aboard 🚀";
-        notifMessage = `Your joining for "${jobTitle}" at ${companyName} is confirmed. Welcome to the team!`;
-        notifType = "success";
-      } else if (newStatus === "rejected") {
-        notifTitle = "Application Status Update";
-        notifMessage = `Thank you for your application for "${jobTitle}" at ${companyName}. The team has decided to proceed with other applicants for this opening.`;
-        notifType = "alert";
+    // Status changes must pass through the authenticated server route so the
+    // server can verify the employer/recruiter owns the job before writing.
+    const currentUser = auth.currentUser;
+    if (!currentUser) return { success: false, message: "Please sign in again." };
+    const token = await currentUser.getIdToken();
+    const response = await fetch(
+      `/api/hire/workspace/applications/${encodeURIComponent(applicationId)}/status`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          status: newStatus,
+          remarks: options?.remarks || "",
+          interviewData: options?.interviewData || undefined
+        })
       }
-
-      try {
-        await NotificationService.triggerEvent({
-          userId: candidateId,
-          event: eventType,
-          title: notifTitle,
-          message: notifMessage,
-          type: notifType,
-          recipientEmail: candidateEmail,
-          templateName: newStatus === "offer" ? "Offer Letter" : undefined,
-          templateVars: {
-            userName: candidateName,
-            jobTitle: jobTitle,
-            companyName: companyName,
-            offerLink: `/candidate/applications`
-          },
-          link: `/candidate/applications`
-        });
-      } catch (notifErr) {
-        console.warn("Transactional notification trigger error (non-fatal):", notifErr);
-      }
+    );
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result.success !== true) {
+      return { success: false, message: result.error || "Application status update failed." };
     }
-
-    return { success: true, message: `Application status updated to ${newStatus}.` };
+    return { success: true, message: `Application status updated to ${result.status || newStatus}.` };
   } catch (error: any) {
     console.error("Failed to update application status:", error);
     return { success: false, message: error.message || "Failed to update status." };
