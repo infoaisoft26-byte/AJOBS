@@ -124,21 +124,6 @@ export default function EmployerDashboard({
         intList.push({ id: d.id, ...idat });
       });
 
-      if (intList.length === 0) {
-        intList.push({
-          id: "int_sample_1",
-          jobId: jobList[0]?.id || "job_sample_1",
-          jobTitle: jobList[0]?.title || "Senior Full Stack Engineer",
-          candidateId: "cand_aarav",
-          candidateName: "Aarav Sharma",
-          candidateEmail: "aarav.sharma@domain.in",
-          dateTime: new Date(Date.now() + 86400000 * 2).toISOString(),
-          roundName: "Technical Deep Dive & Architecture",
-          interviewer: "Hiring Manager",
-          meetLink: "https://meet.google.com/aij-interview-01",
-          status: "scheduled"
-        });
-      }
       setInterviews(intList);
 
     } catch (err) {
