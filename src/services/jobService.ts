@@ -5,7 +5,7 @@ import { JobPosting } from "../types";
 import { generateJobSlug, getPublicJobUrl } from "../config/site";
 
 const JOBS_COLLECTION = "jobs";
-const PUBLIC_JOB_STATUSES = ["approved", "Approved", "published", "Published", "live", "Live", "open", "Open"];
+const PUBLIC_JOB_STATUSES = ["approved", "Approved", "Published", "Live", "open", "Open"];
 
 /**
  * Checks if a job listing appears to be a duplicate based on title, company, and location.
