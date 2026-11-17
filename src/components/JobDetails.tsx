@@ -11,7 +11,7 @@ import { saveJobToBookmarks, removeJobFromBookmarks } from "../services/savedJob
 import { useJobPostingSchema } from "../hooks/useJobPostingSchema";
 import { useToast } from "./GlobalToast";
 import AiScreeningSummarySection from "./recruiter/AiScreeningSummarySection";
-import CandidateScreeningQuestions, { CandidateScreeningResponse } from "./CandidateScreeningQuestions";
+import CandidateScreeningQuestions from "./CandidateScreeningQuestions";
 
 interface JobDetailsProps {
   jobId: string;
@@ -65,7 +65,7 @@ export default function JobDetails({
   const [hasApplied, setHasApplied] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [screeningResponses, setScreeningResponses] = useState<CandidateScreeningResponse[]>([]);
+  const [screeningResponses, setScreeningResponses] = useState<Array<{ question:string; answer:string; category:string }>>([]);
 
   // Invoke SEO structured JobPosting schema & dynamic meta management
   useJobPostingSchema(job);
