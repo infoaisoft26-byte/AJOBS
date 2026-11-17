@@ -170,10 +170,30 @@ export default function RecruiterDashboard({
       },
       error => console.warn("Recruiter live application listener:", error.message)
     ));
+    let linkedConsultancyUnsub: (() => void) | null = null;
+    let active = true;
+    Promise.all([
+      getDoc(doc(db, "recruiter_profiles", userId)),
+      getDoc(doc(db, "recruiters", userId)),
+      getDoc(doc(db, "users", userId))
+    ]).then(([profileSnap, recruiterSnap, userSnap]) => {
+      if (!active) return;
+      const profile: any = { ...(recruiterSnap.exists() ? recruiterSnap.data() : {}), ...(profileSnap.exists() ? profileSnap.data() : {}), ...(userSnap.exists() ? userSnap.data() : {}) };
+      const consultancyId = profile.consultancyId || profile.assignedConsultancyId || profile.parentConsultancyId;
+      if (consultancyId) {
+        linkedConsultancyUnsub = onSnapshot(query(collection(db, "applications"), where("consultancyId", "==", consultancyId)), snapshot => {
+          setPipelineCandidates(previous => {
+            const merged = new Map(previous.map(item => [item.id, item]));
+            snapshot.docs.forEach(item => merged.set(item.id, mapCandidate(item.id, item.data())));
+            return Array.from(merged.values());
+          });
+        }, error => console.warn("Recruiter consultancy application stream:", error.message));
+      }
+    }).catch(error => console.warn("Recruiter consultancy profile lookup:", error));
     const notifUnsub = onSnapshot(query(collection(db, "notifications"), where("userId", "==", userId)), snapshot => {
       setNotifications(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a: any, b: any) => String(b.createdAt || "").localeCompare(String(a.createdAt || ""))));
     }, error => console.warn("Recruiter live notifications listener:", error.message));
-    return () => { unsubs.forEach(unsubscribe => unsubscribe()); notifUnsub(); };
+    return () => { active = false; unsubs.forEach(unsubscribe => unsubscribe()); notifUnsub(); linkedConsultancyUnsub?.(); };
   }, [userId]);
 
   // Handle URL sync and cleanly remove callback query parameters
