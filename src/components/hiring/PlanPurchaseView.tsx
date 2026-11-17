@@ -36,6 +36,7 @@ export default function PlanPurchaseView({
   const [billingPeriod, setBillingPeriod] = useState<"quarterly" | "annual">("annual");
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [purchaseSuccess, setPurchaseSuccess] = useState<string | null>(null);
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
 
   // Tab 1: Job Credits Packages
   const jobPacks = [
@@ -114,41 +115,48 @@ export default function PlanPurchaseView({
   const handleCheckout = async (packId: string, title: string, amount: number, jobCreds: number, dbCreds: number) => {
     setIsProcessing(packId);
     setPurchaseSuccess(null);
+    setPurchaseError(null);
 
     try {
-      // Simulate/trigger PayU initiation or real payment flow
       const response = await fetch("/api/payu-initiate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: userId || "emp_" + Date.now(),
-          planId: packId,
+          userId,
           planName: title,
-          amount: amount,
-          userEmail: userEmail || "employer@aijobs1.in",
-          userName: userName || "Employer",
-          phone: "9876543210"
+          price: amount,
+          firstname: userName,
+          email: userEmail,
+          phone: "",
+          udf1: "hiring_plan"
         })
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.paymentUrl && data.params) {
-          // If PayU hosted checkout is active, form submission can proceed
-          // Or if test sandbox, we credit the account directly:
-          onAddCredits(jobCreds, dbCreds, title, amount);
-          setPurchaseSuccess(`Payment approved! Added ${jobCreds > 0 ? jobCreds + " Job Credits" : ""} ${dbCreds > 0 ? dbCreds + " DB Credits" : ""} to your account.`);
-          setIsProcessing(null);
-          return;
-        }
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || data.message || "Secure payment checkout could not be started.");
       }
 
-      // Seamless fallback: direct invoice & credit addition
-      onAddCredits(jobCreds, dbCreds, title, amount);
-      setPurchaseSuccess(`Plan upgraded! Added ${jobCreds > 0 ? jobCreds + " Job Credits" : ""} ${dbCreds > 0 ? dbCreds + " DB Credits" : ""} to your account.`);
+      // Never credit plans from a client-side response. The current PayU
+      // initiation endpoint does not return a hosted checkout URL or a verified
+      // payment callback, so fail closed instead of simulating a purchase.
+      if (!data.paymentUrl || !data.params || !data.verifiedCallbackConfigured) {
+        throw new Error("Secure online checkout is not configured for this plan yet. No payment was taken and no credits were added. Please contact AIJOBS billing support.");
+      }
+
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = data.paymentUrl;
+      Object.entries(data.params).forEach(([name, value]) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = name;
+        input.value = String(value ?? "");
+        form.appendChild(input);
+      });
+      document.body.appendChild(form);
+      form.submit();
     } catch (err: any) {
-      onAddCredits(jobCreds, dbCreds, title, amount);
-      setPurchaseSuccess(`Order processed successfully! Added ${jobCreds > 0 ? jobCreds + " Job Credits" : ""} ${dbCreds > 0 ? dbCreds + " DB Credits" : ""} to your account.`);
+      setPurchaseError(err?.message || "Checkout could not be started. No credits were added.");
     } finally {
       setIsProcessing(null);
     }
@@ -189,6 +197,10 @@ export default function PlanPurchaseView({
           Credits Valid Until: <strong className="text-white">{credits.validityDate}</strong>
         </div>
       </div>
+
+      {purchaseError && (
+        <div role="alert" className="p-4 rounded-2xl bg-rose-950/70 border border-rose-500/40 text-rose-200 text-xs font-bold">{purchaseError}</div>
+      )}
 
       {/* Success Notification */}
       {purchaseSuccess && (
