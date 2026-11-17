@@ -17,6 +17,7 @@ import {
   Sparkles 
 } from "lucide-react";
 import { auth, db } from "../firebase";
+import { syncCandidateProfileToNeon } from "../services/neonSyncService";
 import { UserProfile } from "../types";
 import { getOrCreateUserProfile } from "../services/dbInitService";
 import { initializeCandidateProfileAfterOtpVerification } from "../services/candidateProfileService";
@@ -329,6 +330,7 @@ export default function CandidateEmailVerification({
             updatedAt: nowIso
           }, { merge: true })
         ]).catch(e => console.warn("[CandidateEmailVerification] Firestore update notice:", e));
+        void syncCandidateProfileToNeon().catch(err => console.warn("[CandidateEmailVerification] Neon sync deferred:", err));
 
         const updatedProfile = await getOrCreateUserProfile(fbUser);
         showToast("Email verified successfully!", "success");
