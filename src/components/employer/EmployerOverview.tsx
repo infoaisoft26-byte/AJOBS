@@ -67,7 +67,7 @@ export default function EmployerOverview({
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-bold uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-              <span>AIJOBS ENTERPRISE SUITE • {companyName || "Verified Employer"}</span>
+              <span>AIJOBS ENTERPRISE SUITE • {companyName || "Company profile incomplete"}</span>
             </div>
             
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight leading-tight">
