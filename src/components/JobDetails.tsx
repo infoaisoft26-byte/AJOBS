@@ -316,7 +316,7 @@ export default function JobDetails({
           companyName={job.companyName}
           jobDescription={job.description}
           requirements={job.requirements}
-          skillsRequired={job.skillsRequired || ["React", "TypeScript", "Node.js", "System Design"]}
+          skillsRequired={job.skillsRequired || []}
           screeningQuestions={(job as any).screeningQuestions}
           onUpdateCandidateStage={onUpdateCandidateStage}
           onOpenLiveChat={onOpenLiveChat}
