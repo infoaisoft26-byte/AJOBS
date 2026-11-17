@@ -96,7 +96,7 @@ service cloud.firestore {
     }
 
     match /jobs/{jobId} {
-      allow read: if resource.data.status in ['approved','Approved','Published','Live','open','Open'] ||
+      allow read: if resource.data.status in ['approved','Approved','Published','published','Live','live','active','Active','open','Open'] ||
         isAdmin() || isJobReviewer() || ownsJob(resource.data);
       allow create: if isAdmin() || (
         isSignedIn() && isHiringRole() &&
