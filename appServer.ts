@@ -230,14 +230,27 @@ app.get("/api/jobs/live", async (req, res) => {
     const snap = await db.collection("jobs").get();
     const jobsList: any[] = [];
     const currentDate = new Date();
+    const publicStatuses = new Set(["live", "open", "published", "approved", "active"]);
 
     snap.forEach((docSnapshot) => {
       const data = docSnapshot.data();
-      const status = (data.status || "").toLowerCase();
-      const expiry = data.validThrough || data.expiryDate || data.applyDeadline;
-      const isExpired = expiry ? new Date(expiry) < currentDate : false;
+      const status = String(data.status || "").trim().toLowerCase();
+      const expiryValue = data.validThrough || data.expiryDate || data.applyDeadline;
+      const expiryDate = expiryValue && typeof expiryValue.toDate === "function"
+        ? expiryValue.toDate()
+        : expiryValue ? new Date(expiryValue) : null;
+      const isExpired = Boolean(expiryDate && !Number.isNaN(expiryDate.getTime()) && expiryDate < currentDate);
+      const id = docSnapshot.id.toLowerCase();
+      const title = String(data.title || data.jobTitle || "").trim().toLowerCase();
+      const company = String(data.companyName || data.hiringOrganizationName || "").trim().toLowerCase();
+      const isDemo = data.isDemo === true || data.isSample === true || data.isMock === true || data.seeded === true ||
+        /^(demo_|job_demo_|sample_|mock_)/.test(id) ||
+        /^(demo|sample|mock)\\b/.test(title) ||
+        /^(demo|sample|mock)\\b/.test(company) ||
+        /^(techcorp|example company|demo company|test company)$/.test(company);
+      const isPrivate = data.isPublic === false || data.publicVisibility === false || data.visibility === "private";
 
-      if (["live", "open", "published", "approved"].includes(status) && !isExpired) {
+      if (publicStatuses.has(status) && data.approved !== false && !isExpired && !isDemo && !isPrivate) {
         jobsList.push({ id: docSnapshot.id, ...data });
       }
     });
