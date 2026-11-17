@@ -173,6 +173,20 @@ export async function applyToJob(
     await setDoc(doc(db, "company_applications", appId), newCompanyApp);
     await setDoc(leadRef, newLead);
 
+    // Mirror the committed application into Neon with a verified Firebase token.
+    // This is non-blocking so a database sync delay cannot prevent an application.
+    try {
+      const token = await auth.currentUser.getIdToken();
+      const syncResponse = await fetch("/api/neon/application-sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ applicationId: appId })
+      });
+      if (!syncResponse.ok) console.warn("[Application] Neon sync deferred:", syncResponse.status);
+    } catch (syncError) {
+      console.warn("[Application] Neon sync deferred:", syncError);
+    }
+
     // Update job application counts in standard jobs collection safely
     try {
       await updateDoc(doc(db, "jobs", job.id), {
