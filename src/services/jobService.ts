@@ -73,7 +73,11 @@ export async function getLiveJobs(): Promise<JobPosting[]> {
       const expiry = data.validThrough || data.expiryDate || data.applyDeadline;
       const isExpired = expiry ? new Date(expiry) < currentDate : false;
 
-      if (["live", "open", "published", "approved"].includes(status) && data.approved !== false && data.isPublic !== false && data.publicVisibility !== false && data.visibility !== "private" && !isExpired) {
+      const id = String(doc.id || "").toLowerCase();
+      const title = String(data.title || data.jobTitle || "").trim().toLowerCase();
+      const company = String(data.companyName || data.hiringOrganizationName || "").trim().toLowerCase();
+      const markedDemo = data.isDemo === true || data.isSample === true || data.isMock === true || data.seeded === true || /^(demo_|job_demo_|sample_|mock_)/.test(id) || /^(demo|sample|mock)\\b/.test(title) || /^(demo|sample|mock)\\b/.test(company) || /^(techcorp|example company|demo company|test company)$/.test(company);
+      if (["live", "open", "published", "approved"].includes(status) && !markedDemo && data.approved !== false && data.isPublic !== false && data.publicVisibility !== false && data.visibility !== "private" && !isExpired) {
         const slug = data.slug || generateJobSlug(data.title, data.location, doc.id);
         const canonicalUrl = data.canonicalUrl || getPublicJobUrl({ title: data.title, location: data.location, id: doc.id, slug });
         jobsList.push({ id: doc.id, slug, canonicalUrl, ...data } as JobPosting);
