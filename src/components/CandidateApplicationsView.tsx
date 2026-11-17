@@ -206,7 +206,7 @@ export default function CandidateApplicationsView({
                       <p className="text-xs font-semibold text-slate-200 truncate">
                         {app.assignedRecruiterName 
                           ? `Assigned: ${app.assignedRecruiterName}` 
-                          : "Assigned: Central Talent Acquisition Team"}
+                          : "Assigned: Hiring team"}
                       </p>
                       <span className="text-[11px] text-slate-400 block">
                         {app.assignedAt ? `Assigned on ${new Date(app.assignedAt).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}` : "Review in progress"}
@@ -228,7 +228,7 @@ export default function CandidateApplicationsView({
                           {app.interviewDate || "Date TBD"} {app.interviewTime ? `at ${app.interviewTime}` : ""}
                         </p>
                         <p className="text-[11px] text-slate-300">
-                          Mode: <span className="font-semibold text-cyan-300">{app.interviewMode || "Online / Platform Room"}</span>
+                          Mode: <span className="font-semibold text-cyan-300">{app.interviewMode || "Not specified"}</span>
                           {app.interviewerName && ` • With: ${app.interviewerName}`}
                         </p>
                         {app.meetingLink && (
