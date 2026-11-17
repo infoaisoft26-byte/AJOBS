@@ -144,10 +144,14 @@ export async function applyToJob(
       appliedAt: nowIso
     };
 
-    // Lead document for CRM pipeline
-    const leadId = `lead_${Math.random().toString(36).substring(2, 11)}`;
+    // Create the lead reference once and derive its ID from Firestore.
+    // Keeping the reference and ID together prevents undefined/mismatched lead IDs
+    // across candidate application entry points and CRM synchronization.
+    const leadRef = doc(collection(db, "leads"));
+    const leadId = leadRef.id;
     const newLead = {
       id: leadId,
+      leadId,
       candidateId: userId,
       candidateName: candidateName,
       email: candidateEmail,
@@ -167,7 +171,7 @@ export async function applyToJob(
     // Write documents to Firestore
     await setDoc(doc(db, "applications", appId), newApp);
     await setDoc(doc(db, "company_applications", appId), newCompanyApp);
-    await setDoc(doc(db, "leads", leadId), newLead);
+    await setDoc(leadRef, newLead);
 
     // Update job application counts in standard jobs collection safely
     try {
