@@ -997,6 +997,8 @@ export default function AdminDashboard({ userId, userName }: { userId?: string; 
                 />
               )}
 
+              {activeView === "admin-reports" && <AdminReports />}
+
               {activeView === "marketing-growth" && (
                 <MarketingGrowthDashboard
                   onOpenLeads={() => setActiveTab("leads")}
