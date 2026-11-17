@@ -202,6 +202,10 @@ export async function handleRecruiterLiveLeadsRoute(req: Request, res: Response)
         return true;
       }
       const job: any = jobSnap.data() || {};
+      if (["closed", "expired", "rejected", "deleted", "draft"].includes(norm(job.status))) {
+        res.status(409).json({ success: false, error: "JOB_NOT_ACTIVE", message: "Candidates can only be assigned to an active job posting." });
+        return true;
+      }
       const [assignedApplication, assignedLead] = await Promise.all([
         db.collection("applications").where("assignedRecruiterId", "==", uid).limit(200).get().catch(() => null),
         db.collection("candidate_leads").where("assignedRecruiterId", "==", uid).limit(200).get().catch(() => null)
@@ -222,11 +226,14 @@ export async function handleRecruiterLiveLeadsRoute(req: Request, res: Response)
         res.status(404).json({ success: false, error: "CANDIDATE_NOT_FOUND", message: "Candidate profile was not found in the database." });
         return true;
       }
-      const duplicate = await db.collection("candidate_leads")
-        .where("candidateId", "==", candidateId)
-        .where("sourceJobId", "==", jobId)
-        .limit(1).get().catch(() => null);
-      if (duplicate && !duplicate.empty) {
+      const candidateRole = norm(candidate.role || candidate.userType || "candidate");
+      if (candidateRole && !["candidate", "job_seeker", "jobseeker"].includes(candidateRole)) {
+        res.status(400).json({ success: false, error: "INVALID_CANDIDATE", message: "Only registered candidate profiles can be assigned to a job." });
+        return true;
+      }
+      const existingCandidateLeads = await db.collection("candidate_leads").where("candidateId", "==", candidateId).limit(200).get().catch(() => null);
+      const duplicate = existingCandidateLeads?.docs?.some((item: any) => (item.data()?.sourceJobId || item.data()?.jobId) === jobId);
+      if (duplicate) {
         res.status(409).json({ success: false, error: "ALREADY_ASSIGNED", message: "This candidate is already assigned to this job." });
         return true;
       }
