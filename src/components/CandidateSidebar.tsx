@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { 
   Home, 
   Search, 
@@ -11,11 +11,13 @@ import {
   HelpCircle, 
   LogOut, 
   X,
-  ShieldCheck
-  ,MessageSquare
-  ,Settings
+  ShieldCheck,
+  MessageSquare,
+  Settings,
+  Sparkles
 } from "lucide-react";
 import { SupportedLanguage, getTranslation } from "../utils/candidateTranslations";
+import CandidateCareerHub from "./CandidateCareerHub";
 
 interface SidebarProps {
   activeTab: string;
@@ -36,12 +38,14 @@ export default function CandidateSidebar({
   onLogout,
   lang = "en"
 }: SidebarProps) {
+  const [careerHubOpen, setCareerHubOpen] = useState(false);
   const t = (key: string) => getTranslation(lang, key);
 
   const menuItems = [
     { id: "overview", label: t("home"), icon: Home },
     { id: "explore-jobs", label: t("findJobs"), icon: Search },
     { id: "applied-jobs", label: t("myApplications"), icon: Clock },
+    { id: "career-hub", label: "AIJOBS Career Hub", icon: Sparkles },
     { id: "resume", label: t("resume"), icon: FileText },
     { id: "interviews", label: t("interviews"), icon: Calendar },
     { id: "saved-jobs", label: t("savedJobs"), icon: Heart },
@@ -56,6 +60,22 @@ export default function CandidateSidebar({
     { id: "settings", label: "Settings", icon: Settings },
     { id: "help", label: t("help"), icon: HelpCircle },
   ];
+
+  const handleItemClick = (itemId: string) => {
+    if (itemId === "career-hub") {
+      setCareerHubOpen(true);
+      setIsOpen(false);
+      return;
+    }
+    setActiveTab(itemId);
+    setIsOpen(false);
+  };
+
+  const handleCareerNavigate = (tab: string) => {
+    setCareerHubOpen(false);
+    setActiveTab(tab);
+    setIsOpen(false);
+  };
 
   return (
     <>
@@ -80,6 +100,7 @@ export default function CandidateSidebar({
           <button 
             onClick={() => setIsOpen(false)} 
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+            aria-label="Close candidate navigation"
           >
             <X className="w-5 h-5" />
           </button>
@@ -93,14 +114,11 @@ export default function CandidateSidebar({
 
           {menuItems.map((item) => {
             const Icon = item.icon;
-            const isSel = activeTab === item.id;
+            const isSel = item.id === "career-hub" ? careerHubOpen : activeTab === item.id;
             return (
               <button
                 key={item.id}
-                onClick={() => {
-                  setActiveTab(item.id);
-                  setIsOpen(false);
-                }}
+                onClick={() => handleItemClick(item.id)}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${
                   isSel 
                     ? "bg-gradient-to-r from-blue-600/30 to-cyan-500/15 text-cyan-300 font-semibold border border-cyan-400/50 shadow-[0_0_20px_rgba(0,229,255,0.2)]" 
@@ -139,6 +157,28 @@ export default function CandidateSidebar({
           )}
         </div>
       </aside>
+
+      {careerHubOpen && (
+        <div className="fixed inset-0 z-[80] overflow-y-auto bg-[#020617]/95 backdrop-blur-xl">
+          <div className="mx-auto min-h-full max-w-7xl px-3 py-4 sm:px-6 sm:py-6">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-400">Candidate Career Tools</p>
+                <p className="mt-1 text-sm text-slate-400">AIJOBS-owned career experience</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCareerHubOpen(false)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-700 bg-slate-900 text-slate-300 transition hover:border-cyan-400/50 hover:text-white"
+                aria-label="Close Career Hub"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <CandidateCareerHub onNavigate={handleCareerNavigate} />
+          </div>
+        </div>
+      )}
     </>
   );
 }
