@@ -203,12 +203,12 @@ export async function handleRecruiterLiveLeadsRoute(req: Request, res: Response)
       }
       const job: any = jobSnap.data() || {};
       const [assignedApplication, assignedLead] = await Promise.all([
-        db.collection("applications").where("jobId", "==", jobId).where("assignedRecruiterId", "==", uid).limit(1).get().catch(() => null),
-        db.collection("candidate_leads").where("sourceJobId", "==", jobId).where("assignedRecruiterId", "==", uid).limit(1).get().catch(() => null)
+        db.collection("applications").where("assignedRecruiterId", "==", uid).limit(200).get().catch(() => null),
+        db.collection("candidate_leads").where("assignedRecruiterId", "==", uid).limit(200).get().catch(() => null)
       ]);
       const canAssign = [job.recruiterId, job.assignedRecruiterId, job.ownerUid, job.createdBy, job.postedBy, job.consultancyId].filter(Boolean).includes(uid)
-        || Boolean(assignedApplication && !assignedApplication.empty)
-        || Boolean(assignedLead && !assignedLead.empty);
+        || Boolean(assignedApplication?.docs?.some((item: any) => item.data()?.jobId === jobId))
+        || Boolean(assignedLead?.docs?.some((item: any) => (item.data()?.sourceJobId || item.data()?.jobId) === jobId));
       if (!canAssign) {
         res.status(403).json({ success: false, error: "JOB_NOT_ASSIGNED", message: "You can only source candidates for jobs assigned to your recruiter workspace." });
         return true;
