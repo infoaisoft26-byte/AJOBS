@@ -64,6 +64,12 @@ function textList(value: any): string[] {
   return [];
 }
 function plainText(value: any) { return String(value || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(); }
+function requirementText(value: any): string {
+  if (typeof value === "string" || typeof value === "number") return String(value).trim();
+  if (Array.isArray(value)) return value.map(requirementText).filter(Boolean).join(", ");
+  if (value && typeof value === "object") return String(value.name || value.credentialCategory || value.description || "").trim();
+  return "";
+}
 
 export async function handleHiringPublicRoute(req: Request, res: Response): Promise<boolean> {
   const path = String(req.url || "").split("?")[0].replace(/\/+$/, "") || "/";
@@ -120,8 +126,8 @@ export async function handleHiringPublicRoute(req: Request, res: Response): Prom
     const responsibilities = textList(job.responsibilities || job.keyResponsibilities);
     const qualifications = textList(job.qualifications || job.minimumQualification || job.requirements);
     const benefits = textList(job.benefits);
-    const experienceRequirement = String(job.experienceRequirements || job.experienceRequired || [job.minimumExperience, job.maximumExperience].filter(v => v !== undefined && v !== null && v !== "").join("-")).trim();
-    const educationRequirement = String(job.educationRequirements || job.minimumQualification || "").trim();
+    const experienceRequirement = requirementText(job.experienceRequirements || job.experienceRequired) || [job.minimumExperience, job.maximumExperience].filter(v => v !== undefined && v !== null && v !== "").map(String).join(" - ") || requirementText(job.experience);
+    const educationRequirement = requirementText(job.educationRequirements || job.minimumQualification || job.qualification || job.education);
     const organization: any = { "@type": "Organization", name: companyName };
     if (isHttpUrl(job.companyWebsite || job.website)) organization.sameAs = String(job.companyWebsite || job.website);
     if (isHttpUrl(job.companyLogo)) organization.logo = String(job.companyLogo);
@@ -142,13 +148,21 @@ export async function handleHiringPublicRoute(req: Request, res: Response): Prom
     if (skills.length) schema.skills = skills.join(", ");
     if (responsibilities.length) schema.responsibilities = responsibilities.join("\n");
     if (qualifications.length) schema.qualifications = qualifications.join("\n");
+    // Google accepts requirement text or the corresponding Schema.org objects.
+    // Emit plain text consistently; never stringify arbitrary objects into "[object Object]".
     if (experienceRequirement) schema.experienceRequirements = experienceRequirement;
     if (educationRequirement) schema.educationRequirements = educationRequirement;
     if (remote) {
       schema.jobLocationType = "TELECOMMUTE";
       schema.applicantLocationRequirements = { "@type": "Country", name: job.country || "India" };
     } else {
-      schema.jobLocation = { "@type": "Place", address: { "@type": "PostalAddress", streetAddress: job.streetAddress || undefined, addressLocality: job.city || job.location || "", addressRegion: job.state || "", postalCode: job.postalCode || undefined, addressCountry: job.countryCode || job.country || "IN" } };
+      const city = requirementText(job.city || job.location);
+      const address: any = { "@type": "PostalAddress", addressCountry: job.countryCode || job.country || "IN" };
+      if (city) address.addressLocality = city;
+      if (job.streetAddress) address.streetAddress = requirementText(job.streetAddress);
+      if (job.state) address.addressRegion = requirementText(job.state);
+      if (job.postalCode) address.postalCode = requirementText(job.postalCode);
+      if (city) schema.jobLocation = { "@type": "Place", address };
     }
     const minSalary = Number(job.minimumSalary);
     const maxSalary = Number(job.maximumSalary);

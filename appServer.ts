@@ -51,6 +51,8 @@ import { handleAgreementOtpRoute } from "./server/agreementOtpRoute.js";
 import { verifyWhatsAppWebhook, receiveWhatsAppWebhook, handleWhatsAppSendRoute, handleWhatsAppHealthRoute } from "./server/whatsappAutomationService.js";
 import { handleAdminReportingRoute } from "./server/adminReportingRoute.js";
 import { handleNeonIngestionRoute } from "./server/neonIngestionRoutes.js";
+import { verifyAndInjectAdminIdentity } from "./server/adminApiGateway.js";
+import { handleHiringWorkspaceRoute } from "./server/hiringWorkspaceRoute.js";
 
 dotenv.config();
 
@@ -148,10 +150,18 @@ app.use("/api/", csrfMitigator);
 
 app.use(async (req: any, res: any, next: any) => {
   try {
+    const requestPath = String(req.url || "").split("?")[0].replace(/\/+$/, "") || "/";
+    const adminHandled = await verifyAndInjectAdminIdentity(req, res, requestPath);
+    if (adminHandled || res.headersSent) return;
+
     const reportsHandled = await handleAdminReportingRoute(req, res);
     if (reportsHandled || res.headersSent) return;
+
     const neonHandled = await handleNeonIngestionRoute(req, res);
-    if (!neonHandled && !res.headersSent) next();
+    if (neonHandled || res.headersSent) return;
+
+    const hiringWorkspaceHandled = await handleHiringWorkspaceRoute(req, res);
+    if (!hiringWorkspaceHandled && !res.headersSent) next();
   } catch (error) { next(error); }
 });
 
