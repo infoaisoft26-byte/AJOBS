@@ -2,8 +2,10 @@ import type { Request, Response } from "express";
 import { neon } from "@neondatabase/serverless";
 import { getFirebaseAuth, getFirestoreDb } from "./firestoreHelper.js";
 
-const reportRequestLimits = new Map<string, { count: number; resetAt: number }>();\n\nfunction clean(value: unknown, max = 160) { return String(value ?? "").trim().slice(0, max); }
-function roleOf(value: unknown) { return clean(value, 60).toLowerCase().replace(/[\\s-]+/g, "_"); }
+const reportRequestLimits = new Map<string, { count: number; resetAt: number }>();
+
+function clean(value: unknown, max = 160) { return String(value ?? "").trim().slice(0, max); }
+function roleOf(value: unknown) { return clean(value, 60).toLowerCase().replace(/[\s-]+/g, "_"); }
 function iso(value: any): string | null {
   if (!value) return null;
   try {
@@ -12,7 +14,7 @@ function iso(value: any): string | null {
   } catch { return null; }
 }
 function asRows(snapshot: any) { return snapshot?.docs?.map((doc: any) => ({ id: doc.id, ...(doc.data() || {}) })) || []; }
-function statusOf(value: any) { return clean(value?.status || value?.applicationStatus || "applied", 80).toLowerCase().replace(/[\\s-]+/g, "_"); }
+function statusOf(value: any) { return clean(value?.status || value?.applicationStatus || "applied", 80).toLowerCase().replace(/[\s-]+/g, "_"); }
 function isInRange(value: any, start: number | null, end: number | null) {
   if (!start && !end) return true;
   const time = iso(value) ? new Date(iso(value)!).getTime() : 0;
@@ -52,7 +54,7 @@ async function mirrorToNeon(sql: any, users: any[], jobs: any[], applications: a
 }
 
 export async function handleAdminReportingRoute(req: Request, res: Response): Promise<boolean> {
-  const path = String(req.url || "").split("?")[0].replace(/\\/+$/, "") || "/";
+  const path = String(req.url || "").split("?")[0].replace(/\/+$/, "") || "/";
   if (path !== "/api/admin/reports") return false;
   if (req.method !== "GET") { res.setHeader("Allow", "GET"); res.status(405).json({ success: false, error: "Method not allowed." }); return true; }
 
