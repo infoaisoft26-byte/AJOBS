@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import type { Request, Response } from "express";
+import { neon } from "@neondatabase/serverless";
 import { getFirestoreDb } from "./firestoreHelper.js";
 
 const GRAPH_VERSION = process.env.WHATSAPP_GRAPH_API_VERSION || "v23.0";
@@ -111,6 +112,11 @@ async function persistWhatsAppLead(db: any, from: string, message: string, messa
     assignedTo: existingLead.assignedTo || ""
   };
   await leadRef.set(leadPatch, { merge: true });
+  await mirrorWhatsAppLeadToNeon({
+    phone, contactId: stableId(phone), leadId: "wa_" + stableId(phone),
+    contact: { ...previous, ...contactPatch, createdAt: previous.createdAt || now },
+    lead: { ...existingLead, ...leadPatch }, messageId, message: humanMessage
+  });
 }
 
 export function verifyWhatsAppWebhook(req: Request, res: Response) {
@@ -196,11 +202,15 @@ async function buildAutoReply(db: any, from: string, text: string) {
   } catch {}
 
   if (/^(stop|unsubscribe|cancel|opt out)$/i.test(message)) {
-    await contactRef.set({ phone: normalizePhone(from), optedOut: true, optedOutAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, { merge: true });
+    const optOutPatch = { phone: normalizePhone(from), optedIn: false, optedOut: true, consentSource: "whatsapp_keyword_stop", optedOutAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    await contactRef.set(optOutPatch, { merge: true });
+    await mirrorWhatsAppConsentToNeon(from, optOutPatch);
     return "AIJOBS WhatsApp updates are now stopped. Reply START any time to opt in again.";
   }
   if (/^(start|unstop)$/i.test(message)) {
-    await contactRef.set({ phone: normalizePhone(from), optedOut: false, optedInAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, { merge: true });
+    const optInPatch = { phone: normalizePhone(from), optedOut: false, optedIn: true, consentSource: "whatsapp_keyword_start", optedInAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    await contactRef.set(optInPatch, { merge: true });
+    await mirrorWhatsAppConsentToNeon(from, optInPatch);
     return "Welcome back to AIJOBS WhatsApp Assistant! Reply JOBS, a job title/skill, APPLY, REGISTER, STATUS, or HELP.";
   }
   if (contact.optedOut) return "";
