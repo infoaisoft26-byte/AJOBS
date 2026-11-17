@@ -245,8 +245,8 @@ app.get("/api/jobs/live", async (req, res) => {
       const company = String(data.companyName || data.hiringOrganizationName || "").trim().toLowerCase();
       const isDemo = data.isDemo === true || data.isSample === true || data.isMock === true || data.seeded === true ||
         /^(demo_|job_demo_|sample_|mock_)/.test(id) ||
-        /^(demo|sample|mock)\\b/.test(title) ||
-        /^(demo|sample|mock)\\b/.test(company) ||
+        /^(demo|sample|mock)\b/.test(title) ||
+        /^(demo|sample|mock)\b/.test(company) ||
         /^(techcorp|example company|demo company|test company)$/.test(company);
       const isPrivate = data.isPublic === false || data.publicVisibility === false || data.visibility === "private";
 
