@@ -46,7 +46,7 @@ export default function RecruiterOverview({
   const statCards = [
     {
       title: "Assigned Jobs",
-      value: assignedJobs.length || 6,
+      value: assignedJobs.length,
       sub: "Active mandate openings",
       icon: Briefcase,
       color: "from-blue-600/20 to-blue-500/10",
@@ -55,7 +55,7 @@ export default function RecruiterOverview({
     },
     {
       title: "Candidates in Pipeline",
-      value: pipelineCandidates.length || 24,
+      value: pipelineCandidates.length,
       sub: "Across all active stages",
       icon: Users,
       color: "from-purple-600/20 to-purple-500/10",
@@ -64,8 +64,8 @@ export default function RecruiterOverview({
     },
     {
       title: "Interviews Scheduled",
-      value: 8,
-      sub: "Confirmed this week",
+      value: 0,
+      sub: "No verified interview data loaded",
       icon: Calendar,
       color: "from-cyan-600/20 to-cyan-500/10",
       border: "border-cyan-500/30",
@@ -73,8 +73,8 @@ export default function RecruiterOverview({
     },
     {
       title: "This Month's Placements",
-      value: "4 Hired",
-      sub: "₹1,80,000 Commission",
+      value: 0,
+      sub: "Verified placements only",
       icon: Trophy,
       color: "from-emerald-600/20 to-emerald-500/10",
       border: "border-emerald-500/30",
@@ -290,44 +290,8 @@ export default function RecruiterOverview({
           </div>
         </div>
 
-        {/* Recent Candidate Activity Timeline (6 cols) */}
-        <div className="lg:col-span-6 p-6 rounded-3xl bg-[#17111F]/80 border border-purple-500/20 backdrop-blur-md shadow-xl space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-extrabold text-white flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-purple-400" />
-              <span>Recent Candidate Activity</span>
-            </h2>
-          </div>
+        {/* Recent activity is populated only from verified records. */}
 
-          <div className="space-y-3 text-xs">
-            <div className="flex items-start gap-3 p-3 rounded-2xl bg-white/5 border border-white/5">
-              <div className="w-2 h-2 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
-              <div>
-                <p className="text-white font-bold">Aarav Sharma moved to Interview Round</p>
-                <p className="text-[11px] text-slate-400">Scheduled Technical Screening with hiring lead for Thursday.</p>
-                <span className="text-[10px] text-slate-500 font-mono">10 minutes ago</span>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3 p-3 rounded-2xl bg-white/5 border border-white/5">
-              <div className="w-2 h-2 rounded-full bg-blue-400 mt-1.5 shrink-0" />
-              <div>
-                <p className="text-white font-bold">New Lead Assigned by Admin</p>
-                <p className="text-[11px] text-slate-400">Sneha Deshmukh assigned for Senior Frontend Engineer mandate.</p>
-                <span className="text-[10px] text-slate-500 font-mono">2 hours ago</span>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3 p-3 rounded-2xl bg-white/5 border border-white/5">
-              <div className="w-2 h-2 rounded-full bg-purple-400 mt-1.5 shrink-0" />
-              <div>
-                <p className="text-white font-bold">Placement Commission Approved</p>
-                <p className="text-[11px] text-slate-400">₹45,000 commission credited for Full Stack Architect hire.</p>
-                <span className="text-[10px] text-slate-500 font-mono">Yesterday</span>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
