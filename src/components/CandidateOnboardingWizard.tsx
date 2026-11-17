@@ -6,6 +6,7 @@ import {
   sendEmailVerification 
 } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { syncCandidateProfileToNeon } from "../services/neonSyncService";
 import { 
   AlertCircle, 
   ArrowLeft, 
@@ -694,6 +695,7 @@ export default function CandidateOnboardingWizard({
       setDoc(doc(db, "candidates", uid), detailedProfileData, { merge: true }),
       setDoc(doc(db, "candidateProfiles", uid), detailedProfileData, { merge: true })
     ]);
+    void syncCandidateProfileToNeon().catch(err => console.warn("[CandidateOnboarding] Neon sync deferred:", err));
 
     // Fire Google Ads, GA4 and first-party conversion telemetry.
     try {
