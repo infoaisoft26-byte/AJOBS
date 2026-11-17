@@ -20,8 +20,8 @@ function isPublicJob(data: any): boolean {
   const company = String(data.companyName || data.hiringOrganizationName || "").trim().toLowerCase();
   const demo = data.isDemo === true || data.isSample === true || data.isMock === true || data.seeded === true ||
     /^(demo_|job_demo_|sample_|mock_)/.test(id) ||
-    /^(demo|sample|mock)\\b/.test(title) ||
-    /^(demo|sample|mock)\\b/.test(company) ||
+    /^(demo|sample|mock)\b/.test(title) ||
+    /^(demo|sample|mock)\b/.test(company) ||
     /^(techcorp|example company|demo company|test company)$/.test(company);
   return allowed.includes(status) && data.approved !== false && !expired && !demo &&
     data.isPublic !== false && data.publicVisibility !== false && data.visibility !== "private";
@@ -85,7 +85,6 @@ export async function getLiveJobs(): Promise<JobPosting[]> {
     );
     const querySnapshot = await getDocs(publicJobsQuery);
     const jobsList: JobPosting[] = [];
-    const currentDate = new Date();
 
     querySnapshot.forEach((doc) => {
       const data = doc.data();
@@ -279,7 +278,6 @@ export async function fetchPaginatedLiveJobs(
     );
     const querySnapshot = await getDocs(publicJobsQuery);
     const jobsList: JobPosting[] = [];
-    const currentDate = new Date();
 
     querySnapshot.forEach((doc) => {
       const data = doc.data();
