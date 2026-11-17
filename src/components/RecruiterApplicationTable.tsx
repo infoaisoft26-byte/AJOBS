@@ -81,9 +81,9 @@ export default function RecruiterApplicationTable({
     duration: "45 mins",
     type: "Technical Interview" as "Technical Interview" | "HR Screening" | "AI Evaluation" | "Executive Round",
     location: "Google Meet",
-    meetingUrl: "https://meet.google.com/aijobs-recruiter-session",
+    meetingUrl: "",
     interviewerName: currentUserName,
-    notes: "Please bring your recent project architecture portfolio and be prepared for live coding discussion."
+    notes: ""
   });
   const [isScheduling, setIsScheduling] = useState(false);
 
@@ -295,7 +295,7 @@ export default function RecruiterApplicationTable({
         jobTitle: appToSchedule.jobTitle,
         candidateId: appToSchedule.candidateId,
         candidateName: appToSchedule.candidateName,
-        candidateEmail: appToSchedule.candidateEmail || "candidate@aijobs.global",
+        candidateEmail: appToSchedule.candidateEmail || "",
         companyName: appToSchedule.companyName,
         recruiterName: interviewForm.interviewerName,
         scheduledAt: scheduledDateTime,
