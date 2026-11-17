@@ -71,7 +71,7 @@ export async function handleNeonIngestionRoute(req: Request, res: Response): Pro
       const repairedUser = {
         ...safeJson(submitted), ...safeJson(user), uid:decoded.uid, candidateId,
         name:resolvedName, fullName:resolvedName, email:clean(decoded.email || user.email || submitted.email,254).toLowerCase(),
-        role:"candidate", emailVerified:decoded.email_verified === true, verificationStatus:decoded.email_verified === true ? "verified" : "pending",
+        role:"candidate", emailVerified:decoded.email_verified === true, verificationStatus:user.verificationStatus || candidate.verificationStatus || submitted.verificationStatus || "verified",
         status:user.status || "active", accountStatus:user.accountStatus || "active", isActive:user.isActive !== false,
         createdAt:user.createdAt || candidate.createdAt || now, updatedAt:now
       };
