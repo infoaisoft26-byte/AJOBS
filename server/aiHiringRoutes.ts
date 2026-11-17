@@ -781,111 +781,6 @@ Return strictly JSON format:
 });
 
 /**
- * Intelligent heuristic evaluation engine used as graceful fallback
- * when Gemini API key is not configured or in offline/rate-limited environments.
- */
-function generateHeuristicScreeningSummary(params: {
-  jobTitle: string;
-  companyName: string;
-  skillsRequired: string[];
-  candidateName: string;
-  candidateExperience: string;
-  candidateSkills: string[];
-  responses: Array<{ question: string; answer: string; category?: string }>;
-}) {
-  const { jobTitle, companyName, skillsRequired, candidateName, candidateExperience, candidateSkills, responses } = params;
-
-  let totalScore = 0;
-  const breakdown = responses.map((r, idx) => {
-    const ans = (r.answer || "").trim();
-    const len = ans.length;
-    let score = 75;
-    let rating: "Exceeds Expectations" | "Meets Expectations" | "Partially Meets" | "Below Expectations" = "Meets Expectations";
-    let analysis = "Candidate provided a clear and relevant baseline response addressing the core question.";
-
-    // Score based on technical depth, keywords, and length
-    const matchedSkills = skillsRequired.filter(s => ans.toLowerCase().includes(s.toLowerCase()));
-    const mentionsScaleOrPerf = /scale|latency|throughput|optimi|index|concurr|cache|architecture|distributed|production|security/i.test(ans);
-    const mentionsMetricsOrNumbers = /\d+%|\d+x|\d+ms|\d+ years|\d+k|\d+m/i.test(ans);
-
-    if (len > 250 && (matchedSkills.length >= 2 || (mentionsScaleOrPerf && mentionsMetricsOrNumbers))) {
-      score = Math.min(96, 88 + (matchedSkills.length * 3) + (idx === 0 ? 3 : 0));
-      rating = "Exceeds Expectations";
-      analysis = `Exemplary technical depth. Candidate cited specific architectural strategies (${matchedSkills.slice(0, 2).join(", ") || "core systems"}) with concrete metrics and trade-offs.`;
-    } else if (len > 120 && (mentionsScaleOrPerf || matchedSkills.length >= 1)) {
-      score = Math.min(86, 78 + matchedSkills.length * 4);
-      rating = "Meets Expectations";
-      analysis = `Solid hands-on knowledge demonstrated. Covers primary engineering paradigms with realistic implementation details.`;
-    } else if (len > 50) {
-      score = 65;
-      rating = "Partially Meets";
-      analysis = `Good theoretical understanding, but answer lacks quantitative real-world enterprise metrics and failure recovery depth.`;
-    } else {
-      score = Math.max(38, 45 - (idx * 2));
-      rating = "Below Expectations";
-      analysis = `Response is very brief and does not demonstrate sufficient technical or operational mastery required for this role.`;
-    }
-
-    totalScore += score;
-    return {
-      question: r.question,
-      candidateAnswer: ans || "(No response submitted)",
-      category: r.category || (idx === 0 ? "Technical" : idx === 1 ? "Experience" : idx === 2 ? "Scenario" : "Role-specific"),
-      score,
-      rating,
-      analysis
-    };
-  });
-
-  const avgScore = responses.length > 0 ? Math.round(totalScore / responses.length) : 75;
-  const fitScore = Math.min(98, Math.max(25, avgScore));
-
-  let fitLevel: "Strong Fit" | "Good Fit" | "Moderate Fit" | "Low Fit" = "Good Fit";
-  let recommendation = "Advance to Technical Screening";
-
-  if (fitScore >= 85) {
-    fitLevel = "Strong Fit";
-    recommendation = "Fast-track to Architecture & Technical Interview";
-  } else if (fitScore >= 70) {
-    fitLevel = "Good Fit";
-    recommendation = "Advance to Technical Screening Round";
-  } else if (fitScore >= 50) {
-    fitLevel = "Moderate Fit";
-    recommendation = "Hold for Comparative Review & Verify Core Stack";
-  } else {
-    fitLevel = "Low Fit";
-    recommendation = "Decline Application / Keep on File";
-  }
-
-  const strengths = [
-    `Strong practical grasp of core stack requirements (${(candidateSkills.slice(0, 3) || skillsRequired.slice(0, 3)).join(", ")})`,
-    `Articulate communication style with logical breakdown of architectural trade-offs`,
-    `Relevant domain background with ${candidateExperience || "3+ years"} of software engineering exposure`
-  ];
-
-  const concerns = fitScore < 85 ? [
-    `Notice period and specific production concurrency limits require deeper probing in technical interview`,
-    `Candidate would benefit from verifying hands-on depth with zero-downtime deployments`
-  ] : [
-    `Clarify exact target joining date and notice period alignment with hiring team`
-  ];
-
-  const summary = `Candidate ${candidateName} demonstrates a ${fitLevel.toLowerCase()} for the ${jobTitle} role at ${companyName || "AIJOBS"}. Their screening responses show structured technical understanding, practical problem-solving methodologies, and solid communication capability across both domain-specific tools and systems design challenges. Overall, their profile matches the essential qualifications required for this requisition.`;
-
-  return {
-    fitScore,
-    fitLevel,
-    summary,
-    strengths,
-    concerns,
-    recommendation,
-    questionBreakdown: breakdown,
-    modelUsed: "gemini-3.8-flash (fallback heuristic)",
-    evaluatedAt: new Date().toISOString()
-  };
-}
-
-/**
  * POST /api/hiring-agent/screening-summary & /api/recruiter/screening-summary
  * Automatically parses candidate responses to screening questions using the Gemini API (gemini-3.8-flash)
  * and displays an executive AI Screening Summary with a prominent 'Fit Score' badge.
@@ -1075,7 +970,7 @@ CRITICAL: Return STRICTLY a valid JSON object without markdown formatting or cod
 
         await recordHiringAuditLog({
           action: "AI_SCREENING_PARSED",
-          performedBy: "Gemini 3.8 Flash Screening Evaluator",
+          performedBy: "AI Screening Evaluator",
           jobId,
           candidateId,
           details: `Screening parsed with Fit Score of ${parsedResult.fitScore}% (${parsedResult.fitLevel}) for ${candidateName}`
