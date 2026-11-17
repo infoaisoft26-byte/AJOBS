@@ -24,69 +24,8 @@ export default function EmployerAiShortlist({
   onOpenCandidateDrawer,
   onOpenLiveChat
 }: EmployerAiShortlistProps) {
-  // Filter top matches (>=85% or top shortlisted)
-  const aiMatches = applications.filter(a => (a.aiMatchScore || 85) >= 85 || a.status === "shortlisted");
-
-  // Fallback high-compatibility recommendations
-  const recommendedCandidates = aiMatches.length > 0 ? aiMatches : [
-    {
-      id: "ai_short_1",
-      jobId: "job_1",
-      jobTitle: "Senior React & TypeScript Engineer",
-      candidateId: "cand_1",
-      candidateName: "Aarav Sharma",
-      candidateEmail: "aarav.sharma@example.com",
-      candidateExperience: "4.5 Years",
-      candidateSkills: ["React", "TypeScript", "Next.js", "Node.js", "Tailwind CSS", "Redux"],
-      status: "shortlisted",
-      aiMatchScore: 96,
-      appliedAt: new Date().toISOString(),
-      matchBreakdown: {
-        skillsMatch: 98,
-        experienceMatch: 95,
-        locationMatch: 94,
-        cultureFit: 96
-      }
-    },
-    {
-      id: "ai_short_2",
-      jobId: "job_2",
-      jobTitle: "Full Stack Node.js Developer",
-      candidateId: "cand_2",
-      candidateName: "Pooja Patel",
-      candidateEmail: "pooja.patel@example.com",
-      candidateExperience: "3.2 Years",
-      candidateSkills: ["Node.js", "PostgreSQL", "Express", "Docker", "Redis"],
-      status: "new",
-      aiMatchScore: 92,
-      appliedAt: new Date().toISOString(),
-      matchBreakdown: {
-        skillsMatch: 92,
-        experienceMatch: 90,
-        locationMatch: 100,
-        cultureFit: 88
-      }
-    },
-    {
-      id: "ai_short_3",
-      jobId: "job_3",
-      jobTitle: "AI Prompt & ML Engineer",
-      candidateId: "cand_4",
-      candidateName: "Ananya Iyer",
-      candidateEmail: "ananya.iyer@example.com",
-      candidateExperience: "2.8 Years",
-      candidateSkills: ["Python", "PyTorch", "Gemini API", "FastAPI", "Vector DB"],
-      status: "reviewed",
-      aiMatchScore: 94,
-      appliedAt: new Date().toISOString(),
-      matchBreakdown: {
-        skillsMatch: 96,
-        experienceMatch: 91,
-        locationMatch: 95,
-        cultureFit: 94
-      }
-    }
-  ];
+  // Show only real applications with a persisted numeric match evaluation.
+  const recommendedCandidates = applications.filter(a => typeof a.aiMatchScore === "number" && a.aiMatchScore >= 85);
 
   return (
     <div className="space-y-6" id="employer-ai-shortlist-page">
@@ -98,7 +37,7 @@ export default function EmployerAiShortlist({
             <span>AI MATCH ACCELERATOR</span>
           </div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-white">AI Shortlisted Candidate Recommendations</h2>
-          <p className="text-xs text-slate-400">High compatibility score profiles (85%–98%) evaluated across key technical parameters</p>
+          <p className="text-xs text-slate-400">Only real applicants with a saved match evaluation of 85% or higher</p>
         </div>
 
         <span className="px-3.5 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-mono font-bold">
@@ -107,7 +46,7 @@ export default function EmployerAiShortlist({
       </div>
 
       {/* Grid of AI matches */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      {recommendedCandidates.length === 0 ? <div className="p-8 rounded-3xl bg-[#17111F]/80 border border-purple-500/20 text-sm text-slate-400">No real applicants have a saved AI match evaluation for the current assigned jobs yet.</div> : <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {recommendedCandidates.map((cand) => (
           <div
             key={cand.id}
@@ -136,11 +75,11 @@ export default function EmployerAiShortlist({
               <div className="grid grid-cols-2 gap-2 text-[11px]">
                 <div className="p-2 rounded-xl bg-white/5 border border-white/5">
                   <span className="text-slate-400 text-[9px] uppercase font-mono block">Skills Match</span>
-                  <span className="font-bold text-emerald-300">{cand.matchBreakdown?.skillsMatch || 95}%</span>
+                  <span className="font-bold text-emerald-300">{typeof cand.matchBreakdown?.skillsMatch === "number" ? cand.matchBreakdown.skillsMatch + "%" : "Not evaluated"}</span>
                 </div>
                 <div className="p-2 rounded-xl bg-white/5 border border-white/5">
                   <span className="text-slate-400 text-[9px] uppercase font-mono block">Experience</span>
-                  <span className="font-bold text-blue-300">{cand.matchBreakdown?.experienceMatch || 92}%</span>
+                  <span className="font-bold text-blue-300">{typeof cand.matchBreakdown?.experienceMatch === "number" ? cand.matchBreakdown.experienceMatch + "%" : "Not evaluated"}</span>
                 </div>
               </div>
 
@@ -172,7 +111,7 @@ export default function EmployerAiShortlist({
             </div>
           </div>
         ))}
-      </div>
+      </div>}
     </div>
   );
 }
