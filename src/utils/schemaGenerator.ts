@@ -44,7 +44,7 @@ export function generateJobPostingSchema(job: JobPosting): Record<string, any> {
   const jobUrl = job.canonicalUrl || getPublicJobUrl(job);
   const postedAt = toDate(job.datePosted || job.approvedAt || job.createdAt);
   const expiryDate = toDate(job.validThrough || job.expiryDate || job.applyDeadline);
-  const remote = String(job.workMode || "").trim().toLowerCase() === "remote";
+  const remote = ["remote", "telecommute"].includes(String(job.workMode || "").trim().toLowerCase());
   const employmentType = normalizeEmploymentType(job.employmentType || job.type);
 
   const schema: Record<string, any> = {
@@ -83,11 +83,14 @@ export function generateJobPostingSchema(job: JobPosting): Record<string, any> {
   } else {
     const city = String(job.city || job.location || "").trim();
     if (city) {
-      const address: Record<string, string> = { "@type": "PostalAddress", addressLocality: city };
-      if (job.streetAddress) address.streetAddress = job.streetAddress;
-      if (job.state) address.addressRegion = job.state;
-      if (job.postalCode) address.postalCode = job.postalCode;
-      if (job.country) address.addressCountry = job.country;
+      const address: Record<string, string> = {
+        "@type": "PostalAddress",
+        addressLocality: city,
+        addressCountry: String(job.country || "IN").trim()
+      };
+      if (job.streetAddress?.trim()) address.streetAddress = job.streetAddress.trim();
+      if (job.state?.trim()) address.addressRegion = job.state.trim();
+      if (job.postalCode?.trim()) address.postalCode = job.postalCode.trim();
       schema.jobLocation = { "@type": "Place", address };
     }
   }
@@ -111,13 +114,21 @@ export function generateJobPostingSchema(job: JobPosting): Record<string, any> {
 
   if (job.skillsRequired?.length) schema.skills = job.skillsRequired.filter(Boolean).join(", ");
   if (job.responsibilities) schema.responsibilities = job.responsibilities;
-  if (job.qualification || job.education) schema.educationRequirements = job.qualification || job.education;
-  if (job.minimumExperience !== undefined && job.minimumExperience !== null && Number.isFinite(Number(job.minimumExperience))) {
-    schema.experienceRequirements = {
-      "@type": "OccupationalExperienceRequirements",
-      monthsOfExperience: Math.max(0, Number(job.minimumExperience) * 12)
-    };
-  }
+
+  // Google JobPosting accepts plain-text requirements or Schema.org requirement objects.
+  // Plain text is robust for the free-form values collected by AIJOBS forms.
+  const educationRequirement = String(job.qualification || job.education || "").trim();
+  if (educationRequirement) schema.educationRequirements = educationRequirement;
+
+  const minExperience = Number(job.minimumExperience);
+  const maxExperience = Number(job.maximumExperience);
+  const experienceLabel = String(job.experience || "").trim();
+  const experienceText = [
+    Number.isFinite(minExperience) && minExperience >= 0 ? `${minExperience} years` : "",
+    Number.isFinite(maxExperience) && maxExperience >= 0 && maxExperience !== minExperience ? `up to ${maxExperience} years` : "",
+    experienceLabel
+  ].filter(Boolean).join(" ").trim();
+  if (experienceText) schema.experienceRequirements = experienceText;
 
   return schema;
 }
