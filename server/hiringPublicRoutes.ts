@@ -126,7 +126,7 @@ export async function handleHiringPublicRoute(req: Request, res: Response): Prom
     const responsibilities = textList(job.responsibilities || job.keyResponsibilities);
     const qualifications = textList(job.qualifications || job.minimumQualification || job.requirements);
     const benefits = textList(job.benefits);
-    const experienceRequirement = requirementText(job.experienceRequirements || job.experienceRequired) || [job.minimumExperience, job.maximumExperience].filter(v => v !== undefined && v !== null && v !== "").map(String).join(" - ");
+    const experienceRequirement = requirementText(job.experienceRequirements || job.experienceRequired) || [job.minimumExperience, job.maximumExperience].filter(v => v !== undefined && v !== null && v !== "").map(String).join(" - ") || requirementText(job.experience);
     const educationRequirement = requirementText(job.educationRequirements || job.minimumQualification || job.qualification || job.education);
     const organization: any = { "@type": "Organization", name: companyName };
     if (isHttpUrl(job.companyWebsite || job.website)) organization.sameAs = String(job.companyWebsite || job.website);
