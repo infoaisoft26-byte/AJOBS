@@ -198,7 +198,7 @@ export default function CandidateRegistrationFlow({
       const syncResponse = await fetch("/api/neon/candidate-sync", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({})
+        body: JSON.stringify({ candidate: { ...candidateData, ...userData, uid: fbUser.uid, role: "candidate" } })
       });
       if (!syncResponse.ok) console.warn("[CandidateRegistration] Neon sync deferred:", syncResponse.status);
     } catch (syncError) {
