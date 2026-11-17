@@ -32,8 +32,8 @@ interface EmployerDashboardProps {
 
 export default function EmployerDashboard({
   userId,
-  userName = "Hiring Leader",
-  companyName = "AIJOBS Partner Employer",
+  userName = "",
+  companyName = "",
   userRole = "employer",
   onLogout
 }: EmployerDashboardProps) {
