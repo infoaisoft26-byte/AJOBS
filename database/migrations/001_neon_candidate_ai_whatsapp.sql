@@ -71,3 +71,30 @@ CREATE INDEX IF NOT EXISTS idx_whatsapp_contacts_lead_type ON whatsapp_contacts(
 CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_contact_time ON whatsapp_messages(contact_id,occurred_at DESC);
 CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_status ON whatsapp_messages(meta_status,occurred_at DESC);
 CREATE INDEX IF NOT EXISTS idx_crm_leads_source_time ON crm_leads(source,created_at DESC);
+
+CREATE TABLE IF NOT EXISTS organization_profiles (
+  id text PRIMARY KEY,
+  owner_uid text NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  role text NOT NULL,
+  company_name text NOT NULL,
+  industry text,
+  company_size text,
+  website text,
+  company_address text,
+  city text,
+  state text,
+  country text,
+  gst_number text,
+  registration_number text,
+  official_email text,
+  official_phone text,
+  company_description text,
+  profile_completed boolean NOT NULL DEFAULT false,
+  marketing_attribution jsonb NOT NULL DEFAULT '{}'::jsonb,
+  profile jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  synced_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_organization_profiles_owner ON organization_profiles(owner_uid);
+CREATE INDEX IF NOT EXISTS idx_organization_profiles_role ON organization_profiles(role, updated_at DESC);
