@@ -342,7 +342,7 @@ export async function handleHiringFunnelApi(req: Request, res: Response): Promis
     }
 
     if (req.method === "POST" && path === "/api/hire/company") {
-      const { decoded, db } = await requireHiringUser(req);
+      const { decoded, db, role } = await requireHiringUser(req);
       const now = new Date().toISOString();
       const company = {
         companyId: decoded.uid,
