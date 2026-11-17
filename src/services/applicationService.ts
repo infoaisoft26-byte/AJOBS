@@ -29,7 +29,8 @@ export async function applyToJob(
   job: JobPosting,
   userId: string,
   profile: any,
-  resumeText?: string
+  resumeText?: string,
+  screeningResponses: Array<{ question:string; answer:string; category?:string }> = []
 ): Promise<ApplyResult> {
   // 1. Verify User Authentication
   if (!userId || !auth.currentUser) {
@@ -123,7 +124,8 @@ export async function applyToJob(
       source: "AIJobs",
       appliedAt: nowIso,
       updatedAt: nowIso,
-      resumeScore: Number(profile?.resumeScore || 0)
+      resumeScore: Number(profile?.resumeScore || 0),
+      screeningResponses: screeningResponses.filter(item => item && item.question?.trim() && item.answer?.trim()).map(item => ({ question:item.question.trim(), answer:item.answer.trim().slice(0,3000), category:item.category || "Job Fit" }))
     };
 
     // Application document in company-specific collection for backwards compatibility
@@ -141,7 +143,8 @@ export async function applyToJob(
       resumeScore: Number(profile?.resumeScore || 0),
       interviewScore: profile?.aiInterviewScore || 0,
       status: "applied",
-      appliedAt: nowIso
+      appliedAt: nowIso,
+      screeningResponses: newApp.screeningResponses
     };
 
     // Create the lead reference once and derive its ID from Firestore.
