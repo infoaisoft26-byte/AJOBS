@@ -49,6 +49,7 @@ import { handlePaymentCheckoutRoute } from "./server/paymentCheckoutRoute.js";
 import { handleCloudinarySignatureRoute } from "./server/cloudinarySignatureRoute.js";
 import { handleAgreementOtpRoute } from "./server/agreementOtpRoute.js";
 import { verifyWhatsAppWebhook, receiveWhatsAppWebhook, handleWhatsAppSendRoute } from "./server/whatsappAutomationService.js";
+import { handleAdminReportingRoute } from "./server/adminReportingRoute.js";
 
 dotenv.config();
 
@@ -90,6 +91,10 @@ app.post("/api/whatsapp/send", handleWhatsAppSendRoute);
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
+app.use(async (req: any, res: any, next: any) => {
+  const handled = await handleAdminReportingRoute(req, res);
+  if (!handled && !res.headersSent) next();
+});
 
 // Enable CORS for all API routes (essential for embedded iframe environments)
 app.use((req, res, next) => {
