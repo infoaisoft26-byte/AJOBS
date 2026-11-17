@@ -2,9 +2,10 @@ name: AIJOBS Neon Candidate and Integrations Build
 
 on:
   push:
-    branches: [feature/aijobs-candidate-neon-v2]
+    branches: [feature/aijobs-candidate-neon-release]
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened]
 
 jobs:
   production-build:
