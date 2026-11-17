@@ -49,7 +49,6 @@ export async function handleNeonIngestionRoute(req: Request, res: Response): Pro
   try {
     const decoded: any = await verifyRequest(req);
     const db = getFirestoreDb();
-    const sql = sqlClient();
 
     if (path === "/api/neon/candidate-sync") {
       const [userSnap, candidateSnap, candidateProfileSnap, legacyProfileSnap] = await Promise.all([
@@ -118,21 +117,29 @@ export async function handleNeonIngestionRoute(req: Request, res: Response): Pro
         preferredWorkMode: profile.preferredWorkMode || null, preferredJobType: profile.preferredJobType || null
       });
       const uid = decoded.uid;
-      await sql`INSERT INTO app_users (id,email,display_name,role,status,source_ref,profile,created_at,updated_at,synced_at)
-        VALUES (${uid},${email},${displayName},'candidate',${clean(user.status || "active",60)},${uid},${JSON.stringify(profilePayload)}::jsonb,${createdAt}::timestamptz,now(),now())
-        ON CONFLICT (id) DO UPDATE SET email=EXCLUDED.email,display_name=EXCLUDED.display_name,role='candidate',status=EXCLUDED.status,profile=EXCLUDED.profile,updated_at=now(),synced_at=now()`;
-      await sql`INSERT INTO candidate_profiles (user_id,candidate_id,phone,city,state,headline,preferred_roles,preferred_locations,skills,education,experience,resume_url,profile_completion,profile_status,whatsapp_opt_in,email_opt_in,attribution,profile,created_at,updated_at,synced_at)
-        VALUES (${uid},${clean(user.candidateId || candidate.candidateId,100)},${clean(profile.phone || profile.phoneNumber || profile.mobileNumber,40)},${clean(profile.city || profile.currentCity || profile.location,120)},${clean(profile.state || profile.currentState,120)},${clean(profile.headline || profile.currentJobTitle,240)},${JSON.stringify(profilePayload.preferredRoles)}::jsonb,${JSON.stringify(profilePayload.preferredLocations)}::jsonb,${JSON.stringify(profilePayload.skills)}::jsonb,${JSON.stringify(profilePayload.education)}::jsonb,${JSON.stringify(profilePayload.experience)}::jsonb,${clean(profilePayload.resumeUrl,2000) || null},${Number(user.profileCompletion || candidate.profileCompletion || 0)},${clean(user.profileStatus || candidate.profileStatus || "incomplete",60)},${whatsappConsent},${emailConsent},${JSON.stringify(attribution)}::jsonb,${JSON.stringify(profilePayload)}::jsonb,${createdAt}::timestamptz,now(),now())
-        ON CONFLICT (user_id) DO UPDATE SET candidate_id=EXCLUDED.candidate_id,phone=EXCLUDED.phone,city=EXCLUDED.city,state=EXCLUDED.state,headline=EXCLUDED.headline,preferred_roles=EXCLUDED.preferred_roles,preferred_locations=EXCLUDED.preferred_locations,skills=EXCLUDED.skills,education=EXCLUDED.education,experience=EXCLUDED.experience,resume_url=EXCLUDED.resume_url,profile_completion=EXCLUDED.profile_completion,profile_status=EXCLUDED.profile_status,whatsapp_opt_in=EXCLUDED.whatsapp_opt_in,email_opt_in=EXCLUDED.email_opt_in,attribution=EXCLUDED.attribution,profile=EXCLUDED.profile,updated_at=now(),synced_at=now()`;
-      await sql`INSERT INTO activity_events (id,user_id,role,event_name,source,occurred_at,attribution,metadata)
-        VALUES (${"candidate_registration_completed:" + uid},${uid},'candidate','candidate_registration_completed','registration',now(),${JSON.stringify(attribution)}::jsonb,${JSON.stringify({ registrationMethod: user.registrationMethod || "unknown", candidateId: user.candidateId || null })}::jsonb)
-        ON CONFLICT (id) DO UPDATE SET occurred_at=now(),attribution=EXCLUDED.attribution,metadata=EXCLUDED.metadata`;
-      await sql`INSERT INTO user_consents (id,user_id,channel,purpose,granted,source,recorded_at,metadata)
-        VALUES (${uid + ":whatsapp:marketing"},${uid},'whatsapp','marketing_updates',${whatsappConsent},'candidate_registration',now(),'{}'::jsonb)
-        ON CONFLICT (user_id,channel,purpose) DO UPDATE SET granted=EXCLUDED.granted,recorded_at=now()`;
-      await sql`INSERT INTO user_consents (id,user_id,channel,purpose,granted,source,recorded_at,metadata)
-        VALUES (${uid + ":email:marketing"},${uid},'email','marketing_updates',${emailConsent},'candidate_registration',now(),'{}'::jsonb)
-        ON CONFLICT (user_id,channel,purpose) DO UPDATE SET granted=EXCLUDED.granted,recorded_at=now()`;
+      try {
+        const sql = sqlClient();
+        await sql`INSERT INTO app_users (id,email,display_name,role,status,source_ref,profile,created_at,updated_at,synced_at)
+          VALUES (${uid},${email},${displayName},'candidate',${clean(user.status || "active",60)},${uid},${JSON.stringify(profilePayload)}::jsonb,${createdAt}::timestamptz,now(),now())
+          ON CONFLICT (id) DO UPDATE SET email=EXCLUDED.email,display_name=EXCLUDED.display_name,role='candidate',status=EXCLUDED.status,profile=EXCLUDED.profile,updated_at=now(),synced_at=now()`;
+        await sql`INSERT INTO candidate_profiles (user_id,candidate_id,phone,city,state,headline,preferred_roles,preferred_locations,skills,education,experience,resume_url,profile_completion,profile_status,whatsapp_opt_in,email_opt_in,attribution,profile,created_at,updated_at,synced_at)
+          VALUES (${uid},${clean(user.candidateId || candidate.candidateId,100)},${clean(profile.phone || profile.phoneNumber || profile.mobileNumber,40)},${clean(profile.city || profile.currentCity || profile.location,120)},${clean(profile.state || profile.currentState,120)},${clean(profile.headline || profile.currentJobTitle,240)},${JSON.stringify(profilePayload.preferredRoles)}::jsonb,${JSON.stringify(profilePayload.preferredLocations)}::jsonb,${JSON.stringify(profilePayload.skills)}::jsonb,${JSON.stringify(profilePayload.education)}::jsonb,${JSON.stringify(profilePayload.experience)}::jsonb,${clean(profilePayload.resumeUrl,2000) || null},${Number(user.profileCompletion || candidate.profileCompletion || 0)},${clean(user.profileStatus || candidate.profileStatus || "incomplete",60)},${whatsappConsent},${emailConsent},${JSON.stringify(attribution)}::jsonb,${JSON.stringify(profilePayload)}::jsonb,${createdAt}::timestamptz,now(),now())
+          ON CONFLICT (user_id) DO UPDATE SET candidate_id=EXCLUDED.candidate_id,phone=EXCLUDED.phone,city=EXCLUDED.city,state=EXCLUDED.state,headline=EXCLUDED.headline,preferred_roles=EXCLUDED.preferred_roles,preferred_locations=EXCLUDED.preferred_locations,skills=EXCLUDED.skills,education=EXCLUDED.education,experience=EXCLUDED.experience,resume_url=EXCLUDED.resume_url,profile_completion=EXCLUDED.profile_completion,profile_status=EXCLUDED.profile_status,whatsapp_opt_in=EXCLUDED.whatsapp_opt_in,email_opt_in=EXCLUDED.email_opt_in,attribution=EXCLUDED.attribution,profile=EXCLUDED.profile,updated_at=now(),synced_at=now()`;
+        await sql`INSERT INTO activity_events (id,user_id,role,event_name,source,occurred_at,attribution,metadata)
+          VALUES (${"candidate_registration_completed:" + uid},${uid},'candidate','candidate_registration_completed','registration',now(),${JSON.stringify(attribution)}::jsonb,${JSON.stringify({ registrationMethod: user.registrationMethod || "unknown", candidateId: user.candidateId || null })}::jsonb)
+          ON CONFLICT (id) DO UPDATE SET occurred_at=now(),attribution=EXCLUDED.attribution,metadata=EXCLUDED.metadata`;
+        await sql`INSERT INTO user_consents (id,user_id,channel,purpose,granted,source,recorded_at,metadata)
+          VALUES (${uid + ":whatsapp:marketing"},${uid},'whatsapp','marketing_updates',${whatsappConsent},'candidate_registration',now(),'{}'::jsonb)
+          ON CONFLICT (user_id,channel,purpose) DO UPDATE SET granted=EXCLUDED.granted,recorded_at=now()`;
+        await sql`INSERT INTO user_consents (id,user_id,channel,purpose,granted,source,recorded_at,metadata)
+          VALUES (${uid + ":email:marketing"},${uid},'email','marketing_updates',${emailConsent},'candidate_registration',now(),'{}'::jsonb)
+          ON CONFLICT (user_id,channel,purpose) DO UPDATE SET granted=EXCLUDED.granted,recorded_at=now()`;
+  
+      } catch (syncError:any) {
+        console.warn("[Candidate Neon sync] Firestore profile was repaired; Neon mirror will retry:",syncError?.message || syncError);
+        res.json({ success:true, synced:false, firestoreRepaired:true, userId:uid, candidateId:user.candidateId || candidate.candidateId || null });
+        return true;
+      }
       res.json({ success:true, synced:true, userId:uid, candidateId:user.candidateId || candidate.candidateId || null });
       return true;
     }
@@ -150,6 +157,7 @@ export async function handleNeonIngestionRoute(req: Request, res: Response): Pro
       if (!allowedIds.includes(decoded.uid) && !(await isAdmin(decoded.uid))) {
         res.status(403).json({ success:false,error:"INTERVIEW_ACCESS_DENIED" }); return true;
       }
+      const sql = sqlClient();
       await sql`INSERT INTO interviews (id,application_id,job_id,candidate_id,recruiter_id,employer_id,status,scheduled_at,source_ref,payload,synced_at)
         VALUES (${interviewId},${applicationId || null},${clean(interview.jobId || application.jobId,180)},${clean(interview.candidateId || application.candidateId,180)},${clean(interview.recruiterId || interview.assignedRecruiterId || application.assignedRecruiterId,180)},${clean(interview.employerId || application.employerId,180)},${clean(interview.status || "scheduled",80)},${asIso(interview.scheduledAt || interview.interviewDate)}::timestamptz,${interviewId},${JSON.stringify(safeJson(interview))}::jsonb,now())
         ON CONFLICT (id) DO UPDATE SET application_id=EXCLUDED.application_id,job_id=EXCLUDED.job_id,candidate_id=EXCLUDED.candidate_id,recruiter_id=EXCLUDED.recruiter_id,employer_id=EXCLUDED.employer_id,status=EXCLUDED.status,scheduled_at=EXCLUDED.scheduled_at,payload=EXCLUDED.payload,updated_at=now(),synced_at=now()`;
@@ -168,6 +176,7 @@ export async function handleNeonIngestionRoute(req: Request, res: Response): Pro
       res.status(403).json({ success:false,error:"APPLICATION_ACCESS_DENIED" }); return true;
     }
     const payload = safeJson({ ...application, id:applicationId });
+    const sql = sqlClient();
     await sql`INSERT INTO applications (id,job_id,candidate_id,recruiter_id,employer_id,consultancy_id,status,applied_at,source_ref,payload,synced_at)
       VALUES (${applicationId},${clean(application.jobId,180)},${owner},${clean(application.recruiterId || application.assignedRecruiterId,180)},${clean(application.employerId || application.companyId,180)},${clean(application.consultancyId,180)},${clean(application.status || "applied",80)},${asIso(application.appliedAt || application.createdAt)}::timestamptz,${applicationId},${JSON.stringify(payload)}::jsonb,now())
       ON CONFLICT (id) DO UPDATE SET job_id=EXCLUDED.job_id,candidate_id=EXCLUDED.candidate_id,recruiter_id=EXCLUDED.recruiter_id,employer_id=EXCLUDED.employer_id,consultancy_id=EXCLUDED.consultancy_id,status=EXCLUDED.status,applied_at=EXCLUDED.applied_at,payload=EXCLUDED.payload,updated_at=now(),synced_at=now()`;
