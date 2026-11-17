@@ -731,52 +731,52 @@ router.post("/shortlist", async (req, res) => {
  */
 router.post("/screening-questions", async (req, res) => {
   try {
-    const { jobId, candidateId, jobTitle, candidateSkills } = req.body;
+    const { jobId } = req.body || {};
+    if (!jobId || typeof jobId !== "string") {
+      return res.status(400).json({ success: false, error: "A real job posting ID is required." });
+    }
+    const db = getFirestoreDb();
+    const jobSnap = await db.collection("jobs").doc(jobId).get();
+    if (!jobSnap.exists) {
+      return res.status(404).json({ success: false, error: "The selected job posting was not found." });
+    }
+    const job: any = jobSnap.data() || {};
+    const jobTitle = String(job.title || "").trim();
+    const jobDescription = String(job.description || job.jobDescription || "").trim();
+    const requirements = String(job.requirements || job.qualification || "").trim();
+    const skillsRequired = Array.isArray(job.skillsRequired) ? job.skillsRequired : Array.isArray(job.skills) ? job.skills : [];
+    if (!ai) {
+      return res.status(503).json({ success: false, error: "AI question generation is not configured. No generic questions will be substituted." });
+    }
+    const prompt = `
+Create exactly 5 screening questions for the real job posting below. Questions must be specific to this job, its minimum qualifications, required skills, experience level, education/trade requirements and responsibilities. Do not assume React, Node.js, AWS or any technology unless it appears in the job posting. If the posting says fresher welcome, assess eligibility and fundamentals rather than demanding senior experience.
 
-    let questions: any = null;
+JOB TITLE: ${jobTitle}
+COMPANY: ${job.companyName || job.company || "Not specified"}
+JOB DESCRIPTION: ${jobDescription || "Not provided"}
+REQUIREMENTS / QUALIFICATION: ${requirements || "Not provided"}
+REQUIRED SKILLS: ${skillsRequired.join(", ") || "Not specified"}
+EXPERIENCE: ${job.experience || job.experienceRequired || "Not specified"}
+EDUCATION / TRADE: ${job.education || job.qualification || job.trade || "Not specified"}
 
-    if (ai) {
-      try {
-        const prompt = `
-Generate 5 candidate screening questions for position '${jobTitle || "Senior Full Stack Engineer"}'. Candidate Skills: ${(candidateSkills || ["React", "Node.js", "TypeScript", "PostgreSQL", "AWS"]).join(", ")}.
-
-Return strictly JSON format:
-{
-  "categories": [
-    { "category": "Technical", "question": "Explain how you optimize PostgreSQL indexing for complex multi-table joins in React/Node.js web applications." },
-    { "category": "Experience", "question": "Describe your most challenging TypeScript microservice project and how you handled high throughput." },
-    { "category": "Scenario", "question": "How do you debug an intermittent memory leak in a Node.js production service hosted on AWS ECS?" },
-    { "category": "Communication", "question": "How do you explain technical architecture trade-offs to non-technical stakeholders?" },
-    { "category": "Role-specific", "question": "Walk us through your approach to offline-first state synchronization in a React app." }
-  ]
-}
+Return strictly valid JSON only:
+{"categories":[{"category":"Eligibility","question":"..."},{"category":"Role Knowledge","question":"..."},{"category":"Practical Scenario","question":"..."},{"category":"Safety / Quality","question":"..."},{"category":"Availability","question":"..."}]}
 `;
-        const resp = await ai.models.generateContent({
-          model: "gemini-3.6-flash",
-          contents: prompt
-        });
-        const cleaned = (resp.text || "").replace(/```json/g, "").replace(/```/g, "").trim();
-        questions = JSON.parse(cleaned);
-      } catch (err) {
-        console.warn("[Screening Questions] Gemini generation failed, using structured template");
-      }
+    const response = await ai.models.generateContent({ model: "gemini-3.6-flash", contents: prompt });
+    const cleaned = (response.text || "").replace(/```json/gi, "").replace(/```/g, "").trim();
+    const parsed = JSON.parse(cleaned);
+    if (!Array.isArray(parsed.categories) || parsed.categories.length !== 5 || parsed.categories.some((item: any) => !item?.question || !item?.category)) {
+      return res.status(502).json({ success: false, error: "AI returned an invalid job-specific screening rubric. No default questions were used." });
     }
-
-    if (!questions || !questions.categories) {
-      questions = {
-        categories: [
-          { category: "Technical", question: "How do you manage complex asynchronous state and side effects in React 18 with TypeScript?" },
-          { category: "Experience", question: "Walk us through your hands-on experience in configuring AWS RDS PostgreSQL and serverless functions." },
-          { category: "Scenario", question: "What steps do you take when an API endpoint experiences a spike in p99 latency under heavy load?" },
-          { category: "Communication", question: "Describe a situation where you had to align conflicting product requirements between engineering and business teams." },
-          { category: "Role-specific", question: "How do you design database schema migrations to ensure zero downtime in production?" }
-        ]
-      };
-    }
-
-    return res.json({ success: true, questions: questions.categories });
+    await db.collection("jobs").doc(jobId).set({
+      screeningQuestions: parsed.categories,
+      screeningQuestionsGeneratedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+    return res.json({ success: true, questions: parsed.categories, jobId, jobTitle });
   } catch (err: any) {
-    return res.status(500).json({ success: false, error: err?.message || "Failed to generate screening questions" });
+    console.error("[Screening Questions] Job-specific generation failed:", err?.message || err);
+    return res.status(502).json({ success: false, error: "Could not generate screening questions from the actual job posting. No sample questions were substituted." });
   }
 });
 
