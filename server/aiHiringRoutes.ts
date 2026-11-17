@@ -156,7 +156,7 @@ Extract and return strictly JSON object with these keys:
 }
 `;
         const response = await ai.models.generateContent({
-          model: "gemini-3.6-flash",
+          model: "gemini-3.8-flash",
           contents: prompt
         });
         const textResp = response.text || "";
@@ -571,7 +571,7 @@ You are an autonomous Senior AI Hiring Agent. Produce a concise 2-sentence execu
 Top Candidates: ${JSON.stringify(scoredCandidates.slice(0, 3).map(c => ({ name: c.name, score: c.overallScore, bucket: c.bucket, exp: c.totalExperience })))}
 `;
         const resp = await ai.models.generateContent({
-          model: "gemini-3.6-flash",
+          model: "gemini-3.8-flash",
           contents: prompt
         });
         executiveSummary = resp.text?.trim() || "";
