@@ -1,9 +1,7 @@
 import React, { Dispatch, FormEvent, useState } from "react";
-import { doc, setDoc } from "firebase/firestore";
+import { auth } from "../firebase";
 import { AlertCircle, Send, Type, X } from "lucide-react";
-import { db } from "../firebase";
 
-import { NotificationService } from "../services/notificationService";
 
 interface RejectionReasonModalProps {
   isOpen: boolean;
@@ -45,41 +43,25 @@ export default function RejectionReasonModal({
     const nowIso = new Date().toISOString();
 
     try {
-      if (db) {
-        // 1. Update application status and store rejection reason
-        const appRef = doc(db, "applications", application.id);
-        await setDoc(appRef, {
-          status: "Rejected",
-          rejectionReason: rejectionReason.trim(),
-          rejectedAt: nowIso,
-          updatedAt: nowIso
-        }, { merge: true });
-
-        // 2. Dispatch Candidate Notification
-        await NotificationService.createNotification({
-          userId: application.candidateId,
-          type: "rejection",
-          title: `Application Feedback: ${application.jobTitle}`,
-          message: `Your application for "${application.jobTitle}" at ${application.companyName} was not selected. Feedback: "${rejectionReason.trim()}"`,
-          link: "/candidate/dashboard",
-          read: false,
-          createdAt: nowIso
-        });
-
-        // 3. Trigger email notification endpoint
-        try {
-          await fetch("/api/send-email", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              to: application.candidateEmail || `${application.candidateId}@aijobs.global`,
-              subject: `Update on your application for ${application.jobTitle} at ${application.companyName}`,
-              body: `Dear ${application.candidateName},\n\nThank you for applying for the ${application.jobTitle} position at ${application.companyName}.\n\nAfter careful review, we regret to inform you that we will not be moving forward with your application at this time.\n\nFeedback from hiring team:\n"${rejectionReason.trim()}"\n\nWe wish you all the best in your career journey.\n\nSincerely,\n${application.companyName} Hiring Team`
-            })
-          });
-        } catch (eErr) {
-          console.warn("Rejection email dispatch fallback notice:", eErr);
-        }
+      const token = await auth.currentUser?.getIdToken(true);
+      if (!token) throw new Error("Please sign in again to update this application.");
+      const response = await fetch("/api/hire/workspace/applications/" + encodeURIComponent(application.id) + "/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+        body: JSON.stringify({ status: "rejected", remarks: rejectionReason.trim() })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) throw new Error(result.error || "Could not save rejection feedback.");
+      if (application.candidateEmail) {
+        await fetch("/api/send-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: application.candidateEmail,
+            subject: "Update on your application for " + application.jobTitle + " at " + application.companyName,
+            body: "Dear " + application.candidateName + ",\n\nYour application for " + application.jobTitle + " at " + application.companyName + " has been updated.\n\nFeedback from the hiring team:\n" + rejectionReason.trim() + "\n\nAIJOBS"
+          })
+        }).catch(eErr => console.warn("Rejection email dispatch notice:", eErr));
       }
 
       if (onSuccess) onSuccess();
