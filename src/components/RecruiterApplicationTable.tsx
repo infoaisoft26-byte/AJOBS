@@ -93,6 +93,11 @@ export default function RecruiterApplicationTable({
   const [loadingNotes, setLoadingNotes] = useState(false);
 
   // Fetch the current user's authorized applications from the server.
+  const displayStatus = (value: unknown): ApplicationRecord["status"] => {
+    const status = String(value || "applied").toLowerCase().replace(/[ -]+/g, "_");
+    const labels: Record<string, ApplicationRecord["status"]> = { applied: "Applied", new_lead: "Applied", viewed: "Screening", under_review: "Screening", screening: "Screening", contacted: "Screening", screened: "Screening", shortlisted: "Shortlisted", interview: "Interview Completed", interview_scheduled: "Interview Scheduled", interview_completed: "Interview Completed", hr_round: "HR Round", final_round: "Final Round", selected: "Selected", offer: "Offer", joined: "Joined", hired: "Joined", rejected: "Rejected" };
+    return labels[status] || "Applied";
+  };
   const mapApplication = (id: string, data: any): ApplicationRecord => ({
     id,
     jobId: data.jobId || "",
@@ -102,7 +107,7 @@ export default function RecruiterApplicationTable({
     candidateName: data.candidateName || data.name || "",
     candidateEmail: data.candidateEmail || data.email || "",
     candidatePhone: data.candidatePhone || data.phone || "",
-    status: String(data.status || "applied") as ApplicationRecord["status"],
+    status: displayStatus(data.status),
     appliedAt: data.appliedAt || data.createdAt || "",
     updatedAt: data.updatedAt || "",
     resumeUrl: data.resumeUrl || "",
@@ -155,7 +160,7 @@ export default function RecruiterApplicationTable({
       }
     ));
     return () => unsubs.forEach(unsubscribe => unsubscribe());
-  }, [recruiterId, jobId]);
+  }, [recruiterId, jobId, currentUserId]);
 
   // Derived Jobs options for filter dropdown
   const uniqueJobs = useMemo(() => {
