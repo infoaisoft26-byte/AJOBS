@@ -45,73 +45,7 @@ export default function EmployerCandidateSearch({
   const [shortlistedIds, setShortlistedIds] = useState<string[]>([]);
 
   // Verified candidate talent pool
-  const talentPool: CandidateResult[] = [
-    {
-      id: "cand_pool_1",
-      name: "Rohan Mukherjee",
-      role: "Lead Full Stack Architect",
-      skills: ["React", "TypeScript", "Node.js", "System Design", "AWS", "Kafka"],
-      experience: "6.5 Years",
-      location: "Bengaluru",
-      expectedCtc: "₹28,00,000",
-      noticePeriod: "15 Days",
-      aiScore: 97,
-      education: "B.Tech Computer Science (NIT Surathkal)",
-      summary: "Architected micro-frontend systems serving 1M+ daily active users. Expert in high-throughput React/Node.js pipelines."
-    },
-    {
-      id: "cand_pool_2",
-      name: "Sneha Deshmukh",
-      role: "Senior Frontend Engineer",
-      skills: ["React", "Next.js", "TypeScript", "Tailwind CSS", "Design Systems"],
-      experience: "4.2 Years",
-      location: "Pune (Open to Remote)",
-      expectedCtc: "₹18,00,000",
-      noticePeriod: "Immediate",
-      aiScore: 94,
-      education: "B.E Information Technology (COEP)",
-      summary: "Specializes in design systems, web performance optimization, and responsive mobile-first SaaS interfaces."
-    },
-    {
-      id: "cand_pool_3",
-      name: "Aditya Verma",
-      role: "Backend & Cloud Engineer",
-      skills: ["Node.js", "Golang", "Kubernetes", "PostgreSQL", "Docker", "Redis"],
-      experience: "3.5 Years",
-      location: "Hyderabad",
-      expectedCtc: "₹16,50,000",
-      noticePeriod: "30 Days",
-      aiScore: 91,
-      education: "B.Tech Electrical & CS (IIT Hyderabad)",
-      summary: "Built scalable payment orchestration and distributed caching layers with sub-20ms latency."
-    },
-    {
-      id: "cand_pool_4",
-      name: "Tanvi Saxena",
-      role: "AI / ML Solutions Engineer",
-      skills: ["Python", "PyTorch", "Gemini API", "Vector Databases", "LangChain", "FastAPI"],
-      experience: "3.0 Years",
-      location: "Delhi NCR",
-      expectedCtc: "₹20,00,000",
-      noticePeriod: "15 Days",
-      aiScore: 95,
-      education: "M.Tech Data Science (DTU)",
-      summary: "Developed autonomous agent workflows, RAG systems, and semantic document parsers with Gemini & Claude models."
-    },
-    {
-      id: "cand_pool_5",
-      name: "Karthik Ranganathan",
-      role: "Senior Product Designer & UI Engineer",
-      skills: ["Figma", "UI/UX", "React", "Design Systems", "Prototyping"],
-      experience: "5.0 Years",
-      location: "Chennai",
-      expectedCtc: "₹22,00,000",
-      noticePeriod: "Immediate",
-      aiScore: 89,
-      education: "B.Des (NID Ahmedabad)",
-      summary: "End-to-end product designer who codes in React and builds cohesive, high-conversion B2B SaaS design libraries."
-    }
-  ];
+  const talentPool: CandidateResult[] = [];
 
   const filteredPool = talentPool.filter((c) => {
     if (locationFilter !== "all" && !c.location.toLowerCase().includes(locationFilter.toLowerCase())) {
