@@ -117,7 +117,7 @@ export default function CandidateRegistrationFlow({
       mobileNumber: normalizedMobile,
       role: "candidate",
       emailVerified: fbUser.emailVerified === true,
-      verificationStatus: "verified",
+      verificationStatus: fbUser.emailVerified ? "verified" : "pending",
       approvalStatus: "approved",
       status: "active",
       accountStatus: "active",
@@ -191,6 +191,19 @@ export default function CandidateRegistrationFlow({
       profileImage: fbUser.photoURL || undefined,
       photoURL: fbUser.photoURL || undefined,
     };
+
+    // Best-effort Neon sync; never block Firebase account creation if Neon is temporarily unavailable.
+    try {
+      const token = await fbUser.getIdToken();
+      const syncResponse = await fetch("/api/neon/candidate-sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({})
+      });
+      if (!syncResponse.ok) console.warn("[CandidateRegistration] Neon sync deferred:", syncResponse.status);
+    } catch (syncError) {
+      console.warn("[CandidateRegistration] Neon sync deferred:", syncError);
+    }
 
     trackCandidateRegistrationComplete({
       method,
