@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { AlertTriangle, ArrowLeft, ArrowRight, Brain, Briefcase, Check, CheckCircle2, Clock, File, FileText, Grid, Heart, Info, Key, Link, MapPin, Navigation, Package, Section, Send, Share, Share2, ShieldCheck, Sparkles, Users, View, X } from "lucide-react";
-import { auth, db } from "../firebase";
+import { db } from "../firebase";
 
 
 import { JobPosting, JobApplication } from "../types";
