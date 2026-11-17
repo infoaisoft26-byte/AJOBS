@@ -936,11 +936,11 @@ router.post("/subscriptions/approve", async (req, res) => {
     const kycStatus = norm(userData.kycStatus || userData.verificationStatus || kycData.kycStatus || latest(verificationRows)?.kycStatus);
     const kycApproved = ["verified", "approved", "kyc_approved"].includes(kycStatus);
     const paymentData = latest([
-      ...paymentRows.filter((p: any) => ["paid", "success", "verified"].includes(norm(p.status))),
-      ...paymentOrderRows.filter((p: any) => ["paid", "success", "verified"].includes(norm(p.status)))
+      ...paymentRows.filter((p: any) => ["paid", "success", "verified"].includes(norm(p.status || p.paymentStatus))),
+      ...paymentOrderRows.filter((p: any) => ["paid", "success", "verified"].includes(norm(p.status || p.paymentStatus)))
     ]);
     const agreementData: any = latest(agreementRows);
-    const agreementStatus = norm(agreementData?.status);
+    const agreementStatus = norm(agreementData?.status || agreementData?.agreementStatus);
     const agreementSigned = ["accepted", "signed", "payment_completed", "completed"].includes(agreementStatus) ||
       Boolean(agreementData?.acceptedAt || agreementData?.signedAt || agreementData?.completedAt);
 
