@@ -33,7 +33,7 @@ export default function EmployerInterviews({
 }: EmployerInterviewsProps) {
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [candidateName, setCandidateName] = useState("");
-  const [jobTitle, setJobTitle] = useState(jobs[0]?.title || "Senior React Engineer");
+  const [jobTitle, setJobTitle] = useState(jobs[0]?.title || "");
   const [dateTime, setDateTime] = useState("");
   const [roundName, setRoundName] = useState("Technical Screening");
   const [meetLink, setMeetLink] = useState("https://meet.google.com/aijobs-interview");
