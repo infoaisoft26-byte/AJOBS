@@ -37,12 +37,7 @@ export default function RecruiterOverview({
   onSelectCandidateForPipeline,
   onOpenLiveChat
 }: RecruiterOverviewProps) {
-  const [tasks, setTasks] = useState<RecruiterTask[]>([
-    { id: "t1", title: "Conduct technical pre-screen with Aarav Sharma", dueDate: "Today 2:30 PM", priority: "high", completed: false },
-    { id: "t2", title: "Share 3 shortlisted React profiles with Tech Lead", dueDate: "Today 5:00 PM", priority: "high", completed: false },
-    { id: "t3", title: "Follow up with Vikram Malhotra on offer acceptance", dueDate: "Tomorrow", priority: "medium", completed: true },
-    { id: "t4", title: "Review incoming applications for Cloud Architect opening", dueDate: "Aug 22", priority: "low", completed: false }
-  ]);
+  const [tasks, setTasks] = useState<RecruiterTask[]>([]);
 
   const toggleTask = (taskId: string) => {
     setTasks(tasks.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t));
