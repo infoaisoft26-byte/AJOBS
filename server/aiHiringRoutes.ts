@@ -12,13 +12,20 @@ router.get("/health", (_req, res) => {
   res.status(configured ? 200 : 503).json({ success: configured, provider: "Google Gemini", model: AI_MODEL, configured, engine: configured ? "active" : "missing_api_key" });
 });
 
-async function recordAiEngineRun(input: { id: string; task: string; userId?: string; jobId?: string; applicationId?: string; status: string; durationMs?: number; result?: any; errorCode?: string }) {
+async function recordAiEngineRun(input: { id: string; task: string; userId?: string; evaluatedBy?: string; jobId?: string; applicationId?: string; status: string; durationMs?: number; result?: any; errorCode?: string }) {
   if (!process.env.DATABASE_URL) return;
   try {
     const sql = neon(process.env.DATABASE_URL);
     await sql`INSERT INTO ai_engine_runs (id,provider,model,task,user_id,job_id,application_id,status,duration_ms,result,error_code)
       VALUES (${input.id},'google-gemini',${AI_MODEL},${input.task},${input.userId || null},${input.jobId || null},${input.applicationId || null},${input.status},${input.durationMs || null},${JSON.stringify(input.result || {})}::jsonb,${input.errorCode || null})
       ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status,duration_ms=EXCLUDED.duration_ms,result=EXCLUDED.result,error_code=EXCLUDED.error_code`;
+    if (input.task === "candidate_screening" && input.applicationId) {
+      const score = Number.isFinite(Number(input.result?.fitScore)) ? Number(input.result.fitScore) : null;
+      const evaluatedAt = input.result?.evaluatedAt || new Date().toISOString();
+      await sql`INSERT INTO screening_evaluations (id,application_id,job_id,candidate_id,evaluated_by,score,outcome,evaluated_at,payload,source_ref,synced_at)
+        VALUES (${input.id},${input.applicationId},${input.jobId || null},${input.userId || null},${input.evaluatedBy || null},${score},${String(input.result?.recommendation || input.result?.fitLevel || "evaluated")},${evaluatedAt}::timestamptz,${JSON.stringify(input.result || {})}::jsonb,${input.id},now())
+        ON CONFLICT (id) DO UPDATE SET score=EXCLUDED.score,outcome=EXCLUDED.outcome,evaluated_at=EXCLUDED.evaluated_at,payload=EXCLUDED.payload,synced_at=now()`;
+    }
   } catch (error: any) {
     console.warn("[AI Engine] Neon run logging deferred:", error?.message || error);
   }
@@ -805,6 +812,12 @@ Return strictly valid JSON only:
       screeningQuestionsGeneratedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }, { merge: true });
+    if (process.env.DATABASE_URL) {
+      try {
+        const sql = neon(process.env.DATABASE_URL);
+        await sql`UPDATE jobs SET payload=payload || ${JSON.stringify({screeningQuestions:parsed.categories,screeningQuestionsGeneratedAt:new Date().toISOString()})}::jsonb,updated_at=now(),synced_at=now() WHERE id=${jobId}`;
+      } catch (error:any) { console.warn("[AI screening questions] Neon job rubric sync deferred:",error?.message || error); }
+    }
     await recordAiEngineRun({ id:"screening-questions:" + jobId + ":" + Date.now(), task:"job_screening_questions", userId:decoded.uid, jobId, status:"succeeded", result:{ questionCount:parsed.categories.length } });
     return res.json({ success: true, questions: parsed.categories, jobId, jobTitle });
   } catch (err: any) {
@@ -1046,10 +1059,11 @@ CRITICAL: Return STRICTLY a valid JSON object without markdown formatting or cod
           id: "screening:" + applicationSnap.docs[0].id + ":" + Date.now(),
           task: "candidate_screening",
           userId: candidateId,
+          evaluatedBy: decoded.uid,
           jobId,
           applicationId: applicationSnap.docs[0].id,
           status: "succeeded",
-          result: { fitScore: parsedResult.fitScore, fitLevel: parsedResult.fitLevel, recommendation: parsedResult.recommendation }
+          result: parsedResult
         });
         await recordHiringAuditLog({
           action: "AI_SCREENING_PARSED",
