@@ -126,7 +126,11 @@ export async function handleAdminOnboardingApprovalRoute(req: Request, res: Resp
       };
       const batch = db.batch();
       batch.set(db.collection("users").doc(uid), updates, {merge:true});
-      if (norm(user.role)==="recruiter") batch.set(db.collection("recruiters").doc(uid), updates, {merge:true});
+      if (norm(user.role)==="recruiter") {
+        batch.set(db.collection("recruiters").doc(uid), updates, {merge:true});
+        batch.set(db.collection("recruiter_profiles").doc(uid), updates, {merge:true});
+      }
+      if (norm(user.role)==="employer") batch.set(db.collection("employers").doc(uid), updates, {merge:true});
       if (["consultancy","agency"].includes(norm(user.role))) batch.set(db.collection("consultancies").doc(uid), updates, {merge:true});
       batch.set(db.collection("onboarding_timelines").doc(`tl_${uid}_${Date.now()}`), {
         userId:uid, stage:"ACCOUNT_ACTIVATED", title:"Account Activated & Granted Workspace Access",
