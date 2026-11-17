@@ -79,31 +79,37 @@ export async function getAllJobs(): Promise<JobPosting[]> {
  */
 export async function getLiveJobs(): Promise<JobPosting[]> {
   try {
-    const publicJobsQuery = query(
-      collection(db, JOBS_COLLECTION),
-      where("status", "in", PUBLIC_JOB_STATUSES)
-    );
-    const querySnapshot = await getDocs(publicJobsQuery);
-    const jobsList: JobPosting[] = [];
-
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      if (isPublicJob({ ...data, id: doc.id })) {
-        const slug = data.slug || generateJobSlug(data.title, data.location, doc.id);
-        const canonicalUrl = data.canonicalUrl || getPublicJobUrl({ title: data.title, location: data.location, id: doc.id, slug });
-        jobsList.push({ id: doc.id, slug, canonicalUrl, ...data } as JobPosting);
-      }
+    // Use the public server endpoint backed by Firebase Admin SDK. This keeps
+    // homepage reads independent of browser Firestore rules and ensures the
+    // homepage and public jobs page share the same approved/live source.
+    const response = await fetch("/api/jobs/live", {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      cache: "no-store"
     });
+    if (!response.ok) {
+      throw new Error(`Live jobs request failed (${response.status}).`);
+    }
+    const payload = await response.json();
+    if (!payload?.success || !Array.isArray(payload.jobs)) {
+      throw new Error(payload?.error || "Live jobs service returned an invalid response.");
+    }
 
-    return jobsList.sort((a, b) => {
-      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return dateB - dateA;
-    });
+    return payload.jobs
+      .filter((job: any) => isPublicJob(job))
+      .map((job: any) => {
+        const id = String(job.id || "");
+        const slug = job.slug || generateJobSlug(job.title || job.jobTitle, job.location, id);
+        const canonicalUrl = job.canonicalUrl || getPublicJobUrl({ title: job.title || job.jobTitle, location: job.location, id, slug });
+        return { ...job, id, slug, canonicalUrl } as JobPosting;
+      })
+      .sort((a: any, b: any) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      });
   } catch (error) {
     console.error("Error fetching live jobs:", error);
-    // Let the homepage show a real fetch error instead of silently presenting
-    // a successful-looking empty jobs section.
     throw error;
   }
 }
@@ -273,43 +279,13 @@ export async function fetchPaginatedLiveJobs(
   pageSize: number = 15,
   lastVisibleDoc: any = null
 ): Promise<{ jobs: JobPosting[]; lastDoc: number | null }> {
-  try {
-    const publicJobsQuery = query(
-      collection(db, JOBS_COLLECTION),
-      where("status", "in", PUBLIC_JOB_STATUSES)
-    );
-    const querySnapshot = await getDocs(publicJobsQuery);
-    const jobsList: JobPosting[] = [];
-
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      if (isPublicJob({ ...data, id: doc.id })) {
-        const slug = data.slug || generateJobSlug(data.title, data.location, doc.id);
-        const canonicalUrl = data.canonicalUrl || getPublicJobUrl({ title: data.title, location: data.location, id: doc.id, slug });
-        jobsList.push({ id: doc.id, slug, canonicalUrl, ...data } as JobPosting);
-      }
-    });
-
-    const sorted = jobsList.sort((a, b) => {
-      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      if (dateB !== dateA) return dateB - dateA;
-      return String(a.id || "").localeCompare(String(b.id || ""));
-    });
-
-    const safePageSize = Math.max(1, Math.min(50, Number(pageSize) || 15));
-    const rawOffset = Number(lastVisibleDoc);
-    const start = Number.isFinite(rawOffset) && rawOffset > 0 ? Math.floor(rawOffset) : 0;
-    const end = Math.min(sorted.length, start + safePageSize);
-    const page = sorted.slice(start, end);
-    const nextCursor = end < sorted.length ? end : null;
-
-    return {
-      jobs: page,
-      lastDoc: nextCursor
-    };
-  } catch (error) {
-    console.warn("fetchPaginatedLiveJobs fallback:", error);
-    return { jobs: [], lastDoc: null };
-  }
+  const allLiveJobs = await getLiveJobs();
+  const safePageSize = Math.max(1, Math.min(50, Number(pageSize) || 15));
+  const rawOffset = Number(lastVisibleDoc);
+  const start = Number.isFinite(rawOffset) && rawOffset > 0 ? Math.floor(rawOffset) : 0;
+  const end = Math.min(allLiveJobs.length, start + safePageSize);
+  return {
+    jobs: allLiveJobs.slice(start, end),
+    lastDoc: end < allLiveJobs.length ? end : null
+  };
 }
