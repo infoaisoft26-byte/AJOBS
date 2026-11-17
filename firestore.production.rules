@@ -35,12 +35,20 @@ service cloud.firestore {
         data.recruiterId == request.auth.uid || data.employerId == request.auth.uid || data.consultancyId == request.auth.uid
       );
     }
+    function linkedConsultancyId() {
+      return exists(/databases/$(database)/documents/recruiter_profiles/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/recruiter_profiles/$(request.auth.uid)).data.consultancyId
+        : (exists(/databases/$(database)/documents/recruiters/$(request.auth.uid))
+          ? get(/databases/$(database)/documents/recruiters/$(request.auth.uid)).data.consultancyId
+          : null);
+    }
     function ownsApplication(data) {
       return isSignedIn() && (
         data.candidateId == request.auth.uid || data.userId == request.auth.uid ||
         data.ownerUid == request.auth.uid || data.recruiterId == request.auth.uid ||
         data.employerId == request.auth.uid || data.consultancyId == request.auth.uid ||
-        data.jobOwnerUid == request.auth.uid || data.assignedRecruiterId == request.auth.uid
+        data.jobOwnerUid == request.auth.uid || data.assignedRecruiterId == request.auth.uid ||
+        (linkedConsultancyId() != null && data.consultancyId == linkedConsultancyId())
       );
     }
     function isAllowedPublicRole(value) {
