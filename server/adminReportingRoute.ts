@@ -91,9 +91,9 @@ export async function handleAdminReportingRoute(req: Request, res: Response): Pr
     const page = Math.max(1, Math.min(10000, Number(q.page) || 1));
     const pageSize = Math.max(10, Math.min(100, Number(q.pageSize) || 25));
 
-    const names = ["users","jobs","applications","interviews","hiring_audit_logs","activity_logs","audit_logs","screening_evaluations"];
+    const names = ["users","jobs","applications","interviews","hiring_audit_logs","activity_logs","audit_logs","screening_evaluations","candidate_screenings"];
     const snaps = await Promise.all(names.map(name => db.collection(name).limit(name === "users" || name === "applications" ? 10000 : 5000).get().catch(() => null)));
-    const [usersRaw,jobsRaw,appsRaw,interviewsRaw,hiringAuditRaw,activityRaw,auditRaw,screeningRaw] = snaps.map(asRows);
+    const [usersRaw,jobsRaw,appsRaw,interviewsRaw,hiringAuditRaw,activityRaw,auditRaw,screeningRaw,candidateScreeningsRaw] = snaps.map(asRows);
     const users = usersRaw.map((u:any)=>({ ...u, role:roleOf(u.role || u.userType) }));
     const jobs = jobsRaw;
     const allApps = appsRaw;
@@ -120,7 +120,7 @@ export async function handleAdminReportingRoute(req: Request, res: Response): Pr
       if (jid) { const x=jobMap.get(jid)||{id:jid,title:clean(a.jobTitle,180),applications:0,shortlisted:0,interviews:0,hired:0}; x.applications++; const s=statusOf(a); if(s.includes("shortlist"))x.shortlisted++; if(s.includes("interview"))x.interviews++; if(["hired","joined","selected","offer"].includes(s))x.hired++; jobMap.set(jid,x); }
     }
     const interviewStatus = counts(filteredInterviews,(i:any)=>roleOf(i.status)||"scheduled");
-    const screeningResults = [...screeningRaw,...allApps.filter((a:any)=>a.screeningSummary || a.screeningResult || a.aiScreeningSummary).map((a:any)=>({id:a.id,applicationId:a.id,score:a.screeningScore || a.aiScreeningScore || null,outcome:a.screeningOutcome || a.screeningResult?.outcome || "evaluated",evaluatedAt:a.screeningEvaluatedAt || a.updatedAt}))];
+    const screeningResults = [...screeningRaw,...candidateScreeningsRaw,...allApps.filter((a:any)=>a.screeningSummary || a.screeningResult || a.aiScreeningSummary).map((a:any)=>({id:a.id,applicationId:a.id,score:a.screeningScore || a.aiScreeningScore || null,outcome:a.screeningOutcome || a.screeningResult?.outcome || "evaluated",evaluatedAt:a.screeningEvaluatedAt || a.updatedAt}))];
     const pagedApps = filteredApps.slice((page-1)*pageSize,page*pageSize);
     const pagedAudit = auditEvents.slice((page-1)*pageSize,page*pageSize);
 
