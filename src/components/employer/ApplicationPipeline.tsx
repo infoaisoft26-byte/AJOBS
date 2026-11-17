@@ -169,7 +169,7 @@ export default function ApplicationPipeline({
       "Email Address": app.candidateEmail,
       "Job Applied For": app.jobTitle,
       "Pipeline Stage": app.status,
-      "ATS Score": app.resumeScore || 70,
+      "ATS Score": app.resumeScore || 0,
       "AI Interview Score": app.interviewScore || "Not Scored",
       "Applied On": new Date().toLocaleDateString()
     }];
@@ -246,7 +246,7 @@ export default function ApplicationPipeline({
           </div>
           <div class="section">
             <div class="section-title">ATS Resume Summary Synopsis</div>
-            <p style="line-height: 1.6; color: #444;">Candidate is cleared for further advanced technical routing based on credentials. Possesses relevant skills matching the job description with high proficiency.</p>
+            <p style="line-height: 1.6; color: #444;">Resume and skill review details will appear here when verified candidate data is available.</p>
           </div>
           <script>window.print();</script>
         </body>
@@ -280,17 +280,17 @@ export default function ApplicationPipeline({
   const handleMoveStage = async (app: CompanyApplication, targetStage: typeof PIPELINE_COLUMNS[number]) => {
     setIsChangingStatus(true);
     try {
-      // 1. Update corporate application
-      const updatedApp: CompanyApplication = {
-        ...app,
-        status: targetStage
-      };
-      await setDoc(doc(db, "company_applications", app.id), updatedApp);
-
-      // 2. Sync to standard application collection
-      await setDoc(doc(db, "applications", app.id), {
-        status: targetStage.toLowerCase()
-      }, { merge: true });
+      // Update both candidate and hiring views through the authenticated API.
+      const token = await auth.currentUser?.getIdToken(true);
+      if (!token) throw new Error("Please sign in again to update this candidate.");
+      const response = await fetch("/api/hire/workspace/applications/" + encodeURIComponent(app.id) + "/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+        body: JSON.stringify({ status: targetStage, remarks: "" })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) throw new Error(result.error || "Application stage update failed.");
+      const updatedApp: CompanyApplication = { ...app, status: result.status };
 
       // Log activity
       const activityId = "clog_" + Math.random().toString(36).substr(2, 9);
