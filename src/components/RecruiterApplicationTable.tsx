@@ -1,5 +1,5 @@
 import React, { Dispatch, FormEvent, useEffect, useMemo, useState } from "react";
-import { addDoc, collection, doc, getDocs, query, setDoc, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, doc, getDocs, onSnapshot, query, setDoc, updateDoc, where } from "firebase/firestore";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowUpDown, Badge, Building, Calendar, CheckCircle, ChevronDown, Clock, Cloud, Contact, Container, Download, ExternalLink, Eye, FileText, Filter, Inspect, Link, List, Mail, Map as MapIcon, MessageSquare, Phone, RefreshCw, Save, Search, Send, ShieldCheck, Sparkles, Table, Target, Type, UserCheck, Users, View, XCircle } from "lucide-react";
 import { auth, db } from "../firebase";
@@ -92,73 +92,40 @@ export default function RecruiterApplicationTable({
   const [notesList, setNotesList] = useState<any[]>([]);
   const [loadingNotes, setLoadingNotes] = useState(false);
 
-  // Fetch applications from Firestore
+  // Fetch the current user's authorized applications from the server.
+  const mapApplication = (id: string, data: any): ApplicationRecord => ({
+    id,
+    jobId: data.jobId || "",
+    jobTitle: data.jobTitle || "",
+    companyName: data.companyName || "",
+    candidateId: data.candidateId || "",
+    candidateName: data.candidateName || data.name || "",
+    candidateEmail: data.candidateEmail || data.email || "",
+    candidatePhone: data.candidatePhone || data.phone || "",
+    status: String(data.status || "applied") as ApplicationRecord["status"],
+    appliedAt: data.appliedAt || data.createdAt || "",
+    updatedAt: data.updatedAt || "",
+    resumeUrl: data.resumeUrl || "",
+    resumeScore: Number(data.resumeScore || 0),
+    interviewScore: Number(data.interviewScore || 0),
+    recruiterId: data.recruiterId || data.employerId || ""
+  });
+
   const fetchApplications = async (showSyncIndicator = false) => {
     if (showSyncIndicator) setRefreshing(true);
     else setLoading(true);
     setError(null);
-
     try {
-      const appsList: ApplicationRecord[] = [];
-
-      // 1. Fetch from 'applications' primary collection
-      try {
-        const appsSnap = await getDocs(collection(db, "applications"));
-        appsSnap.forEach((d) => {
-          const data = d.data();
-          appsList.push({
-            id: d.id,
-            jobId: data.jobId || "job_unk",
-            jobTitle: data.jobTitle || "Job Position",
-            companyName: data.companyName || "Company Partner",
-            candidateId: data.candidateId || "cand_unk",
-            candidateName: data.candidateName || "Candidate",
-            candidateEmail: data.candidateEmail || data.email,
-            candidatePhone: data.candidatePhone || data.phone,
-            status: data.status || "Applied",
-            appliedAt: data.appliedAt || data.createdAt || new Date().toISOString(),
-            resumeUrl: data.resumeUrl || data.resumeFileName,
-            resumeScore: data.resumeScore || 75,
-            interviewScore: data.interviewScore || 0,
-            recruiterId: data.recruiterId || data.employerId
-          });
-        });
-      } catch (err: any) {
-        console.warn("RecruiterApplicationTable: Primary applications fetch warning:", err.message);
-      }
-
-      // 2. Fetch from 'company_applications' if additional records exist
-      try {
-        const compAppsSnap = await getDocs(collection(db, "company_applications"));
-        compAppsSnap.forEach((d) => {
-          if (!appsList.some(a => a.id === d.id)) {
-            const data = d.data();
-            appsList.push({
-              id: d.id,
-              jobId: data.jobId || "job_unk",
-              jobTitle: data.jobTitle || "Job Position",
-              companyName: data.companyName || "Company Partner",
-              candidateId: data.candidateId || "cand_unk",
-              candidateName: data.candidateName || "Candidate Name",
-              candidateEmail: data.candidateEmail,
-              candidatePhone: data.candidatePhone,
-              status: data.status || "Applied",
-              appliedAt: data.appliedAt || new Date().toISOString(),
-              resumeUrl: data.resumeUrl,
-              resumeScore: data.resumeScore || 70,
-              interviewScore: data.interviewScore || 0,
-              recruiterId: data.recruiterId || data.companyId
-            });
-          }
-        });
-      } catch (err: any) {
-        console.warn("RecruiterApplicationTable: Company applications fetch warning:", err.message);
-      }
-
-      setApplications(appsList);
+      const token = await auth.currentUser?.getIdToken(true);
+      if (!token) throw new Error("Please sign in again to view candidate applications.");
+      const response = await fetch("/api/hire/workspace", { headers: { Authorization: "Bearer " + token } });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) throw new Error(result.error || "Could not load applications.");
+      const rows = Array.isArray(result.applications) ? result.applications : [];
+      setApplications(rows.map((row: any) => mapApplication(row.id, row)).filter((app: ApplicationRecord) => !jobId || app.jobId === jobId));
     } catch (err: any) {
       console.error("Error loading recruiter applications:", err);
-      setError("Failed to load applicants. Please verify Firestore connectivity.");
+      setError(err?.message || "Failed to load applicants.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -167,6 +134,27 @@ export default function RecruiterApplicationTable({
 
   useEffect(() => {
     fetchApplications();
+    const fields = ["recruiterId", "employerId", "ownerUid", "jobOwnerUid", "assignedRecruiterId"];
+    const unsubs = fields.map(field => onSnapshot(
+      query(collection(db, "applications"), where(field, "==", currentUserId)),
+      snapshot => {
+        setApplications(previous => {
+          const merged = new Map(previous.map(app => [app.id, app]));
+          snapshot.docs.forEach(item => {
+            const mapped = mapApplication(item.id, item.data());
+            if (!jobId || mapped.jobId === jobId) merged.set(item.id, mapped);
+          });
+          return Array.from(merged.values());
+        });
+        setLoading(false);
+      },
+      error => {
+        console.warn("Live application listener failed:", error.message);
+        setError(error.message);
+        setLoading(false);
+      }
+    ));
+    return () => unsubs.forEach(unsubscribe => unsubscribe());
   }, [recruiterId, jobId]);
 
   // Derived Jobs options for filter dropdown
@@ -237,44 +225,16 @@ export default function RecruiterApplicationTable({
     try {
       const nowIso = new Date().toISOString();
 
-      // 1. Send Notification to candidate FIRST (always create notification before update)
-      try {
-        await NotificationService.createNotification({
-          userId: app.candidateId,
-          type: newStatus === "Shortlisted" ? "shortlist" : newStatus === "Rejected" ? "rejection" : "application_update",
-          title: `Application Update: ${app.jobTitle}`,
-          message: `Your application for "${app.jobTitle}" at ${app.companyName} has been updated to "${newStatus}".`,
-          link: "/candidate/dashboard",
-          read: false,
-          createdAt: nowIso
-        });
-      } catch (nErr) {
-        console.warn("Notification dispatch notice:", nErr);
-      }
+      const token = await auth.currentUser?.getIdToken(true);
+      if (!token) throw new Error("Please sign in again to update this application.");
+      const response = await fetch(`/api/hire/workspace/applications/${encodeURIComponent(app.id)}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: newStatus, remarks: "" })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) throw new Error(result.error || "Application status update failed.");
 
-      // 2. Update in 'applications'
-      try {
-        await updateDoc(doc(db, "applications", app.id), {
-          status: newStatus,
-          updatedAt: nowIso
-        });
-      } catch (e) {
-        await setDoc(doc(db, "applications", app.id), {
-          ...app,
-          status: newStatus,
-          updatedAt: nowIso
-        }, { merge: true });
-      }
-
-      // 3. Update in 'company_applications'
-      try {
-        await updateDoc(doc(db, "company_applications", app.id), {
-          status: newStatus,
-          updatedAt: nowIso
-        });
-      } catch (e) {
-        // non-blocking
-      }
 
       // 4. Update matching lead in 'leads'
       try {
