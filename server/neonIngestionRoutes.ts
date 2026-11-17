@@ -67,7 +67,9 @@ export async function handleNeonIngestionRoute(req: Request, res: Response): Pro
       const submitted = safeJson(req.body?.candidate || {});
       const user = userSnap.data() || {};
       const candidate = candidateSnap.data() || {};
-      const profile = { ...submitted, ...legacyProfileSnap.data(), ...candidateProfileSnap.data(), ...candidate, ...user };
+      // Prefer the detailed candidate profile over the minimal auth user document;
+      // otherwise blank fields from users/{uid} can erase resume/profile data.
+      const profile = { ...safeJson(user), ...safeJson(candidate), ...safeJson(candidateProfileSnap.data()), ...safeJson(legacyProfileSnap.data()), ...submitted };
       const resolvedName = clean(user.fullName || user.name || candidate.fullName || candidate.name || submitted.fullName || submitted.name || decoded.name, 180);
       if (!resolvedName || !clean(decoded.email || user.email || submitted.email, 254)) {
         res.status(400).json({ success:false,error:"CANDIDATE_PROFILE_INCOMPLETE",message:"Name and verified Firebase email are required to sync a candidate profile." }); return true;
@@ -122,7 +124,21 @@ export async function handleNeonIngestionRoute(req: Request, res: Response): Pro
         experience: profile.experience || [], certifications: profile.certifications || [],
         resumeUrl: profile.resumeURL || profile.resumeUrl || null,
         workStatus: profile.workStatus || null, noticePeriod: profile.noticePeriod || null,
-        preferredWorkMode: profile.preferredWorkMode || null, preferredJobType: profile.preferredJobType || null
+        preferredWorkMode: profile.preferredWorkMode || null, preferredJobType: profile.preferredJobType || null,
+        candidateId, profileCompletion: Number(profile.profileCompletion || profile.profile_completion || 0),
+        profileStatus: profile.profileStatus || profile.profile_status || "incomplete",
+        currentJobTitle: profile.currentJobTitle || profile.targetRole || null,
+        currentCompany: profile.currentCompany || null,
+        experienceType: profile.experienceType || profile.workStatus || null,
+        totalExperienceYears: profile.totalExperienceYears ?? profile.experience ?? null,
+        currentSalary: profile.currentSalary ?? null, industry: profile.industry || null,
+        department: profile.department || null, highestEducation: profile.highestEducation || null,
+        pursuingEducation: profile.pursuingEducation || null, educationDetails: profile.educationDetails || {},
+        languages: profile.languages || [], englishProficiency: profile.englishProficiency || null,
+        preferredCities: profile.preferredCities || [], preferredLocation: profile.preferredLocation || null,
+        resumeFileName: profile.resumeFileName || null, intendedJobId: profile.intendedJobId || null,
+        referrer: profile.referrer || null, registrationSource: profile.registrationSource || null,
+        registrationMethod: profile.registrationMethod || null
       });
       const uid = decoded.uid;
       try {
