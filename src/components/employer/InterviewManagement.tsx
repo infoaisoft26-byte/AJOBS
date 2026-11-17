@@ -1,7 +1,7 @@
 import React, { FormEvent, useState } from "react";
 import { deleteDoc, doc, getDoc, setDoc } from "firebase/firestore";
 import { AlertCircle, BookOpen, Calendar, Clock, History, Link, List, Logs, MapPin, Option, Plus, Save, Send, Sparkles, Star, Type, UserCheck, Video, View, X } from "lucide-react";
-import { db } from "../../firebase";
+import { auth, db } from "../../firebase";
 
 import { 
   signInWithGoogleCalendar, getCalendarAccessToken, GoogleCalendarService 
@@ -31,7 +31,7 @@ export default function InterviewManagement({
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [type, setType] = useState<"Online" | "Offline">("Online");
-  const [locationOrLink, setLocationOrLink] = useState("https://meet.google.com/abc-defg-hij");
+  const [locationOrLink, setLocationOrLink] = useState("");
   const [interviewer, setInterviewer] = useState("");
 
   // Google Calendar Integration State
@@ -40,7 +40,7 @@ export default function InterviewManagement({
 
   // Feedback logging states
   const [feedback, setFeedback] = useState("");
-  const [score, setScore] = useState(85);
+  const [score, setScore] = useState(0);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -117,17 +117,16 @@ export default function InterviewManagement({
       // 1. Save to Firestore
       await setDoc(doc(db, "company_interviews", interviewId), newInterview);
 
-      // 2. Automatically advance application stage to "Interview Scheduled"
-      const updatedApp: CompanyApplication = {
-        ...selectedApp,
-        status: "Interview Scheduled"
-      };
-      await setDoc(doc(db, "company_applications", selectedApp.id), updatedApp);
-
-      // standard sync
-      await setDoc(doc(db, "applications", selectedApp.id), {
-        status: "interviewing"
-      }, { merge: true });
+      // Publish the interview stage to the primary candidate record and hiring workspace.
+      const token = await auth.currentUser?.getIdToken(true);
+      if (!token) throw new Error("Please sign in again to schedule this interview.");
+      const statusResponse = await fetch("/api/hire/workspace/applications/" + encodeURIComponent(selectedApp.id) + "/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+        body: JSON.stringify({ status: "interview_scheduled", remarks: "Interview scheduled.", interviewData: { interviewDate: date, interviewTime: time, interviewMode: type, interviewLocation: locationOrLink, meetingLink: locationOrLink, interviewerName: interviewer } })
+      });
+      const statusResult = await statusResponse.json().catch(() => ({}));
+      if (!statusResponse.ok || !statusResult.success) throw new Error(statusResult.error || "Interview status could not be synchronized.");
 
       // Log activity
       const activityId = "clog_" + Math.random().toString(36).substr(2, 9);
@@ -170,28 +169,23 @@ export default function InterviewManagement({
         console.warn("FCM / Notification failed on interview scheduling:", notifErr);
       }
 
-      // Trigger Twilio Interview SMS notification (Requirement 5)
+      // Send SMS only when a real candidate mobile number is available.
       try {
-        let candidatePhone = "+919999999998"; // default
-        const candSnap = await getDoc(doc(db, "users", selectedApp.candidateId));
-        if (candSnap.exists()) {
-          const candData = candSnap.data();
-          candidatePhone = candData.phone || candData.profileDetails?.mobileNumber || "+919999999998";
+        let candidatePhone = selectedApp.candidatePhone || "";
+        if (!candidatePhone && selectedApp.candidateId) {
+          const candSnap = await getDoc(doc(db, "users", selectedApp.candidateId));
+          if (candSnap.exists()) {
+            const candData = candSnap.data();
+            candidatePhone = candData.phone || candData.profileDetails?.mobileNumber || "";
+          }
         }
-
-        await fetch("/api/twilio/interview-scheduled", {
+        if (candidatePhone) await fetch("/api/twilio/interview-scheduled", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            candidatePhone,
-            candidateName: selectedApp.candidateName,
-            dateStr: date,
-            timeStr: time,
-            jobTitle: selectedApp.jobTitle
-          })
+          body: JSON.stringify({ candidatePhone, candidateName: selectedApp.candidateName, dateStr: date, timeStr: time, jobTitle: selectedApp.jobTitle })
         });
       } catch (smsErr) {
-        console.warn("Failed to trigger Twilio Interview SMS scheduled notification:", smsErr);
+        console.warn("Failed to trigger interview SMS notification:", smsErr);
       }
 
       alert(`🎉 Scheduled ${type} interview successfully!${googleEventId ? " Synced to Google Calendar." : ""}`);
