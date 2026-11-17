@@ -25,6 +25,43 @@ function normalizePhone(value: string) {
   return String(value || "").replace(/\D/g, "");
 }
 
+async function mirrorWhatsAppLeadToNeon(input: { phone: string; contactId: string; leadId: string; contact: any; lead: any; messageId?: string; message?: string; phoneNumberId?: string }) {
+  if (!process.env.DATABASE_URL) return;
+  try {
+    const sql = neon(process.env.DATABASE_URL);
+    const phone = normalizePhone(input.phone);
+    const now = new Date().toISOString();
+    const contact = input.contact || {};
+    const lead = input.lead || {};
+    await sql`INSERT INTO whatsapp_contacts (id,phone,name,email,lead_type,business_name,city,opted_in,opted_out,consent_source,last_message_at,last_message_preview,lead_id,payload,updated_at)
+      VALUES (${input.contactId},${phone},${String(contact.name || lead.name || "WhatsApp Lead").slice(0,180)},${String(contact.email || lead.email || "").slice(0,254) || null},${String(contact.leadType || lead.leadType || "unclassified").slice(0,80)},${String(contact.businessName || lead.company || "").slice(0,180) || null},${String(contact.city || lead.city || "").slice(0,120) || null},${contact.optedIn === true},${contact.optedOut === true},${contact.consentSource || null},${now}::timestamptz,${String(input.message || contact.lastMessage || "").slice(0,500)},${input.leadId},${JSON.stringify({contact,lead})}::jsonb,${now}::timestamptz)
+      ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,email=COALESCE(EXCLUDED.email,whatsapp_contacts.email),lead_type=EXCLUDED.lead_type,business_name=COALESCE(EXCLUDED.business_name,whatsapp_contacts.business_name),city=COALESCE(EXCLUDED.city,whatsapp_contacts.city),opted_in=EXCLUDED.opted_in,opted_out=EXCLUDED.opted_out,consent_source=COALESCE(EXCLUDED.consent_source,whatsapp_contacts.consent_source),last_message_at=EXCLUDED.last_message_at,last_message_preview=EXCLUDED.last_message_preview,lead_id=EXCLUDED.lead_id,payload=EXCLUDED.payload,updated_at=now()`;
+    await sql`INSERT INTO crm_leads (id,source,source_ref,lead_type,name,email,phone,company,city,status,assigned_to,last_activity_at,payload,updated_at)
+      VALUES (${input.leadId},'WhatsApp',${input.messageId || input.contactId},${String(lead.leadType || contact.leadType || "unclassified")},${String(lead.candidateName || lead.name || contact.name || "WhatsApp Lead").slice(0,180)},${String(lead.email || contact.email || "").slice(0,254) || null},${phone},${String(lead.company || contact.businessName || "").slice(0,180) || null},${String(lead.city || contact.city || "").slice(0,120) || null},${String(lead.status || "New").slice(0,80)},${String(lead.assignedTo || "").slice(0,180) || null},${now}::timestamptz,${JSON.stringify(lead)}::jsonb,${now}::timestamptz)
+      ON CONFLICT (id) DO UPDATE SET lead_type=EXCLUDED.lead_type,name=EXCLUDED.name,email=COALESCE(EXCLUDED.email,crm_leads.email),company=COALESCE(EXCLUDED.company,crm_leads.company),city=COALESCE(EXCLUDED.city,crm_leads.city),status=EXCLUDED.status,assigned_to=EXCLUDED.assigned_to,last_activity_at=EXCLUDED.last_activity_at,payload=EXCLUDED.payload,updated_at=now()`;
+    if (input.messageId) await sql`INSERT INTO whatsapp_messages (id,contact_id,direction,message_type,body,phone_number_id,occurred_at,payload)
+      VALUES (${input.messageId},${input.contactId},'inbound','text',${String(input.message || "").slice(0,4000)},${input.phoneNumberId || null},${now}::timestamptz,${JSON.stringify({source:"meta_webhook"})}::jsonb)
+      ON CONFLICT (id) DO NOTHING`;
+  } catch (error: any) {
+    console.error("[WhatsApp Neon sync] Lead mirror deferred:", error?.message || error);
+  }
+}
+
+async function mirrorWhatsAppConsentToNeon(phone: string, contact: any) {
+  if (!process.env.DATABASE_URL) return;
+  try {
+    const sql = neon(process.env.DATABASE_URL);
+    const normalizedPhone = normalizePhone(phone);
+    const id = stableId(normalizedPhone);
+    const now = new Date().toISOString();
+    await sql`INSERT INTO whatsapp_contacts (id,phone,lead_type,opted_in,opted_out,consent_source,last_message_at,payload,updated_at)
+      VALUES (${id},${normalizedPhone},${String(contact.leadType || "unclassified")},${contact.optedIn === true},${contact.optedOut === true},${contact.consentSource || null},${now}::timestamptz,${JSON.stringify(contact)}::jsonb,${now}::timestamptz)
+      ON CONFLICT (id) DO UPDATE SET opted_in=EXCLUDED.opted_in,opted_out=EXCLUDED.opted_out,consent_source=EXCLUDED.consent_source,payload=whatsapp_contacts.payload || EXCLUDED.payload,updated_at=now()`;
+  } catch (error: any) {
+    console.error("[WhatsApp Neon sync] Consent mirror deferred:", error?.message || error);
+  }
+}
+
 function inferWhatsAppLeadType(message: string, previousType = "") {
   const value = String(message || "").trim().toLowerCase();
   if (/^(1|candidate|job seeker|jobseeker|looking for job|i need a job)$/.test(value) || /\b(candidate|job seeker|looking for a job)\b/.test(value)) return "candidate";
