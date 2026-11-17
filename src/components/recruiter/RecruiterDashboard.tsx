@@ -156,6 +156,26 @@ export default function RecruiterDashboard({
     }
   };
 
+  useEffect(() => {
+    if (!userId) return;
+    const fields = ["recruiterId", "assignedRecruiterId", "employerId", "ownerUid", "jobOwnerUid"];
+    const unsubs = fields.map(field => onSnapshot(
+      query(collection(db, "applications"), where(field, "==", userId)),
+      snapshot => {
+        setPipelineCandidates(previous => {
+          const merged = new Map(previous.map(item => [item.id, item]));
+          snapshot.docs.forEach(item => merged.set(item.id, mapCandidate(item.id, item.data())));
+          return Array.from(merged.values());
+        });
+      },
+      error => console.warn("Recruiter live application listener:", error.message)
+    ));
+    const notifUnsub = onSnapshot(query(collection(db, "notifications"), where("userId", "==", userId)), snapshot => {
+      setNotifications(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a: any, b: any) => String(b.createdAt || "").localeCompare(String(a.createdAt || ""))));
+    }, error => console.warn("Recruiter live notifications listener:", error.message));
+    return () => { unsubs.forEach(unsubscribe => unsubscribe()); notifUnsub(); };
+  }, [userId]);
+
   // Handle URL sync and cleanly remove callback query parameters
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -289,7 +309,7 @@ export default function RecruiterDashboard({
                         <span className="text-[11px] text-slate-400">{item.message || ""}</span>
                       </div>
                     )) : <p className="text-[11px] text-slate-500">No new notifications.</p>}
-                  </div>/div>
+                  </div>
                 </div>
               )}
             </div>
