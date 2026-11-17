@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { auth, db } from "../firebase";
 import { uploadResumeService } from "../services/resumeUploadService";
+import { syncCandidateProfileToNeon } from "../services/neonSyncService";
 import { parseResumeData } from "../services/aiParser";
 import { trackResumeUploaded, trackProfileCompleted } from "../utils/analytics";
 import { useToast } from "./GlobalToast";
@@ -208,6 +209,7 @@ export default function CandidateResumeUploader({
           updatedAt: nowIso
         }, { merge: true })
       ]);
+      if (auth.currentUser?.uid === effectiveUserId) void syncCandidateProfileToNeon().catch(err => console.warn("[ResumeUploader] Neon sync deferred:", err));
 
       trackResumeUploaded(file.type, "candidate_portal");
       trackProfileCompleted();

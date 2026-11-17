@@ -29,7 +29,8 @@ export async function applyToJob(
   job: JobPosting,
   userId: string,
   profile: any,
-  resumeText?: string
+  resumeText?: string,
+  screeningResponses: Array<{ question:string; answer:string; category?:string }> = []
 ): Promise<ApplyResult> {
   // 1. Verify User Authentication
   if (!userId || !auth.currentUser) {
@@ -123,7 +124,8 @@ export async function applyToJob(
       source: "AIJobs",
       appliedAt: nowIso,
       updatedAt: nowIso,
-      resumeScore: Number(profile?.resumeScore || 0)
+      resumeScore: Number(profile?.resumeScore || 0),
+      screeningResponses: screeningResponses.filter(item => item && item.question?.trim() && item.answer?.trim()).map(item => ({ question:item.question.trim(), answer:item.answer.trim().slice(0,3000), category:item.category || "Job Fit" }))
     };
 
     // Application document in company-specific collection for backwards compatibility
@@ -141,7 +143,8 @@ export async function applyToJob(
       resumeScore: Number(profile?.resumeScore || 0),
       interviewScore: profile?.aiInterviewScore || 0,
       status: "applied",
-      appliedAt: nowIso
+      appliedAt: nowIso,
+      screeningResponses: newApp.screeningResponses
     };
 
     // Create the lead reference once and derive its ID from Firestore.
@@ -176,7 +179,7 @@ export async function applyToJob(
     // Mirror the committed application into Neon using the verified Firebase identity.
     // This is non-blocking: candidate application success must not depend on database sync latency.
     try {
-      const token = await auth.currentUser.getIdToken();
+      const token = await auth.currentUser!.getIdToken();
       const syncResponse = await fetch("/api/neon/application-sync", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -323,6 +326,10 @@ export async function updateApplicationStatus(
 
     // Update primary applications doc
     await updateDoc(appRef, updatePayload);
+    try {
+      const token = await auth.currentUser!.getIdToken();
+      await fetch("/api/neon/application-sync", { method:"POST", headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` }, body:JSON.stringify({applicationId}) });
+    } catch (syncError) { console.warn("[Application status] Neon sync deferred:", syncError); }
 
     // Sync company_applications doc if exists
     try {
@@ -557,6 +564,10 @@ export async function scheduleApplicationInterview(
     };
 
     await setDoc(doc(db, "interviews", interviewId), interviewDoc);
+    try {
+      const token = await auth.currentUser!.getIdToken();
+      await fetch("/api/neon/interview-sync", { method:"POST", headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` }, body:JSON.stringify({interviewId}) });
+    } catch (syncError) { console.warn("[Interview] Neon sync deferred:", syncError); }
     await setDoc(doc(db, "company_interviews", interviewId), interviewDoc);
     await setDoc(doc(db, "interviews_scheduled", interviewId), interviewDoc);
 

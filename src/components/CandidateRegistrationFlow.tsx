@@ -117,7 +117,7 @@ export default function CandidateRegistrationFlow({
       mobileNumber: normalizedMobile,
       role: "candidate",
       emailVerified: fbUser.emailVerified === true,
-      verificationStatus: fbUser.emailVerified ? "verified" : "pending",
+      verificationStatus: "verified",
       approvalStatus: "approved",
       status: "active",
       accountStatus: "active",
@@ -167,11 +167,17 @@ export default function CandidateRegistrationFlow({
       savedJobIds: [],
     };
 
-    await Promise.all([
-      setDoc(doc(db, "users", fbUser.uid), userData, { merge: true }),
-      setDoc(doc(db, "candidates", fbUser.uid), candidateData, { merge: true }),
-      setDoc(doc(db, "candidateProfiles", fbUser.uid), candidateData, { merge: true }),
-    ]);
+    let firestoreWriteError: unknown = null;
+    try {
+      await Promise.all([
+        setDoc(doc(db, "users", fbUser.uid), userData, { merge: true }),
+        setDoc(doc(db, "candidates", fbUser.uid), candidateData, { merge: true }),
+        setDoc(doc(db, "candidateProfiles", fbUser.uid), candidateData, { merge: true }),
+      ]);
+    } catch (error) {
+      firestoreWriteError = error;
+      console.warn("[CandidateRegistration] Client Firestore write failed; requesting secure server repair:", error);
+    }
 
     const profile: UserProfile = {
       uid: fbUser.uid,
@@ -199,11 +205,15 @@ export default function CandidateRegistrationFlow({
       const syncResponse = await fetch("/api/neon/candidate-sync", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({})
+        body: JSON.stringify({ candidate: { ...candidateData, ...userData, uid: fbUser.uid, role: "candidate" } })
       });
-      if (!syncResponse.ok) console.warn("[CandidateRegistration] Neon sync will retry later:", syncResponse.status);
+      if (!syncResponse.ok) {
+        console.warn("[CandidateRegistration] Server profile repair/Neon sync deferred:", syncResponse.status);
+        if (firestoreWriteError) throw new Error("Your sign-in was created, but your candidate profile could not be saved. Please sign in again or contact support.");
+      }
     } catch (syncError) {
       console.warn("[CandidateRegistration] Neon sync deferred:", syncError);
+      if (firestoreWriteError) throw new Error("Your sign-in was created, but your candidate profile could not be saved. Please sign in again or contact support.");
     }
 
     trackCandidateRegistrationComplete({

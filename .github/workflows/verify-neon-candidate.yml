@@ -1,0 +1,29 @@
+name: AIJOBS Neon Candidate and Integrations Build
+
+on:
+  push:
+    branches: [feature/aijobs-candidate-neon-release]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+
+jobs:
+  production-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - name: Check changed integration files for TypeScript errors
+        shell: bash
+        run: |
+          npx tsc --noEmit --pretty false > /tmp/aijobs-tsc.log 2>&1 || true
+          if grep -E 'server/(adminReportingRoute|neonIngestionRoutes|aiHiringRoutes|whatsappAutomationService|hiringFunnelService)\\.ts|src/components/(AdminReports|CandidateScreeningQuestions|EasyApplyModal|JobDetails|CandidateRegistrationFlow|CandidateProfileSection|CandidateResumeUploader|CandidateOnboardingWizard|CandidateEmailVerification|AdminDashboard|AiScreeningSummarySection)\\.tsx|src/services/(applicationService|candidateProfileService|neonSyncService)\\.ts|src/mobile/CandidateMobileApp\\.tsx' /tmp/aijobs-tsc.log; then
+            cat /tmp/aijobs-tsc.log
+            exit 1
+          fi
+          echo "No TypeScript errors in changed AIJOBS integration files."
+      - run: npm run build

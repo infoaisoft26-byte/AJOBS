@@ -48,7 +48,9 @@ import { extractResumeText, parseResumeWithAI, syncParsedResumeToFirestore, extr
 import { handlePaymentCheckoutRoute } from "./server/paymentCheckoutRoute.js";
 import { handleCloudinarySignatureRoute } from "./server/cloudinarySignatureRoute.js";
 import { handleAgreementOtpRoute } from "./server/agreementOtpRoute.js";
-import { verifyWhatsAppWebhook, receiveWhatsAppWebhook, handleWhatsAppSendRoute } from "./server/whatsappAutomationService.js";
+import { verifyWhatsAppWebhook, receiveWhatsAppWebhook, handleWhatsAppSendRoute, handleWhatsAppHealthRoute } from "./server/whatsappAutomationService.js";
+import { handleAdminReportingRoute } from "./server/adminReportingRoute.js";
+import { handleNeonIngestionRoute } from "./server/neonIngestionRoutes.js";
 
 dotenv.config();
 
@@ -85,6 +87,7 @@ app.use((req, res, next) => {
 // -------------------- WHATSAPP CLOUD API WEBHOOK --------------------
 // Keep the webhook before express.json so Meta signature verification can use the raw body.
 app.get("/api/whatsapp/webhook", verifyWhatsAppWebhook);
+app.get("/api/whatsapp/health", async (req, res) => { await handleWhatsAppHealthRoute(req, res); });
 app.post("/api/whatsapp/webhook", express.raw({ type: "application/json", limit: "2mb" }), receiveWhatsAppWebhook);
 app.post("/api/whatsapp/send", handleWhatsAppSendRoute);
 
@@ -142,6 +145,15 @@ const csrfMitigator = (req: any, res: any, next: any) => {
 
 app.use("/api/", apiRateLimiter);
 app.use("/api/", csrfMitigator);
+
+app.use(async (req: any, res: any, next: any) => {
+  try {
+    const reportsHandled = await handleAdminReportingRoute(req, res);
+    if (reportsHandled || res.headersSent) return;
+    const neonHandled = await handleNeonIngestionRoute(req, res);
+    if (!neonHandled && !res.headersSent) next();
+  } catch (error) { next(error); }
+});
 
 // Log before every API response
 app.use("/api/", (req: any, res: any, next: any) => {

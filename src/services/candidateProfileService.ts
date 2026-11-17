@@ -1,5 +1,6 @@
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
+import { syncCandidateProfileToNeon } from "./neonSyncService";
 import { UserProfile } from "../types";
 import { getNextSequentialId } from "./sequentialIdService";
 
@@ -115,6 +116,7 @@ export async function initializeCandidateProfileAfterOtpVerification(
       setDoc(doc(db, "candidates", uid), { ...sharedUserData, createdAt: nowIso }, { merge: true }),
       setDoc(doc(db, "users", uid), { ...sharedUserData, createdAt: nowIso }, { merge: true })
     ]);
+    void syncCandidateProfileToNeon().catch(err => console.warn("[CandidateProfileService] Neon sync deferred:", err));
     console.log(`[CandidateProfileService] Successfully initialized candidateProfiles/${uid} (${candidateId}) with profileStatus: incomplete`);
   } catch (err: any) {
     console.warn(`[CandidateProfileService] Notice writing candidate profile for ${uid}:`, err?.message || err);
