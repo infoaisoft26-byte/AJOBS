@@ -50,6 +50,7 @@ import { handleCloudinarySignatureRoute } from "./server/cloudinarySignatureRout
 import { handleAgreementOtpRoute } from "./server/agreementOtpRoute.js";
 import { handleHiringWorkspaceRoute } from "./server/hiringWorkspaceRoute.js";
 import { verifyAndInjectAdminIdentity } from "./server/adminApiGateway.js";
+import { handleAdminReportingRoute } from "./server/adminReportingRoute.js";
 import { verifyWhatsAppWebhook, receiveWhatsAppWebhook, handleWhatsAppSendRoute } from "./server/whatsappAutomationService.js";
 
 dotenv.config();
@@ -171,6 +172,9 @@ app.use(async (req: any, res: any, next: any) => {
 
   const adminHandled = await verifyAndInjectAdminIdentity(req, res, path);
   if (adminHandled || res.headersSent) return;
+
+  const adminReportsHandled = await handleAdminReportingRoute(req, res);
+  if (adminReportsHandled || res.headersSent) return;
 
   const hiringWorkspaceHandled = await handleHiringWorkspaceRoute(req, res);
   if (hiringWorkspaceHandled || res.headersSent) return;
