@@ -144,9 +144,9 @@ export default function HiringOverview({
 
   // 2. Compute Real Quick Stats
   const totalJobsCount = jobs.length;
-  const activeJobsCount = jobs.filter(j => j.status === "active" || j.status === "open").length;
+  const activeJobsCount = jobs.filter(j => ["approved", "active", "open", "published"].includes(String(j.status || "").toLowerCase()) && j.approved !== false).length;
   const pendingJobsCount = pendingApprovalJobs.length;
-  const publishedJobsCount = jobs.filter(j => j.approved || j.status === "active" || j.status === "published").length;
+  const publishedJobsCount = jobs.filter(j => j.approved === true && !["closed", "expired", "rejected"].includes(String(j.status || "").toLowerCase())).length;
   const totalApplicationsCount = applications.length;
   const shortlistedCount = applications.filter(a => a.status === "shortlisted" || a.status === "interview").length;
   const interviewsCount = interviews.length;
@@ -157,7 +157,7 @@ export default function HiringOverview({
   const filteredJobs = jobs.filter((j) => {
     if (jobStatusFilter !== "all") {
       if (jobStatusFilter === "pending" && !(j.status === "pending_approval" || j.status === "pending_review")) return false;
-      if (jobStatusFilter === "approved" && !j.approved && j.status !== "active") return false;
+      if (jobStatusFilter === "approved" && !(j.approved === true || ["approved", "active", "published", "open"].includes(String(j.status || "").toLowerCase()))) return false;
       if (jobStatusFilter !== "pending" && jobStatusFilter !== "approved" && j.status?.toLowerCase() !== jobStatusFilter) return false;
     }
     if (jobSearch.trim()) {
@@ -171,7 +171,8 @@ export default function HiringOverview({
   });
 
   const handleShareJob = (jobId: string) => {
-    const url = `${window.location.origin}/jobs?jobId=${jobId}`;
+    const job = jobs.find((item) => item.id === jobId);
+    const url = job?.canonicalUrl || `${window.location.origin}/jobs/${job?.slug || jobId}`;
     if (navigator.clipboard) {
       navigator.clipboard.writeText(url);
       setCopiedJobId(jobId);
@@ -436,7 +437,7 @@ export default function HiringOverview({
               const shortlistedApps = jobApps.filter(a => a.status === "shortlisted");
               const jobInterviews = interviews.filter(i => i.jobId === job.id);
 
-              const isApproved = job.approved || job.status === "active" || job.status === "published";
+              const isApproved = job.approved === true || ["approved", "active", "published", "open"].includes(String(job.status || "").toLowerCase());
               const isPending = job.status === "pending_approval" || job.status === "pending_review";
               const isDraft = job.status === "draft";
               const isClosed = job.status === "closed";
