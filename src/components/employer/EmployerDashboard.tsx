@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { collection, getDocs, doc, getDoc, updateDoc, setDoc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, updateDoc, setDoc, deleteDoc, query, where, onSnapshot } from "firebase/firestore";
 import { db, auth } from "../../firebase";
 import HiringPanelLayout from "../hiring/HiringPanelLayout";
 import HiringOverview from "../hiring/HiringOverview";
@@ -32,8 +32,8 @@ interface EmployerDashboardProps {
 
 export default function EmployerDashboard({
   userId,
-  userName = "Hiring Leader",
-  companyName = "AIJOBS Partner Employer",
+  userName = "",
+  companyName = "",
   userRole = "employer",
   onLogout
 }: EmployerDashboardProps) {
@@ -58,49 +58,18 @@ export default function EmployerDashboard({
 
   // Credits Balance
   const [credits, setCredits] = useState<CreditBalance>({
-    jobCredits: 6,
-    jobCreditsUsed: 4,
-    databaseCredits: 125,
-    databaseCreditsUsed: 48,
-    aiCredits: 500,
-    aiCreditsUsed: 110,
-    callingCredits: 180,
-    callingCreditsUsed: 45,
-    validityDate: "Dec 31, 2026"
+    jobCredits: 0,
+    jobCreditsUsed: 0,
+    databaseCredits: 0,
+    databaseCreditsUsed: 0,
+    aiCredits: 0,
+    aiCreditsUsed: 0,
+    callingCredits: 0,
+    callingCreditsUsed: 0,
+    validityDate: ""
   });
 
-  const [usageHistory, setUsageHistory] = useState<CreditUsageLog[]>([
-    {
-      id: "tx_101",
-      date: new Date(Date.now() - 3600000 * 2).toLocaleDateString() + " " + new Date(Date.now() - 3600000 * 2).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      activity: "Candidate Contact & Resume Unlock",
-      item: "Aarav Sharma",
-      quantity: 1,
-      creditsUsed: 1,
-      recruiter: userName,
-      refId: "CAND_9872"
-    },
-    {
-      id: "tx_102",
-      date: new Date(Date.now() - 86400000).toLocaleDateString() + " " + new Date(Date.now() - 86400000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      activity: "Job Requisition Published & Indexed",
-      item: "Senior React & TypeScript Architect",
-      quantity: 1,
-      creditsUsed: 1,
-      recruiter: userName,
-      refId: "JOB_4421"
-    },
-    {
-      id: "tx_103",
-      date: new Date(Date.now() - 86400000 * 2).toLocaleDateString() + " " + new Date(Date.now() - 86400000 * 2).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      activity: "AI Voice Telephony Screening (4 mins)",
-      item: "Sneha Deshmukh",
-      quantity: 4,
-      creditsUsed: 4,
-      recruiter: userName,
-      refId: "CALL_1109"
-    }
-  ]);
+  const [usageHistory, setUsageHistory] = useState<CreditUsageLog[]>([]);
 
   // Load real Firestore data
   const loadData = async () => {
@@ -119,7 +88,7 @@ export default function EmployerDashboard({
               id: userId,
               userId,
               companyName: ed.companyName || companyName,
-              industry: ed.industry || "Software & Technology",
+              industry: ed.industry || "",
               companySize: ed.size || "51-200 Employees",
               isVerified: true,
               createdAt: new Date().toISOString()
@@ -128,106 +97,34 @@ export default function EmployerDashboard({
         }
       }
 
-      // 2. Jobs
-      const jobsSnap = await getDocs(collection(db, "jobs"));
-      const jobList: CompanyJob[] = [];
-      jobsSnap.forEach((d) => {
-        const jd = d.data() as CompanyJob;
-        if (!userId || jd.employerId === userId || jd.userId === userId || jd.companyId === userId || !jd.employerId) {
-          jobList.push({ id: d.id, ...jd });
-        }
+      // 2. Load the authenticated hiring workspace. The server applies ownership
+      // checks and returns only jobs and applications visible to this employer/recruiter.
+      const token = await auth.currentUser?.getIdToken(true);
+      if (!token) throw new Error("Please sign in again to load your hiring workspace.");
+      const workspaceResponse = await fetch("/api/hire/workspace", {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` }
       });
-
-      // If user has no jobs yet, provide default verified template job
-      if (jobList.length === 0) {
-        jobList.push({
-          id: "job_sample_1",
-          employerId: userId,
-          title: "Senior Full Stack Engineer (React & Node.js)",
-          companyName: companyName,
-          location: "Bengaluru, Karnataka (Hybrid)",
-          department: "Engineering",
-          employmentType: "Full-time",
-          experience: "3-5 Years",
-          salary: "18,00,000 - 26,00,000",
-          openings: 2,
-          skillsRequired: ["React", "TypeScript", "Node.js", "PostgreSQL", "AWS"],
-          status: "active",
-          approved: true,
-          createdAt: new Date().toISOString()
-        });
+      const workspaceData = await workspaceResponse.json().catch(() => ({}));
+      if (!workspaceResponse.ok || workspaceData.success !== true) {
+        throw new Error(workspaceData.error || "Unable to load your hiring workspace.");
       }
+      setCredits(prev => ({ ...prev, jobCredits: Number(workspaceData.stats?.availableJobCredits || 0) }));
+      const jobList: CompanyJob[] = Array.isArray(workspaceData.jobs) ? workspaceData.jobs : [];
       setJobs(jobList);
-
-      // 3. Applications
-      const appsSnap = await getDocs(collection(db, "company_applications"));
-      const appList: CompanyApplication[] = [];
-      appsSnap.forEach((d) => {
-        const ad = d.data() as CompanyApplication;
-        if (jobList.some(j => j.id === ad.jobId) || ad.jobId === userId || !ad.jobId) {
-          appList.push({ id: d.id, ...ad });
-        }
-      });
-
-      if (appList.length === 0) {
-        appList.push(
-          {
-            id: "app_sample_1",
-            jobId: jobList[0]?.id || "job_sample_1",
-            jobTitle: jobList[0]?.title || "Senior Full Stack Engineer",
-            candidateId: "cand_aarav",
-            candidateName: "Aarav Sharma",
-            candidateEmail: "aarav.sharma@domain.in",
-            candidatePhone: "+91 98765 43210",
-            location: "Bengaluru, Karnataka",
-            experience: "5.5 Years",
-            status: "new",
-            aiScore: 96,
-            skills: ["React", "TypeScript", "Node.js", "AWS"],
-            appliedAt: new Date(Date.now() - 3600000 * 3).toISOString()
-          },
-          {
-            id: "app_sample_2",
-            jobId: jobList[0]?.id || "job_sample_1",
-            jobTitle: jobList[0]?.title || "Senior Full Stack Engineer",
-            candidateId: "cand_sneha",
-            candidateName: "Sneha Deshmukh",
-            candidateEmail: "sneha.d@domain.in",
-            candidatePhone: "+91 98123 45678",
-            location: "Pune, Maharashtra",
-            experience: "4.2 Years",
-            status: "shortlisted",
-            aiScore: 94,
-            skills: ["React", "Next.js", "Tailwind CSS"],
-            appliedAt: new Date(Date.now() - 86400000).toISOString()
-          }
-        );
-      }
+      const appList: CompanyApplication[] = Array.isArray(workspaceData.applications)
+        ? workspaceData.applications
+        : [];
       setApplications(appList);
 
       // 4. Interviews
-      const intSnap = await getDocs(collection(db, "company_interviews"));
+      const intSnap = await getDocs(query(collection(db, "company_interviews"), where("companyId", "==", userId)));
       const intList: CompanyInterview[] = [];
       intSnap.forEach((d) => {
         const idat = d.data() as CompanyInterview;
         intList.push({ id: d.id, ...idat });
       });
 
-      if (intList.length === 0) {
-        intList.push({
-          id: "int_sample_1",
-          jobId: jobList[0]?.id || "job_sample_1",
-          jobTitle: jobList[0]?.title || "Senior Full Stack Engineer",
-          candidateId: "cand_aarav",
-          candidateName: "Aarav Sharma",
-          candidateEmail: "aarav.sharma@domain.in",
-          dateTime: new Date(Date.now() + 86400000 * 2).toISOString(),
-          roundName: "Technical Deep Dive & Architecture",
-          interviewer: "Hiring Manager",
-          meetLink: "https://meet.google.com/aij-interview-01",
-          status: "scheduled"
-        });
-      }
       setInterviews(intList);
 
     } catch (err) {
@@ -239,6 +136,17 @@ export default function EmployerDashboard({
 
   useEffect(() => {
     loadData();
+    if (!userId) return;
+    const refs = ["employerId", "ownerUid", "jobOwnerUid", "recruiterId"].map(field =>
+      onSnapshot(query(collection(db, "applications"), where(field, "==", userId)), snapshot => {
+        setApplications(previous => {
+          const merged = new Map(previous.map(app => [app.id, app]));
+          snapshot.docs.forEach(item => merged.set(item.id, { id: item.id, ...item.data() } as CompanyApplication));
+          return Array.from(merged.values()).filter(app => [app.employerId, app.ownerUid, app.jobOwnerUid, app.recruiterId, app.assignedRecruiterId].includes(userId));
+        });
+      }, error => console.warn("Employer live applications listener:", error.message))
+    );
+    return () => refs.forEach(unsubscribe => unsubscribe());
   }, [userId]);
 
   // Credit Deduction handler
@@ -314,13 +222,16 @@ export default function EmployerDashboard({
 
   // Application status update
   const handleUpdateApplicationStatus = async (appId: string, newStatus: string, note?: string) => {
-    try {
-      await updateDoc(doc(db, "company_applications", appId), {
-        status: newStatus,
-        ...(note ? { notes: note } : {})
-      });
-    } catch (e) {}
-    setApplications(applications.map(a => a.id === appId ? { ...a, status: newStatus, ...(note ? { notes: note } : {}) } : a));
+    const token = await auth.currentUser?.getIdToken(true);
+    if (!token) throw new Error("Please sign in again to update this application.");
+    const response = await fetch(`/api/hire/workspace/applications/${encodeURIComponent(appId)}/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ status: newStatus, remarks: note || "" })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.success) throw new Error(result.error || "Application status update failed.");
+    setApplications(previous => previous.map(a => a.id === appId ? { ...a, status: result.status, updatedAt: result.updatedAt, ...(note ? { notes: note } : {}) } : a));
   };
 
   // Select Option from Post Job Menu
