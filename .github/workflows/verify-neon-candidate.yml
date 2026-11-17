@@ -17,4 +17,13 @@ jobs:
         with:
           node-version: 22
       - run: npm install --no-audit --no-fund
+      - name: Check changed integration files for TypeScript errors
+        shell: bash
+        run: |
+          npx tsc --noEmit --pretty false > /tmp/aijobs-tsc.log 2>&1 || true
+          if grep -E 'server/(adminReportingRoute|neonIngestionRoutes|aiHiringRoutes|whatsappAutomationService|hiringFunnelService)\\.ts|src/components/(AdminReports|CandidateScreeningQuestions|EasyApplyModal|JobDetails|CandidateRegistrationFlow|CandidateProfileSection|CandidateResumeUploader|CandidateOnboardingWizard|CandidateEmailVerification|AdminDashboard|AiScreeningSummarySection)\\.tsx|src/services/(applicationService|candidateProfileService|neonSyncService)\\.ts|src/mobile/CandidateMobileApp\\.tsx' /tmp/aijobs-tsc.log; then
+            cat /tmp/aijobs-tsc.log
+            exit 1
+          fi
+          echo "No TypeScript errors in changed AIJOBS integration files."
       - run: npm run build
