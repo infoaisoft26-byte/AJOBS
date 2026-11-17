@@ -27,44 +27,7 @@ export default function RecruiterFindCandidates({
   const [location, setLocation] = useState("all");
   const [unlockedIds, setUnlockedIds] = useState<string[]>([]);
 
-  const talentDatabase = [
-    {
-      id: "cand_src_1",
-      name: "Rohan Mukherjee",
-      role: "Lead Full Stack Architect",
-      skills: ["React", "TypeScript", "Node.js", "System Design", "AWS"],
-      experience: "6.5 Years",
-      location: "Bengaluru",
-      expectedCtc: "₹28 LPA",
-      noticePeriod: "15 Days",
-      aiScore: 97,
-      summary: "Architected micro-frontend systems serving 1M+ daily active users. Expert in high-throughput pipelines."
-    },
-    {
-      id: "cand_src_2",
-      name: "Sneha Deshmukh",
-      role: "Senior Frontend Engineer",
-      skills: ["React", "Next.js", "TypeScript", "Tailwind CSS"],
-      experience: "4.2 Years",
-      location: "Pune",
-      expectedCtc: "₹18 LPA",
-      noticePeriod: "Immediate",
-      aiScore: 94,
-      summary: "Specializes in design systems, web performance optimization, and responsive mobile-first SaaS interfaces."
-    },
-    {
-      id: "cand_src_3",
-      name: "Aditya Verma",
-      role: "Backend & Cloud Engineer",
-      skills: ["Node.js", "Golang", "Kubernetes", "PostgreSQL", "Docker"],
-      experience: "3.5 Years",
-      location: "Hyderabad",
-      expectedCtc: "₹16.5 LPA",
-      noticePeriod: "30 Days",
-      aiScore: 91,
-      summary: "Built scalable payment orchestration and distributed caching layers with sub-20ms latency."
-    }
-  ];
+  const talentDatabase = [];
 
   const handleUnlockResume = (id: string) => {
     if (!unlockedIds.includes(id)) {
