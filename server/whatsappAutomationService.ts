@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import type { Request, Response } from "express";
+import { neon } from "@neondatabase/serverless";
 import { getFirestoreDb } from "./firestoreHelper.js";
 
 const GRAPH_VERSION = process.env.WHATSAPP_GRAPH_API_VERSION || "v23.0";
@@ -111,6 +112,38 @@ async function persistWhatsAppLead(db: any, from: string, message: string, messa
     assignedTo: existingLead.assignedTo || ""
   };
   await leadRef.set(leadPatch, { merge: true });
+  await mirrorWhatsAppLeadToNeon({
+    phone, contactId: stableId(phone), leadId: "wa_" + stableId(phone),
+    contact: { ...previous, ...contactPatch, createdAt: previous.createdAt || now },
+    lead: { ...existingLead, ...leadPatch }, messageId, message: humanMessage
+  });
+}
+
+export async function handleWhatsAppHealthRoute(req: Request, res: Response) {
+  if (String(req.url || "").split("?")[0] !== "/api/whatsapp/health") return false;
+  if (req.method !== "GET") { res.status(405).json({ success:false,error:"Method not allowed" }); return true; }
+  const missing = [
+    !PHONE_NUMBER_ID ? "WHATSAPP_PHONE_NUMBER_ID" : "",
+    !ACCESS_TOKEN ? "WHATSAPP_ACCESS_TOKEN" : "",
+    !APP_SECRET ? "WHATSAPP_APP_SECRET" : "",
+    !VERIFY_TOKEN ? "WHATSAPP_VERIFY_TOKEN" : ""
+  ].filter(Boolean);
+  if (missing.length) { res.status(503).json({ success:false,configured:false,missing }); return true; }
+  try {
+    const response = await fetch("https://graph.facebook.com/" + GRAPH_VERSION + "/" + PHONE_NUMBER_ID + "?fields=id,display_phone_number,verified_name", {
+      headers: { Authorization: "Bearer " + ACCESS_TOKEN }
+    });
+    const result: any = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      res.status(502).json({ success:false,configured:true,connected:false,error:result?.error?.message || "Meta credential check failed" });
+      return true;
+    }
+    res.json({ success:true,configured:true,connected:true,graphVersion:GRAPH_VERSION,phoneNumberId:result.id,displayPhoneNumber:result.display_phone_number || null,verifiedName:result.verified_name || null });
+    return true;
+  } catch (error:any) {
+    res.status(502).json({ success:false,configured:true,connected:false,error:String(error?.message || "Meta API unavailable").slice(0,200) });
+    return true;
+  }
 }
 
 export function verifyWhatsAppWebhook(req: Request, res: Response) {
@@ -122,6 +155,25 @@ export function verifyWhatsAppWebhook(req: Request, res: Response) {
     return res.sendStatus(403);
   }
   return res.status(200).send(challenge);
+}
+
+async function mirrorWhatsAppOutbound(to: string, body: string, providerResult: any, messageType = "text") {
+  if (!process.env.DATABASE_URL) return;
+  try {
+    const sql = neon(process.env.DATABASE_URL);
+    const phone = normalizePhone(to);
+    const contactId = stableId(phone);
+    const providerId = String(providerResult?.messages?.[0]?.id || stableId("out:" + phone + ":" + Date.now() + ":" + body.slice(0,80)));
+    const now = new Date().toISOString();
+    await sql`INSERT INTO whatsapp_contacts (id,phone,lead_type,last_message_at,last_message_preview,payload,updated_at)
+      VALUES (${contactId},${phone},'unclassified',${now}::timestamptz,${body.slice(0,500)},'{}'::jsonb,${now}::timestamptz)
+      ON CONFLICT (id) DO UPDATE SET last_message_at=EXCLUDED.last_message_at,last_message_preview=EXCLUDED.last_message_preview,updated_at=now()`;
+    await sql`INSERT INTO whatsapp_messages (id,contact_id,direction,message_type,body,phone_number_id,occurred_at,payload)
+      VALUES (${providerId},${contactId},'outbound',${messageType},${body.slice(0,4000)},${PHONE_NUMBER_ID || null},${now}::timestamptz,${JSON.stringify({providerMessageId:providerId})}::jsonb)
+      ON CONFLICT (id) DO NOTHING`;
+  } catch (error: any) {
+    console.error("[WhatsApp Neon sync] Outbound message mirror deferred:", error?.message || error);
+  }
 }
 
 async function sendWhatsAppText(to: string, body: string) {
@@ -144,6 +196,7 @@ async function sendWhatsAppText(to: string, body: string) {
   );
   const data: any = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data?.error?.message || "WhatsApp Cloud API text message failed");
+  await mirrorWhatsAppOutbound(to, body, data, "text");
   return data;
 }
 
@@ -196,11 +249,15 @@ async function buildAutoReply(db: any, from: string, text: string) {
   } catch {}
 
   if (/^(stop|unsubscribe|cancel|opt out)$/i.test(message)) {
-    await contactRef.set({ phone: normalizePhone(from), optedOut: true, optedOutAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, { merge: true });
+    const optOutPatch = { phone: normalizePhone(from), optedIn: false, optedOut: true, consentSource: "whatsapp_keyword_stop", optedOutAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    await contactRef.set(optOutPatch, { merge: true });
+    await mirrorWhatsAppConsentToNeon(from, optOutPatch);
     return "AIJOBS WhatsApp updates are now stopped. Reply START any time to opt in again.";
   }
   if (/^(start|unstop)$/i.test(message)) {
-    await contactRef.set({ phone: normalizePhone(from), optedOut: false, optedInAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, { merge: true });
+    const optInPatch = { phone: normalizePhone(from), optedOut: false, optedIn: true, consentSource: "whatsapp_keyword_start", optedInAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    await contactRef.set(optInPatch, { merge: true });
+    await mirrorWhatsAppConsentToNeon(from, optInPatch);
     return "Welcome back to AIJOBS WhatsApp Assistant! Reply JOBS, a job title/skill, APPLY, REGISTER, STATUS, or HELP.";
   }
   if (contact.optedOut) return "";
@@ -317,6 +374,22 @@ export async function receiveWhatsAppWebhook(req: Request, res: Response) {
   for (const event of eventEntries) {
     const eventKey = stableId([event.type, event.messageId || "", event.status || "", event.timestamp || ""].join(":"));
     await db.collection("whatsappWebhookEvents").doc(eventKey).set(event, { merge: true });
+    if (process.env.DATABASE_URL) {
+      try {
+        const sql = neon(process.env.DATABASE_URL);
+        const occurredAt = event.timestamp && /^\\d+$/.test(String(event.timestamp))
+          ? new Date(Number(event.timestamp) * 1000).toISOString()
+          : event.receivedAt || new Date().toISOString();
+        await sql`INSERT INTO whatsapp_webhook_events (id,event_type,message_id,event_status,phone_number_id,occurred_at,payload)
+          VALUES (${eventKey},${String(event.type)},${String(event.messageId || "") || null},${String(event.status || "") || null},${String(event.phoneNumberId || "") || null},${occurredAt}::timestamptz,${JSON.stringify(event)}::jsonb)
+          ON CONFLICT (id) DO UPDATE SET event_status=EXCLUDED.event_status,payload=EXCLUDED.payload`;
+        if (event.type === "status" && event.messageId) {
+          await sql`UPDATE whatsapp_messages SET meta_status=${String(event.status || "")} WHERE id=${String(event.messageId)}`;
+        }
+      } catch (syncError: any) {
+        console.error("[WhatsApp Neon sync] Webhook event mirror deferred:", syncError?.message || syncError);
+      }
+    }
   }
 
   for (const message of incomingMessages) {
@@ -342,6 +415,24 @@ export async function receiveWhatsAppWebhook(req: Request, res: Response) {
       await persistWhatsAppLead(db, message.from, message.text, message.messageId);
       const reply = await buildAutoReply(db, message.from, message.text);
       if (reply) await sendWhatsAppText(message.from, reply);
+      if (process.env.DATABASE_URL) {
+        try {
+          const sql = neon(process.env.DATABASE_URL);
+          const phone = normalizePhone(message.from);
+          const contactId = stableId(phone);
+          const contactSnap = await db.collection("whatsappAutomationContacts").doc(contactId).get();
+          const contact = contactSnap.exists ? contactSnap.data() || {} : {};
+          const now = new Date().toISOString();
+          await sql`INSERT INTO whatsapp_contacts (id,phone,name,email,lead_type,opted_in,opted_out,consent_source,last_message_at,last_message_preview,payload,updated_at)
+            VALUES (${contactId},${phone},${String(contact.name || "WhatsApp Lead").slice(0,180)},${String(contact.email || "").slice(0,254) || null},${String(contact.leadType || "unclassified")},${contact.optedIn === true},${contact.optedOut === true},${contact.consentSource || null},${now}::timestamptz,${String(message.text || "").slice(0,500)},${JSON.stringify(contact)}::jsonb,${now}::timestamptz)
+            ON CONFLICT (id) DO UPDATE SET name=COALESCE(EXCLUDED.name,whatsapp_contacts.name),email=COALESCE(EXCLUDED.email,whatsapp_contacts.email),lead_type=EXCLUDED.lead_type,opted_in=EXCLUDED.opted_in,opted_out=EXCLUDED.opted_out,consent_source=COALESCE(EXCLUDED.consent_source,whatsapp_contacts.consent_source),last_message_at=EXCLUDED.last_message_at,last_message_preview=EXCLUDED.last_message_preview,payload=EXCLUDED.payload,updated_at=now()`;
+          await sql`INSERT INTO whatsapp_messages (id,contact_id,direction,message_type,body,phone_number_id,occurred_at,payload)
+            VALUES (${message.messageId},${contactId},'inbound',${message.messageType || "text"},${String(message.text || "").slice(0,4000)},${message.phoneNumberId || null},${now}::timestamptz,${JSON.stringify({messageId:message.messageId,metaTimestamp:message.timestamp})}::jsonb)
+            ON CONFLICT (id) DO NOTHING`;
+        } catch (syncError: any) {
+          console.error("[WhatsApp Neon sync] Inbound message mirror deferred:", syncError?.message || syncError);
+        }
+      }
       await processedRef.set({ state: "sent", updatedAtMs: Date.now(), repliedAt: new Date().toISOString() }, { merge: true });
     } catch (error: any) {
       await processedRef.set({ state: "failed", updatedAtMs: Date.now(), error: String(error?.message || "send_failed").slice(0, 300) }, { merge: true });
@@ -370,6 +461,7 @@ export async function sendWhatsAppTemplate(to: string, templateName: string, lan
 
   const data = await response.json();
   if (!response.ok) throw new Error(data?.error?.message || "WhatsApp Cloud API request failed");
+  await mirrorWhatsAppOutbound(to, "[Approved WhatsApp template: " + templateName + "]", data, "template");
   return data;
 }
 
