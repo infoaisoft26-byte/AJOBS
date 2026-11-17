@@ -24,7 +24,7 @@ import {
   WalletCards
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { collection, getDocs, doc, getDoc, updateDoc } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, query, where } from "firebase/firestore";
 import { db, auth } from "../../firebase";
 import AIJobsLogo from "../AIJobsLogo";
 import RecruiterOverview from "./RecruiterOverview";
@@ -68,116 +68,10 @@ export default function RecruiterDashboard({
   const [accountCenterLoading, setAccountCenterLoading] = useState<boolean>(true);
   const [accountCenterError, setAccountCenterError] = useState<string>("");
 
-  // Recruiter Data Stores
-  const [assignedJobs, setAssignedJobs] = useState<RecruiterJob[]>([
-    {
-      id: "mandate_1",
-      title: "Lead Full Stack Architect",
-      companyName: "HyperCloud SaaS",
-      location: "Bengaluru (Hybrid)",
-      salary: "₹25 - 32 LPA",
-      openings: 2,
-      deadline: "Aug 30, 2026",
-      skillsRequired: ["React", "TypeScript", "Node.js", "AWS", "System Design"],
-      status: "active",
-      assignedAt: "Aug 10, 2026",
-      payoutPerHire: "₹45,000"
-    },
-    {
-      id: "mandate_2",
-      title: "Senior Frontend Engineer (Design Systems)",
-      companyName: "FinTech Prime",
-      location: "Pune (Remote)",
-      salary: "₹18 - 24 LPA",
-      openings: 3,
-      deadline: "Sep 15, 2026",
-      skillsRequired: ["React", "Next.js", "TypeScript", "Tailwind CSS"],
-      status: "urgent",
-      assignedAt: "Aug 12, 2026",
-      payoutPerHire: "₹35,000"
-    },
-    {
-      id: "mandate_3",
-      title: "AI / ML Solutions Engineer",
-      companyName: "Nexus AI Labs",
-      location: "Delhi NCR",
-      salary: "₹20 - 28 LPA",
-      openings: 1,
-      deadline: "Aug 28, 2026",
-      skillsRequired: ["Python", "PyTorch", "Gemini API", "FastAPI"],
-      status: "active",
-      assignedAt: "Aug 14, 2026",
-      payoutPerHire: "₹50,000"
-    }
-  ]);
-
-  const [pipelineCandidates, setPipelineCandidates] = useState<PipelineCandidate[]>([
-    {
-      id: "cand_pipe_1",
-      name: "Aarav Sharma",
-      email: "aarav.sharma@example.com",
-      phone: "+91 98765 43210",
-      role: "Lead Full Stack Architect",
-      jobId: "mandate_1",
-      jobTitle: "Lead Full Stack Architect",
-      companyName: "HyperCloud SaaS",
-      experience: "6.5 Years",
-      location: "Bengaluru",
-      skills: ["React", "TypeScript", "Node.js", "System Design"],
-      aiScore: 96,
-      stage: "interview",
-      lastActivity: "Interview Scheduled for Thursday"
-    },
-    {
-      id: "cand_pipe_2",
-      name: "Sneha Deshmukh",
-      email: "sneha.d@example.com",
-      phone: "+91 91234 56789",
-      role: "Senior Frontend Engineer",
-      jobId: "mandate_2",
-      jobTitle: "Senior Frontend Engineer",
-      companyName: "FinTech Prime",
-      experience: "4.2 Years",
-      location: "Pune",
-      skills: ["React", "Next.js", "TypeScript", "Tailwind CSS"],
-      aiScore: 94,
-      stage: "shortlisted",
-      lastActivity: "Profile shared with hiring manager"
-    },
-    {
-      id: "cand_pipe_3",
-      name: "Vikram Malhotra",
-      email: "vikram.m@example.com",
-      phone: "+91 99887 76655",
-      role: "AI / ML Solutions Engineer",
-      jobId: "mandate_3",
-      jobTitle: "AI / ML Solutions Engineer",
-      companyName: "Nexus AI Labs",
-      experience: "3.5 Years",
-      location: "Delhi NCR",
-      skills: ["Python", "Gemini API", "FastAPI"],
-      aiScore: 92,
-      stage: "screened",
-      lastActivity: "Pre-screen cleared"
-    },
-    {
-      id: "cand_pipe_4",
-      name: "Karthik Ranganathan",
-      email: "karthik.r@example.com",
-      phone: "+91 98450 12345",
-      role: "Senior Frontend Engineer",
-      jobId: "mandate_2",
-      jobTitle: "Senior Frontend Engineer",
-      companyName: "FinTech Prime",
-      experience: "5.0 Years",
-      location: "Chennai",
-      skills: ["React", "TypeScript", "UI/UX"],
-      aiScore: 89,
-      stage: "new_lead",
-      lastActivity: "Lead assigned by admin"
-    }
-  ]);
-
+  // Recruiter workspace is populated only from persisted job postings and assigned applications.
+  const [assignedJobs, setAssignedJobs] = useState<RecruiterJob[]>([]);
+  const [pipelineCandidates, setPipelineCandidates] = useState<PipelineCandidate[]>([]);
+  const [isLoadingRecruiterData, setIsLoadingRecruiterData] = useState<boolean>(true);
   const loadAccountCenter = async () => {
     if (!userId) return;
     setAccountCenterLoading(true);
@@ -203,36 +97,84 @@ export default function RecruiterDashboard({
     }
   };
 
-  // Sync Data
+  // Sync only real applications assigned to this recruiter and their real job postings.
   const loadData = async () => {
+    if (!userId) { setAssignedJobs([]); setPipelineCandidates([]); setIsLoadingRecruiterData(false); return; }
+    setIsLoadingRecruiterData(true);
     try {
-      const appsSnap = await getDocs(collection(db, "company_applications"));
-      const loaded: PipelineCandidate[] = [];
-      appsSnap.forEach((d) => {
-        const ad = d.data();
-        loaded.push({
-          id: d.id,
-          name: ad.candidateName || "Candidate",
-          email: ad.candidateEmail,
-          phone: ad.candidatePhone,
-          role: ad.jobTitle || "Engineer",
-          jobId: ad.jobId || "mandate_1",
-          jobTitle: ad.jobTitle || "Engineer",
-          companyName: ad.companyName || "AIJOBS Partner",
-          experience: ad.candidateExperience || "3+ Yrs",
-          location: ad.candidateLocation || "India",
-          skills: ad.candidateSkills || ["React", "TypeScript"],
-          aiScore: ad.aiMatchScore || 88,
-          stage: (ad.status as any) || "shortlisted",
-          lastActivity: "Application updated"
-        });
-      });
-      if (loaded.length > 0) {
-        setPipelineCandidates(loaded);
+      const [assignedAppsSnap, recruiterJobsSnap, explicitlyAssignedJobsSnap] = await Promise.all([
+        getDocs(query(collection(db, "applications"), where("assignedRecruiterId", "==", userId))),
+        getDocs(query(collection(db, "jobs"), where("recruiterId", "==", userId))),
+        getDocs(query(collection(db, "jobs"), where("assignedRecruiterId", "==", userId)))
+      ]);
+      const jobDocs = new Map<string, any>();
+      [...recruiterJobsSnap.docs, ...explicitlyAssignedJobsSnap.docs].forEach((snap) => jobDocs.set(snap.id, { id: snap.id, ...snap.data() }));
+      const appDocs = new Map<string, any>();
+      assignedAppsSnap.docs.forEach((snap) => appDocs.set(snap.id, { id: snap.id, ...snap.data() }));
+      for (const jobId of Array.from(new Set([...Array.from(jobDocs.keys()), ...Array.from(appDocs.values()).map((app: any) => String(app.jobId || "")).filter(Boolean)]))) {
+        if (!jobDocs.has(jobId)) {
+          const jobSnap = await getDoc(doc(db, "jobs", jobId));
+          if (jobSnap.exists()) jobDocs.set(jobId, { id: jobSnap.id, ...jobSnap.data() });
+        }
+        const job = jobDocs.get(jobId);
+        if (job && (job.recruiterId === userId || job.assignedRecruiterId === userId)) {
+          const jobApps = await getDocs(query(collection(db, "applications"), where("jobId", "==", jobId)));
+          jobApps.docs.forEach((snap) => appDocs.set(snap.id, { id: snap.id, ...snap.data() }));
+        }
       }
-
-      // Account/KYC/billing status is loaded through the canonical authenticated account-center API.
-    } catch (e) {}
+      const jobs = Array.from(jobDocs.values()).filter((job: any) => job && job.id && !["closed", "expired", "rejected", "deleted"].includes(String(job.status || "").toLowerCase()));
+      const jobsById = new Map(jobs.map((job: any) => [job.id, job]));
+      const applications = Array.from(appDocs.values()).filter((app: any) => {
+        const job = jobsById.get(String(app.jobId || ""));
+        return app.assignedRecruiterId === userId || (job && (job.recruiterId === userId || job.assignedRecruiterId === userId));
+      });
+      const mapped: PipelineCandidate[] = await Promise.all(applications.map(async (app: any) => {
+        const job: any = jobsById.get(String(app.jobId || "")) || {};
+        const candidateId = String(app.candidateId || app.userId || "");
+        let profile: any = {};
+        if (candidateId) {
+          const profileSnaps = await Promise.all([
+            getDoc(doc(db, "candidateProfiles", candidateId)).catch(() => null),
+            getDoc(doc(db, "candidate_profiles", candidateId)).catch(() => null),
+            getDoc(doc(db, "candidates", candidateId)).catch(() => null),
+            getDoc(doc(db, "users", candidateId)).catch(() => null)
+          ]);
+          profile = profileSnaps.reduce((acc: any, snap: any) => snap?.exists() ? { ...acc, ...snap.data() } : acc, {});
+        }
+        const rawStatus = String(app.status || "applied").toLowerCase();
+        const stageMap: Record<string, PipelineCandidate["stage"]> = { applied: "new_lead", new: "new_lead", under_review: "contacted", contacted: "contacted", screened: "screened", shortlisted: "shortlisted", interview: "interview", selected: "selected", offer: "selected", joined: "selected", rejected: "rejected" };
+        const experience = app.candidateExperience ?? app.experience ?? profile.experience ?? profile.totalExperience ?? profile.experienceYears ?? "Not provided";
+        const skills = app.candidateSkills ?? app.skills ?? profile.skills ?? profile.technicalSkills ?? [];
+        const matchScore = app.screeningFitScore ?? app.aiMatchScore ?? null;
+        return {
+          id: app.id, candidateId, name: app.candidateName || profile.fullName || profile.name || profile.displayName || "Candidate",
+          email: app.candidateEmail || profile.email || "", phone: app.candidatePhone || profile.phone || profile.mobileNumber || "",
+          role: profile.currentTitle || profile.targetRole || profile.designation || job.title || app.jobTitle || "Candidate",
+          jobId: String(app.jobId || ""), jobTitle: job.title || app.jobTitle || "Job posting unavailable",
+          companyName: job.companyName || app.companyName || app.company || "Company not provided",
+          experience: typeof experience === "number" ? String(experience) + " Years" : String(experience),
+          location: app.candidateLocation || profile.location || profile.currentLocation || job.location || "Not provided",
+          skills: Array.isArray(skills) ? skills.filter((v: any) => typeof v === "string") : [],
+          aiScore: typeof matchScore === "number" ? matchScore : undefined,
+          stage: stageMap[rawStatus] || "new_lead", lastActivity: app.updatedAt || app.appliedAt || "Application received",
+          resumeUrl: app.resumeUrl || profile.resumeUrl || ""
+        } as PipelineCandidate;
+      }));
+      setAssignedJobs(jobs.map((job: any) => ({
+        id: job.id, title: job.title || "Untitled job", companyName: job.companyName || job.company || "Company not provided",
+        companyId: job.employerId || job.companyId || "", location: job.location || "Not provided", workMode: job.workMode || "",
+        salary: job.salaryRange || job.salary || job.compensation || "Not disclosed",
+        openings: Number(job.openings || job.vacancies || job.numberOfOpenings || 1),
+        deadline: job.applyDeadline || job.validThrough || job.expiryDate || "",
+        candidateCount: applications.filter((app: any) => app.jobId === job.id).length,
+        skillsRequired: Array.isArray(job.skillsRequired) ? job.skillsRequired : Array.isArray(job.skills) ? job.skills : [],
+        status: job.status || "Published", assignedAt: job.assignedAt || ""
+      } as RecruiterJob)));
+      setPipelineCandidates(mapped);
+    } catch (e) {
+      console.error("[RecruiterDashboard] Failed to load assigned real jobs/applications:", e);
+      setAssignedJobs([]); setPipelineCandidates([]);
+    } finally { setIsLoadingRecruiterData(false); }
   };
 
   useEffect(() => {
@@ -252,8 +194,13 @@ export default function RecruiterDashboard({
     }
   }, []);
 
-  const handleUpdateStage = (candidateId: string, newStage: PipelineCandidate["stage"]) => {
-    setPipelineCandidates(prev => prev.map(c => c.id === candidateId ? { ...c, stage: newStage } : c));
+  const handleUpdateStage = async (applicationId: string, newStage: PipelineCandidate["stage"]) => {
+    const statusMap: Record<PipelineCandidate["stage"], any> = { new_lead: "applied", contacted: "under_review", screened: "under_review", shortlisted: "shortlisted", interview: "interview", selected: "selected", rejected: "rejected" };
+    try {
+      await updateDoc(doc(db, "applications", applicationId), { status: statusMap[newStage], updatedAt: new Date().toISOString() });
+      await updateDoc(doc(db, "company_applications", applicationId), { status: statusMap[newStage], updatedAt: new Date().toISOString() }).catch(() => undefined);
+      setPipelineCandidates(prev => prev.map(c => c.id === applicationId ? { ...c, stage: newStage } : c));
+    } catch (error) { console.error("[RecruiterDashboard] Candidate stage update failed:", error); }
   };
 
   const handleOpenLiveChat = (recipientId?: string, recipientName?: string) => {
