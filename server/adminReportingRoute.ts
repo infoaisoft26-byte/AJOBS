@@ -23,7 +23,7 @@ function csvCell(value: any) {
   const text = String(value ?? "");
   return '"' + text.replace(/"/g, '""') + '"';
 }
-async function mirrorToNeon(sql: any, users: any[], jobs: any[], applications: any[], interviews: any[], audits: any[]) {
+async function mirrorToNeon(sql: any, users: any[], jobs: any[], applications: any[], interviews: any[], audits: any[], screenings: any[]) {
   const json = (rows: any[]) => JSON.stringify(rows);
   if (users.length) await sql`INSERT INTO app_users (id,email,display_name,role,status,source_ref,profile,created_at,updated_at,synced_at)
     SELECT x.id,x.email,x.display_name,x.role,x.status,x.source_ref,x.profile::jsonb,x.created_at::timestamptz,now(),now()
@@ -41,6 +41,10 @@ async function mirrorToNeon(sql: any, users: any[], jobs: any[], applications: a
     SELECT x.id,x.application_id,x.job_id,x.candidate_id,x.recruiter_id,x.employer_id,x.status,x.scheduled_at::timestamptz,x.source_ref,x.payload::jsonb,now()
     FROM jsonb_to_recordset(${json(interviews)}::jsonb) AS x(id text,application_id text,job_id text,candidate_id text,recruiter_id text,employer_id text,status text,scheduled_at text,source_ref text,payload text)
     ON CONFLICT (id) DO UPDATE SET application_id=EXCLUDED.application_id,job_id=EXCLUDED.job_id,candidate_id=EXCLUDED.candidate_id,recruiter_id=EXCLUDED.recruiter_id,employer_id=EXCLUDED.employer_id,status=EXCLUDED.status,scheduled_at=EXCLUDED.scheduled_at,payload=EXCLUDED.payload,synced_at=now()`;
+  if (screenings.length) await sql`INSERT INTO screening_evaluations (id,application_id,job_id,candidate_id,evaluated_by,score,outcome,evaluated_at,payload,source_ref,synced_at)
+    SELECT x.id,x.application_id,x.job_id,x.candidate_id,x.evaluated_by,x.score::numeric,x.outcome,x.evaluated_at::timestamptz,x.payload::jsonb,x.source_ref,now()
+    FROM jsonb_to_recordset(${json(screenings)}::jsonb) AS x(id text,application_id text,job_id text,candidate_id text,evaluated_by text,score text,outcome text,evaluated_at text,payload text,source_ref text)
+    ON CONFLICT (id) DO UPDATE SET application_id=EXCLUDED.application_id,job_id=EXCLUDED.job_id,candidate_id=EXCLUDED.candidate_id,evaluated_by=EXCLUDED.evaluated_by,score=EXCLUDED.score,outcome=EXCLUDED.outcome,evaluated_at=EXCLUDED.evaluated_at,payload=EXCLUDED.payload,synced_at=now()`;
   if (audits.length) await sql`INSERT INTO hiring_audit_events (id,actor_uid,actor_email,actor_role,action,entity_type,entity_id,job_id,application_id,details,occurred_at,source_ref,payload)
     SELECT x.id,x.actor_uid,x.actor_email,x.actor_role,x.action,x.entity_type,x.entity_id,x.job_id,x.application_id,x.details,x.occurred_at::timestamptz,x.source_ref,x.payload::jsonb
     FROM jsonb_to_recordset(${json(audits)}::jsonb) AS x(id text,actor_uid text,actor_email text,actor_role text,action text,entity_type text,entity_id text,job_id text,application_id text,details text,occurred_at text,source_ref text,payload text)
