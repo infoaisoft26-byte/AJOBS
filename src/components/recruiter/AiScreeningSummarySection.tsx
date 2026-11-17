@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
-import { db } from "../../firebase";
+import { auth, db } from "../../firebase";
 import { 
   Sparkles, 
   Brain, 
@@ -131,10 +131,15 @@ export default function AiScreeningSummarySection({
         forceRefresh: force
       };
 
-      // Try primary recruiter endpoint, falling back to hiring-agent endpoint
+      // Screening requires a verified recruiter/admin Firebase identity.
+      const authToken = await auth.currentUser?.getIdToken();
+      if (!authToken) throw new Error("Please sign in again to run candidate screening.");
+      const screeningHeaders = { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` };
+
+      // Try primary recruiter endpoint, falling back to hiring-agent endpoint.
       let response = await fetch("/api/recruiter/screening-summary", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: screeningHeaders,
         body: JSON.stringify(payload)
       });
 
