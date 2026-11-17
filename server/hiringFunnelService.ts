@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import type { Request, Response } from "express";
 import { getFirebaseAuth, getFirestoreDb } from "./firestoreHelper.js";
+import { neon } from "@neondatabase/serverless";
 import { sendGoogleIndexingNotification } from "./googleIndexingService.js";
 
 const SITE_URL = "https://aijobs1.in";
@@ -202,6 +203,25 @@ function publicJobPayload(jobId: string, source: any, owner: any, role: string) 
   };
 }
 
+async function mirrorHiringRegistrationToNeon(input: { uid:string; role:string; name:string; email:string; phone:string; companyName:string; attribution:any; profile:any; leadId:string; createdAt:string }) {
+  if (!process.env.DATABASE_URL) return;
+  try {
+    const sql = neon(process.env.DATABASE_URL);
+    const profile = input.profile || {};
+    await sql`INSERT INTO app_users (id,email,display_name,role,status,source_ref,profile,created_at,updated_at,synced_at)
+      VALUES (${input.uid},${input.email},${input.name},${input.role},'active',${input.uid},${JSON.stringify(profile)}::jsonb,${input.createdAt}::timestamptz,now(),now())
+      ON CONFLICT (id) DO UPDATE SET email=EXCLUDED.email,display_name=EXCLUDED.display_name,role=EXCLUDED.role,status='active',profile=EXCLUDED.profile,updated_at=now(),synced_at=now()`;
+    await sql`INSERT INTO crm_leads (id,source,source_ref,lead_type,name,email,phone,company,status,last_activity_at,payload,created_at,updated_at)
+      VALUES (${input.leadId},'AIJOBS Hiring Registration',${input.uid},${input.role},${input.name},${input.email},${input.phone},${input.companyName},'New',now(),${JSON.stringify({role:input.role,attribution:input.attribution})}::jsonb,${input.createdAt}::timestamptz,now())
+      ON CONFLICT (id) DO UPDATE SET lead_type=EXCLUDED.lead_type,name=EXCLUDED.name,email=EXCLUDED.email,phone=EXCLUDED.phone,company=EXCLUDED.company,payload=EXCLUDED.payload,updated_at=now()`;
+    await sql`INSERT INTO activity_events (id,user_id,role,event_name,source,occurred_at,attribution,metadata)
+      VALUES (${"hiring_registration:" + input.uid},${input.uid},${input.role},'hiring_registration_completed','hire_portal',now(),${JSON.stringify(input.attribution)}::jsonb,${JSON.stringify({leadId:input.leadId,companyName:input.companyName})}::jsonb)
+      ON CONFLICT (id) DO UPDATE SET occurred_at=now(),attribution=EXCLUDED.attribution,metadata=EXCLUDED.metadata`;
+  } catch (error:any) {
+    console.warn("[Hiring Neon sync] Registration mirror deferred:",error?.message || error);
+  }
+}
+
 export async function handleHiringFunnelApi(req: Request, res: Response): Promise<boolean> {
   const path = String(req.url || "").split("?")[0].replace(/\/+$/, "") || "/";
   if (!path.startsWith("/api/hire")) return false;
@@ -262,6 +282,10 @@ export async function handleHiringFunnelApi(req: Request, res: Response): Promis
         tx.set(companyRef, { companyId: decoded.uid, ownerUid: decoded.uid, companyName, officialEmail: profile.email, officialPhone: phone, createdAt: now, updatedAt: now }, { merge: true });
       });
       const leadId = `lead_hiring_${crypto.createHash("sha256").update(decoded.uid).digest("hex").slice(0, 24)}`;
+      await mirrorHiringRegistrationToNeon({
+        uid: decoded.uid, role, name, email: profile.email, phone, companyName,
+        attribution, profile, leadId, createdAt: profile.createdAt
+      });
       await Promise.all([
         writeEvent(db, decoded.uid, "registration_completed", {
           role,
@@ -347,6 +371,14 @@ export async function handleHiringFunnelApi(req: Request, res: Response): Promis
         db.collection("companies").doc(decoded.uid).set(company, { merge: true }),
         db.collection("users").doc(decoded.uid).set({ companyName: company.companyName, companyProfileCompleted: true, updatedAt: now }, { merge: true })
       ]);
+      if (process.env.DATABASE_URL) {
+        try {
+          const sql = neon(process.env.DATABASE_URL);
+          await sql`INSERT INTO organization_profiles (id,owner_uid,role,company_name,industry,company_size,website,company_address,city,state,country,gst_number,registration_number,official_email,official_phone,company_description,profile_completed,marketing_attribution,profile,updated_at,synced_at)
+            VALUES (${decoded.uid},${decoded.uid},${role},${company.companyName},${company.industry},${company.companySize},${company.website},${company.companyAddress},${company.city},${company.state},${company.country},${company.gstNumber},${company.registrationNumber},${company.officialEmail},${company.officialPhone},${company.companyDescription},true,'{}'::jsonb,${JSON.stringify(company)}::jsonb,now(),now())
+            ON CONFLICT (id) DO UPDATE SET role=EXCLUDED.role,company_name=EXCLUDED.company_name,industry=EXCLUDED.industry,company_size=EXCLUDED.company_size,website=EXCLUDED.website,company_address=EXCLUDED.company_address,city=EXCLUDED.city,state=EXCLUDED.state,country=EXCLUDED.country,gst_number=EXCLUDED.gst_number,registration_number=EXCLUDED.registration_number,official_email=EXCLUDED.official_email,official_phone=EXCLUDED.official_phone,company_description=EXCLUDED.company_description,profile_completed=true,profile=EXCLUDED.profile,updated_at=now(),synced_at=now()`;
+        } catch (error:any) { console.warn("[Hiring Neon sync] Company profile mirror deferred:",error?.message || error); }
+      }
       await writeEvent(db, decoded.uid, "company_profile_completed", { dedupeKey: `company_profile_completed:${decoded.uid}` });
       return void res.json({ success: true, company }) as any;
     }
@@ -369,6 +401,14 @@ export async function handleHiringFunnelApi(req: Request, res: Response): Promis
         tx.set(jobRef, job);
         tx.set(creditRef, { usedCredits: number(credits.usedCredits) + 1, updatedAt: new Date().toISOString() }, { merge: true });
       });
+      if (process.env.DATABASE_URL) {
+        try {
+          const sql = neon(process.env.DATABASE_URL);
+          await sql`INSERT INTO jobs (id,owner_uid,recruiter_id,employer_id,consultancy_id,title,company_name,status,location,created_at,source_ref,payload,synced_at)
+            VALUES (${jobId},${decoded.uid},${role === "recruiter" ? decoded.uid : null},${role === "employer" ? decoded.uid : null},${role === "consultancy" ? decoded.uid : null},${text(job.title,240)},${text(job.companyName || companySnap.data()?.companyName,240)},'pending_review',${text(job.location || job.city,240)},now(),${jobId},${JSON.stringify(job)}::jsonb,now())
+            ON CONFLICT (id) DO UPDATE SET title=EXCLUDED.title,company_name=EXCLUDED.company_name,status=EXCLUDED.status,location=EXCLUDED.location,payload=EXCLUDED.payload,updated_at=now(),synced_at=now()`;
+        } catch (error:any) { console.warn("[Hiring Neon sync] Job mirror deferred:",error?.message || error); }
+      }
       await Promise.all([
         writeEvent(db, decoded.uid, "job_submitted", { jobId, role, dedupeKey: `job_submitted:${jobId}` }),
         writeEvent(db, decoded.uid, "first_job_credit_used", { jobId, role, dedupeKey: `first_job_credit_used:${decoded.uid}` }),
