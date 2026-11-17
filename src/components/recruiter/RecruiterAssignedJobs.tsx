@@ -99,7 +99,7 @@ export default function RecruiterAssignedJobs({
 
               {/* Skills */}
               <div className="flex flex-wrap gap-1">
-                {(job.skillsRequired || []).map((sk) => (
+                {(job.skillsRequired || ["React", "TypeScript", "Node.js"]).map((sk) => (
                   <span key={sk} className="px-2 py-0.5 rounded-md bg-[#0e0a14] text-slate-300 text-[10px] font-mono border border-purple-500/20">
                     {sk}
                   </span>
@@ -110,7 +110,7 @@ export default function RecruiterAssignedJobs({
             {/* Actions */}
             <div className="pt-3 border-t border-purple-500/15 flex flex-wrap items-center justify-between gap-2">
               <span className="text-[11px] text-slate-400 font-mono">
-                {job.assignedAt ? "Assigned " + job.assignedAt : "Assigned mandate"}
+                Assigned {job.assignedAt || "Recently"}
               </span>
 
               <div className="flex items-center gap-2">
