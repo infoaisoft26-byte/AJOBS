@@ -133,7 +133,7 @@ export default function RecruiterDashboard({
         const job = jobDocs.get(jobId);
         // Candidate visibility is driven by explicit application assignment; never pull every applicant for a job.
       }
-      const jobs = Array.from(jobDocs.values()).filter((job: any) => job && job.id && !["closed", "expired", "rejected", "deleted"].includes(String(job.status || "").toLowerCase()));
+      const jobs = Array.from(jobDocs.values()).filter((job: any) => job && job.id && ["published", "approved", "live", "open", "active"].includes(String(job.status || "").toLowerCase().replace(/[\\s-]+/g, "_")));
       const jobsById = new Map(jobs.map((job: any) => [job.id, job]));
       const applications = Array.from(appDocs.values()).filter((app: any) => {
         const job = jobsById.get(String(app.jobId || ""));
