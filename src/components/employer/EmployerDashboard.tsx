@@ -58,49 +58,18 @@ export default function EmployerDashboard({
 
   // Credits Balance
   const [credits, setCredits] = useState<CreditBalance>({
-    jobCredits: 6,
-    jobCreditsUsed: 4,
-    databaseCredits: 125,
-    databaseCreditsUsed: 48,
-    aiCredits: 500,
-    aiCreditsUsed: 110,
-    callingCredits: 180,
-    callingCreditsUsed: 45,
-    validityDate: "Dec 31, 2026"
+    jobCredits: 0,
+    jobCreditsUsed: 0,
+    databaseCredits: 0,
+    databaseCreditsUsed: 0,
+    aiCredits: 0,
+    aiCreditsUsed: 0,
+    callingCredits: 0,
+    callingCreditsUsed: 0,
+    validityDate: ""
   });
 
-  const [usageHistory, setUsageHistory] = useState<CreditUsageLog[]>([
-    {
-      id: "tx_101",
-      date: new Date(Date.now() - 3600000 * 2).toLocaleDateString() + " " + new Date(Date.now() - 3600000 * 2).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      activity: "Candidate Contact & Resume Unlock",
-      item: "Aarav Sharma",
-      quantity: 1,
-      creditsUsed: 1,
-      recruiter: userName,
-      refId: "CAND_9872"
-    },
-    {
-      id: "tx_102",
-      date: new Date(Date.now() - 86400000).toLocaleDateString() + " " + new Date(Date.now() - 86400000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      activity: "Job Requisition Published & Indexed",
-      item: "Senior React & TypeScript Architect",
-      quantity: 1,
-      creditsUsed: 1,
-      recruiter: userName,
-      refId: "JOB_4421"
-    },
-    {
-      id: "tx_103",
-      date: new Date(Date.now() - 86400000 * 2).toLocaleDateString() + " " + new Date(Date.now() - 86400000 * 2).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      activity: "AI Voice Telephony Screening (4 mins)",
-      item: "Sneha Deshmukh",
-      quantity: 4,
-      creditsUsed: 4,
-      recruiter: userName,
-      refId: "CALL_1109"
-    }
-  ]);
+  const [usageHistory, setUsageHistory] = useState<CreditUsageLog[]>([]);
 
   // Load real Firestore data
   const loadData = async () => {
@@ -119,7 +88,7 @@ export default function EmployerDashboard({
               id: userId,
               userId,
               companyName: ed.companyName || companyName,
-              industry: ed.industry || "Software & Technology",
+              industry: ed.industry || "",
               companySize: ed.size || "51-200 Employees",
               isVerified: true,
               createdAt: new Date().toISOString()
@@ -138,25 +107,7 @@ export default function EmployerDashboard({
         }
       });
 
-      // If user has no jobs yet, provide default verified template job
-      if (jobList.length === 0) {
-        jobList.push({
-          id: "job_sample_1",
-          employerId: userId,
-          title: "Senior Full Stack Engineer (React & Node.js)",
-          companyName: companyName,
-          location: "Bengaluru, Karnataka (Hybrid)",
-          department: "Engineering",
-          employmentType: "Full-time",
-          experience: "3-5 Years",
-          salary: "18,00,000 - 26,00,000",
-          openings: 2,
-          skillsRequired: ["React", "TypeScript", "Node.js", "PostgreSQL", "AWS"],
-          status: "active",
-          approved: true,
-          createdAt: new Date().toISOString()
-        });
-      }
+      // Never fabricate a job when the employer has no published or submitted records.
       setJobs(jobList);
 
       // 3. Applications
@@ -169,40 +120,6 @@ export default function EmployerDashboard({
         }
       });
 
-      if (appList.length === 0) {
-        appList.push(
-          {
-            id: "app_sample_1",
-            jobId: jobList[0]?.id || "job_sample_1",
-            jobTitle: jobList[0]?.title || "Senior Full Stack Engineer",
-            candidateId: "cand_aarav",
-            candidateName: "Aarav Sharma",
-            candidateEmail: "aarav.sharma@domain.in",
-            candidatePhone: "+91 98765 43210",
-            location: "Bengaluru, Karnataka",
-            experience: "5.5 Years",
-            status: "new",
-            aiScore: 96,
-            skills: ["React", "TypeScript", "Node.js", "AWS"],
-            appliedAt: new Date(Date.now() - 3600000 * 3).toISOString()
-          },
-          {
-            id: "app_sample_2",
-            jobId: jobList[0]?.id || "job_sample_1",
-            jobTitle: jobList[0]?.title || "Senior Full Stack Engineer",
-            candidateId: "cand_sneha",
-            candidateName: "Sneha Deshmukh",
-            candidateEmail: "sneha.d@domain.in",
-            candidatePhone: "+91 98123 45678",
-            location: "Pune, Maharashtra",
-            experience: "4.2 Years",
-            status: "shortlisted",
-            aiScore: 94,
-            skills: ["React", "Next.js", "Tailwind CSS"],
-            appliedAt: new Date(Date.now() - 86400000).toISOString()
-          }
-        );
-      }
       setApplications(appList);
 
       // 4. Interviews
