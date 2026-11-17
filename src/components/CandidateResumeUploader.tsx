@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { auth, db } from "../firebase";
 import { uploadResumeService } from "../services/resumeUploadService";
+import { syncCandidateProfileToNeon } from "../services/neonSyncService";
 import { parseResumeData } from "../services/aiParser";
 import { trackResumeUploaded, trackProfileCompleted } from "../utils/analytics";
 import { useToast } from "./GlobalToast";
