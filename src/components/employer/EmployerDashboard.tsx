@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { collection, getDocs, doc, getDoc, updateDoc, setDoc, deleteDoc, query, where } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, updateDoc, setDoc, deleteDoc, query, where, onSnapshot } from "firebase/firestore";
 import { db, auth } from "../../firebase";
 import HiringPanelLayout from "../hiring/HiringPanelLayout";
 import HiringOverview from "../hiring/HiringOverview";
@@ -136,6 +136,17 @@ export default function EmployerDashboard({
 
   useEffect(() => {
     loadData();
+    if (!userId) return;
+    const refs = ["employerId", "ownerUid", "jobOwnerUid", "recruiterId"].map(field =>
+      onSnapshot(query(collection(db, "applications"), where(field, "==", userId)), snapshot => {
+        setApplications(previous => {
+          const merged = new Map(previous.map(app => [app.id, app]));
+          snapshot.docs.forEach(item => merged.set(item.id, { id: item.id, ...item.data() } as CompanyApplication));
+          return Array.from(merged.values()).filter(app => [app.employerId, app.ownerUid, app.jobOwnerUid, app.recruiterId, app.assignedRecruiterId].includes(userId));
+        });
+      }, error => console.warn("Employer live applications listener:", error.message))
+    );
+    return () => refs.forEach(unsubscribe => unsubscribe());
   }, [userId]);
 
   // Credit Deduction handler
@@ -211,13 +222,16 @@ export default function EmployerDashboard({
 
   // Application status update
   const handleUpdateApplicationStatus = async (appId: string, newStatus: string, note?: string) => {
-    try {
-      await updateDoc(doc(db, "company_applications", appId), {
-        status: newStatus,
-        ...(note ? { notes: note } : {})
-      });
-    } catch (e) {}
-    setApplications(applications.map(a => a.id === appId ? { ...a, status: newStatus, ...(note ? { notes: note } : {}) } : a));
+    const token = await auth.currentUser?.getIdToken(true);
+    if (!token) throw new Error("Please sign in again to update this application.");
+    const response = await fetch(`/api/hire/workspace/applications/${encodeURIComponent(appId)}/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ status: newStatus, remarks: note || "" })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.success) throw new Error(result.error || "Application status update failed.");
+    setApplications(previous => previous.map(a => a.id === appId ? { ...a, status: result.status, updatedAt: result.updatedAt, ...(note ? { notes: note } : {}) } : a));
   };
 
   // Select Option from Post Job Menu
