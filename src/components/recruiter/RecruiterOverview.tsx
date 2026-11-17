@@ -37,12 +37,7 @@ export default function RecruiterOverview({
   onSelectCandidateForPipeline,
   onOpenLiveChat
 }: RecruiterOverviewProps) {
-  const [tasks, setTasks] = useState<RecruiterTask[]>([
-    { id: "t1", title: "Conduct technical pre-screen with Aarav Sharma", dueDate: "Today 2:30 PM", priority: "high", completed: false },
-    { id: "t2", title: "Share 3 shortlisted React profiles with Tech Lead", dueDate: "Today 5:00 PM", priority: "high", completed: false },
-    { id: "t3", title: "Follow up with Vikram Malhotra on offer acceptance", dueDate: "Tomorrow", priority: "medium", completed: true },
-    { id: "t4", title: "Review incoming applications for Cloud Architect opening", dueDate: "Aug 22", priority: "low", completed: false }
-  ]);
+  const [tasks, setTasks] = useState<RecruiterTask[]>([]);
 
   const toggleTask = (taskId: string) => {
     setTasks(tasks.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t));
@@ -51,7 +46,7 @@ export default function RecruiterOverview({
   const statCards = [
     {
       title: "Assigned Jobs",
-      value: assignedJobs.length || 6,
+      value: assignedJobs.length,
       sub: "Active mandate openings",
       icon: Briefcase,
       color: "from-blue-600/20 to-blue-500/10",
@@ -60,7 +55,7 @@ export default function RecruiterOverview({
     },
     {
       title: "Candidates in Pipeline",
-      value: pipelineCandidates.length || 24,
+      value: pipelineCandidates.length,
       sub: "Across all active stages",
       icon: Users,
       color: "from-purple-600/20 to-purple-500/10",
@@ -69,17 +64,17 @@ export default function RecruiterOverview({
     },
     {
       title: "Interviews Scheduled",
-      value: 8,
-      sub: "Confirmed this week",
+      value: pipelineCandidates.filter(c => c.stage === "interview").length,
+      sub: "From assigned applications",
       icon: Calendar,
       color: "from-cyan-600/20 to-cyan-500/10",
       border: "border-cyan-500/30",
       textColor: "text-cyan-400"
     },
     {
-      title: "This Month's Placements",
-      value: "4 Hired",
-      sub: "₹1,80,000 Commission",
+      title: "Selected Candidates",
+      value: pipelineCandidates.filter(c => c.stage === "selected").length,
+      sub: "Recorded in assigned pipeline",
       icon: Trophy,
       color: "from-emerald-600/20 to-emerald-500/10",
       border: "border-emerald-500/30",
@@ -258,11 +253,11 @@ export default function RecruiterOverview({
           </div>
 
           <p className="text-xs text-slate-300 leading-relaxed">
-            These candidates have 90%+ compatibility with your priority assigned roles and indicate immediate availability:
+            Only candidates with a saved AI evaluation score are shown here:
           </p>
 
           <div className="space-y-2.5">
-            {pipelineCandidates.slice(0, 2).map((cand) => (
+            {pipelineCandidates.filter(cand => typeof cand.aiScore === "number").slice(0, 2).map((cand) => (
               <div
                 key={cand.id}
                 className="p-3.5 rounded-2xl bg-[#0e0a14] border border-purple-500/30 flex items-center justify-between gap-3"
@@ -280,10 +275,10 @@ export default function RecruiterOverview({
 
                 <div className="flex items-center gap-2">
                   <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-mono font-bold">
-                    {cand.aiScore}% Match
+                    {typeof cand.aiScore === "number" ? `${cand.aiScore}% Match` : "Not evaluated"}
                   </span>
                   <button
-                    onClick={() => onOpenLiveChat && onOpenLiveChat(cand.id, cand.name || "Candidate")}
+                    onClick={() => onOpenLiveChat && onOpenLiveChat(cand.candidateId || cand.id, cand.name || "Candidate")}
                     className="p-2 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 transition-all cursor-pointer"
                     title="Send Outreach"
                   >
