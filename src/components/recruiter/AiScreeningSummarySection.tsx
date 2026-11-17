@@ -53,6 +53,8 @@ export interface AiScreeningResult {
   questionBreakdown: QuestionEvaluation[];
   modelUsed?: string;
   evaluatedAt?: string;
+  applicationId?: string;
+  sourceResponsesFingerprint?: string;
 }
 
 export interface CandidateScreeningProfile {
@@ -192,9 +194,14 @@ export default function AiScreeningSummarySection({
           }
           const raw = item.screeningResponses || item.screeningAnswers || item.responses || [];
           const responses = Array.isArray(raw) ? raw.filter((x: any) => x && typeof x.question === "string" && typeof x.answer === "string") : [];
+          const fingerprint = JSON.stringify(responses.map((value: any) => ({ question: value.question, answer: value.answer, category: value.category || "" })));
           const exp = item.candidateExperience ?? item.experience ?? profile.experience ?? profile.totalExperience ?? "Not provided";
           const skills = item.candidateSkills ?? item.skills ?? profile.skills ?? profile.technicalSkills ?? [];
-          return { id: snap.id, candidateId, name: item.candidateName || profile.fullName || profile.name || profile.displayName || "Candidate", role: profile.currentTitle || profile.targetRole || profile.designation || jobTitle, experience: typeof exp === "number" ? String(exp) + " Years" : String(exp), skills: Array.isArray(skills) ? skills.filter((x: any) => typeof x === "string") : [], stage: item.status || "applied", responses, screeningResult: item.screeningResult || saved.get(candidateId) } as CandidateScreeningProfile;
+          const nestedResult = item.screeningResult as AiScreeningResult | undefined;
+          const savedResult = saved.get(candidateId);
+          const validNested = nestedResult?.applicationId === snap.id && nestedResult?.sourceResponsesFingerprint === fingerprint ? nestedResult : undefined;
+          const validSaved = savedResult?.applicationId === snap.id && savedResult?.sourceResponsesFingerprint === fingerprint ? savedResult : undefined;
+          return { id: snap.id, candidateId, name: item.candidateName || profile.fullName || profile.name || profile.displayName || "Candidate", role: profile.currentTitle || profile.targetRole || profile.designation || jobTitle, experience: typeof exp === "number" ? String(exp) + " Years" : String(exp), skills: Array.isArray(skills) ? skills.filter((x: any) => typeof x === "string") : [], stage: item.status || "applied", responses, screeningResult: validNested || validSaved } as CandidateScreeningProfile;
         })).filter((x) => x.id);
         if (!active) return;
         setCandidates(real);
