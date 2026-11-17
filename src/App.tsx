@@ -104,7 +104,6 @@ import { ToastProvider, useToast } from "@/components/GlobalToast";
 import Header from "@/components/Header";
 import LandingPage from "@/components/PremiumCandidateHomepage";
 import LegalModal from "@/components/LegalModal";
-import CandidateConversionDock from "@/components/CandidateConversionDock";
 import OfficialContactDock from "@/components/OfficialContactDock";
 import { type BackgroundMode } from "@/components/ThreeDBackground";
 import { LanguageProvider } from "@/context/LanguageContext";
@@ -1391,7 +1390,6 @@ export default function App() {
       <GlobalMarketplaceProvider>
         <ToastProvider>
           <MainAppContent />
-          <CandidateConversionDock />
           <OfficialContactDock />
         </ToastProvider>
       </GlobalMarketplaceProvider>
