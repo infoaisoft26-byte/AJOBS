@@ -102,16 +102,18 @@ export default function RecruiterDashboard({
     if (!userId) { setAssignedJobs([]); setPipelineCandidates([]); setIsLoadingRecruiterData(false); return; }
     setIsLoadingRecruiterData(true);
     try {
-      const [assignedAppsSnap, recruiterJobsSnap, explicitlyAssignedJobsSnap] = await Promise.all([
+      const [assignedAppsSnap, assignedLeadsSnap, recruiterJobsSnap, explicitlyAssignedJobsSnap] = await Promise.all([
         getDocs(query(collection(db, "applications"), where("assignedRecruiterId", "==", userId))),
+        getDocs(query(collection(db, "candidate_leads"), where("assignedRecruiterId", "==", userId))),
         getDocs(query(collection(db, "jobs"), where("recruiterId", "==", userId))),
         getDocs(query(collection(db, "jobs"), where("assignedRecruiterId", "==", userId)))
       ]);
       const jobDocs = new Map<string, any>();
       [...recruiterJobsSnap.docs, ...explicitlyAssignedJobsSnap.docs].forEach((snap) => jobDocs.set(snap.id, { id: snap.id, ...snap.data() }));
       const appDocs = new Map<string, any>();
-      assignedAppsSnap.docs.forEach((snap) => appDocs.set(snap.id, { id: snap.id, ...snap.data() }));
-      for (const jobId of Array.from(new Set([...Array.from(jobDocs.keys()), ...Array.from(appDocs.values()).map((app: any) => String(app.jobId || "")).filter(Boolean)]))) {
+      assignedAppsSnap.docs.forEach((snap) => appDocs.set(snap.id, { id: snap.id, sourceType: "application", ...snap.data() }));
+      assignedLeadsSnap.docs.forEach((snap) => appDocs.set(snap.id, { id: snap.id, sourceType: "candidate_lead", ...snap.data() }));
+      for (const jobId of Array.from(new Set([...Array.from(jobDocs.keys()), ...Array.from(appDocs.values()).map((app: any) => String(app.jobId || app.sourceJobId || "")).filter(Boolean)]))) {
         if (!jobDocs.has(jobId)) {
           const jobSnap = await getDoc(doc(db, "jobs", jobId));
           if (jobSnap.exists()) jobDocs.set(jobId, { id: jobSnap.id, ...jobSnap.data() });
@@ -126,7 +128,7 @@ export default function RecruiterDashboard({
         return app.assignedRecruiterId === userId || (job && (job.recruiterId === userId || job.assignedRecruiterId === userId));
       });
       const mapped: PipelineCandidate[] = await Promise.all(applications.map(async (app: any) => {
-        const job: any = jobsById.get(String(app.jobId || "")) || {};
+        const job: any = jobsById.get(String(app.jobId || app.sourceJobId || "")) || {};
         const candidateId = String(app.candidateId || app.userId || "");
         let profile: any = {};
         if (candidateId) {
@@ -144,10 +146,10 @@ export default function RecruiterDashboard({
         const skills = app.candidateSkills ?? app.skills ?? profile.skills ?? profile.technicalSkills ?? [];
         const matchScore = app.screeningFitScore ?? app.aiMatchScore ?? null;
         return {
-          id: app.id, candidateId, name: app.candidateName || profile.fullName || profile.name || profile.displayName || "Candidate",
+          id: app.id, sourceType: app.sourceType || "application", candidateId, name: app.candidateName || profile.fullName || profile.name || profile.displayName || "Candidate",
           email: app.candidateEmail || profile.email || "", phone: app.candidatePhone || profile.phone || profile.mobileNumber || "",
           role: profile.currentTitle || profile.targetRole || profile.designation || job.title || app.jobTitle || "Candidate",
-          jobId: String(app.jobId || ""), jobTitle: job.title || app.jobTitle || "Job posting unavailable",
+          jobId: String(app.jobId || app.sourceJobId || ""), jobTitle: job.title || app.sourceJobTitle || app.jobTitle || "Job posting unavailable",
           companyName: job.companyName || app.companyName || app.company || "Company not provided",
           experience: typeof experience === "number" ? String(experience) + " Years" : String(experience),
           location: app.candidateLocation || profile.location || profile.currentLocation || job.location || "Not provided",
@@ -194,8 +196,10 @@ export default function RecruiterDashboard({
   const handleUpdateStage = async (applicationId: string, newStage: PipelineCandidate["stage"]) => {
     const statusMap: Record<PipelineCandidate["stage"], any> = { new_lead: "applied", contacted: "under_review", screened: "under_review", shortlisted: "shortlisted", interview: "interview", selected: "selected", rejected: "rejected" };
     try {
-      await updateDoc(doc(db, "applications", applicationId), { status: statusMap[newStage], updatedAt: new Date().toISOString() });
-      await updateDoc(doc(db, "company_applications", applicationId), { status: statusMap[newStage], updatedAt: new Date().toISOString() }).catch(() => undefined);
+      const candidate = pipelineCandidates.find(item => item.id === applicationId);
+      const collectionName = candidate?.sourceType === "candidate_lead" ? "candidate_leads" : "applications";
+      await updateDoc(doc(db, collectionName, applicationId), { status: statusMap[newStage], currentStatus: statusMap[newStage], updatedAt: new Date().toISOString() });
+      if (collectionName === "applications") await updateDoc(doc(db, "company_applications", applicationId), { status: statusMap[newStage], updatedAt: new Date().toISOString() }).catch(() => undefined);
       setPipelineCandidates(prev => prev.map(c => c.id === applicationId ? { ...c, stage: newStage } : c));
     } catch (error) { console.error("[RecruiterDashboard] Candidate stage update failed:", error); }
   };
@@ -604,6 +608,7 @@ export default function RecruiterDashboard({
                 <RecruiterFindCandidates
                   userId={userId}
                   assignedJobs={assignedJobs}
+                  onAssigned={() => loadData()}
                   onOpenLiveChat={handleOpenLiveChat}
                 />
               )}
