@@ -15,8 +15,7 @@ import {
   Building2,
   ExternalLink
 } from "lucide-react";
-import { doc, updateDoc } from "firebase/firestore";
-import { db } from "../../firebase";
+import { auth } from "../../firebase";
 import { PipelineCandidate, RecruiterJob } from "./RecruiterTypes";
 
 interface RecruiterPipelineProps {
@@ -65,13 +64,20 @@ export default function RecruiterPipeline({
 
   const handleStageChange = async (candidateId: string, newStage: PipelineCandidate["stage"]) => {
     try {
-      await updateDoc(doc(db, "company_applications", candidateId), {
-        status: newStage,
-        updatedAt: new Date().toISOString()
+      const token = await auth.currentUser?.getIdToken(true);
+      if (!token) throw new Error("Please sign in again.");
+      const response = await fetch(`/api/hire/workspace/applications/${encodeURIComponent(candidateId)}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: newStage })
       });
-    } catch (e) {}
-
-    onUpdateCandidateStage(candidateId, newStage);
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) throw new Error(result.error || "Could not update candidate stage.");
+      onUpdateCandidateStage(candidateId, newStage);
+    } catch (error) {
+      console.error("Candidate stage update failed:", error);
+      window.alert(error instanceof Error ? error.message : "Could not update candidate stage.");
+    }
   };
 
   return (
