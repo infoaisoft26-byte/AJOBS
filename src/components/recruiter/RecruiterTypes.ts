@@ -29,6 +29,7 @@ export interface PipelineCandidate {
   skills: string[];
   aiScore?: number;
   candidateId?: string;
+  sourceType?: "application" | "candidate_lead";
   stage: "new_lead" | "contacted" | "screened" | "shortlisted" | "interview" | "selected" | "rejected";
   lastActivity: string;
   notes?: string;
