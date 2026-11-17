@@ -48,6 +48,8 @@ import { extractResumeText, parseResumeWithAI, syncParsedResumeToFirestore, extr
 import { handlePaymentCheckoutRoute } from "./server/paymentCheckoutRoute.js";
 import { handleCloudinarySignatureRoute } from "./server/cloudinarySignatureRoute.js";
 import { handleAgreementOtpRoute } from "./server/agreementOtpRoute.js";
+import { handleHiringWorkspaceRoute } from "./server/hiringWorkspaceRoute.js";
+import { verifyAndInjectAdminIdentity } from "./server/adminApiGateway.js";
 import { verifyWhatsAppWebhook, receiveWhatsAppWebhook, handleWhatsAppSendRoute } from "./server/whatsappAutomationService.js";
 
 dotenv.config();
@@ -167,6 +169,15 @@ app.use("/api/candidate", applicationRoutes);
 app.use("/api/consultancy", applicationRoutes);
 app.use(async (req: any, res: any, next: any) => {
   const path = String(req.url || "").split("?")[0].replace(/\/+$/, "") || "/";
+
+  // Apply verified Admin identity before protected admin routers receive the request.
+  const adminHandled = await verifyAndInjectAdminIdentity(req, res, path);
+  if (adminHandled || res.headersSent) return;
+
+  // Serve the authenticated employer/recruiter workspace API from the main Express app.
+  const hiringWorkspaceHandled = await handleHiringWorkspaceRoute(req, res);
+  if (hiringWorkspaceHandled || res.headersSent) return;
+
   if (path === "/api/payments/create-order" || path === "/api/payments/verify-return") {
     const handled = await handlePaymentCheckoutRoute(req, res);
     if (handled || res.headersSent) return;
