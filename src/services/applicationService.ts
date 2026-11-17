@@ -176,7 +176,7 @@ export async function applyToJob(
     // Mirror the committed application into Neon with a verified Firebase token.
     // This is non-blocking so a database sync delay cannot prevent an application.
     try {
-      const token = await auth.currentUser.getIdToken();
+      const token = await auth.currentUser!.getIdToken();
       const syncResponse = await fetch("/api/neon/application-sync", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
