@@ -74,7 +74,7 @@ export async function handleAdminReportingRoute(req: Request, res: Response): Pr
       currentLimit.count += 1;
       if (currentLimit.count > 90) { res.status(429).json({ success:false,error:"RATE_LIMITED",message:"Too many report requests. Please wait one minute." }); return true; }
     }
-    const role = roleOf(user.role || decoded.role || admin.role || admin.level || (adminSnap.exists ? "admin" : ""));
+    const role = roleOf((adminSnap.exists ? admin.role || admin.level || "admin" : "") || user.role || decoded.role);
     const active = user.isActive !== false && admin.isActive !== false && ![user.status, user.accountStatus, admin.status].some(v => ["disabled","suspended","blocked","inactive"].includes(roleOf(v)));
     if (!["admin","superadmin","super_admin"].includes(role) || !active) {
       res.status(403).json({ success: false, error: "FORBIDDEN", message: "Active AIJOBS Admin access is required." }); return true;
