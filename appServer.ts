@@ -150,7 +150,7 @@ app.use("/api/", csrfMitigator);
 
 app.use(async (req: any, res: any, next: any) => {
   try {
-    const requestPath = String(req.url || "").split("?")[0].replace(/\\/+$/, "") || "/";
+    const requestPath = String(req.url || "").split("?")[0].replace(/\/+$/, "") || "/";
     const adminHandled = await verifyAndInjectAdminIdentity(req, res, requestPath);
     if (adminHandled || res.headersSent) return;
 
