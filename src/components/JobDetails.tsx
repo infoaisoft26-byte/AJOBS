@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { AlertTriangle, ArrowLeft, ArrowRight, Brain, Briefcase, Check, CheckCircle2, Clock, File, FileText, Grid, Heart, Info, Key, Link, MapPin, Navigation, Package, Section, Send, Share, Share2, ShieldCheck, Sparkles, Users, View, X } from "lucide-react";
-import { db } from "../firebase";
+import { auth, db } from "../firebase";
 
 
 import { JobPosting, JobApplication } from "../types";
@@ -11,6 +11,7 @@ import { saveJobToBookmarks, removeJobFromBookmarks } from "../services/savedJob
 import { useJobPostingSchema } from "../hooks/useJobPostingSchema";
 import { useToast } from "./GlobalToast";
 import AiScreeningSummarySection from "./recruiter/AiScreeningSummarySection";
+import CandidateScreeningQuestions, { CandidateScreeningResponse } from "./CandidateScreeningQuestions";
 
 interface JobDetailsProps {
   jobId: string;
@@ -64,6 +65,7 @@ export default function JobDetails({
   const [hasApplied, setHasApplied] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [screeningResponses, setScreeningResponses] = useState<CandidateScreeningResponse[]>([]);
 
   // Invoke SEO structured JobPosting schema & dynamic meta management
   useJobPostingSchema(job);
@@ -171,7 +173,7 @@ export default function JobDetails({
     try {
       setIsApplying(true);
       const activeResumeText = resumeText || profile?.resumeText || "Resume Attached";
-      const result = await applyToJob(job, userId, profile, activeResumeText);
+      const result = await applyToJob(job, userId, profile, activeResumeText, screeningResponses);
       if (result.success) {
         setHasApplied(true);
         setShowConfirmModal(false);
@@ -591,7 +593,7 @@ export default function JobDetails({
       {/* Accidental Submission Prevention / Review Dialog */}
       {showConfirmModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200" id="job-details-review-confirm-modal">
-          <div className="bg-[rgba(4,12,35,0.95)] backdrop-blur-2xl border border-[rgba(37,99,235,0.45)] rounded-3xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] max-w-lg w-full p-6 space-y-5 relative text-white">
+          <div className="bg-[rgba(4,12,35,0.95)] backdrop-blur-2xl border border-[rgba(37,99,235,0.45)] rounded-3xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 space-y-5 relative text-white">
             
             <button
               onClick={() => setShowConfirmModal(false)}
@@ -643,6 +645,8 @@ export default function JobDetails({
                 </div>
               </div>
             </div>
+
+            <CandidateScreeningQuestions jobId={job.id} onChange={setScreeningResponses} />
 
             <p className="text-[11px] text-slate-300 leading-relaxed">
               Please ensure your resume and contact information are accurate. Once submitted, your profile will be sent directly to the hiring manager at <strong className="text-cyan-300">{job.companyName}</strong>.
