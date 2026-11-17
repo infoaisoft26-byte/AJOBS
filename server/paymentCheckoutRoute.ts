@@ -344,6 +344,15 @@ export async function handlePaymentCheckoutRoute(req: Request, res: Response): P
         }, { merge: true });
 
         tx.set(existingSubRef, subscription, { merge: true });
+        tx.set(db.collection("jobCredits").doc(decoded.uid), {
+          uid: decoded.uid,
+          paidCredits: Number(subscription.jobPostLimit || 0),
+          usedCredits: 0,
+          plan: subscription.planName,
+          planId: subscription.planId,
+          subscriptionId,
+          updatedAt: paidAt
+        }, { merge: true });
 
         if (order.agreementId) {
           tx.set(agreementRef, {
