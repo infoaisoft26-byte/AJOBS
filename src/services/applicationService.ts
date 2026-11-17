@@ -432,13 +432,20 @@ export async function assignRecruiterToApplication(
     const appData = appSnap.data();
 
     // Update assignment fields
-    await updateDoc(appRef, {
+    const assignmentPayload = {
       assignedRecruiterId: recruiterId,
       assignedRecruiterName: recruiterName,
       assignedAt: nowIso,
       assignedBy: assignedBy,
       updatedAt: nowIso
-    });
+    };
+    await updateDoc(appRef, assignmentPayload);
+    // Keep the legacy employer/recruiter mirror in sync while applications remains canonical.
+    try {
+      await updateDoc(doc(db, "company_applications", applicationId), assignmentPayload);
+    } catch (mirrorError) {
+      console.warn("[Recruiter Assignment] Legacy application mirror sync skipped:", mirrorError);
+    }
 
     // Notify assigned Recruiter
     try {
