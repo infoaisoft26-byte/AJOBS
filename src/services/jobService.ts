@@ -5,7 +5,7 @@ import { JobPosting } from "../types";
 import { generateJobSlug, getPublicJobUrl } from "../config/site";
 
 const JOBS_COLLECTION = "jobs";
-const PUBLIC_JOB_STATUSES = ["approved", "Approved", "Published", "Live", "open", "Open"];
+const PUBLIC_JOB_STATUSES = ["approved", "Approved", "published", "Published", "live", "Live", "open", "Open"];
 
 /**
  * Checks if a job listing appears to be a duplicate based on title, company, and location.
@@ -73,7 +73,7 @@ export async function getLiveJobs(): Promise<JobPosting[]> {
       const expiry = data.validThrough || data.expiryDate || data.applyDeadline;
       const isExpired = expiry ? new Date(expiry) < currentDate : false;
 
-      if (["live", "open", "published", "approved"].includes(status) && !isExpired) {
+      if (["live", "open", "published", "approved"].includes(status) && data.approved !== false && data.isPublic !== false && data.publicVisibility !== false && data.visibility !== "private" && !isExpired) {
         const slug = data.slug || generateJobSlug(data.title, data.location, doc.id);
         const canonicalUrl = data.canonicalUrl || getPublicJobUrl({ title: data.title, location: data.location, id: doc.id, slug });
         jobsList.push({ id: doc.id, slug, canonicalUrl, ...data } as JobPosting);
