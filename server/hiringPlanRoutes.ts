@@ -47,6 +47,52 @@ async function getVerifiedPaymentLink(linkId: string) {
   return data;
 }
 
+router.post("/use-database-credit", async (req, res) => {
+  const decoded = await requireUser(req, res);
+  if (!decoded) return;
+  try {
+    const candidateId = String(req.body?.candidateId || "").trim().slice(0, 160);
+    const candidateName = String(req.body?.candidateName || "Candidate").trim().slice(0, 160);
+    if (!candidateId) return void res.status(400).json({ success: false, error: "CANDIDATE_REQUIRED" });
+    const db = getFirestoreDb();
+    const creditRef = db.collection("jobCredits").doc(decoded.uid);
+    const unlockRef = db.collection("candidate_unlocks").doc(`${decoded.uid}_${candidateId}`);
+    let alreadyUnlocked = false;
+    let remainingCredits = 0;
+    let usedCredits = 0;
+    await db.runTransaction(async (tx: any) => {
+      const [creditSnap, unlockSnap] = await Promise.all([tx.get(creditRef), tx.get(unlockRef)]);
+      if (unlockSnap.exists) {
+        alreadyUnlocked = true;
+        const current: any = creditSnap.data() || {};
+        const expired = Boolean(current.databaseCreditsExpiresAt && new Date(current.databaseCreditsExpiresAt).getTime() <= Date.now());
+        remainingCredits = expired ? 0 : Math.max(0, Number(current.databaseCredits) || 0);
+        usedCredits = Number(current.databaseCreditsUsed) || 0;
+        return;
+      }
+      const current: any = creditSnap.exists ? creditSnap.data() || {} : {};
+      const expired = Boolean(current.databaseCreditsExpiresAt && new Date(current.databaseCreditsExpiresAt).getTime() <= Date.now());
+      const available = expired ? 0 : Math.max(0, Number(current.databaseCredits) || 0);
+      if (available < 1) throw new Error("INSUFFICIENT_DATABASE_CREDITS");
+      remainingCredits = available - 1;
+      usedCredits = (Number(current.databaseCreditsUsed) || 0) + 1;
+      tx.set(creditRef, { databaseCredits: remainingCredits, databaseCreditsUsed: usedCredits, updatedAt: new Date().toISOString() }, { merge: true });
+      tx.set(unlockRef, {
+        userId: decoded.uid, candidateId, candidateName, status: "unlocked",
+        unlockedAt: new Date().toISOString(), creditCost: 1
+      });
+    });
+    return void res.json({ success: true, alreadyUnlocked, remainingCredits, usedCredits });
+  } catch (error: any) {
+    const insufficient = error?.message === "INSUFFICIENT_DATABASE_CREDITS";
+    return void res.status(insufficient ? 409 : 500).json({
+      success: false,
+      error: insufficient ? "INSUFFICIENT_DATABASE_CREDITS" : (error?.message || "DATABASE_UNLOCK_FAILED"),
+      message: insufficient ? "You need at least 1 database credit to unlock this profile." : "Could not unlock this candidate."
+    });
+  }
+});
+
 router.get("/history", async (req, res) => {
   const decoded = await requireUser(req, res);
   if (!decoded) return;
