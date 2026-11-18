@@ -95,6 +95,7 @@ export async function handleHiringWorkspaceRoute(req: Request, res: Response): P
           hired: count("hired", "joined"),
           availableJobCredits: Math.max(0, available),
           availableDatabaseCredits: databaseCreditsExpired ? 0 : Math.max(0, Number(credits.databaseCredits) || 0),
+          databaseCreditsUsed: Math.max(0, Number(credits.databaseCreditsUsed) || 0),
           planExpiresAt: credits.planExpiresAt || null
         },
         jobs: jobs.sort((a: any, b: any) => String(b.createdAt || b.submittedAt || "").localeCompare(String(a.createdAt || a.submittedAt || ""))),
