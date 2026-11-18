@@ -47,6 +47,31 @@ async function getVerifiedPaymentLink(linkId: string) {
   return data;
 }
 
+router.get("/history", async (req, res) => {
+  const decoded = await requireUser(req, res);
+  if (!decoded) return;
+  try {
+    const db = getFirestoreDb();
+    const [creditSnap, subSnap, orderSnap] = await Promise.all([
+      db.collection("jobCredits").doc(decoded.uid).get(),
+      db.collection("subscriptions").doc(`sub_${decoded.uid}`).get(),
+      db.collection("payment_orders").where("userId", "==", decoded.uid).limit(25).get()
+    ]);
+    const orders = orderSnap.docs
+      .map((doc: any) => ({ ...doc.data(), orderId: doc.id }))
+      .filter((order: any) => order.purchaseType === "hiring_plan")
+      .sort((a: any, b: any) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+    return void res.json({
+      success: true,
+      credits: creditSnap.exists ? creditSnap.data() : {},
+      subscription: subSnap.exists ? subSnap.data() : null,
+      orders
+    });
+  } catch (error: any) {
+    return void res.status(500).json({ success: false, error: error?.message || "PLAN_HISTORY_FAILED" });
+  }
+});
+
 router.post("/create-order", async (req, res) => {
   const decoded = await requireUser(req, res);
   if (!decoded) return;
