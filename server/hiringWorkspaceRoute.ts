@@ -82,8 +82,11 @@ export async function handleHiringWorkspaceRoute(req: Request, res: Response): P
       const count = (...states: string[]) => applications.filter((app: any) => states.includes(status(app.status))).length;
       const credits: any = creditsSnap.data() || {};
       const nowMs = Date.now();
-      const paidCreditsExpired = Boolean(credits.paidCreditsExpiresAt && new Date(credits.paidCreditsExpiresAt).getTime() <= nowMs);
-      const databaseCreditsExpired = Boolean(credits.databaseCreditsExpiresAt && new Date(credits.databaseCreditsExpiresAt).getTime() <= nowMs);
+      const expiryMillis = (value: any) => value?.toDate ? value.toDate().getTime() : (value ? new Date(value).getTime() : 0);
+      const paidExpiryMs = expiryMillis(credits.paidCreditsExpiresAt);
+      const databaseExpiryMs = expiryMillis(credits.databaseCreditsExpiresAt);
+      const paidCreditsExpired = Boolean(paidExpiryMs && Number.isFinite(paidExpiryMs) && paidExpiryMs <= nowMs);
+      const databaseCreditsExpired = Boolean(databaseExpiryMs && Number.isFinite(databaseExpiryMs) && databaseExpiryMs <= nowMs);
       const available = (Number(credits.freeCredits) || 0) + (paidCreditsExpired ? 0 : (Number(credits.paidCredits) || 0)) - (Number(credits.usedCredits) || 0);
       res.json({
         success: true,
