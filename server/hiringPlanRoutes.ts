@@ -187,14 +187,21 @@ router.get("/status/:orderId", async (req, res) => {
       const nextPaid = Math.max(0, Number(current.paidCredits) || 0) + Number(order.jobCredits || 0);
       const nextDb = Math.max(0, Number(current.databaseCredits) || 0) + Number(order.databaseCredits || 0);
       const expiresAt = new Date(Date.now() + Number(order.validityDays || 30) * 86400000).toISOString();
+      const maxExpiry = (oldValue: any, nextValue: string) => {
+        const oldDate = oldValue ? new Date(oldValue).getTime() : 0;
+        const nextDate = new Date(nextValue).getTime();
+        return new Date(Math.max(oldDate, nextDate)).toISOString();
+      };
       tx.set(creditRef, {
         uid: decoded.uid,
         freeCredits: Number(current.freeCredits) || 0,
         paidCredits: nextPaid,
         usedCredits: Number(current.usedCredits) || 0,
         databaseCredits: nextDb,
+        ...(Number(order.jobCredits || 0) > 0 ? { paidCreditsExpiresAt: maxExpiry(current.paidCreditsExpiresAt, expiresAt) } : {}),
+        ...(Number(order.databaseCredits || 0) > 0 ? { databaseCreditsExpiresAt: maxExpiry(current.databaseCreditsExpiresAt, expiresAt) } : {}),
         activePlan: order.planName,
-        planExpiresAt: expiresAt,
+        planExpiresAt: maxExpiry(current.planExpiresAt, expiresAt),
         updatedAt: paidAt
       }, { merge: true });
       const subscription = {
