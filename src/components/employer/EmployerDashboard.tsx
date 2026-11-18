@@ -150,7 +150,7 @@ export default function EmployerDashboard({
   }, [userId]);
 
   // Credit deduction is committed by the server before the UI updates.
-  const handleDeductCredit = async (amount: number, activity: string, targetName: string, candidateId: string): Promise<void> => {
+  const handleDeductCredit = async (amount: number, activity: string, targetName: string, candidateId: string): Promise<{ alreadyUnlocked?: boolean }> => {
     const token = await auth.currentUser?.getIdToken();
     if (!token) throw new Error("Please sign in again before unlocking a candidate.");
     const response = await fetch("/api/hiring-plans/use-database-credit", {
@@ -165,8 +165,9 @@ export default function EmployerDashboard({
     setCredits(prev => ({
       ...prev,
       databaseCredits: Number(result.remainingCredits || 0),
-      databaseCreditsUsed: Number(result.usedCredits || prev.databaseCreditsUsed + amount)
+      databaseCreditsUsed: Number(result.usedCredits || prev.databaseCreditsUsed + (result.alreadyUnlocked ? 0 : amount))
     }));
+    if (result.alreadyUnlocked) return { alreadyUnlocked: true };
     const newLog: CreditUsageLog = {
       id: "tx_" + Date.now(),
       date: new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
@@ -178,6 +179,7 @@ export default function EmployerDashboard({
       refId: candidateId
     };
     setUsageHistory(prev => [newLog, ...prev]);
+    return { alreadyUnlocked: false };
   };
 
   // Add Credits handler
