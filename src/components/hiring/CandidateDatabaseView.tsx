@@ -56,7 +56,7 @@ interface CandidateDatabaseViewProps {
   userId: string;
   credits: CreditBalance;
   jobs: CompanyJob[];
-  onDeductCredit: (amount: number, activity: string, candidateName: string, candidateId: string) => Promise<void>;
+  onDeductCredit: (amount: number, activity: string, candidateName: string, candidateId: string) => Promise<{ alreadyUnlocked?: boolean }>;
   onOpenLiveChat?: (candidateId: string, candidateName: string) => void;
   onNavigateTab: (tabId: string) => void;
 }
@@ -265,10 +265,12 @@ export default function CandidateDatabaseView({
     }
 
     try {
-      await onDeductCredit(1, "Candidate Database Profile Unlock", cand.fullName, cand.id);
+      const result = await onDeductCredit(1, "Candidate Database Profile Unlock", cand.fullName, cand.id);
       setUnlockedIds(prev => new Set([...prev, cand.id]));
       setToast({
-        text: `Successfully unlocked contact details for ${cand.fullName}! 1 credit used.`,
+        text: result?.alreadyUnlocked
+          ? `${cand.fullName} was already unlocked. No additional credit was used.`
+          : `Successfully unlocked contact details for ${cand.fullName}! 1 credit used.`,
         type: "success"
       });
     } catch (error: any) {
