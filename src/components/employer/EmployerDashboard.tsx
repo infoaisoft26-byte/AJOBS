@@ -149,23 +149,33 @@ export default function EmployerDashboard({
     return () => refs.forEach(unsubscribe => unsubscribe());
   }, [userId]);
 
-  // Credit Deduction handler
-  const handleDeductCredit = (amount: number, activity: string, targetName: string) => {
+  // Credit deduction is committed by the server before the UI updates.
+  const handleDeductCredit = async (amount: number, activity: string, targetName: string, candidateId: string): Promise<void> => {
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) throw new Error("Please sign in again before unlocking a candidate.");
+    const response = await fetch("/api/hiring-plans/use-database-credit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ candidateId, candidateName: targetName })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || result.error || "Candidate unlock failed.");
+    }
     setCredits(prev => ({
       ...prev,
-      databaseCredits: Math.max(0, prev.databaseCredits - amount),
-      databaseCreditsUsed: prev.databaseCreditsUsed + amount
+      databaseCredits: Number(result.remainingCredits || 0),
+      databaseCreditsUsed: Number(result.usedCredits || prev.databaseCreditsUsed + amount)
     }));
-
     const newLog: CreditUsageLog = {
       id: "tx_" + Date.now(),
-      date: new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      activity: activity,
+      date: new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      activity,
       item: targetName,
       quantity: amount,
       creditsUsed: amount,
       recruiter: userName,
-      refId: "TX_" + Math.floor(1000 + Math.random() * 9000)
+      refId: candidateId
     };
     setUsageHistory(prev => [newLog, ...prev]);
   };
