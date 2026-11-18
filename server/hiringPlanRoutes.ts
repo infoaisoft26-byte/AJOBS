@@ -51,7 +51,7 @@ router.post("/use-database-credit", async (req, res) => {
   const decoded = await requireUser(req, res);
   if (!decoded) return;
   try {
-    const candidateId = String(req.body?.candidateId || "").trim().slice(0, 160);
+    const candidateId = String(req.body?.candidateId || "").trim().replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 160);
     const candidateName = String(req.body?.candidateName || "Candidate").trim().slice(0, 160);
     if (!candidateId) return void res.status(400).json({ success: false, error: "CANDIDATE_REQUIRED" });
     const db = getFirestoreDb();
@@ -234,7 +234,8 @@ router.get("/status/:orderId", async (req, res) => {
       const nextDb = Math.max(0, Number(current.databaseCredits) || 0) + Number(order.databaseCredits || 0);
       const expiresAt = new Date(Date.now() + Number(order.validityDays || 30) * 86400000).toISOString();
       const maxExpiry = (oldValue: any, nextValue: string) => {
-        const oldDate = oldValue ? new Date(oldValue).getTime() : 0;
+        const parsedOld = oldValue?.toDate ? oldValue.toDate().getTime() : (oldValue ? new Date(oldValue).getTime() : 0);
+        const oldDate = Number.isFinite(parsedOld) ? parsedOld : 0;
         const nextDate = new Date(nextValue).getTime();
         return new Date(Math.max(oldDate, nextDate)).toISOString();
       };
