@@ -90,7 +90,9 @@ export async function handleHiringWorkspaceRoute(req: Request, res: Response): P
           shortlisted: count("shortlisted"),
           interviews: count("interview", "interview_scheduled", "interview_completed", "hr_round", "final_round"),
           hired: count("hired", "joined"),
-          availableJobCredits: Math.max(0, available)
+          availableJobCredits: Math.max(0, available),
+          availableDatabaseCredits: Math.max(0, Number(credits.databaseCredits) || 0),
+          planExpiresAt: credits.planExpiresAt || null
         },
         jobs: jobs.sort((a: any, b: any) => String(b.createdAt || b.submittedAt || "").localeCompare(String(a.createdAt || a.submittedAt || ""))),
         applications: applications.sort((a: any, b: any) => String(b.appliedAt || b.createdAt || "").localeCompare(String(a.appliedAt || a.createdAt || "")))
