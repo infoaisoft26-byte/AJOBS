@@ -42,6 +42,7 @@ export default function PlanPurchaseView({
   const [currentPlan, setCurrentPlan] = useState<any>(null);
   const [planExpiry, setPlanExpiry] = useState<string>("");
   const [purchaseHistory, setPurchaseHistory] = useState<any[]>([]);
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
 
   // Tab 1: Job Credits Packages
   const jobPacks = [
@@ -137,7 +138,7 @@ export default function PlanPurchaseView({
     };
 
     const pollPendingOrder = async () => {
-      const orderId = sessionStorage.getItem("aijobs_pending_plan_order");
+      const orderId = pendingOrderId || sessionStorage.getItem("aijobs_pending_plan_order");
       if (!orderId) return;
       const verify = async (): Promise<void> => {
         if (!active) return;
@@ -152,6 +153,7 @@ export default function PlanPurchaseView({
           if (!active) return;
           if (response.ok && data.success && data.status === "paid") {
             sessionStorage.removeItem("aijobs_pending_plan_order");
+            setPendingOrderId(null);
             setPurchaseSuccess(`Payment verified. ${data.order?.planName || "Your plan"} is now active and credits have been added.`);
             setCheckoutUrl(null);
             await loadPlanHistory();
@@ -172,7 +174,7 @@ export default function PlanPurchaseView({
       active = false;
       if (timer) clearTimeout(timer);
     };
-  }, [userId]);
+  }, [userId, pendingOrderId]);
 
   const handleCheckout = async (planId: string) => {
     setIsProcessing(planId);
@@ -193,6 +195,7 @@ export default function PlanPurchaseView({
         throw new Error(data.message || data.error || "Secure checkout could not be started.");
       }
       sessionStorage.setItem("aijobs_pending_plan_order", data.orderId);
+      setPendingOrderId(data.orderId);
       setCheckoutUrl(data.checkoutUrl);
       if (checkoutWindow) {
         checkoutWindow.location.href = data.checkoutUrl;
@@ -250,7 +253,32 @@ export default function PlanPurchaseView({
         <div role="alert" className="p-4 rounded-2xl bg-rose-950/70 border border-rose-500/40 text-rose-200 text-xs font-bold">{purchaseError}</div>
       )}
 
-      {/* Active plan and verified purchase history */}\n      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">\n        <div className="p-4 rounded-2xl bg-slate-900/70 border border-cyan-500/20">\n          <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-bold">Current Plan</div>\n          <div className="text-lg font-black text-white mt-1">{currentPlan?.planName || "Free Plan"}</div>\n          <div className="text-xs text-slate-400 mt-1">Status: {currentPlan?.status || "No paid subscription"}</div>\n          <div className="text-xs text-slate-400">Valid until: {planExpiry ? new Date(planExpiry).toLocaleDateString("en-IN") : "—"}</div>\n        </div>\n        <div className="p-4 rounded-2xl bg-slate-900/70 border border-purple-500/20">\n          <div className="text-[10px] uppercase tracking-wider text-purple-300 font-bold">Verified Purchase History</div>\n          {purchaseHistory.length ? <div className="mt-2 space-y-2 max-h-28 overflow-y-auto">{purchaseHistory.slice(0,5).map((item:any) => <div key={item.orderId} className="flex items-center justify-between gap-2 text-xs"><span className="text-slate-300">{item.planName}</span><span className={item.status === "paid" ? "text-emerald-400 font-bold" : "text-amber-300"}>{item.status} · ₹{Number(item.amount || 0).toLocaleString("en-IN")}</span></div>)}</div> : <div className="text-xs text-slate-400 mt-2">No plan purchases recorded yet.</div>}\n        </div>\n      </div>\n\n      {/* Success Notification */}
+      {/* Active plan and verified purchase history */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="p-4 rounded-2xl bg-slate-900/70 border border-cyan-500/20">
+          <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-bold">Current Plan</div>
+          <div className="text-lg font-black text-white mt-1">{currentPlan?.planName || "Free Plan"}</div>
+          <div className="text-xs text-slate-400 mt-1">Status: {currentPlan?.status || "No paid subscription"}</div>
+          <div className="text-xs text-slate-400">Valid until: {planExpiry ? new Date(planExpiry).toLocaleDateString("en-IN") : "—"}</div>
+        </div>
+        <div className="p-4 rounded-2xl bg-slate-900/70 border border-purple-500/20">
+          <div className="text-[10px] uppercase tracking-wider text-purple-300 font-bold">Verified Purchase History</div>
+          {purchaseHistory.length ? (
+            <div className="mt-2 space-y-2 max-h-28 overflow-y-auto">
+              {purchaseHistory.slice(0, 5).map((item: any) => (
+                <div key={item.orderId} className="flex items-center justify-between gap-2 text-xs">
+                  <span className="text-slate-300">{item.planName}</span>
+                  <span className={item.status === "paid" ? "text-emerald-400 font-bold" : "text-amber-300"}>
+                    {item.status} · ₹{Number(item.amount || 0).toLocaleString("en-IN")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : <div className="text-xs text-slate-400 mt-2">No plan purchases recorded yet.</div>}
+        </div>
+      </div>
+
+      {/* Success Notification */}
       {purchaseSuccess && (
         <div className="p-4 rounded-2xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-200 flex items-center gap-2 text-xs font-bold animate-in fade-in">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -507,13 +535,9 @@ export default function PlanPurchaseView({
               <p className="text-xs text-slate-300">
                 Ideal for rapidly expanding startups and enterprise engineering teams hiring 10+ employees per quarter.
               </p>
-              <button
-                onClick={() => handleCheckout("unlimited_plan", "Unlimited Hiring Plan", billingPeriod === "annual" ? 89999 : 29999, 999, 9999)}
-                disabled={isProcessing === "unlimited_plan"}
-                className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-400 to-cyan-500 hover:from-emerald-300 hover:to-cyan-400 text-slate-950 font-black text-xs sm:text-sm shadow-xl shadow-cyan-500/25 cursor-pointer"
-              >
-                {isProcessing === "unlimited_plan" ? "Processing..." : "Subscribe to Unlimited Plan"}
-              </button>
+              <a href="mailto:enterprise@aijobs1.in?subject=AIJOBS%20Unlimited%20Hiring%20Plan" className="block w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-400 to-cyan-500 text-slate-950 font-black text-xs sm:text-sm text-center">
+                Contact Enterprise Sales
+              </a>
             </div>
           </div>
         </div>
