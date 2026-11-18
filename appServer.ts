@@ -39,6 +39,7 @@ import kycRoutes from "./server/kycRoutes.js";
 import leadRoutes from "./server/leadRoutes.js";
 import applicationRoutes from "./server/applicationRoutes.js";
 import subscriptionRoutes from "./server/subscriptionRoutes.js";
+import hiringPlanRoutes from "./server/hiringPlanRoutes.js";
 import accountingRoutes from "./server/accountingRoutes.js";
 import aiHiringRoutes from "./server/aiHiringRoutes.js";
 import candidateAuthRoutes from "./server/candidateAuthRoutes.js";
@@ -204,6 +205,7 @@ app.use(async (req: any, res: any, next: any) => {
   next();
 });
 
+app.use("/api/hiring-plans", hiringPlanRoutes);
 app.use("/api/plans", subscriptionRoutes);
 app.use("/api/plan", subscriptionRoutes);
 app.use("/api/agreements", subscriptionRoutes);
