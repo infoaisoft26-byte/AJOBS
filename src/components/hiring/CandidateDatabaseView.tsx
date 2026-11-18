@@ -56,7 +56,7 @@ interface CandidateDatabaseViewProps {
   userId: string;
   credits: CreditBalance;
   jobs: CompanyJob[];
-  onDeductCredit: (amount: number, activity: string, candidateName: string) => void;
+  onDeductCredit: (amount: number, activity: string, candidateName: string, candidateId: string) => Promise<{ alreadyUnlocked?: boolean }>;
   onOpenLiveChat?: (candidateId: string, candidateName: string) => void;
   onNavigateTab: (tabId: string) => void;
 }
@@ -253,7 +253,7 @@ export default function CandidateDatabaseView({
   }, [userId]);
 
   // Handle Unlock Candidate using 1 database credit
-  const handleUnlockCandidate = (cand: CandidateItem) => {
+  const handleUnlockCandidate = async (cand: CandidateItem) => {
     if (unlockedIds.has(cand.id)) return;
 
     if (credits.databaseCredits <= 0) {
@@ -264,13 +264,21 @@ export default function CandidateDatabaseView({
       return;
     }
 
-    // Deduct 1 credit
-    onDeductCredit(1, "Candidate Database Profile Unlock", cand.fullName);
-    setUnlockedIds(prev => new Set([...prev, cand.id]));
-    setToast({
-      text: `Successfully unlocked contact details for ${cand.fullName}! 1 credit used.`,
-      type: "success"
-    });
+    try {
+      const result = await onDeductCredit(1, "Candidate Database Profile Unlock", cand.fullName, cand.id);
+      setUnlockedIds(prev => new Set([...prev, cand.id]));
+      setToast({
+        text: result?.alreadyUnlocked
+          ? `${cand.fullName} was already unlocked. No additional credit was used.`
+          : `Successfully unlocked contact details for ${cand.fullName}! 1 credit used.`,
+        type: "success"
+      });
+    } catch (error: any) {
+      setToast({
+        text: error?.message || "Candidate could not be unlocked. No credit was deducted.",
+        type: "error"
+      });
+    }
   };
 
   const handleSaveSearch = () => {

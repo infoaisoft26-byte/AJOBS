@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { auth } from "../../firebase";
 import { 
   Sparkles, 
   CreditCard, 
@@ -22,20 +23,26 @@ interface PlanPurchaseViewProps {
   userEmail: string;
   userName: string;
   credits: CreditBalance;
-  onAddCredits: (jobCredits: number, dbCredits: number, planName: string, amount: number) => void;
+  onPaymentVerified?: () => void;
 }
 
 export default function PlanPurchaseView({
   userId,
   userEmail,
   userName,
-  credits
+  credits,
+  onPaymentVerified
 }: PlanPurchaseViewProps) {
   const [activeTab, setActiveTab] = useState<"job_credits" | "database" | "enterprise" | "unlimited">("job_credits");
   const [billingPeriod, setBillingPeriod] = useState<"quarterly" | "annual">("annual");
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [purchaseSuccess, setPurchaseSuccess] = useState<string | null>(null);
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [currentPlan, setCurrentPlan] = useState<any>(null);
+  const [planExpiry, setPlanExpiry] = useState<string>("");
+  const [purchaseHistory, setPurchaseHistory] = useState<any[]>([]);
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
 
   // Tab 1: Job Credits Packages
   const jobPacks = [
@@ -111,51 +118,94 @@ export default function PlanPurchaseView({
     }
   ];
 
-  const handleCheckout = async (packId: string, title: string, amount: number, jobCreds: number, dbCreds: number) => {
-    setIsProcessing(packId);
-    setPurchaseSuccess(null);
-    setPurchaseError(null);
+  useEffect(() => {
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | null = null;
 
-    try {
-      const response = await fetch("/api/payu-initiate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          planName: title,
-          price: amount,
-          firstname: userName,
-          email: userEmail,
-          phone: "",
-          udf1: "hiring_plan"
-        })
+    const loadPlanHistory = async () => {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) return;
+      const response = await fetch("/api/hiring-plans/history", {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+        cache: "no-store"
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || data.message || "Secure payment checkout could not be started.");
-      }
+      if (!active || !response.ok || !data.success) return;
+      const balance = data.credits || {};
+      setCurrentPlan(data.subscription || (balance.activePlan ? { planName: balance.activePlan } : null));
+      setPlanExpiry(data.subscription?.expiresAt || balance.planExpiresAt || "");
+      setPurchaseHistory(Array.isArray(data.orders) ? data.orders : []);
+    };
 
-      // Never credit plans from a client-side response. The current PayU
-      // initiation endpoint does not return a hosted checkout URL or a verified
-      // payment callback, so fail closed instead of simulating a purchase.
-      if (!data.paymentUrl || !data.params || !data.verifiedCallbackConfigured) {
-        throw new Error("Secure online checkout is not configured for this plan yet. No payment was taken and no credits were added. Please contact AIJOBS billing support.");
-      }
+    const pollPendingOrder = async () => {
+      const orderId = pendingOrderId || sessionStorage.getItem("aijobs_pending_plan_order");
+      if (!orderId) return;
+      const verify = async (): Promise<void> => {
+        if (!active) return;
+        try {
+          const token = await auth.currentUser?.getIdToken();
+          if (!token) return;
+          const response = await fetch(`/api/hiring-plans/status/${encodeURIComponent(orderId)}`, {
+            headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+            cache: "no-store"
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!active) return;
+          if (response.ok && data.success && data.status === "paid") {
+            sessionStorage.removeItem("aijobs_pending_plan_order");
+            setPendingOrderId(null);
+            setPurchaseSuccess(`Payment verified. ${data.order?.planName || "Your plan"} is now active and credits have been added.`);
+            setCheckoutUrl(null);
+            await loadPlanHistory();
+            onPaymentVerified?.();
+            return;
+          }
+          timer = setTimeout(verify, 5000);
+        } catch {
+          timer = setTimeout(verify, 7000);
+        }
+      };
+      verify();
+    };
 
-      const form = document.createElement("form");
-      form.method = "POST";
-      form.action = data.paymentUrl;
-      Object.entries(data.params).forEach(([name, value]) => {
-        const input = document.createElement("input");
-        input.type = "hidden";
-        input.name = name;
-        input.value = String(value ?? "");
-        form.appendChild(input);
+    loadPlanHistory().catch(() => undefined);
+    pollPendingOrder();
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, [userId, pendingOrderId]);
+
+  const handleCheckout = async (planId: string) => {
+    setIsProcessing(planId);
+    setPurchaseSuccess(null);
+    setPurchaseError(null);
+    setCheckoutUrl(null);
+    const checkoutWindow = window.open("about:blank", "_blank");
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("Please sign in again before purchasing a plan.");
+      const response = await fetch("/api/hiring-plans/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ planId })
       });
-      document.body.appendChild(form);
-      form.submit();
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success || !data.checkoutUrl || !data.orderId) {
+        throw new Error(data.message || data.error || "Secure checkout could not be started.");
+      }
+      sessionStorage.setItem("aijobs_pending_plan_order", data.orderId);
+      setPendingOrderId(data.orderId);
+      setCheckoutUrl(data.checkoutUrl);
+      if (checkoutWindow) {
+        checkoutWindow.location.href = data.checkoutUrl;
+      } else {
+        setPurchaseError("Your browser blocked the checkout popup. Use the secure checkout link below to continue.");
+      }
+      setPurchaseSuccess("Secure Razorpay checkout created. Credits will be added only after Razorpay confirms payment.");
     } catch (err: any) {
-      setPurchaseError(err?.message || "Checkout could not be started. No credits were added.");
+      checkoutWindow?.close();
+      setPurchaseError(err?.message || "Checkout could not be started. No payment or credits were recorded.");
     } finally {
       setIsProcessing(null);
     }
@@ -197,9 +247,36 @@ export default function PlanPurchaseView({
         </div>
       </div>
 
+      {checkoutUrl && <a href={checkoutUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-cyan-300 underline text-sm font-bold">Open secure Razorpay checkout <ArrowRight className="w-4 h-4" /></a>}
+
       {purchaseError && (
         <div role="alert" className="p-4 rounded-2xl bg-rose-950/70 border border-rose-500/40 text-rose-200 text-xs font-bold">{purchaseError}</div>
       )}
+
+      {/* Active plan and verified purchase history */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="p-4 rounded-2xl bg-slate-900/70 border border-cyan-500/20">
+          <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-bold">Current Plan</div>
+          <div className="text-lg font-black text-white mt-1">{currentPlan?.planName || "Free Plan"}</div>
+          <div className="text-xs text-slate-400 mt-1">Status: {currentPlan?.status || "No paid subscription"}</div>
+          <div className="text-xs text-slate-400">Valid until: {planExpiry ? new Date(planExpiry).toLocaleDateString("en-IN") : "—"}</div>
+        </div>
+        <div className="p-4 rounded-2xl bg-slate-900/70 border border-purple-500/20">
+          <div className="text-[10px] uppercase tracking-wider text-purple-300 font-bold">Verified Purchase History</div>
+          {purchaseHistory.length ? (
+            <div className="mt-2 space-y-2 max-h-28 overflow-y-auto">
+              {purchaseHistory.slice(0, 5).map((item: any) => (
+                <div key={item.orderId} className="flex items-center justify-between gap-2 text-xs">
+                  <span className="text-slate-300">{item.planName}</span>
+                  <span className={item.status === "paid" ? "text-emerald-400 font-bold" : "text-amber-300"}>
+                    {item.status} · ₹{Number(item.amount || 0).toLocaleString("en-IN")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : <div className="text-xs text-slate-400 mt-2">No plan purchases recorded yet.</div>}
+        </div>
+      </div>
 
       {/* Success Notification */}
       {purchaseSuccess && (
@@ -309,7 +386,7 @@ export default function PlanPurchaseView({
               </div>
 
               <button
-                onClick={() => handleCheckout(pack.id, pack.title, pack.salePrice, pack.credits, 0)}
+                onClick={() => handleCheckout(pack.id)}
                 disabled={isProcessing === pack.id}
                 className="w-full mt-6 py-2.5 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
               >
@@ -369,7 +446,7 @@ export default function PlanPurchaseView({
               </div>
 
               <button
-                onClick={() => handleCheckout(plan.id, plan.title, plan.price, 0, plan.unlocks)}
+                onClick={() => handleCheckout(plan.id)}
                 disabled={isProcessing === plan.id}
                 className="w-full mt-6 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-xs shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
               >
@@ -458,13 +535,9 @@ export default function PlanPurchaseView({
               <p className="text-xs text-slate-300">
                 Ideal for rapidly expanding startups and enterprise engineering teams hiring 10+ employees per quarter.
               </p>
-              <button
-                onClick={() => handleCheckout("unlimited_plan", "Unlimited Hiring Plan", billingPeriod === "annual" ? 89999 : 29999, 999, 9999)}
-                disabled={isProcessing === "unlimited_plan"}
-                className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-400 to-cyan-500 hover:from-emerald-300 hover:to-cyan-400 text-slate-950 font-black text-xs sm:text-sm shadow-xl shadow-cyan-500/25 cursor-pointer"
-              >
-                {isProcessing === "unlimited_plan" ? "Processing..." : "Subscribe to Unlimited Plan"}
-              </button>
+              <a href="mailto:enterprise@aijobs1.in?subject=AIJOBS%20Unlimited%20Hiring%20Plan" className="block w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-400 to-cyan-500 text-slate-950 font-black text-xs sm:text-sm text-center">
+                Contact Enterprise Sales
+              </a>
             </div>
           </div>
         </div>

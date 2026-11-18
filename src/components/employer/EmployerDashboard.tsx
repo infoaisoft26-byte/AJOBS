@@ -109,7 +109,7 @@ export default function EmployerDashboard({
       if (!workspaceResponse.ok || workspaceData.success !== true) {
         throw new Error(workspaceData.error || "Unable to load your hiring workspace.");
       }
-      setCredits(prev => ({ ...prev, jobCredits: Number(workspaceData.stats?.availableJobCredits || 0) }));
+      setCredits(prev => ({ ...prev, jobCredits: Number(workspaceData.stats?.availableJobCredits || 0), databaseCredits: Number(workspaceData.stats?.availableDatabaseCredits || 0), databaseCreditsUsed: Number(workspaceData.stats?.databaseCreditsUsed || 0), validityDate: workspaceData.stats?.planExpiresAt || prev.validityDate }));
       const jobList: CompanyJob[] = Array.isArray(workspaceData.jobs) ? workspaceData.jobs : [];
       setJobs(jobList);
       const appList: CompanyApplication[] = Array.isArray(workspaceData.applications)
@@ -149,25 +149,37 @@ export default function EmployerDashboard({
     return () => refs.forEach(unsubscribe => unsubscribe());
   }, [userId]);
 
-  // Credit Deduction handler
-  const handleDeductCredit = (amount: number, activity: string, targetName: string) => {
+  // Credit deduction is committed by the server before the UI updates.
+  const handleDeductCredit = async (amount: number, activity: string, targetName: string, candidateId: string): Promise<{ alreadyUnlocked?: boolean }> => {
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) throw new Error("Please sign in again before unlocking a candidate.");
+    const response = await fetch("/api/hiring-plans/use-database-credit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ candidateId, candidateName: targetName })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || result.error || "Candidate unlock failed.");
+    }
     setCredits(prev => ({
       ...prev,
-      databaseCredits: Math.max(0, prev.databaseCredits - amount),
-      databaseCreditsUsed: prev.databaseCreditsUsed + amount
+      databaseCredits: Number(result.remainingCredits || 0),
+      databaseCreditsUsed: Number(result.usedCredits || prev.databaseCreditsUsed + (result.alreadyUnlocked ? 0 : amount))
     }));
-
+    if (result.alreadyUnlocked) return { alreadyUnlocked: true };
     const newLog: CreditUsageLog = {
       id: "tx_" + Date.now(),
-      date: new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      activity: activity,
+      date: new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      activity,
       item: targetName,
       quantity: amount,
       creditsUsed: amount,
       recruiter: userName,
-      refId: "TX_" + Math.floor(1000 + Math.random() * 9000)
+      refId: candidateId
     };
     setUsageHistory(prev => [newLog, ...prev]);
+    return { alreadyUnlocked: false };
   };
 
   // Add Credits handler
@@ -417,7 +429,7 @@ export default function EmployerDashboard({
           userEmail={companyProfile?.contactEmail || "employer@aijobs1.in"}
           userName={userName}
           credits={credits}
-          onAddCredits={handleAddCredits}
+          onPaymentVerified={loadData}
         />
       )}
 
